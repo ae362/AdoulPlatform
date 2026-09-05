@@ -9,8 +9,7 @@
 /dist
 /build
 /.vite
-/frontend/dist
-/frontend/dist-build/Promotion_Student_BISC_website_banner.mp4/
+/frontend/dist-build/
 /backend/dist
 /backend/scripts
 /backend/junk/
