@@ -11,7 +11,7 @@
 /.vite
 /frontend/dist-build/
 /backend/dist
-/backend/public/
+/frontend/public
 /backend/scripts
 /backend/junk/
 /backend/migrations/
