@@ -1,0 +1,525 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Sans+Arabic:wght@100;400;700;900&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Tajawal:wght@400;500;700;800;900&display=swap');
+
+@font-face {
+  font-family: 'Maghribi';
+  src: url('/fonts/maghribi.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DroidArabicKufi';
+  src: url('/fonts/droid_arabic_kufi.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DroidArabicKufiBold';
+  src: url('/fonts/droidkufi_bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.font-maghribi {
+  font-family: 'Maghribi', 'Tajawal', 'DroidArabicKufi', 'Amiri', sans-serif;
+}
+
+.font-amiri {
+  font-family: 'Maghribi', 'Amiri', 'Tajawal', 'DroidArabicKufi', serif;
+}
+
+.font-kufi {
+  font-family: 'DroidArabicKufi', 'Roboto', 'Noto Sans Arabic', sans-serif;
+}
+
+.moroccan-luxury-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='120' height='180' viewBox='0 0 120 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.15' stroke-opacity='0.14'%3E%3Cpath d='M60 10 L110 60 L60 110 L10 60 Z'/%3E%3Ccircle cx='60' cy='60' r='5'/%3E%3Cpath d='M60 70 L110 120 L60 170 L10 120 Z'/%3E%3Ccircle cx='60' cy='120' r='5'/%3E%3Cpath d='M0 10 L50 60 L0 110 L-50 60 Z'/%3E%3Ccircle cx='0' cy='60' r='5'/%3E%3Cpath d='M0 70 L50 120 L0 170 L-50 120 Z'/%3E%3Ccircle cx='0' cy='120' r='5'/%3E%3Cpath d='M120 10 L170 60 L120 110 L70 60 Z'/%3E%3Ccircle cx='120' cy='60' r='5'/%3E%3Cpath d='M120 70 L170 120 L120 170 L70 120 Z'/%3E%3Ccircle cx='120' cy='120' r='5'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 35%, rgba(0,0,0,0.75) 65%, rgba(0,0,0,0.95) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 35%, rgba(0,0,0,0.75) 65%, rgba(0,0,0,0.95) 100%);
+}
+
+body {
+  font-family: 'DroidArabicKufi', 'Roboto', 'Noto Sans Arabic', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-red-900 focus:outline-none;
+  }
+  .btn-primary {
+    @apply rounded-lg bg-red-950 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-red-900 focus:outline-none;
+  }
+  .btn-secondary {
+    @apply rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100;
+  }
+  .btn-danger {
+    @apply rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700;
+  }
+  .ltr {
+    direction: ltr;
+  }
+  .banana-card {
+    @apply rounded-xl p-4 shadow text-slate-900;
+    background-color: #ecfeff;
+  }
+
+  .islamic-category-banner {
+    @apply relative w-full select-none overflow-hidden;
+    @apply flex items-center gap-6 px-16 py-6 text-right;
+    border-radius: 0;
+    background-image:
+      var(--banner-bg),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0 20 L20 0 L40 20 L20 40 Z' fill='none' stroke='white' stroke-opacity='0.05' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: cover, 60px 60px;
+    background-position: center, center;
+    clip-path: polygon(45px 0, calc(100% - 45px) 0, 100% 50%, calc(100% - 45px) 100%, 45px 100%, 0 50%);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --banner-bg: radial-gradient(circle at center, #c21414 0%, #9a0f12 55%, #7a0a0d 100%);
+  }
+
+  /* Color Variations */
+  .islamic-category-banner--red {
+    --banner-bg: radial-gradient(circle at center, #d32f2f 0%, #b71c1c 60%, #8b0000 100%);
+  }
+  .islamic-category-banner--blue {
+    --banner-bg: radial-gradient(circle at center, #1976d2 0%, #0d47a1 60%, #002171 100%);
+  }
+  .islamic-category-banner--green {
+    --banner-bg: radial-gradient(circle at center, #388e3c 0%, #1b5e20 60%, #003300 100%);
+  }
+  .islamic-category-banner--silver {
+    --banner-bg: radial-gradient(circle at center, #f5f5f5 0%, #e0e0e0 60%, #9e9e9e 100%);
+  }
+  .islamic-category-banner--silver .islamic-category-banner__title {
+    color: #333 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5) !important;
+  }
+  .islamic-category-banner--silver .islamic-category-banner__desc {
+    color: #555 !important;
+  }
+  .islamic-category-banner--purple {
+    --banner-bg: radial-gradient(circle at center, #8e24aa 0%, #6a1b9a 60%, #4a148c 100%);
+  }
+
+  .islamic-category-banner:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+  }
+
+  /* Improved Islamic Geometry Edges */
+  .islamic-category-banner::before {
+    content: '';
+    position: absolute;
+    inset: 6px 50px;
+    border: 1px solid rgba(8, 145, 178, 0.5);
+    background-image: 
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M10 90 Q 10 10, 90 10 M20 80 Q 20 20, 80 20 M30 70 Q 30 30, 70 30' fill='none' stroke='%230891b2' stroke-width='1.5'/%3E%3Ccircle cx='10' cy='90' r='2' fill='%230891b2'/%3E%3Ccircle cx='90' cy='10' r='2' fill='%230891b2'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M90 90 Q 90 10, 10 10 M80 80 Q 80 20, 20 20 M70 70 Q 70 30, 30 30' fill='none' stroke='%230891b2' stroke-width='1.5'/%3E%3Ccircle cx='90' cy='90' r='2' fill='%230891b2'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%230891b2'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M10 10 Q 10 90, 90 90 M20 20 Q 20 80, 80 80 M30 30 Q 30 70, 70 70' fill='none' stroke='%230891b2' stroke-width='1.5'/%3E%3Ccircle cx='10' cy='10' r='2' fill='%230891b2'/%3E%3Ccircle cx='90' cy='90' r='2' fill='%230891b2'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M90 10 Q 90 90, 10 90 M80 20 Q 80 80, 20 80 M70 30 Q 70 70, 30 70' fill='none' stroke='%230891b2' stroke-width='1.5'/%3E%3Ccircle cx='90' cy='10' r='2' fill='%230891b2'/%3E%3Ccircle cx='10' cy='90' r='2' fill='%230891b2'/%3E%3C/svg%3E");
+    background-position: top left, top right, bottom left, bottom right;
+    background-repeat: no-repeat;
+    background-size: 50px 50px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .islamic-category-banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px double #0891b2;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .islamic-category-banner--open {
+    @apply brightness-110;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .islamic-category-banner__icon {
+    @apply relative z-20 flex h-16 w-16 items-center justify-center shrink-0;
+    @apply rounded-full bg-white/10 text-4xl;
+    border: 3px solid #0891b2;
+    box-shadow: 
+      0 0 15px rgba(212, 175, 55, 0.4),
+      inset 0 0 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .islamic-category-banner__text {
+    @apply relative z-20 flex-1 space-y-1;
+  }
+
+  .islamic-category-banner__title {
+    @apply text-3xl font-extrabold;
+    color: #fff7da;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    font-family: 'Maghribi', 'Amiri', 'Tajawal', serif;
+  }
+
+  .islamic-category-banner__desc {
+    @apply text-sm leading-relaxed font-semibold italic;
+    color: rgba(255, 247, 218, 0.9);
+    max-width: 85%;
+  }
+
+  .islamic-category-banner__chev {
+    @apply relative z-20 text-3xl font-bold transition-transform duration-300;
+    color: #d4af37;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  }
+
+  .islamic-category-banner__chev--open {
+    transform: rotate(180deg);
+  }
+}
+
+@layer utilities {
+  /* Use dark red wherever emerald was used before */
+  .bg-emerald-600 {
+    @apply bg-red-900;
+  }
+  .hover\:border-emerald-500:hover {
+    @apply border-red-900;
+  }
+
+  /* Landing page animations */
+  .animate-fade-in, .animate-fadeIn {
+    animation: fadeIn 1s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Islamic Geometry Spin Animations */
+  .animate-spin-slow {
+    animation: islamic-spin 25s linear infinite;
+  }
+  
+  .animate-spin-slow-reverse {
+    animation: islamic-spin-reverse 25s linear infinite;
+  }
+
+  @keyframes islamic-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes islamic-spin-reverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+  }
+
+  @keyframes shine {
+    from { background-position: 250% 0; }
+    to { background-position: -250% 0; }
+  }
+
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar Styling for Sidebar */
+  nav::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  nav::-webkit-scrollbar-track {
+    background: rgba(127, 29, 29, 0.4);
+    border-radius: 10px;
+  }
+
+  nav::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #0891b2 0%, #06b6d4 100%);
+    border-radius: 10px;
+    box-shadow: 0 0 6px rgba(8, 145, 178, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  nav::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #F5D76E 0%, #E6BE8A 100%);
+    box-shadow: 0 0 8px rgba(230, 190, 138, 0.6);
+  }
+
+  /* Firefox scrollbar */
+  nav {
+    scrollbar-color: #E6BE8A rgba(127, 29, 29, 0.4);
+    scrollbar-width: thin;
+  }
+}
+
+/* ------------------------------------------------------------------
+   DOCX viewer overrides (docx-preview)
+   Enforce Word-like RTL + full justification without right-margin clipping.
+------------------------------------------------------------------- */
+.docx-wrapper,
+.docx-preview-content-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 20px !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+  direction: ltr !important;
+}
+
+.docx-wrapper > section.docx,
+.docx-wrapper > article.docx,
+.docx-wrapper .docx,
+.docx-preview-content-wrapper > section,
+.docx-preview-content-wrapper > article,
+.docx-preview-content-wrapper .docx-preview-content {
+  margin: 10px auto !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  position: relative !important;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.docx-wrapper p,
+.docx-preview-content-wrapper p {
+  text-align: justify !important;
+  text-justify: inter-word !important;
+  text-align-last: right !important;
+  direction: rtl !important;
+  unicode-bidi: embed !important;
+}
+
+.docx-wrapper table,
+.docx-preview-content-wrapper table {
+  direction: rtl !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.docx-wrapper td,
+.docx-wrapper th,
+.docx-preview-content-wrapper td,
+.docx-preview-content-wrapper th {
+  direction: rtl !important;
+  unicode-bidi: embed !important;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    padding: 0 !important;
+  }
+  #printable-decision {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  #printable-decision,
+  #printable-decision *,
+  #printable-request,
+  #printable-request *,
+  #printable-order,
+  #printable-order * {
+    visibility: visible !important;
+  }
+}
+
+select {
+  accent-color: #6b7280;
+}
+
+/* Print Utilities */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Standard modern print approach: hide everything in main root except the printable area */
+  #root > *:not(.printable-area) {
+    display: none !important;
+  }
+  
+  .printable-area {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .adl-print-container.printable-area {
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    padding: 15mm !important;
+    border: 10px double #e5e7eb !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+    position: fixed !important;
+    left: 50% !important;
+    top: 0 !important;
+    transform: translateX(-50%) !important;
+    overflow: visible !important;
+  }
+
+  .adl-notary-stamp {
+    top: 30mm !important;
+    right: 30mm !important;
+    transform: rotate(-2deg) !important;
+  }
+
+  .adl-judicial-stamp {
+    bottom: 20mm !important;
+    left: 20mm !important;
+    transform: rotate(-2deg) !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 0;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+select option {
+  background-color: #ffffff;
+  color: #1f2937;
+}
+
+/* Replace only the default blue highlight with grey */
+select option:checked {
+  background-color: #9ca3af !important;
+  color: #111827 !important;
+}
+
+.editable-field[contenteditable='true']:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.rich-editor-page {
+  min-height: 1000px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+  font-size: 16px;
+  line-height: 2;
+}
+
+.rich-editor-page img {
+  max-width: 120px;
+  height: auto;
+}
+
+.rich-doc-page {
+  width: 100%;
+  min-height: 900px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  border-radius: 18px;
+  padding: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.rich-doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rich-doc-header-text {
+  text-align: center;
+  font-weight: bold;
+  line-height: 1.6;
+}
+
+.rich-doc-date {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: 14px;
+  border-top: 1px dashed #cbd5f5;
+  border-bottom: 1px dashed #cbd5f5;
+  padding: 8px 0;
+}
+
+.rich-doc-title {
+  margin-top: 24px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 22px;
+}
+
+.rich-doc-body {
+  margin-top: 16px;
+  font-size: 15px;
+  line-height: 2.1;
+}
+
+.rich-doc-divider {
+  text-align: center;
+  font-weight: bold;
+  margin: 20px 0;
+  letter-spacing: 2px;
+}
+
+.rich-doc-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.rich-doc-signature {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #cbd5f5;
+  font-weight: bold;
+}
+
+.font-amiri {
+  font-family: 'Maghribi', 'Tajawal', 'DroidArabicKufi', sans-serif;
+}
+
+@keyframes shine {
+  from { background-position: 200% center; }
+  to { background-position: -200% center; }
+}

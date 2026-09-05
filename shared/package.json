@@ -1,0 +1,8 @@
+{
+  "name": "adliyyah-fees-shared",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}

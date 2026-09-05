@@ -1,0 +1,79 @@
+import './env';
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import { fastifyRequestHandler } from '@trpc/server/adapters/fastify';
+import { appRouter } from './router';
+import { registerRemoteHearingWebsocket } from './ws/remoteHearingSignaling';
+import { registerStuReleaseRoute } from './routes/stuRelease';
+import { registerOnlyOfficeRoutes } from './routes/onlyoffice';
+
+// 5MB attachments are base64-encoded (~33% bigger) and wrapped in JSON, so we need a higher limit.
+const fastify = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
+
+// tRPC v11 Fastify adapter expects raw body as string to handle its own parsing/transformation
+fastify.removeContentTypeParser('application/json');
+fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (_, body, done) {
+  done(null, body);
+});
+
+fastify.register(cors, {
+  origin: (origin, callback) => {
+    // Allow localhost (any port) and your production domain
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Also allow all origins for development
+    }
+  },
+  credentials: true,
+});
+
+// Health check route to verify backend is up on this port
+fastify.get('/health', async () => {
+  return { status: 'ok', timestamp: new Date().toISOString(), port: process.env.PORT || 4000 };
+});
+
+// Local hardware bridge: best-effort forced release of STU sessions on unload.
+registerStuReleaseRoute(fastify).catch((err) => {
+  fastify.log.error({ err }, 'Failed to register /stu/release route');
+});
+
+// OnlyOffice integration (DOCX WYSIWYG editing server -> callback persists artifacts to Supabase).
+registerOnlyOfficeRoutes(fastify).catch((err) => {
+  fastify.log.error({ err }, 'Failed to register OnlyOffice routes');
+});
+
+const trpcOptions = {
+  router: appRouter,
+  createContext: () => ({}),
+  allowBatching: true,
+};
+
+// Note: In some tRPC v11 builds, the fastifyTRPCPlugin prefix handling can differ between ESM/CJS.
+// Using a wildcard route ensures all tRPC paths (including batch requests) are handled correctly.
+fastify.all('/trpc/*', async (req, res) => {
+  const path = (req.params as any)['*'] as string;
+  await fastifyRequestHandler({
+    ...(trpcOptions as any),
+    req,
+    res,
+    path,
+  });
+});
+
+try {
+  // Keep this best-effort: if websocket plugin fails, the API should still work.
+  registerRemoteHearingWebsocket(fastify).catch((err) => {
+    fastify.log.error({ err }, 'Failed to register websocket signaling');
+  });
+} catch (err) {
+  fastify.log.error({ err }, 'Failed to register websocket handlers');
+}
+
+const port = Number(process.env.PORT) || 4000;
+fastify
+  .listen({ port, host: '0.0.0.0' })
+  .catch((err) => {
+    fastify.log.error(err);
+    process.exit(1);
+  });
