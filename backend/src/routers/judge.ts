@@ -1501,6 +1501,7 @@ export const judgeRouter = router({
           'id, notary_user_id, notary_name, file_number, document_type, summary, status, decision, judge_notes, created_at, updated_at, decided_at, judge_user_id'
         )
         .eq('judge_user_id', user.id)
+        .or(`judge_user_id.is.null,judge_user_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (input.status) query = query.eq('status', input.status);

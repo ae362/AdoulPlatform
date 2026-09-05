@@ -405,7 +405,6 @@ export const JudicialSpeechModule: React.FC = () => {
     const [pdfPageCount, setPdfPageCount] = useState(1);
     const [judgePreviewPage, setJudgePreviewPage] = useState(1);
     const [docZoom, setDocZoom] = useState<number>(1);
-    const [viewerMode, setViewerMode] = useState<'native' | 'canvas'>('native');
     const [isJudgePreviewRendering, setIsJudgePreviewRendering] = useState(false);
     const [judgePreviewError, setJudgePreviewError] = useState<string | null>(null);
     const [tabletDeviceInfo, setTabletDeviceInfo] = useState({
@@ -732,9 +731,8 @@ export const JudicialSpeechModule: React.FC = () => {
     const judgePdfViewerSrc = useMemo(() => {
         if (!judgePdfUrl) return '';
         const separator = judgePdfUrl.includes('#') ? '&' : '#';
-        const zoomVal = Math.round(docZoom * 100);
-        return `${judgePdfUrl}${separator}page=${judgePreviewPage}&zoom=${zoomVal}`;
-    }, [judgePdfUrl, judgePreviewPage, docZoom]);
+        return `${judgePdfUrl}${separator}page=${judgePreviewPage}&zoom=page-fit`;
+    }, [judgePdfUrl, judgePreviewPage]);
     const currentPayload = ((fullDeedData as any)?.payload || {}) as Record<string, any>;
     const hasInclusionReferenceStep = !!currentPayload.inclusionReference;
     const hasCourtIdentifierStep = !!(currentPayload.judgeCourtIdentifier?.id || judgeCourtId);
@@ -758,11 +756,6 @@ export const JudicialSpeechModule: React.FC = () => {
             setIsJudgePreviewRendering(true);
             setJudgePreviewError(null);
             try {
-                const pdfjsOptions: any = {
-                    cMapUrl: 'https://unpkg.com/pdfjs-dist@5.5.207/cmaps/',
-                    cMapPacked: true,
-                    standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@5.5.207/standard_fonts/',
-                };
                 let loadingTask: any;
                 if (judgePdfUrl.startsWith('data:')) {
                     const base64Index = judgePdfUrl.indexOf('base64,');
@@ -773,21 +766,21 @@ export const JudicialSpeechModule: React.FC = () => {
                         for (let i = 0; i < binary.length; i++) {
                             bytes[i] = binary.charCodeAt(i);
                         }
-                        loadingTask = (pdfjsLib as any).getDocument({ ...pdfjsOptions, data: bytes });
+                        loadingTask = (pdfjsLib as any).getDocument({ data: bytes });
                     } else {
-                        loadingTask = (pdfjsLib as any).getDocument({ ...pdfjsOptions, url: judgePdfUrl });
+                        loadingTask = (pdfjsLib as any).getDocument({ url: judgePdfUrl });
                     }
                 } else {
                     try {
                         const response = await fetch(judgePdfUrl, { cache: 'no-store' });
                         if (response.ok) {
                             const pdfBytes = await response.arrayBuffer();
-                            loadingTask = (pdfjsLib as any).getDocument({ ...pdfjsOptions, data: pdfBytes });
+                            loadingTask = (pdfjsLib as any).getDocument({ data: pdfBytes });
                         } else {
-                            loadingTask = (pdfjsLib as any).getDocument({ ...pdfjsOptions, url: judgePdfUrl });
+                            loadingTask = (pdfjsLib as any).getDocument({ url: judgePdfUrl });
                         }
                     } catch {
-                        loadingTask = (pdfjsLib as any).getDocument({ ...pdfjsOptions, url: judgePdfUrl });
+                        loadingTask = (pdfjsLib as any).getDocument({ url: judgePdfUrl });
                     }
                 }
 
@@ -1032,35 +1025,15 @@ export const JudicialSpeechModule: React.FC = () => {
             }
             await closeSignatureSession();
             await disconnectLayer();
-
-            // ===== WACOM CONNECTION LOGIC =====
-            // Wacom devices can ONLY be accessed locally via USB
-            // For remote/Cloudflare access, user must be on same PC as the device
-            
-            const isLocalAccess = window.location.hostname === 'localhost' || 
-                                  window.location.hostname === '127.0.0.1';
-
-            if (!isLocalAccess) {
-                // Remote access: Wacom only works on the server PC
-                setHardwareError(
-                    'Wacom signing is only available when accessing from the server machine. ' +
-                    'Please access this application locally or from the PC with the Wacom device connected.'
-                );
-                setStuStatus('ERROR');
-                connectingRef.current = false;
-                return;
-            }
-
-            // Local access: Connect to localhost:9000
+            const host = 'localhost';
             if (wgss.STU) {
                 try { wgss.STU.close(); } catch {}
                 wgss.STU = null;
             }
-            
-            wgss.STU = new wgss.STUConstructor(9000, 'localhost');
+            wgss.STU = new wgss.STUConstructor(9000, host);
             const isReady = await waitForService(wgss, 5);
             if (!isReady) {
-                setHardwareError('SigCaptX Service not found on localhost:9000. Ensure Wacom is connected and SigCaptX service is running.');
+                setHardwareError(`SigCaptX Service not found on ${host}:9000.`);
                 setStuStatus('ERROR');
                 connectingRef.current = false;
                 return;
@@ -2316,36 +2289,10 @@ export const JudicialSpeechModule: React.FC = () => {
                 
                 {/* 1️⃣ LEFT PANEL: Interactive PDF Preview (45% width) */}
                 <div className="w-[45%] border-l border-slate-200 bg-slate-100 flex flex-col shadow-inner relative overflow-hidden">
-                    <div className="sticky top-0 z-20 p-3 bg-white/90 backdrop-blur-md border-b flex justify-between items-center px-6">
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-[#1f3c88]" /> معاينة الرسم
-                            </span>
-                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-black border border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setViewerMode('native')}
-                                    className={`px-2.5 py-1 rounded-md transition-all ${
-                                        viewerMode === 'native'
-                                            ? 'bg-[#1f3c88] text-white shadow-sm font-bold'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    📑 العارض الأصلي (خطوط واضحة)
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setViewerMode('canvas')}
-                                    className={`px-2.5 py-1 rounded-md transition-all ${
-                                        viewerMode === 'canvas'
-                                            ? 'bg-[#1f3c88] text-white shadow-sm font-bold'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                                >
-                                    🎨 كانفاس
-                                </button>
-                            </div>
-                        </div>
+                    <div className="sticky top-0 z-20 p-4 bg-white/80 backdrop-blur-md border-b flex justify-between items-center px-8">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-[#1f3c88]" /> معاينة النسخة الرسمية المؤرشفة
+                        </span>
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1">
                                 <button
@@ -2421,98 +2368,72 @@ export const JudicialSpeechModule: React.FC = () => {
                         </div>
                     </div>
                     
-                    <div className="flex-1 p-4 md:p-6 flex justify-center items-start overflow-auto select-none bg-slate-200/60">
+                    <div className="flex-1 p-6 md:p-10 flex justify-center items-start overflow-auto select-none bg-slate-200/60">
                         {selectedDeed && (
                             (selectedDeed.previewMimeType || '').toLowerCase().includes('pdf') ||
                             (previewOverrideUrl || selectedDeed.previewUrl || '').toLowerCase().includes('.pdf') ||
                             (previewOverrideUrl || selectedDeed.previewUrl || '').startsWith('data:application/pdf') ||
                             (previewOverrideUrl || selectedDeed.previewUrl || '').startsWith('blob:')
                         ) ? (
-                            viewerMode === 'native' && judgePdfUrl ? (
-                                <div className="relative w-full h-[calc(100vh-145px)] min-h-[600px] bg-white rounded-xl shadow-2xl border border-slate-300/80 overflow-hidden flex flex-col">
-                                    <iframe
-                                        key={judgePdfViewerSrc}
-                                        src={judgePdfViewerSrc}
-                                        title="معاينة النسخة الرسمية"
-                                        className="w-full h-full border-0 bg-white"
+                            <div
+                                ref={judgePreviewRef}
+                                style={{
+                                    transform: `scale(${docZoom})`,
+                                    transformOrigin: 'top center',
+                                }}
+                                className="w-full flex flex-col items-center justify-start transition-transform duration-150"
+                            >
+                                <div
+                                    ref={judgePageWrapperRef}
+                                    className="relative shadow-2xl bg-white rounded-sm border border-slate-200/80 overflow-hidden mx-auto"
+                                >
+                                    <canvas
+                                        ref={judgePreviewCanvasRef}
+                                        className="block max-w-full bg-white"
                                     />
-                                    {isSignaturePendingPlacement && (
-                                        <div className="absolute inset-0 z-20">
+                                    <div
+                                        className={`absolute inset-0 z-20 ${
+                                            isSignaturePendingPlacement ? 'pointer-events-auto' : 'pointer-events-none'
+                                        }`}
+                                    >
+                                        {isSignaturePendingPlacement && (
                                             <button
                                                 type="button"
                                                 aria-label="تحديد موضع التوقيع"
                                                 onClick={handleJudgePreviewClick}
-                                                className="w-full h-full cursor-crosshair bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                                                className="absolute inset-0 w-full h-full cursor-crosshair bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
                                             />
-                                        </div>
-                                    )}
-                                    {isSignaturePendingPlacement && (
-                                        <div className="absolute inset-x-6 top-6 z-30 rounded-2xl border border-blue-300 bg-blue-50/95 px-5 py-3 text-center text-sm font-black text-blue-700 shadow-xl backdrop-blur">
-                                            انقر داخل معاينة الرسم لإدراج توقيع القاضي باستعمال نفس أسلوب تضمين التوقيع داخل PDF.
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div
-                                    ref={judgePreviewRef}
-                                    style={{
-                                        transform: `scale(${docZoom})`,
-                                        transformOrigin: 'top center',
-                                    }}
-                                    className="w-full flex flex-col items-center justify-start transition-transform duration-150"
-                                >
-                                    <div
-                                        ref={judgePageWrapperRef}
-                                        className="relative shadow-2xl bg-white rounded-sm border border-slate-200/80 overflow-hidden mx-auto"
-                                    >
-                                        <canvas
-                                            ref={judgePreviewCanvasRef}
-                                            className="block max-w-full bg-white"
-                                        />
-                                        <div
-                                            className={`absolute inset-0 z-20 ${
-                                                isSignaturePendingPlacement ? 'pointer-events-auto' : 'pointer-events-none'
-                                            }`}
-                                        >
-                                            {isSignaturePendingPlacement && (
-                                                <button
-                                                    type="button"
-                                                    aria-label="تحديد موضع التوقيع"
-                                                    onClick={handleJudgePreviewClick}
-                                                    className="absolute inset-0 w-full h-full cursor-crosshair bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
-                                                />
-                                            )}
-                                        </div>
-
-                                        {isJudgePreviewRendering && (
-                                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px]">
-                                                <div className="w-10 h-10 border-3 border-[#1f3c88] border-t-transparent rounded-full animate-spin mb-3"></div>
-                                                <p className="text-xs font-bold text-slate-500">جاري تحميل الرسم القضائي...</p>
-                                            </div>
-                                        )}
-
-                                        {judgePreviewError && (
-                                            <div className="absolute inset-x-6 bottom-6 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 text-center shadow-lg">
-                                                <p className="text-sm font-black text-amber-800">{judgePreviewError}</p>
-                                                {judgePdfUrl && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => window.open(judgePdfUrl, '_blank')}
-                                                        className="text-xs font-black text-[#1f3c88] underline hover:text-blue-700"
-                                                    >
-                                                        فتح الرسم في نافذة مستقلة
-                                                    </button>
-                                                )}
-                                            </div>
                                         )}
                                     </div>
-                                    {isSignaturePendingPlacement && (
-                                        <div className="mt-4 max-w-lg rounded-2xl border border-blue-300 bg-blue-50/95 px-5 py-3 text-center text-sm font-black text-blue-700 shadow-xl backdrop-blur">
-                                            انقر داخل معاينة الرسم لإدراج توقيع القاضي باستعمال نفس أسلوب تضمين التوقيع داخل PDF.
+
+                                    {isJudgePreviewRendering && (
+                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px]">
+                                            <div className="w-10 h-10 border-3 border-[#1f3c88] border-t-transparent rounded-full animate-spin mb-3"></div>
+                                            <p className="text-xs font-bold text-slate-500">جاري تحميل الرسم القضائي...</p>
+                                        </div>
+                                    )}
+
+                                    {judgePreviewError && (
+                                        <div className="absolute inset-x-6 bottom-6 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 text-center shadow-lg">
+                                            <p className="text-sm font-black text-amber-800">{judgePreviewError}</p>
+                                            {judgePdfUrl && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => window.open(judgePdfUrl, '_blank')}
+                                                    className="text-xs font-black text-[#1f3c88] underline hover:text-blue-700"
+                                                >
+                                                    فتح الرسم في نافذة مستقلة
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                            )
+                                {isSignaturePendingPlacement && (
+                                    <div className="mt-4 max-w-lg rounded-2xl border border-blue-300 bg-blue-50/95 px-5 py-3 text-center text-sm font-black text-blue-700 shadow-xl backdrop-blur">
+                                        انقر داخل معاينة الرسم لإدراج توقيع القاضي باستعمال نفس أسلوب تضمين التوقيع داخل PDF.
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             <div
                                 style={{

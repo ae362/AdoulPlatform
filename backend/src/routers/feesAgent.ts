@@ -5406,6 +5406,31 @@ export const feesAgentRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
         }
 
+        let assignedJudgeUserId = input.selectedJudgeUserId ?? null;
+        if (!assignedJudgeUserId) {
+          const judgeRes = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', 'authentication_judge')
+            .eq('is_active', true)
+            .order('full_name', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (judgeRes.error) {
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: judgeRes.error.message });
+          }
+
+          assignedJudgeUserId = judgeRes.data?.id ? String(judgeRes.data.id) : null;
+        }
+
+        if (!assignedJudgeUserId) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'لا يوجد قاضٍ نشط لاستقبال الرسم حالياً',
+          });
+        }
+
         const rawBasePayload = (input.payload ?? {}) as any;
         const basePayload = sanitizePersistedPayload(rawBasePayload);
 
@@ -5419,7 +5444,7 @@ export const feesAgentRouter = router({
             summary: input.summary ?? null,
             payload: basePayload,
             status: 'pending',
-            judge_user_id: input.selectedJudgeUserId ?? null,
+            judge_user_id: assignedJudgeUserId,
           })
           .select('id, status, created_at')
           .single();

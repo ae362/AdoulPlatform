@@ -42,3 +42,8 @@ logs
 # OS Metadata
 .DS_Store
 backend/google-vision-credentials.json
+
+# Backups & Reports
+FeesAgent old.tsx
+*.html
+.dependency-cruiser.js
