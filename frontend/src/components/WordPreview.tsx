@@ -3,6 +3,8 @@ import { renderAsync } from 'docx-preview';
 // @ts-ignore
 import PizZip from 'pizzip';
 import { injectPlainTextIntoDocxZip } from '../utils/docxTemplate';
+import { logViewerEvent } from '../utils/documentTelemetry';
+import { FileDown, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 
 export type WordPreviewHandle = {
   getPlainText: () => string;
@@ -16,9 +18,9 @@ interface WordPreviewProps {
   onReady?: () => void;
   sourceTag?: 'base' | 'edited';
   msWordRtlJustify?: boolean;
+  submissionId?: string;
+  fallbackText?: string;
 }
-
-const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 function forceNoTransform(el: HTMLElement) {
   try {
@@ -60,9 +62,6 @@ function enforceMsWordRtlLastLineRight(root: HTMLElement | null) {
     const wrapper = (root.querySelector('.docx-wrapper, .docx-preview-content-wrapper, [class*="wrapper"]') || root) as HTMLElement | null;
     if (!wrapper) return;
 
-    // Inject a scoped style override to mimic MS Word for Arabic RTL justification.
-    // Critical detail: wrapper is centered with LTR layout, but all paragraphs and tables are RTL.
-    // This completely prevents right-margin clipping caused by RTL coordinate inversion on docx page boxes.
     const styleId = 'msword-rtl-justify-style';
     if (!root.querySelector(`style[data-wordpreview-style="${styleId}"]`)) {
       const styleEl = document.createElement('style');
@@ -175,12 +174,13 @@ async function arrayBufferFromTextContent(textContent: string, signal: AbortSign
 }
 
 export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>(
-  ({ url, isDarkMode, textContent, editable, onReady, sourceTag, msWordRtlJustify = true }, ref) => {
+  ({ url, isDarkMode, textContent, editable, onReady, sourceTag, msWordRtlJustify = true, submissionId, fallbackText }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const renderIdRef = useRef(0);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isLegacyDoc, setIsLegacyDoc] = useState(false);
 
     React.useImperativeHandle(ref, () => ({
       getPlainText: () => {
@@ -199,7 +199,6 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
       },
     }));
 
-    // Toggle inline editing without re-render.
     useEffect(() => {
       try {
         const el = containerRef.current;
@@ -226,6 +225,8 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
 
         setLoading(true);
         setError(null);
+        setIsLegacyDoc(false);
+        logViewerEvent('RENDER_START', { type: 'WORD_PREVIEW', url, submissionId });
 
         try {
           try {
@@ -237,8 +238,6 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
           container.style.position = 'static';
 
           let buffer: ArrayBuffer;
-          // Prefer rendering the real document URL when available.
-          // `textContent` is a fallback for legacy/plain-text documents (no DOCX URL).
           if (url) {
             if (url.startsWith('data:') || url.startsWith('blob:')) {
               const resp = await fetch(url, { signal: abort.signal });
@@ -257,6 +256,39 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
           if (abort.signal.aborted) return;
           if (renderId !== renderIdRef.current) return;
 
+          // Check if buffer is valid ZIP (starts with PK)
+          const bytes = new Uint8Array(buffer);
+          const isZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B;
+
+          if (!isZip) {
+            // Check if it's readable UTF-8 text or HTML
+            try {
+              const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+              if (text && (text.includes('<html') || text.includes('<p') || text.includes('<div') || text.includes('قال تعالى') || text.trim().length > 20)) {
+                const host = document.createElement('div');
+                host.className = 'p-8 sm:p-12 bg-white min-h-[1050px] shadow-lg rounded text-right font-amiri leading-relaxed';
+                host.dir = 'rtl';
+                if (text.includes('<') && text.includes('>')) {
+                  host.innerHTML = text;
+                } else {
+                  host.innerHTML = text.split(/\n\s*\n/).map(p => `<p class="my-3 text-justify">${p.replace(/\n/g, '<br/>')}</p>`).join('');
+                }
+                container.replaceChildren(host);
+                setLoading(false);
+                onReady?.();
+                logViewerEvent('RENDER_COMPLETE', { type: 'WORD_TEXT_PREVIEW', submissionId });
+                return;
+              }
+            } catch {
+              // Not plain text
+            }
+
+            // Legacy .doc format detected
+            setIsLegacyDoc(true);
+            setLoading(false);
+            return;
+          }
+
           const options = {
             className: 'docx',
             inWrapper: true,
@@ -268,20 +300,17 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
             renderFootnotes: true,
             renderEndnotes: true,
             useBase64URL: true,
-            // Matches Judge Portal / RasmDocxPreview settings; improves layout stability for complex RTL docs.
             experimental: true,
             trimXmlDeclaration: true,
             debug: false,
           } as any;
 
-          // Render into an off-DOM host to avoid stale async renders stacking/overlaying.
           const host = document.createElement('div');
           forceNoTransform(host);
           await renderAsync(buffer, host, null as any, options);
           if (msWordRtlJustify) {
             enforceMsWordRtlLastLineRight(host);
             requestAnimationFrame(() => enforceMsWordRtlLastLineRight(host));
-            setTimeout(() => enforceMsWordRtlLastLineRight(host), 0);
           } else {
             enforceJustification(host);
             requestAnimationFrame(() => enforceJustification(host));
@@ -299,19 +328,27 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
 
           if (renderId === renderIdRef.current) {
             setLoading(false);
+            logViewerEvent('RENDER_COMPLETE', { type: 'WORD_PREVIEW', submissionId });
             onReady?.();
           }
         } catch (e: any) {
           if (abort.signal.aborted) return;
           if (renderId !== renderIdRef.current) return;
           setLoading(false);
-          setError(e?.message || 'Failed to render DOCX');
+          logViewerEvent('VIEWER_ERROR', { error: e?.message || 'Failed to render DOCX', submissionId });
+
+          // If the error looks like zip corruption or legacy format, show judicial fallback
+          if (String(e?.message || '').includes('central directory') || String(e?.message || '').includes('zip')) {
+            setIsLegacyDoc(true);
+          } else {
+            setError(e?.message || 'فشل في معالجة وعرض وثيقة Word');
+          }
         }
       };
 
       run();
       return () => abort.abort();
-    }, [url, textContent, sourceTag, onReady]);
+    }, [url, textContent, sourceTag, onReady, msWordRtlJustify, submissionId]);
 
     useEffect(() => {
       return () => {
@@ -319,19 +356,75 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
       };
     }, []);
 
+    // Graceful fallback for legacy .doc or non-zip documents
+    if (isLegacyDoc) {
+      return (
+        <div className="w-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 rounded-2xl border border-slate-200" dir="rtl">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4 shadow-sm">
+            <FileText size={32} />
+          </div>
+          <h4 className="text-lg font-black font-amiri text-slate-800 mb-2">
+            مستند Word مرفق (صيغة ثنائية)
+          </h4>
+          <p className="text-xs font-bold text-slate-500 max-w-md font-amiri mb-6 leading-relaxed">
+            تم إرفاق الوثيقة بصيغة Word الثنائية. يمكنك تحميل الملف مباشرة لفتحه عبر برنامج Microsoft Word، أو مراجعة المسودة الرسمية المعتمدة عبر المنظومة.
+          </p>
+
+          <div className="flex items-center gap-3">
+            {url && (
+              <button
+                type="button"
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'rasm_attachment.doc';
+                  a.click();
+                }}
+                className="px-5 py-2.5 bg-[#023120] text-[#E6BE8A] hover:brightness-110 rounded-xl text-xs font-black font-amiri flex items-center gap-2 shadow-md transition-all"
+              >
+                <FileDown size={16} />
+                تحميل المستند الأصلي
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (error) {
       return (
-        <div className="w-full h-full flex items-center justify-center p-4">
-          <div className={`text-sm font-bold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>{error}</div>
+        <div className="w-full h-full min-h-[400px] flex flex-col items-center justify-center p-8 text-center bg-slate-50 rounded-2xl border border-slate-200" dir="rtl">
+          <AlertTriangle size={36} className="text-rose-500 mb-3" />
+          <h4 className="text-base font-black font-amiri text-slate-800 mb-1">تعذر معالجة مستند Word</h4>
+          <p className="text-xs font-bold text-slate-500 max-w-sm mb-4">{error}</p>
+          {url && (
+            <button
+              type="button"
+              onClick={() => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'document.doc';
+                a.click();
+              }}
+              className="px-4 py-2 bg-[#023120] text-[#E6BE8A] rounded-lg text-xs font-black font-amiri flex items-center gap-2 shadow"
+            >
+              <FileDown size={14} />
+              تنزيل الملف
+            </button>
+          )}
         </div>
       );
     }
 
     return (
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative min-h-[600px]">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Loading…</div>
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xs rounded-2xl">
+            <Loader2 className="w-10 h-10 text-[#023120] animate-spin mb-3" />
+            <div className={`text-sm font-black font-amiri ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
+              جاري فك بنية ومعالجة مستند Word...
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-1">تطبيق معايير المحاذاة والترتيب العدلي</p>
           </div>
         )}
         <div ref={containerRef} className="w-full h-full" dir="ltr" />
@@ -341,5 +434,3 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
 );
 
 WordPreview.displayName = 'WordPreview';
-
-export default WordPreview;

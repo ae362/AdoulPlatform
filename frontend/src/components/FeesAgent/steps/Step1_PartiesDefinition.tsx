@@ -52,7 +52,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
       : [{ book: '', page: '', number: '', date: '', notary: '' }]
   );
 
-  const handleSellerChange = (index: number, field: keyof Party, value: string | File | null) => {
+  const handleSellerChange = (index: number, field: keyof Party, value: any) => {
+    if (value instanceof File) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const b64 = String(reader.result || '').split(',').pop() || '';
+        const fileObj = {
+          name: value.name,
+          size: value.size,
+          type: value.type || 'application/octet-stream',
+          base64: b64,
+          file: value,
+        };
+        setTempSellers((prev) =>
+          prev.map((seller, idx) =>
+            idx === index ? ({ ...seller, [field]: fileObj } as Party) : seller
+          )
+        );
+        setState((prev) => ({
+          ...prev,
+          sellers: (prev.sellers || []).map((seller, idx) =>
+            idx === index ? ({ ...seller, [field]: fileObj } as Party) : seller
+          ),
+        }));
+      };
+      reader.readAsDataURL(value);
+      return;
+    }
+
     setTempSellers((prev) =>
       prev.map((seller, idx) =>
         idx === index
@@ -63,6 +90,12 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           : seller,
       ),
     );
+    setState((prev) => ({
+      ...prev,
+      sellers: (prev.sellers || []).map((seller, idx) =>
+        idx === index ? ({ ...seller, [field]: value } as Party) : seller
+      ),
+    }));
   };
 
   const [ownershipCriteria, setOwnershipCriteria] = useState(
@@ -729,7 +762,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
       setTempSellers((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
     };
 
-    const handleBuyerChange = (index: number, field: keyof Party, value: string | File | null) => {
+    const handleBuyerChange = (index: number, field: keyof Party, value: string | File | null | any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempBuyers((prev) =>
+            prev.map((buyer, idx) =>
+              idx === index ? ({ ...buyer, [field]: fileObj } as Party) : buyer
+            )
+          );
+          setState((prev) => ({
+            ...prev,
+            buyers: (prev.buyers || []).map((buyer, idx) =>
+              idx === index ? ({ ...buyer, [field]: fileObj } as Party) : buyer
+            ),
+          }));
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
+
       setTempBuyers((prev) =>
         prev.map((buyer, idx) =>
           idx === index
@@ -740,6 +800,12 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
             : buyer,
         ),
       );
+      setState((prev) => ({
+        ...prev,
+        buyers: (prev.buyers || []).map((buyer, idx) =>
+          idx === index ? ({ ...buyer, [field]: value } as Party) : buyer
+        ),
+      }));
     };
 
     const addBuyer = () => {
@@ -765,15 +831,71 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
     };
 
     const handleApplicantChange = (field: keyof Applicant, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempApplicant((prev) => ({ ...prev, [field]: fileObj }));
+          setState((prev) => ({
+            ...prev,
+            applicant: prev.applicant ? { ...prev.applicant, [field]: fileObj } : ({ ...tempApplicant, [field]: fileObj } as any),
+          }));
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       setTempApplicant((prev) => ({ ...prev, [field]: value }));
+      setState((prev) => ({
+        ...prev,
+        applicant: prev.applicant ? { ...prev.applicant, [field]: value } : ({ ...tempApplicant, [field]: value } as any),
+      }));
     };
 
     const handleApplicantsChange = (index: number, field: keyof Applicant, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempApplicants((prev) =>
+            prev.map((app, idx) =>
+              idx === index ? { ...app, [field]: fileObj } : app
+            )
+          );
+          setState((prev) => ({
+            ...prev,
+            applicants: (prev.applicants || []).map((app, idx) =>
+              idx === index ? { ...app, [field]: fileObj } : app
+            ),
+          }));
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       setTempApplicants((prev) =>
         prev.map((app, idx) =>
           idx === index ? { ...app, [field]: value } : app
         )
       );
+      setState((prev) => ({
+        ...prev,
+        applicants: (prev.applicants || []).map((app, idx) =>
+          idx === index ? { ...app, [field]: value } : app
+        ),
+      }));
     };
 
     const addApplicant = () => {
@@ -1550,6 +1672,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       <div className="mt-2">
                         <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                         <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'nationalityCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.nationalityCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.nationalityCertificateImage as any)?.name || 'شهادة الجنسية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'nationalityCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1560,6 +1695,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       <div className="mt-2">
                         <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                         <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'medicalCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.medicalCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.medicalCertificateImage as any)?.name || 'شهادة طبية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'medicalCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1586,6 +1734,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceImage', e.target.files?.[0] || null)} />
+                        {seller.criminalRecordBirthplaceImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.criminalRecordBirthplaceImage as any)?.name || 'السجل العدلي'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'criminalRecordBirthplaceImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1609,6 +1770,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.capacityCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'capacityCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1642,10 +1816,36 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة من جواز السفر</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'passportImage', e.target.files?.[0] || null)} />
+                        {seller.passportImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.passportImage as any)?.name || 'جواز السفر'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'passportImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
+                        {seller.entryStampImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.entryStampImage as any)?.name || 'ختم الدخول'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'entryStampImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1665,6 +1865,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
+                        {seller.centralCriminalRecordImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'centralCriminalRecordImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1688,6 +1901,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-3">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.supplementaryMedicalCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'supplementaryMedicalCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -1833,6 +2059,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           <div className="col-span-1 md:col-span-3">
                             <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                             <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.deathCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'deathCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                           </div>
                         </div>
                       </div>
@@ -2137,6 +2376,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                             <div className="col-span-1 md:col-span-2">
                               <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                               <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.engagementCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'engagementCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                             </div>
                           </div>
                         </div>
@@ -2183,6 +2435,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                             <div className="col-span-1 md:col-span-2">
                               <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                               <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
+                        {seller.infectiousDiseaseCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSellerChange(index, 'infectiousDiseaseCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                             </div>
                           </div>
                         </div>
@@ -2367,6 +2632,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     onChange={(e) => handleSellerChange(index, 'idImage', e.target.files?.[0] || null)}
                     className="w-full p-3 border border-gray-300 rounded-lg"
                   />
+                  {seller.idImage && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                      <span className="truncate font-medium">📎 تم إرفاق: {(seller.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSellerChange(index, 'idImage', null)}
+                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        title="حذف المرفق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {isInheritanceType && state.documentType !== 'ملكية' && state.documentType !== 'حيازة' && (
@@ -2602,6 +2880,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           onChange={(e) => handleApplicantsChange(index, 'idImage', e.target.files?.[0] || null)}
                           className="w-full p-3 border border-gray-300 rounded-lg"
                         />
+                        {app.idImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(app.idImage as any)?.name || 'صورة البطاقة'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleApplicantsChange(index, 'idImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="col-span-1 md:col-span-2">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">بصفته *</label>
@@ -2847,6 +3138,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     onChange={(e) => handleApplicantChange('idImage', e.target.files?.[0] || null)}
                     className="w-full p-3 border border-gray-300 rounded-lg"
                   />
+                  {tempApplicant.idImage && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                      <span className="truncate font-medium">📎 تم إرفاق: {(tempApplicant.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleApplicantChange('idImage', null)}
+                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        title="حذف المرفق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
@@ -3334,6 +3638,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       <div className="mt-2">
                         <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                         <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'nationalityCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.nationalityCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.nationalityCertificateImage as any)?.name || 'شهادة الجنسية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'nationalityCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -3344,6 +3661,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       <div className="mt-2">
                         <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                         <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'medicalCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.medicalCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.medicalCertificateImage as any)?.name || 'شهادة طبية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'medicalCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -3370,6 +3700,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'criminalRecordBirthplaceImage', e.target.files?.[0] || null)} />
+                        {buyer.criminalRecordBirthplaceImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.criminalRecordBirthplaceImage as any)?.name || 'السجل العدلي'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'criminalRecordBirthplaceImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -3393,6 +3736,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.capacityCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'capacityCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -3426,10 +3782,36 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة من جواز السفر</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'passportImage', e.target.files?.[0] || null)} />
+                        {buyer.passportImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.passportImage as any)?.name || 'جواز السفر'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'passportImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
+                        {buyer.entryStampImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.entryStampImage as any)?.name || 'ختم الدخول'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'entryStampImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -3449,6 +3831,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
+                        {buyer.centralCriminalRecordImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'centralCriminalRecordImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -3472,6 +3867,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         <div className="col-span-1 md:col-span-3">
                           <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                           <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.supplementaryMedicalCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'supplementaryMedicalCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -3621,6 +4029,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           <div className="col-span-1 md:col-span-3">
                             <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                             <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.deathCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'deathCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                           </div>
                         </div>
                       </div>
@@ -3925,6 +4346,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                             <div className="col-span-1 md:col-span-2">
                               <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                               <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.engagementCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'engagementCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                             </div>
                           </div>
                         </div>
@@ -3971,6 +4405,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                             <div className="col-span-1 md:col-span-2">
                               <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
                               <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
+                        {buyer.infectiousDiseaseCertificateImage && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', null)}
+                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              title="حذف المرفق"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                             </div>
                           </div>
                         </div>
@@ -4266,6 +4713,19 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     onChange={(e) => handleBuyerChange(index, 'idImage', e.target.files?.[0] || null)}
                     className="w-full p-3 border border-gray-300 rounded-lg"
                   />
+                  {buyer.idImage && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                      <span className="truncate font-medium">📎 تم إرفاق: {(buyer.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleBuyerChange(index, 'idImage', null)}
+                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        title="حذف المرفق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -4314,10 +4774,5 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         </div>
       </div>
     );
-  };
-
-
-  // ============================================================================
-  // خطوة 2 (زواج): تفاصيل الزواج
-  // ============================================================================
+};
 

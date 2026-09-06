@@ -74,6 +74,11 @@ function flattenTextContent(root: HTMLElement) {
   return text.replace(/\r\n/g, '\n');
 }
 
+export function normalizeHtml(html: string): string {
+  if (!html) return '';
+  return html.replace(/\r\n/g, '\n').trim();
+}
+
 export function htmlToPlainText(html: string) {
   if (typeof document === 'undefined') {
     // Best-effort fallback for non-DOM environments

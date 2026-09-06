@@ -54,44 +54,66 @@ import {
     setState(prev => ({ ...prev, step: (prev.step || 3) - 1 }));
   };
 
-    const updateAirRights = <K extends keyof NonNullable<FeesAgentState['airRights']>>(
-      field: K,
-      value: NonNullable<FeesAgentState['airRights']>[K]
-    ) => {
-      setState(prev => ({
-        ...prev,
-        airRights: {
-          ...prev.airRights,
-          [field]: value
-        } as NonNullable<FeesAgentState['airRights']>
-      }));
-    };
+  const updateAirRights = (
+    field: string,
+    value: any
+  ) => {
+    if (value instanceof File) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const b64 = String(reader.result || '').split(',').pop() || '';
+        const fileObj = {
+          name: value.name,
+          size: value.size,
+          type: value.type || 'application/octet-stream',
+          base64: b64,
+          file: value,
+        };
+        setState(prev => ({
+          ...prev,
+          airRights: {
+            ...prev.airRights,
+            [field]: fileObj
+          } as any
+        }));
+      };
+      reader.readAsDataURL(value);
+      return;
+    }
+    setState(prev => ({
+      ...prev,
+      airRights: {
+        ...prev.airRights,
+        [field]: value
+      } as any
+    }));
+  };
 
-    const updateObligation = (
-      party: 'elevationOwner' | 'lowerOwner',
-      field: string,
-      value: any
-    ) => {
-      setState(prev => ({
-        ...prev,
-        airRights: {
-          ...prev.airRights,
-          obligations: {
-            ...prev.airRights?.obligations,
-            [party]: {
-              ...prev.airRights?.obligations?.[party],
-              [field]: value
-            }
+  const updateObligation = (
+    party: 'elevationOwner' | 'lowerOwner',
+    field: string,
+    value: any
+  ) => {
+    setState(prev => ({
+      ...prev,
+      airRights: {
+        ...prev.airRights,
+        obligations: {
+          ...prev.airRights?.obligations,
+          [party]: {
+            ...prev.airRights?.obligations?.[party],
+            [field]: value
           }
-        } as NonNullable<FeesAgentState['airRights']>
-      }));
-    };
+        }
+      } as NonNullable<FeesAgentState['airRights']>
+    }));
+  };
 
-    return (
-      <div className="space-y-8">
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border-r-4 border-purple-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة الثالثة: تفاصيل عقد بيع حق الهواء والتعلية</h2>
-          <p className="text-gray-700">أدخل التفاصيل الخاصة بحق الهواء والتعلية وفقاً للمادة 139-141 من مدونة الحقوق العينية.</p>
+  return (
+    <div className="space-y-8">
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border-r-4 border-purple-400">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة الثالثة: تفاصيل عقد بيع حق الهواء والتعلية</h2>
+        <p className="text-gray-700">أدخل التفاصيل الخاصة بحق الهواء والتعلية وفقاً للمادة 139-141 من مدونة الحقوق العينية.</p>
         </div>
 
         {/* 1. Building Existence Verification */}
@@ -292,6 +314,12 @@ import {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="w-full p-2 border border-gray-300 rounded text-sm"
                         />
+                        {state.airRights?.buildingPermitFile && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(state.airRights.buildingPermitFile as any)?.name || 'رخصة البناء'}</span>
+                            <button type="button" onClick={() => updateAirRights('buildingPermitFile', null)} className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm">✕</button>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -313,6 +341,12 @@ import {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="w-full p-2 border border-gray-300 rounded text-sm"
                         />
+                        {state.airRights?.engineeringApprovalFile && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(state.airRights.engineeringApprovalFile as any)?.name || 'الموافقة الهندسية'}</span>
+                            <button type="button" onClick={() => updateAirRights('engineeringApprovalFile', null)} className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm">✕</button>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -334,6 +368,12 @@ import {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="w-full p-2 border border-gray-300 rounded text-sm"
                         />
+                        {state.airRights?.safetyReportFile && (
+                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                            <span className="truncate font-medium">📎 تم إرفاق: {(state.airRights.safetyReportFile as any)?.name || 'تقرير السلامة'}</span>
+                            <button type="button" onClick={() => updateAirRights('safetyReportFile', null)} className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm">✕</button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>

@@ -14,6 +14,24 @@ export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState
     const isAra = (state.documentType as string) === 'ara' || state.documentType === 'اراثة';
 
     const handleWitnessChange = (index: number, field: keyof Witness, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          const updatedWitnesses = [...witnesses];
+          updatedWitnesses[index] = { ...updatedWitnesses[index], [field]: fileObj };
+          setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       const updatedWitnesses = [...witnesses];
       updatedWitnesses[index] = { ...updatedWitnesses[index], [field]: value };
       setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
@@ -178,6 +196,19 @@ export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState
                     }}
                     className="w-full p-3 border border-gray-300 rounded-lg bg-white"
                   />
+                  {witness.idImage && (
+                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                      <span className="truncate font-medium">📎 تم إرفاق: {(witness.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleWitnessChange(index, 'idImage', null)}
+                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        title="حذف المرفق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -361,7 +392,6 @@ export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState
 
         <div className="flex gap-4 justify-between">
           <button
-            onClick={() => setState((prev) => ({ ...prev, step: 4 }))}
             onClick={() => setState((prev) => ({
               ...prev,
               step: prev.documentType === 'ثبوت_نسب_ببينة_السماع' ? 3 : 4

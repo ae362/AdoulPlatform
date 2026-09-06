@@ -210,12 +210,11 @@ export class WorkflowStateManager {
     }
 
     // Generate SHA-256 hash using Web Crypto API
-    let data = pdfContent;
-    if (typeof pdfContent === 'string') {
-      data = new TextEncoder().encode(pdfContent);
-    }
+    const data: BufferSource = typeof pdfContent === 'string'
+      ? new TextEncoder().encode(pdfContent)
+      : (pdfContent as BufferSource);
 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data as BufferSource);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 

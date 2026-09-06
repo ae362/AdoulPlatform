@@ -250,16 +250,71 @@ import {
                     </div>
                     <div className="col-span-1 md:col-span-3">
                       <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                      <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => setState(prev => ({
-                        ...prev,
-                        marriageDetails: {
-                          ...prev.marriageDetails!,
-                          conversionCertificate: {
-                            ...prev.marriageDetails?.conversionCertificate!,
-                            image: e.target.files?.[0] || null
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="w-full p-2 border rounded"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const b64 = String(reader.result || '').split(',').pop() || '';
+                              const fileObj = {
+                                name: file.name,
+                                size: file.size,
+                                type: file.type || 'application/octet-stream',
+                                base64: b64,
+                                file,
+                              };
+                              setState(prev => ({
+                                ...prev,
+                                marriageDetails: {
+                                  ...prev.marriageDetails!,
+                                  conversionCertificate: {
+                                    ...prev.marriageDetails?.conversionCertificate!,
+                                    image: fileObj as any
+                                  }
+                                }
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            setState(prev => ({
+                              ...prev,
+                              marriageDetails: {
+                                ...prev.marriageDetails!,
+                                conversionCertificate: {
+                                  ...prev.marriageDetails?.conversionCertificate!,
+                                  image: null
+                                }
+                              }
+                            }));
                           }
-                        }
-                      }))} />
+                        }}
+                      />
+                      {state.marriageDetails?.conversionCertificate?.image && (
+                        <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                          <span className="truncate font-medium">📎 تم إرفاق: {(state.marriageDetails.conversionCertificate.image as any)?.name || 'شهادة اعتناق الإسلام'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setState(prev => ({
+                              ...prev,
+                              marriageDetails: {
+                                ...prev.marriageDetails!,
+                                conversionCertificate: {
+                                  ...prev.marriageDetails?.conversionCertificate!,
+                                  image: null
+                                }
+                              }
+                            }))}
+                            className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                            title="حذف المرفق"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

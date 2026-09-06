@@ -15,5 +15,6 @@
     "types": ["node"]
   },
   "include": ["src"],
+  "exclude": ["node_modules", "src/backup"],
   "references": [{ "path": "../shared" }]
 }

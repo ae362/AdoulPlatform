@@ -669,19 +669,11 @@ import {
     );
   };
 
-  // ============================================================================
-  // Step 3: Official Real Estate Mortgage Details (الرهن الرسمي)
-  // ============================================================================
-
 export const MaritalAssetsAgreementWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
   return (
     <>
       {state.step === 1 && <Step1_PartiesDefinition state={state} setState={setState} />}
-      
       {state.step === 3 && <Step3_MaritalAssetsAgreement_Details state={state} setState={setState} />}
-      
-      
-      {state.step === 5 && <Step5_Witnesses state={state} setState={setState} />}
       {state.step === 6 && <Step6_Dates state={state} setState={setState} />}
     </>
   );

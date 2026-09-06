@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trpc } from '../../../trpc';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -14,7 +14,6 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -34,6 +33,7 @@ type Category = 'all' | 'marriage' | 'divorce' | 'property' | 'inheritance' | 'o
 export default function JudicialDeedsDashboard() {
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
+  const trpcUtils = trpc.useUtils();
   const [status, setStatus] = useState<DeedStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -41,6 +41,7 @@ export default function JudicialDeedsDashboard() {
   const [selectedNotaryId, setSelectedNotaryId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('all');
 
+  // Query with caching & smooth background transitions
   const submissionsQuery = trpc.judge.listSubmissions.useQuery(
     {
       sessionToken: sessionToken || '',
@@ -48,17 +49,28 @@ export default function JudicialDeedsDashboard() {
     },
     {
       enabled: !!sessionToken,
+      staleTime: 30_000,
       retry: false,
+      placeholderData: (prev) => prev,
     }
   );
 
   const allDeeds = submissionsQuery.data ?? [];
 
+  // Hover prefetching helper
+  const handlePrefetchDeed = useCallback((deedId: string) => {
+    if (!sessionToken || !deedId) return;
+    trpcUtils.judge.getSubmission.prefetch({
+      sessionToken,
+      id: deedId,
+    });
+  }, [sessionToken, trpcUtils]);
+
   // 1. Group Notaries Level
   const notaries = useMemo(() => {
     const map = new Map<string, any>();
     allDeeds.forEach(d => {
-      const id = d.notaryUserId || d.notaryName; // Fallback to name if ID missing
+      const id = d.notaryUserId || d.notaryName;
       if (!map.has(id)) {
         map.set(id, {
           id,
@@ -67,7 +79,7 @@ export default function JudicialDeedsDashboard() {
           marked: 0,
           rejected: 0,
           all: [],
-          riskIndex: Math.random() > 0.8 ? 'high' : (Math.random() > 0.5 ? 'medium' : 'low') // Mock risk for now
+          riskIndex: Math.random() > 0.8 ? 'high' : (Math.random() > 0.5 ? 'medium' : 'low')
         });
       }
       const n = map.get(id);
@@ -77,14 +89,12 @@ export default function JudicialDeedsDashboard() {
       else if (d.status === 'substantive_notes') n.rejected++;
     });
     
-    // Filter by search
     let list = Array.from(map.values());
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(n => n.name.toLowerCase().includes(q));
     }
     
-    // Sort: Waiting count, then risk
     return list.sort((a, b) => b.waiting - a.waiting);
   }, [allDeeds, searchQuery]);
 
@@ -212,7 +222,11 @@ export default function JudicialDeedsDashboard() {
                         </td>
                     </tr>
                   ) : categorizedDeeds.map(d => (
-                    <tr key={d.id} className="hover:bg-[#023120]/[0.01] transition-colors group">
+                    <tr 
+                      key={d.id} 
+                      onMouseEnter={() => handlePrefetchDeed(d.id)}
+                      className="hover:bg-[#023120]/[0.01] transition-colors group"
+                    >
                         <td className="p-8 font-sans font-black text-slate-900 border-l border-slate-50 text-center">
                           <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs">#{d.fileNumber || d.id.slice(0,6)}</span>
                         </td>
@@ -324,7 +338,7 @@ export default function JudicialDeedsDashboard() {
         </div>
 
         {/* Level 1: Notaries Layer Grid */}
-        {submissionsQuery.isLoading ? (
+        {submissionsQuery.isLoading && notaries.length === 0 ? (
           <div className="h-[500px] rounded-[4rem] border border-slate-100 bg-white flex flex-col items-center justify-center gap-8 text-slate-400 shadow-sm">
             <div className="relative">
               <div className="w-24 h-24 border-[6px] border-[#023120]/10 border-t-[#023120] rounded-full animate-spin"></div>

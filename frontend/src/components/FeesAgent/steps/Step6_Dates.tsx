@@ -200,51 +200,84 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
             <input
               type="file"
               multiple
-              onChange={(e) =>
-                setState((prev) => ({
-                  ...prev,
-                  meta: {
-                    ...prev.meta,
-                    additionalDocuments: Array.from(e.target.files || []),
-                  },
-                }))
-              }
+              onChange={(e) => {
+                const fileList = e.target.files;
+                if (!fileList || fileList.length === 0) return;
+                const files = Array.from(fileList);
+                Promise.all(
+                  files.map(
+                    (file) =>
+                      new Promise<any>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const b64 = String(reader.result || '').split(',').pop() || '';
+                          resolve({
+                            name: file.name,
+                            size: file.size,
+                            type: file.type || 'application/octet-stream',
+                            base64: b64,
+                            file,
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                      })
+                  )
+                ).then((newDocs) => {
+                  setState((prev) => ({
+                    ...prev,
+                    meta: {
+                      ...prev.meta,
+                      additionalDocuments: [...((prev.meta?.additionalDocuments as any[]) || []), ...newDocs],
+                    },
+                  }));
+                });
+                e.target.value = '';
+              }}
               className="w-full p-3 border border-gray-300 rounded-lg"
             />
+            {Array.isArray(state.meta?.additionalDocuments) && state.meta.additionalDocuments.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {(state.meta.additionalDocuments as any[]).map((doc, docIdx) => (
+                  <div key={docIdx} className="flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                    <span className="truncate font-medium">📎 {doc.name || `وثيقة إضافية ${docIdx + 1}`}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setState((prev) => ({
+                          ...prev,
+                          meta: {
+                            ...prev.meta,
+                            additionalDocuments: ((prev.meta?.additionalDocuments as any[]) || []).filter((_, idx) => idx !== docIdx),
+                          },
+                        }))
+                      }
+                      className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                      title="حذف المرفق"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex gap-4 justify-between">
           <button
             onClick={() => setState((prev) => {
-              // Fix for Marriage Types: Return to Step 2 (Marriage Details)
               // Marriage Types: Return to Step 2 (Marriage Details)
               if (state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') {
                 return { ...prev, step: 2 };
               }
-              // Marital Assets Agreement: Return to Step 3 (skips 2, 4, 5)
-              if (state.documentType === 'اتفاق_تدبير_اموال_زوجية') {
               // Marital Assets Agreement and Tawkil: Return to Step 3
               if (state.documentType === 'اتفاق_تدبير_اموال_زوجية' || state.documentType === 'توكيل_رسمي') {
                 return { ...prev, step: 3 };
               }
-              // وكالة follows the complete 3 -> 4 -> 5 -> 6 sequence.
-              if (state.documentType === 'توكيل_رسمي') {
-                return { ...prev, step: 3 };
               // Divorce: Return to Step 4 (Divorce Summary)
               if (state.documentType === 'الاشهاد_على_الطلاق_الاتفاقي') {
                 return { ...prev, step: 4 };
               }
-              // Inheritance Types (except Partition/Moukassama): Return to Step 5 (Witnesses)
-              if (isInheritanceType && state.documentType !== 'مقاسمة') {
-                return { ...prev, step: 5 };
-              }
-              // Documents that skip Step 4 (Finance): Return to Step 5 (Witnesses)
-              if (state.documentType === 'ثبوت_نسب_ببينة_السماع') {
-                return { ...prev, step: 5 };
-              }
-              // Default: Return to Step 4
-              return { ...prev, step: 4 };
               // Default for all other deeds with witnesses: Return to Step 5
               return { ...prev, step: 5 };
             })}

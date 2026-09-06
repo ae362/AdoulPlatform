@@ -1,157 +1,166 @@
-import React, { useState, useEffect } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-import { FileDown, Printer, Scale, Loader2, Maximize2 } from 'lucide-react';
+import React, { useMemo, useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
+import { AlertTriangle } from 'lucide-react';
 import { wrapInFullHtml, getHeaderHtml } from '../../utils/rasmTemplates';
+import { logViewerEvent } from '../../utils/documentTelemetry';
 
 interface Props {
   htmlContent: string;
   isDarkMode?: boolean;
+  submissionId?: string;
 }
 
-export const RasmHtmlPreview = ({ htmlContent, isDarkMode }: Props) => {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) => {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const shadowRootRef = useRef<ShadowRoot | null>(null);
+  const content = (htmlContent || '').trim();
 
-  useEffect(() => {
-    if (!htmlContent) return;
-    setIsGenerating(true);
-    
-    // Auto-wrap if it looks like raw content (doesn't have our internal wrapper ID)
-    let processedHtml = htmlContent;
-    if (!htmlContent || !htmlContent.includes('id="rasm-document-wrapper"')) {
-      // Check if it's already a full HTML or just text
-      const cleanContent = htmlContent || '<p style="text-align:center;">(محتوى فارغ)</p>';
-      processedHtml = wrapInFullHtml(cleanContent, getHeaderHtml('DECOR ADOUL 33'));
+  const formattedHtml = useMemo(() => {
+    if (!content) return '';
+    logViewerEvent('RENDER_START', { type: 'HTML_PREVIEW', submissionId });
+
+    let raw = content;
+
+    // If input is plain text (no HTML tags), format paragraphs cleanly
+    if (!raw.includes('<div') && !raw.includes('<p') && !raw.includes('<table') && !raw.includes('<html')) {
+      const paragraphs = raw.split(/\n\s*\n/).map(p => `<p style="margin: 12px 0; text-align: justify; line-height: 2;">${p.replace(/\n/g, '<br/>')}</p>`).join('');
+      raw = wrapInFullHtml(paragraphs, getHeaderHtml('DECOR ADOUL 33'));
+    } else if (!raw.includes('id="rasm-document-wrapper"') && !raw.includes('rasm-document-body')) {
+      if (!raw.includes('<html') && !raw.includes('<body')) {
+        raw = wrapInFullHtml(raw, getHeaderHtml('DECOR ADOUL 33'));
+      }
     }
 
-    // Create a temporary container
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.width = '800px';
-    container.style.background = '#ffffff';
-    container.dir = 'rtl';
-    container.innerHTML = processedHtml;
-    document.body.appendChild(container);
+    const sanitized = DOMPurify.sanitize(raw, {
+      USE_PROFILES: { html: true },
+      ADD_TAGS: [
+        'style', 'link', 'div', 'p', 'span', 'table', 'tr', 'td', 'th',
+        'tbody', 'thead', 'tfoot', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'b', 'strong', 'i', 'em', 'u', 'br', 'hr', 'img', 'svg', 'path'
+      ],
+      ADD_ATTR: [
+        'style', 'class', 'dir', 'id', 'src', 'alt', 'width', 'height',
+        'align', 'cellpadding', 'cellspacing', 'border', 'colspan', 'rowspan',
+        'viewBox', 'fill', 'stroke'
+      ],
+      FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    });
 
-    const generatePdf = async () => {
-      try {
-        // Wait for images to load (critical for headers)
-        const images = container.getElementsByTagName('img');
-        const loadPromises = Array.from(images).map(img => {
-          if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
-          return new Promise(resolve => {
-            img.onload = resolve;
-            img.onerror = resolve; // Continue even if image fails
-          });
-        });
-        await Promise.all(loadPromises);
+    logViewerEvent('RENDER_COMPLETE', { type: 'HTML_PREVIEW', submissionId });
+    return sanitized;
+  }, [content, submissionId]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    if (!shadowRootRef.current) {
+      shadowRootRef.current = host.attachShadow({ mode: 'open' });
+    }
+
+    const shadow = shadowRootRef.current;
+    if (!shadow) return;
+
+    if (!formattedHtml) {
+      shadow.innerHTML = '';
+      return;
+    }
+
+    shadow.innerHTML = `
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
         
-        // Give an extra 300ms for stable layout
-        await new Promise(r => setTimeout(r, 300));
-
-        // High fidelity capture
-        const canvas = await html2canvas(container, {
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          windowWidth: 800,
-          allowTaint: true,
-          imageTimeout: 5000
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdf = new jsPDF({
-          orientation: 'p',
-          unit: 'pt',
-          format: 'a4'
-        });
-
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        let heightLeft = pdfHeight;
-        let position = 0;
-
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft > 0) {
-          position = heightLeft - pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
+        :host {
+          display: block;
+          width: 100%;
+          background: transparent;
         }
 
-        const blob = pdf.output('blob');
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
-        document.body.removeChild(container);
-        setIsGenerating(false);
-      } catch (err) {
-        console.error('PDF Generation Error:', err);
-        // Fallback: Just show HTML in iframe if PDF fails
-        const blob = new Blob([`<html><body dir="rtl" style="background:#fff; padding:40px;">${processedHtml}</body></html>`], { type: 'text/html' });
-        setPdfUrl(URL.createObjectURL(blob));
-        if (document.body.contains(container)) document.body.removeChild(container);
-        setIsGenerating(false);
-      }
-    };
+        * {
+          box-sizing: border-box;
+        }
 
-    // Small delay for style application
-    const timer = setTimeout(generatePdf, 500);
-    return () => {
-      clearTimeout(timer);
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [htmlContent]);
+        .rasm-sandbox-page {
+          width: 100%;
+          max-width: 820px;
+          min-height: 1050px;
+          margin: 0 auto;
+          background: #ffffff;
+          color: #0f172a;
+          font-family: 'Amiri', 'Traditional Arabic', serif, Tahoma, Arial;
+          direction: rtl;
+          text-align: right;
+          padding: 40px 48px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+          border-radius: 4px;
+          line-height: 1.85;
+          font-size: 15px;
+          -webkit-font-smoothing: antialiased;
+        }
 
-  if (isGenerating || !pdfUrl) {
+        .rasm-sandbox-page table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 16px 0;
+          direction: rtl;
+        }
+
+        .rasm-sandbox-page td, 
+        .rasm-sandbox-page th {
+          padding: 8px 12px;
+          text-align: right;
+          vertical-align: middle;
+        }
+
+        .rasm-sandbox-page img {
+          max-width: 100%;
+          height: auto;
+          display: inline-block;
+        }
+
+        .rasm-sandbox-page p {
+          margin: 10px 0;
+          text-align: justify;
+          text-justify: inter-word;
+        }
+
+        .rasm-sandbox-page hr {
+          border: 0;
+          border-top: 1px dashed #94a3b8;
+          margin: 18px 0;
+        }
+
+        @media print {
+          .rasm-sandbox-page {
+            box-shadow: none;
+            padding: 0;
+            max-width: 100%;
+            min-height: auto;
+          }
+        }
+      </style>
+      <div class="rasm-sandbox-page" dir="rtl">
+        ${formattedHtml}
+      </div>
+    `;
+  }, [formattedHtml]);
+
+  if (!content) {
     return (
-      <div className={`w-full h-[600px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
-        <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
-        <p className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'} font-black text-lg`}>جاري معالجة المحرر العدلي الرقمي...</p>
-        <p className="text-[11px] text-gray-400 mt-2 italic">يتم الآن توليد معاينة مطابقة تماماً للمحرر الرسمي</p>
+      <div className="w-full h-[600px] flex flex-col items-center justify-center p-8 bg-amber-50/50 rounded-2xl border border-amber-200 text-center">
+        <AlertTriangle className="w-12 h-12 text-amber-600 mb-3" />
+        <div className="p-4 text-center text-amber-600 font-amiri font-bold text-xl">لا يوجد محتوى نصي للرسم</div>
+        <p className="text-xs font-bold text-amber-700/80 max-w-md font-amiri mt-1">
+          لم يتم العثور على صياغة رقمية محفوظة لهذا الرسم. يمكنك العودة للمرحلة السابقة لتوليد الصياغة أو اختيار النموذج المعتمد.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className={`w-full h-full min-h-[900px] border rounded-2xl overflow-hidden shadow-2xl p-2 flex flex-col ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300'}`}>
-      <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-sm mb-2 p-4 flex items-center justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-500 p-2 rounded-lg text-white shadow-md">
-             <Scale size={20} />
-          </div>
-          <div>
-            <h5 className={`${isDarkMode ? 'text-white' : 'text-slate-900'} font-black text-sm`}>معاينة المسودة العدلية الحكومية</h5>
-            <p className="text-[10px] text-gray-400 font-bold">هذه النسخة مطابقة تماماً لما سيراه القاضي ومصلحة التضمين</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-           <button 
-             onClick={() => window.open(pdfUrl, '_blank')}
-             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-lg transition-all"
-           >
-             <FileDown size={14} />
-             تحميل المسودة
-           </button>
-        </div>
-      </div>
-      
-      <div className="flex-1 bg-white rounded-xl overflow-hidden shadow-inner">
-        <iframe 
-          src={pdfUrl} 
-          className="w-full h-full min-h-[800px] border-0" 
-          title="Final Rasm Preview"
-        />
-      </div>
+    <div className="w-full flex justify-center py-2">
+      <div ref={hostRef} className="w-full flex justify-center" />
     </div>
   );
 };

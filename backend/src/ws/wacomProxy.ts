@@ -16,7 +16,7 @@ export async function registerWacomProxy(fastify: FastifyInstance) {
 
   // Register at /ws - WacomGSS library expects this path
   // This won't conflict with /ws/hearing/:sessionId from remote hearing
-  fastify.websocket('/ws', async (socket, req) => {
+  (fastify as any).websocket('/ws', async (socket: any, req: any) => {
     const proxyId = `wacom-proxy-${++proxyCounter}`;
     let localWs: WebSocket | null = null;
 

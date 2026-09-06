@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import { ChevronRight, ChevronLeft, AlertTriangle, ExternalLink } from 'lucide-react';
+import { ChevronRight, ChevronLeft, AlertTriangle } from 'lucide-react';
+import { logViewerEvent } from '../utils/documentTelemetry';
 
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
@@ -11,6 +12,7 @@ interface JudicialPdfViewerProps {
   className?: string;
   onPageChange?: (currentPage: number, totalPages: number) => void;
   onLoadSuccess?: (totalPages: number) => void;
+  submissionId?: string;
 }
 
 interface PageRenderItemProps {
@@ -18,6 +20,7 @@ interface PageRenderItemProps {
   pageNumber: number;
   targetWidth: number;
   isSingleMode?: boolean;
+  submissionId?: string;
 }
 
 const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
@@ -25,6 +28,7 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
   pageNumber,
   targetWidth,
   isSingleMode = false,
+  submissionId,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [rendered, setRendered] = useState(false);
@@ -38,38 +42,57 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
     const renderPage = async () => {
       if (!pdfDoc || !canvasRef.current) return;
 
-      try {
-        if (renderTaskRef.current) {
-          try {
-            renderTaskRef.current.cancel();
-          } catch {}
-          renderTaskRef.current = null;
+      // Cancel any active render task before starting a new one
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch {
+          // Ignore cancellation errors
         }
+        renderTaskRef.current = null;
+      }
 
+      try {
         const page = await pdfDoc.getPage(pageNumber);
         if (isCancelled) return;
 
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = targetWidth / Math.max(1, baseViewport.width);
         const viewport = page.getViewport({ scale });
-        const ratio = Math.max(1, window.devicePixelRatio || 1);
+        
+        // Scale by device pixel ratio for crystal clear high-DPI rendering
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
 
         const canvas = canvasRef.current;
         if (!canvas) return;
+
+        logViewerEvent('RENDER_START', {
+          pageNumber,
+          scale,
+          targetWidth,
+          submissionId,
+          dpr,
+        });
 
         const cssWidth = Math.round(viewport.width);
         const cssHeight = Math.round(viewport.height);
         setPageHeight(cssHeight);
 
-        canvas.width = Math.round(viewport.width * ratio);
-        canvas.height = Math.round(viewport.height * ratio);
+        // Canvas buffer scaled by DPR
+        canvas.width = Math.round(viewport.width * dpr);
+        canvas.height = Math.round(viewport.height * dpr);
+        
+        // CSS display size constrained to viewport
         canvas.style.width = `${cssWidth}px`;
         canvas.style.height = `${cssHeight}px`;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
 
-        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, viewport.width, viewport.height);
 
@@ -80,13 +103,28 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
         renderTaskRef.current = renderTask;
 
         await renderTask.promise;
+        renderTaskRef.current = null;
+
         if (!isCancelled) {
           setRendered(true);
           setError(null);
+          logViewerEvent('RENDER_COMPLETE', {
+            pageNumber,
+            submissionId,
+          });
         }
       } catch (err: any) {
-        if (err?.name !== 'RenderingCancelledException' && !isCancelled) {
-          console.error(`Error rendering PDF page ${pageNumber}:`, err);
+        if (err?.name === 'RenderingCancelledException' || isCancelled) {
+          return;
+        }
+
+        console.error(`Error rendering PDF page ${pageNumber}:`, err);
+        logViewerEvent('VIEWER_ERROR', {
+          error: err?.message || 'Page render failure',
+          pageNumber,
+          submissionId,
+        });
+        if (!isCancelled) {
           setError('تعذر عرض الصفحة بدقة');
         }
       }
@@ -99,10 +137,13 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
       if (renderTaskRef.current) {
         try {
           renderTaskRef.current.cancel();
-        } catch {}
+        } catch {
+          // ignore
+        }
+        renderTaskRef.current = null;
       }
     };
-  }, [pdfDoc, pageNumber, targetWidth]);
+  }, [pdfDoc, pageNumber, targetWidth, submissionId]);
 
   return (
     <div className="relative mx-auto bg-white shadow-2xl rounded-sm border border-slate-200/80 overflow-hidden mb-8 last:mb-0 transition-shadow">
@@ -114,7 +155,7 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
       )}
 
       <div
-        className="relative bg-white flex items-center justify-center"
+        className="relative bg-white flex items-center justify-center overflow-hidden"
         style={{
           width: `${targetWidth}px`,
           minHeight: `${pageHeight}px`,
@@ -122,20 +163,29 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
       >
         <canvas
           ref={canvasRef}
-          className={`block transition-opacity duration-300 ${rendered ? 'opacity-100' : 'opacity-0'}`}
+          className={`block transition-opacity duration-300 pointer-events-none ${rendered ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            position: 'relative',
+            zIndex: 1,
+          }}
+        />
+
+        <div
+          className="absolute inset-0 pointer-events-auto z-10"
+          style={{ width: '100%', height: '100%' }}
         />
 
         {!rendered && !error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-            <div className="w-10 h-10 border-3 border-[#023120] border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-xs font-bold text-slate-400">جاري معالجة الصفحة {pageNumber}...</p>
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50/95 backdrop-blur-xs">
+            <div className="w-10 h-10 border-3 border-[#023120] border-t-[#E6BE8A] rounded-full animate-spin mb-3"></div>
+            <p className="text-xs font-bold text-slate-500 font-amiri">جاري معالجة الصفحة {pageNumber}...</p>
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-rose-50/70">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-rose-50/90">
             <AlertTriangle className="w-10 h-10 text-rose-500 mb-2" />
-            <p className="text-sm font-black text-rose-700">{error}</p>
+            <p className="text-sm font-black text-rose-700 font-amiri">{error}</p>
           </div>
         )}
       </div>
@@ -149,6 +199,7 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
   className = '',
   onPageChange,
   onLoadSuccess,
+  submissionId,
 }) => {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -157,7 +208,6 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load PDF Document
   useEffect(() => {
     let isCancelled = false;
     setLoading(true);
@@ -172,11 +222,12 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
         return;
       }
 
+      logViewerEvent('DOC_FETCH_START', { url, submissionId, type: 'PDF' });
+
       try {
         let loadingTask: any;
 
         if (url.startsWith('data:')) {
-          // Parse base64 data URI
           const base64Index = url.indexOf('base64,');
           if (base64Index !== -1) {
             const base64 = url.slice(base64Index + 7);
@@ -190,7 +241,6 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
             loadingTask = (pdfjsLib as any).getDocument({ url });
           }
         } else {
-          // Try fetching as arrayBuffer for highest reliability across CORS/proxy
           try {
             const resp = await fetch(url);
             if (resp.ok) {
@@ -208,22 +258,16 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
         if (isCancelled) return;
 
         setPdfDoc(doc);
-        const count = doc.numPages || 1;
-        setTotalPages(count);
+        setTotalPages(doc.numPages);
         setLoading(false);
-
-        if (onLoadSuccess) {
-          onLoadSuccess(count);
-        }
-        if (onPageChange) {
-          onPageChange(1, count);
-        }
+        onLoadSuccess?.(doc.numPages);
+        logViewerEvent('DOC_FETCH_SUCCESS', { numPages: doc.numPages, submissionId });
       } catch (err: any) {
-        if (!isCancelled) {
-          console.error('Error loading PDF in JudicialPdfViewer:', err);
-          setError(err?.message || 'تعذر تحميل ملف الرسم القضائي');
-          setLoading(false);
-        }
+        if (isCancelled) return;
+        console.error('Failed to load PDF document:', err);
+        setError('تعذر قراءة ملف PDF أو المستند غير صالح');
+        setLoading(false);
+        logViewerEvent('VIEWER_ERROR', { error: err?.message, submissionId });
       }
     };
 
@@ -232,140 +276,104 @@ export const JudicialPdfViewer: React.FC<JudicialPdfViewerProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [url]);
+  }, [url, submissionId, onLoadSuccess]);
 
-  const handlePageSelect = (page: number) => {
-    const safePage = Math.max(1, Math.min(page, totalPages));
-    setCurrentPage(safePage);
-    if (onPageChange) {
-      onPageChange(safePage, totalPages);
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      const next = currentPage + 1;
+      setCurrentPage(next);
+      onPageChange?.(next, totalPages);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      const prev = currentPage - 1;
+      setCurrentPage(prev);
+      onPageChange?.(prev, totalPages);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-24 bg-white/90 rounded-2xl shadow-xl min-h-[600px] w-full">
-        <div className="w-14 h-14 border-4 border-[#023120] border-t-[#E6BE8A] rounded-full animate-spin mb-6"></div>
-        <h4 className="text-xl font-black font-amiri text-slate-800 mb-2">جاري فك تشفير وتجهيز الرسم القضائي...</h4>
-        <p className="text-xs font-bold text-slate-400">معالجة المستند عبر العارض القضائي عالي الدقة</p>
+      <div className="flex flex-col items-center justify-center p-16 min-h-[500px]">
+        <div className="w-12 h-12 border-4 border-[#023120] border-t-[#E6BE8A] rounded-full animate-spin mb-4"></div>
+        <p className="text-base font-black text-slate-700 font-amiri">جاري قراءة وتجهيز الوثيقة الرسمية بدقة متناهية...</p>
+        <p className="text-xs text-slate-400 mt-1 font-amiri">تطبيق معايير العرض عالي الدقة High-DPI</p>
       </div>
     );
   }
 
-  if (error || !pdfDoc) {
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center p-16 bg-white rounded-2xl shadow-2xl min-h-[500px] text-center max-w-xl mx-auto">
-        <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mb-6 border border-rose-100">
-          <AlertTriangle size={36} />
-        </div>
-        <h4 className="text-2xl font-black font-amiri text-slate-900 mb-3">تعذر عرض ملف PDF عبر العارض الداخلي</h4>
-        <p className="text-sm font-bold text-slate-500 mb-8 leading-relaxed">
-          قد يكون الملف محمياً أو غير متوافق مع العارض المباشر. يمكنك فتحه مباشرة في نافذة مستقلة للمراجعة.
-        </p>
-        <button
-          type="button"
-          onClick={() => window.open(url, '_blank')}
-          className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#023120] text-[#E6BE8A] font-black text-sm hover:brightness-125 transition-all shadow-xl shadow-[#023120]/20"
-        >
-          <ExternalLink size={18} />
-          <span>فتح المستند في نافذة خارجية مستقلة</span>
-        </button>
+      <div className="flex flex-col items-center justify-center p-12 bg-rose-50/50 rounded-2xl border border-rose-200 text-center m-6">
+        <AlertTriangle className="w-12 h-12 text-rose-500 mb-3" />
+        <h4 className="text-lg font-black text-rose-800 font-amiri mb-1">خطأ في استعراض الوثيقة</h4>
+        <p className="text-xs font-bold text-rose-600 font-amiri">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col items-center w-full ${className}`}>
-      {/* Top Document Bar: Page info & display mode switch */}
+    <div className={`w-full flex flex-col items-center ${className}`}>
       {totalPages > 1 && (
-        <div className="sticky top-2 z-40 mb-6 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md text-white px-5 py-2.5 rounded-full border border-white/10 shadow-xl text-xs">
-          <div className="flex items-center gap-1.5 font-bold">
-            <span>الصفحة</span>
-            <span className="px-2 py-0.5 rounded bg-white/10 font-mono text-[#E6BE8A]">
-              {currentPage}
-            </span>
-            <span>من</span>
-            <span className="px-2 py-0.5 rounded bg-white/10 font-mono">
-              {totalPages}
-            </span>
-          </div>
-
-          <div className="w-px h-5 bg-white/20 mx-1"></div>
-
-          {/* Mode Switch: Continuous scroll vs Single Page */}
-          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-full text-[11px]">
+        <div className="w-full max-w-[860px] flex items-center justify-between px-4 py-2 bg-slate-800 text-white rounded-t-lg mb-2 text-xs font-amiri">
+          <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={() => setViewMode('continuous')}
-              className={`px-3 py-1 rounded-full transition-all font-bold ${
-                viewMode === 'continuous' ? 'bg-[#023120] text-[#E6BE8A] shadow-md' : 'text-slate-300 hover:text-white'
-              }`}
+              onClick={() => setViewMode(viewMode === 'continuous' ? 'single' : 'continuous')}
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded font-bold transition-all"
             >
-              عرض متتابع ({totalPages})
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('single')}
-              className={`px-3 py-1 rounded-full transition-all font-bold ${
-                viewMode === 'single' ? 'bg-[#023120] text-[#E6BE8A] shadow-md' : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              صفحة بصفحة
+              {viewMode === 'continuous' ? 'عرض صفحة بصفحة' : 'عرض متتالي'}
             </button>
           </div>
 
-          {viewMode === 'single' && (
-            <>
-              <div className="w-px h-5 bg-white/20 mx-1"></div>
+          <div className="flex items-center gap-3">
+            <span>صفحة {currentPage} من {totalPages}</span>
+            {viewMode === 'single' && (
               <div className="flex items-center gap-1">
                 <button
-                  type="button"
+                  onClick={handlePrevPage}
                   disabled={currentPage <= 1}
-                  onClick={() => handlePageSelect(currentPage - 1)}
-                  className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="الصفحة السابقة"
+                  className="p-1 hover:bg-white/10 rounded disabled:opacity-30"
                 >
                   <ChevronRight size={16} />
                 </button>
                 <button
-                  type="button"
+                  onClick={handleNextPage}
                   disabled={currentPage >= totalPages}
-                  onClick={() => handlePageSelect(currentPage + 1)}
-                  className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  title="الصفحة التالية"
+                  className="p-1 hover:bg-white/10 rounded disabled:opacity-30"
                 >
                   <ChevronLeft size={16} />
                 </button>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* Pages Container */}
       <div className="w-full flex flex-col items-center">
         {viewMode === 'continuous' ? (
-          Array.from({ length: totalPages }, (_, i) => (
+          Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
             <JudicialPdfPageItem
-              key={`pdf-page-${i + 1}`}
+              key={pageNum}
               pdfDoc={pdfDoc}
-              pageNumber={i + 1}
+              pageNumber={pageNum}
               targetWidth={targetWidth}
-              isSingleMode={totalPages === 1}
+              isSingleMode={false}
+              submissionId={submissionId}
             />
           ))
         ) : (
           <JudicialPdfPageItem
-            key={`pdf-page-${currentPage}`}
+            key={currentPage}
             pdfDoc={pdfDoc}
             pageNumber={currentPage}
             targetWidth={targetWidth}
             isSingleMode={true}
+            submissionId={submissionId}
           />
         )}
       </div>
     </div>
   );
 };
-
-export default JudicialPdfViewer;

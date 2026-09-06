@@ -40,7 +40,6 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
     const fiscalNature =
       (initialState as any)?.step7FiscalNature ||
       (initialState as any)?.fiscalNature ||
-      (judgeSubmissionId ? (registeredWithTax === 'yes' || registeredWithTax === 'نعم' ? 'subject' : 'exempt') : null);
       (judgeSubmissionId ? ((registeredWithTax as string) === 'yes' || registeredWithTax === 'نعم' ? 'subject' : 'exempt') : null);
     const defaultPostRegistration = {
       registeredAtFinance: '',
@@ -149,7 +148,6 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
         step7Step: 'judicial_review',
         step7FiscalNature:
           prev.step7FiscalNature ||
-          (prev.finance?.registeredWithTax === 'yes' || prev.finance?.registeredWithTax === 'نعم' ? 'subject' : 'exempt'),
           (((prev.finance?.registeredWithTax as string) === 'yes' || prev.finance?.registeredWithTax === 'نعم') ? 'subject' : 'exempt'),
       };
     });

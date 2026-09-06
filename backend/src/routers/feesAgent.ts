@@ -5461,22 +5461,39 @@ export const feesAgentRouter = router({
         // We do NOT 'await' this block to ensure the frontend receives the submissionId immediately (~11s -> <500ms).
         (async () => {
           try {
-            const payloadAny = rawBasePayload && typeof rawBasePayload === 'object' ? rawBasePayload : {};
-            const payloadAttachments = Array.isArray(payloadAny.attachments) ? payloadAny.attachments : [];
+            const payloadAny = rawBasePayload && typeof rawBasePayload === 'object' ? { ...rawBasePayload } : {};
+            const payloadAttachments = Array.isArray(payloadAny.attachments) ? [...payloadAny.attachments] : [];
 
-            const primaryIdx = payloadAttachments.findIndex((a: any) => {
-              const category = String(a?.category || '').toLowerCase();
-              const field = String(a?.field || '');
-              if (category === 'judge_attachment') return true;
-              if (field.includes('manualRasmFile')) return true;
-              if (field.toLowerCase().includes('judgeattachment')) return true;
-              return false;
-            });
+            const decodeDataUrl = (dataUrl: string): Buffer | null => {
+              const s = String(dataUrl || '');
+              const comma = s.indexOf(',');
+              if (comma === -1) return null;
+              const meta = s.slice(0, comma);
+              const data = s.slice(comma + 1);
+              const isBase64 = /;base64/i.test(meta);
+              if (!isBase64) return Buffer.from(decodeURIComponent(data), 'utf8');
+              return Buffer.from(data, 'base64');
+            };
 
-            if (primaryIdx >= 0) {
-              const primary = payloadAttachments[primaryIdx] as any;
-              const nameRaw = String(primary?.name || primary?.fileName || primary?.filename || 'judge-attachment');
-              const typeRaw = String(primary?.type || primary?.mimeType || primary?.mime_type || '').toLowerCase();
+            const readAttachmentBytes = async (att: any): Promise<Buffer | null> => {
+              if (att?.base64) return Buffer.from(String(att.base64), 'base64');
+              const url = String(att?.url || att?.fileUrl || att?.file_url || att?.fileURL || '').trim();
+              if (!url) return null;
+              if (url.startsWith('data:')) return decodeDataUrl(url);
+              if (/^https?:/i.test(url)) {
+                const resp = await fetch(url, { cache: 'no-store' as any });
+                if (!resp.ok) return null;
+                const ab = await resp.arrayBuffer();
+                return Buffer.from(ab);
+              }
+              return null;
+            };
+
+            // 1. Process Main Deed Document
+            const primaryDeed = payloadAny.attachment || payloadAny.judgeAttachment || payloadAny.manualRasmFile;
+            if (primaryDeed) {
+              const nameRaw = String(primaryDeed?.name || primaryDeed?.fileName || 'judge-attachment');
+              const typeRaw = String(primaryDeed?.type || primaryDeed?.mimeType || '').toLowerCase();
               const nameLower = nameRaw.toLowerCase();
               const isDocx =
                 nameLower.endsWith('.docx') ||
@@ -5484,49 +5501,27 @@ export const feesAgentRouter = router({
                 typeRaw.includes('wordprocessingml') ||
                 typeRaw.includes('msword') ||
                 typeRaw.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
-                typeRaw.includes('application/msword');
+                typeRaw.includes('application/msword') ||
+                typeRaw.includes('word') ||
+                typeRaw.includes('officedocument');
+              const isPdf = nameLower.endsWith('.pdf') || typeRaw.includes('pdf');
 
-              const decodeDataUrl = (dataUrl: string): Buffer | null => {
-                const s = String(dataUrl || '');
-                const comma = s.indexOf(',');
-                if (comma === -1) return null;
-                const meta = s.slice(0, comma);
-                const data = s.slice(comma + 1);
-                const isBase64 = /;base64/i.test(meta);
-                if (!isBase64) return Buffer.from(decodeURIComponent(data), 'utf8');
-                return Buffer.from(data, 'base64');
-              };
+              const docBytes = await readAttachmentBytes(primaryDeed);
+              if (docBytes) {
+                const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
+                const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf)$/i, '').trim() || 'judge-attachment';
 
-              const readAttachmentBytes = async (att: any): Promise<Buffer | null> => {
-                if (att?.base64) return Buffer.from(String(att.base64), 'base64');
-                const url = String(att?.url || att?.fileUrl || att?.file_url || att?.fileURL || '').trim();
-                if (!url) return null;
-                if (url.startsWith('data:')) return decodeDataUrl(url);
-                if (/^https?:/i.test(url)) {
-                  const resp = await fetch(url, { cache: 'no-store' as any });
-                  if (!resp.ok) return null;
-                  const ab = await resp.arrayBuffer();
-                  return Buffer.from(ab);
-                }
-                return null;
-              };
-
-              if (isDocx) {
-                const docxBytes = await readAttachmentBytes(primary);
-                if (docxBytes) {
-                  const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
-                  const baseNoExt = safeBase.replace(/\.(docx?|dotx?)$/i, '').trim() || 'judge-attachment';
-
+                if (isDocx) {
                   // Upload original DOCX (for later editing)
                   const uploadedDocx = await uploadBufferToDocumentsBucket({
                     path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.docx`,
-                    buffer: docxBytes,
+                    buffer: docBytes,
                     contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     upsert: true,
                   });
 
                   // Convert to PDF for preview
-                  const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docxBytes });
+                  const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docBytes });
                   const uploadedPdf = await uploadBufferToDocumentsBucket({
                     path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
                     buffer: pdfRes.pdfBuffer,
@@ -5534,42 +5529,119 @@ export const feesAgentRouter = router({
                     upsert: true,
                   });
 
-                  const pdfAttachment = {
-                    name: `${baseNoExt}.pdf`,
-                    fileName: `${baseNoExt}.pdf`,
-                    size: pdfRes.pdfBuffer.length,
-                    type: 'application/pdf',
-                    mimeType: 'application/pdf',
-                    category: 'judge_attachment',
-                    field: 'judgeAttachmentPdf',
-                    url: uploadedPdf.url,
-                    fileUrl: uploadedPdf.url,
-                  };
-
-                  const docxAttachment = {
-                    ...primary,
+                  payloadAny.attachment = {
+                    ...primaryDeed,
                     name: `${baseNoExt}.docx`,
                     fileName: `${baseNoExt}.docx`,
-                    size: docxBytes.length,
-                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    category: 'judge_attachment_docx',
-                    field: 'judgeAttachmentDocx',
-                    base64: undefined,
                     url: uploadedDocx.url,
                     fileUrl: uploadedDocx.url,
+                    pdfUrl: uploadedPdf.url,
+                    base64: undefined,
                   };
+                  payloadAny.previewUrl = uploadedPdf.url;
+                  payloadAny.previewName = `${baseNoExt}.pdf`;
 
-                  const rest = payloadAttachments.filter((_: any, i: number) => i !== primaryIdx);
-                  payloadAny.attachments = [pdfAttachment, docxAttachment, ...rest];
+                  await supabase.from('deed_attachments').insert([
+                    {
+                      record_type: 'judge_submission',
+                      record_id: created.id,
+                      category: 'judge_attachment',
+                      file_name: `${baseNoExt}.pdf`,
+                      file_url: uploadedPdf.url,
+                      mime_type: 'application/pdf',
+                      file_size: pdfRes.pdfBuffer.length,
+                    },
+                    {
+                      record_type: 'judge_submission',
+                      record_id: created.id,
+                      category: 'judge_attachment_docx',
+                      file_name: `${baseNoExt}.docx`,
+                      file_url: uploadedDocx.url,
+                      mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      file_size: docBytes.length,
+                    }
+                  ]);
+                } else if (isPdf) {
+                  const uploadedPdf = await uploadBufferToDocumentsBucket({
+                    path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
+                    buffer: docBytes,
+                    contentType: 'application/pdf',
+                    upsert: true,
+                  });
 
-                  await supabase
-                    .from('judge_submissions')
-                    .update({ payload: sanitizePersistedPayload(payloadAny) })
-                    .eq('id', created.id);
+                  payloadAny.attachment = {
+                    ...primaryDeed,
+                    name: `${baseNoExt}.pdf`,
+                    fileName: `${baseNoExt}.pdf`,
+                    url: uploadedPdf.url,
+                    fileUrl: uploadedPdf.url,
+                    base64: undefined,
+                  };
+                  payloadAny.previewUrl = uploadedPdf.url;
+                  payloadAny.previewName = `${baseNoExt}.pdf`;
+
+                  await supabase.from('deed_attachments').insert({
+                    record_type: 'judge_submission',
+                    record_id: created.id,
+                    category: 'judge_attachment',
+                    file_name: `${baseNoExt}.pdf`,
+                    file_url: uploadedPdf.url,
+                    mime_type: 'application/pdf',
+                    file_size: docBytes.length,
+                  });
                 }
               }
             }
+
+            // 2. Process All Additional Attachments in parallel
+            const updatedAttachments: any[] = [];
+            for (let i = 0; i < payloadAttachments.length; i++) {
+              const att = { ...payloadAttachments[i] };
+              try {
+                const attBytes = await readAttachmentBytes(att);
+                if (attBytes && attBytes.length > 0) {
+                  const rawName = String(att.name || att.fileName || `attachment_${i + 1}`);
+                  const safeName = rawName.replace(/[^\w.\- ]+/g, '_').trim() || `attachment_${i + 1}`;
+                  const contentType = att.type || att.mimeType || 'application/octet-stream';
+
+                  const uploaded = await uploadBufferToDocumentsBucket({
+                    path: `judge-submissions/${created.id}/attachments/${i}-${safeName}`,
+                    buffer: attBytes,
+                    contentType,
+                    upsert: true,
+                  });
+
+                  att.fileUrl = uploaded.url;
+                  att.url = uploaded.url;
+                  att.base64 = undefined;
+
+                  await supabase.from('deed_attachments').insert({
+                    record_type: 'judge_submission',
+                    record_id: created.id,
+                    category: String(att.category || att.field || 'attachment'),
+                    file_name: rawName,
+                    file_url: uploaded.url,
+                    mime_type: contentType,
+                    file_size: attBytes.length,
+                    metadata: {
+                      field: att.field,
+                      category: att.category,
+                    },
+                  });
+                }
+              } catch (attErr) {
+                // eslint-disable-next-line no-console
+                console.error(`[submitToJudge-Attachment] Failed to process attachment index ${i}:`, attErr);
+              }
+              updatedAttachments.push(att);
+            }
+
+            payloadAny.attachments = updatedAttachments;
+
+            await supabase
+              .from('judge_submissions')
+              .update({ payload: sanitizePersistedPayload(payloadAny) })
+              .eq('id', created.id);
           } catch (e) {
             // Background errors are logged but don't crash the request
             // eslint-disable-next-line no-console

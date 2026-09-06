@@ -1,3 +1,11 @@
+import {
+  JudgeDeedService,
+  ListSubmissionsInputSchema,
+  GetSubmissionInputSchema,
+  DecideSubmissionInputSchema,
+  JudgeSubmissionStatus,
+  JudgeDecision,
+} from '../services/JudgeDeedService';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { supabase } from '../services/supabase';
@@ -9,14 +17,6 @@ import puppeteer from 'puppeteer';
 import Bidi from 'bidi-js';
 import { ArabicShaper } from 'arabic-persian-reshaper';
 
-type JudgeSubmissionStatus =
-  | 'pending'
-  | 'in_review'
-  | 'accepted'
-  | 'accepted_with_notes'
-  | 'substantive_notes';
-
-type JudgeDecision = 'accepted' | 'accepted_with_notes' | 'substantive_notes';
 type InclusionRegistryType = 'property' | 'marriage' | 'divorce' | 'inheritance' | 'other';
 type FinalArchivingEntryStatus = 'ARCHIVED' | 'FINAL_SECURED';
 
@@ -1480,49 +1480,10 @@ export const judgeRouter = router({
     }),
 
   listSubmissions: publicProcedure
-    .input(
-      z.object({
-        sessionToken: z.string(),
-        status: z
-          .enum(['pending', 'in_review', 'accepted', 'accepted_with_notes', 'substantive_notes'])
-          .optional(),
-      })
-    )
+    .input(ListSubmissionsInputSchema)
     .query(async ({ input }) => {
       const user = await requireSession(input.sessionToken);
-
-      if (user.role !== 'authentication_judge') {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
-      }
-
-      let query = supabase
-        .from('judge_submissions')
-        .select(
-          'id, notary_user_id, notary_name, file_number, document_type, summary, status, decision, judge_notes, created_at, updated_at, decided_at, judge_user_id'
-        )
-        .eq('judge_user_id', user.id)
-        .or(`judge_user_id.is.null,judge_user_id.eq.${user.id}`)
-        .order('created_at', { ascending: false });
-
-      if (input.status) query = query.eq('status', input.status);
-
-      const { data, error } = await query;
-      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
-
-      return (data ?? []).map((row: any) => ({
-        id: row.id as string,
-        notaryUserId: row.notary_user_id as string,
-        notaryName: row.notary_name as string,
-        fileNumber: (row.file_number ?? '') as string,
-        documentType: (row.document_type ?? '') as string,
-        summary: (row.summary ?? '') as string,
-        status: row.status as JudgeSubmissionStatus,
-        decision: (row.decision ?? null) as JudgeDecision | null,
-        judgeNotes: (row.judge_notes ?? null) as string | null,
-        createdAt: row.created_at as string,
-        updatedAt: row.updated_at as string,
-        decidedAt: (row.decided_at ?? null) as string | null,
-      }));
+      return JudgeDeedService.listSubmissions(user, input);
     }),
 
   listJudicialSpeechQueue: publicProcedure
@@ -1582,231 +1543,10 @@ export const judgeRouter = router({
     }),
 
   getSubmission: publicProcedure
-    .input(z.object({ sessionToken: z.string(), id: z.string().uuid() }))
-    .output(z.object({
-      id: z.string(),
-      notaryUserId: z.string(),
-      notaryName: z.string(),
-      fileNumber: z.string(),
-      documentType: z.string(),
-      summary: z.string(),
-      payload: z.record(z.unknown()),
-      status: z.enum(['pending', 'in_review', 'accepted', 'accepted_with_notes', 'substantive_notes']),
-      decision: z.enum(['accepted', 'accepted_with_notes', 'substantive_notes']).nullable(),
-      judgeNotes: z.string().nullable(),
-      createdAt: z.string(),
-      updatedAt: z.string(),
-      decidedAt: z.string().nullable(),
-      judgeUserId: z.string().nullable(),
-      previewUrl: z.string().nullable(),
-      previewName: z.string().nullable(),
-      previewMimeType: z.string().nullable(),
-      savedRasmId: z.string().nullable(),
-      savedRasmLatestDraftVersionId: z.string().nullable(),
-      savedRasmLatestDraftDocxUrl: z.string().nullable(),
-      savedRasmAttachments: z.array(z.object({
-        id: z.string(),
-        category: z.string(),
-        fileName: z.string(),
-        fileUrl: z.string(),
-        mimeType: z.string().nullable(),
-        fileSize: z.number().nullable(),
-        metadata: z.record(z.unknown()).nullable(),
-      })),
-    }))
+    .input(GetSubmissionInputSchema)
     .query(async ({ input }) => {
       const user = await requireSession(input.sessionToken);
-
-      if (user.role !== 'authentication_judge') {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
-      }
-
-      const { data, error } = await supabase
-        .from('judge_submissions')
-        .select(
-          'id, notary_user_id, notary_name, file_number, document_type, summary, payload, status, decision, judge_notes, created_at, updated_at, decided_at, judge_user_id'
-        )
-        .eq('id', input.id)
-        .single();
-
-      if (error || !data) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'غير موجود' });
-      }
-
-      let previewUrl: string | null = null;
-      let previewName: string | null = null;
-      let previewMimeType: string | null = null;
-      let savedRasmId: string | null = null;
-      let savedRasmLatestDraftVersionId: string | null = null;
-      let savedRasmLatestDraftDocxUrl: string | null = null;
-      let savedRasmAttachments: Array<{
-        id: string;
-        category: string;
-        fileName: string;
-        fileUrl: string;
-        mimeType: string | null;
-        fileSize: number | null;
-        metadata: Record<string, unknown> | null;
-      }> = [];
-      const payloadObject = ((data.payload ?? {}) as Record<string, unknown>);
-
-      const savedRasmRes = await supabase
-        .from('saved_rasms')
-        .select('id, payload, created_at, latest_draft_version_id, latest_draft_docx_url')
-        .eq('file_number', String(data.file_number ?? ''))
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (!savedRasmRes.error) {
-        const matchingSavedRasm = (savedRasmRes.data ?? []).find((row: any) => {
-          const rowPayload = row?.payload && typeof row.payload === 'object' ? row.payload : {};
-          return String((rowPayload as any)?.judgeSubmissionId || '') === String(data.id);
-        }) || (savedRasmRes.data ?? [])[0];
-
-        if (matchingSavedRasm?.id) {
-          savedRasmId = String(matchingSavedRasm.id);
-          const matchingSavedRasmPayload =
-            matchingSavedRasm?.payload && typeof matchingSavedRasm.payload === 'object'
-              ? (matchingSavedRasm.payload as Record<string, unknown>)
-              : {};
-          savedRasmLatestDraftVersionId = matchingSavedRasm?.latest_draft_version_id
-            ? String(matchingSavedRasm.latest_draft_version_id)
-            : (matchingSavedRasmPayload?.latestDocumentVersionId
-                ? String(matchingSavedRasmPayload.latestDocumentVersionId)
-                : null);
-          savedRasmLatestDraftDocxUrl = matchingSavedRasm?.latest_draft_docx_url
-            ? String(matchingSavedRasm.latest_draft_docx_url)
-            : null;
-
-          const savedAttachmentsRes = await supabase
-            .from('deed_attachments')
-            .select('id, category, file_name, file_url, mime_type, file_size, metadata, created_at')
-            .eq('record_type', 'saved_rasm')
-            .eq('record_id', savedRasmId)
-            .order('created_at', { ascending: false });
-
-          if (!savedAttachmentsRes.error) {
-            savedRasmAttachments = (savedAttachmentsRes.data ?? []).map((att: any) => ({
-              id: String(att.id),
-              category: String(att.category || ''),
-              fileName: String(att.file_name || 'attachment'),
-              fileUrl: String(att.file_url || ''),
-              mimeType: att.mime_type ? String(att.mime_type) : null,
-              fileSize: typeof att.file_size === 'number' ? att.file_size : null,
-              metadata: att.metadata && typeof att.metadata === 'object' ? (att.metadata as Record<string, unknown>) : null,
-            }));
-          }
-        }
-      }
-
-      // Check if this specific submission has an explicit signed or stamped PDF attachment.
-      const explicitSignedDoc = (payloadObject?.judgeSignedDoc as any) || (payloadObject?.signedAttachment as any);
-      if (explicitSignedDoc?.url || explicitSignedDoc?.fileUrl) {
-        previewUrl = String(explicitSignedDoc.url || explicitSignedDoc.fileUrl);
-        previewName = explicitSignedDoc.fileName || explicitSignedDoc.name || 'judge-signed.pdf';
-        previewMimeType = 'application/pdf';
-      }
-
-      const explicitCourtStamped = (payloadObject?.judgeCourtStampedDoc as any);
-      if (!previewUrl && (explicitCourtStamped?.url || explicitCourtStamped?.fileUrl)) {
-        previewUrl = String(explicitCourtStamped.url || explicitCourtStamped.fileUrl);
-        previewName = explicitCourtStamped.fileName || explicitCourtStamped.name || 'judge-court-stamped.pdf';
-        previewMimeType = 'application/pdf';
-      }
-
-      if (!previewUrl) {
-        const previewAttachment = extractJudgePreviewAttachment(payloadObject);
-        previewUrl = previewAttachment?.url ?? null;
-        previewName = previewAttachment?.name ?? null;
-        previewMimeType = previewAttachment?.mimeType ?? null;
-      }
-
-      if (!previewUrl) {
-        let signedDeedId = String(payloadObject?.signedDeedId || payloadObject?.signed_deed_id || '').trim();
-        if (!signedDeedId && savedRasmId) {
-          const signedDeedRes = await supabase
-            .from('signed_deeds')
-            .select('id')
-            .eq('saved_rasm_id', savedRasmId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!signedDeedRes.error && signedDeedRes.data?.id) {
-            signedDeedId = String(signedDeedRes.data.id);
-          }
-        }
-
-        if (signedDeedId) {
-          for (const category of ['judge_court_stamped_pdf', 'judge_signed_pdf', 'signed_pdf', 'judge_attachment']) {
-            const attRes = await supabase
-              .from('deed_attachments')
-              .select('file_name, file_url, mime_type')
-              .eq('record_type', 'signed_deed')
-              .eq('record_id', signedDeedId)
-              .eq('category', category)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (!attRes.error && attRes.data?.file_url) {
-              previewUrl = String(attRes.data.file_url);
-              previewName = attRes.data.file_name ? String(attRes.data.file_name) : null;
-              previewMimeType = attRes.data.mime_type ? String(attRes.data.mime_type) : null;
-              break;
-            }
-          }
-        }
-      }
-
-      if (!previewUrl && savedRasmAttachments.length > 0) {
-        const pdfAttachment = savedRasmAttachments.find((att) => {
-          const mime = (att.mimeType || '').toLowerCase();
-          const name = (att.fileName || '').toLowerCase();
-          const url = (att.fileUrl || '').toLowerCase();
-          return mime.includes('pdf') || name.endsWith('.pdf') || url.includes('.pdf');
-        });
-        if (pdfAttachment?.fileUrl) {
-          previewUrl = String(pdfAttachment.fileUrl);
-          previewName = pdfAttachment.fileName || 'rasm.pdf';
-          previewMimeType = pdfAttachment.mimeType || 'application/pdf';
-        }
-      }
-
-      return {
-        id: data.id as string,
-        notaryUserId: data.notary_user_id as string,
-        notaryName: data.notary_name as string,
-        fileNumber: (data.file_number ?? '') as string,
-        documentType: (data.document_type ?? '') as string,
-        summary: (data.summary ?? '') as string,
-        payload: {
-          ...payloadObject,
-          judgeCourtIdentifier: {
-            ...(typeof (data.payload as any)?.judgeCourtIdentifier === 'object'
-              ? ((data.payload as any).judgeCourtIdentifier as Record<string, unknown>)
-              : {}),
-            ...getPriorityJudgeCourtIdentifier({
-              payload: (data.payload ?? {}) as Record<string, unknown>,
-              submissionId: String(data.id),
-              fileNumber: String(data.file_number ?? ''),
-            }),
-          },
-        } as Record<string, unknown>,
-        status: data.status as JudgeSubmissionStatus,
-        decision: (data.decision ?? null) as JudgeDecision | null,
-        judgeNotes: (data.judge_notes ?? null) as string | null,
-        createdAt: data.created_at as string,
-        updatedAt: data.updated_at as string,
-        decidedAt: (data.decided_at ?? null) as string | null,
-        judgeUserId: (data.judge_user_id ?? null) as string | null,
-        previewUrl,
-        previewName,
-        previewMimeType,
-        savedRasmId,
-        savedRasmLatestDraftVersionId,
-        savedRasmLatestDraftDocxUrl,
-        savedRasmAttachments,
-      };
+      return JudgeDeedService.getSubmission(user, input.id);
     }),
 
   startReview: publicProcedure
@@ -2509,190 +2249,10 @@ export const judgeRouter = router({
     }),
 
   decideSubmission: publicProcedure
-    .input(
-      z.object({
-        sessionToken: z.string(),
-        id: z.string().uuid(),
-        decision: z.enum(['accepted', 'accepted_with_notes', 'substantive_notes']),
-        notes: z.string().optional(),
-        signedPdfBase64: z.string().optional(),
-      })
-    )
+    .input(DecideSubmissionInputSchema)
     .mutation(async ({ input }) => {
-      try {
-        const user = await requireSession(input.sessionToken);
-
-        if (user.role !== 'authentication_judge') {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
-        }
-
-        const now = new Date().toISOString();
-        const status: JudgeSubmissionStatus = input.decision;
-
-        const { data, error } = await supabase
-          .from('judge_submissions')
-          .update({
-            status,
-            decision: input.decision,
-            judge_user_id: user.id,
-            judge_notes: input.notes ?? null,
-            decided_at: now,
-          })
-          .eq('id', input.id)
-          .select('id, status, decision, judge_notes, updated_at, decided_at, payload')
-          .single();
-
-        if (error) {
-          console.error('Supabase update error:', error);
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
-        }
-
-        if (!data) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'الرسم غير موجود أو تم حذفه' });
-        }
-
-        const submissionPayload = data && typeof (data as any).payload === 'object' ? ((data as any).payload as Record<string, unknown>) : null;
-        const signedDeedIdRaw = submissionPayload?.signedDeedId;
-        const signedDeedId = typeof signedDeedIdRaw === 'string' && signedDeedIdRaw ? signedDeedIdRaw : null;
-        let signedPdfUrl: string | null = null;
-        if (signedDeedId) {
-          if (input.signedPdfBase64) {
-            try {
-              const signedPdfBuffer = Buffer.from(input.signedPdfBase64, 'base64');
-              const signedPdfSha = sha256Hex(signedPdfBuffer);
-              const uploaded = await uploadBufferToDocumentsBucket({
-                path: `judge-submissions/${input.id}/judge-signed-${signedPdfSha}.pdf`,
-                buffer: signedPdfBuffer,
-                contentType: 'application/pdf',
-                upsert: true,
-              });
-
-              signedPdfUrl = uploaded.url;
-
-              const signedAttachment = {
-                name: `judge-signed-${input.id}.pdf`,
-                fileName: `judge-signed-${input.id}.pdf`,
-                url: uploaded.url,
-                mimeType: 'application/pdf',
-                category: 'judge_signed_pdf',
-                file_url: uploaded.url,
-                storagePath: uploaded.path,
-                storage_path: uploaded.path,
-              };
-
-              const existingAttachments = Array.isArray(submissionPayload?.attachments)
-                ? [...(submissionPayload?.attachments as any[])]
-                : [];
-              const filteredAttachments = existingAttachments.filter((raw: any) => {
-                const category = String(raw?.category || '').toLowerCase();
-                return category !== 'judge_signed_pdf';
-              });
-
-              const payloadNext = {
-                ...(submissionPayload || {}),
-                judgeSignedDoc: signedAttachment,
-                attachments: [signedAttachment, ...filteredAttachments],
-              };
-
-              const payloadUpdate = await supabase
-                .from('judge_submissions')
-                .update({ payload: payloadNext })
-                .eq('id', input.id);
-
-              if (payloadUpdate.error) {
-                throw new Error(payloadUpdate.error.message);
-              }
-
-              await supabase
-                .from('deed_attachments')
-                .delete()
-                .eq('record_type', 'signed_deed')
-                .eq('record_id', signedDeedId)
-                .eq('category', 'judge_signed_pdf');
-
-              const ins = await supabase.from('deed_attachments').insert({
-                record_id: signedDeedId,
-                record_type: 'signed_deed',
-                category: 'judge_signed_pdf',
-                file_name: signedAttachment.fileName,
-                file_url: uploaded.url,
-                storage_path: uploaded.path,
-                mime_type: 'application/pdf',
-                file_size: signedPdfBuffer.length,
-                metadata: {
-                  sha256: signedPdfSha,
-                  source: 'judge.decideSubmission',
-                  judgeSubmissionId: input.id,
-                },
-              });
-
-              if (ins.error) {
-                throw new Error(ins.error.message);
-              }
-            } catch (signErr: any) {
-              throw new TRPCError({
-                code: 'INTERNAL_SERVER_ERROR',
-                message: `تعذر حفظ نسخة الرسم الموقعة من القاضي: ${signErr?.message || String(signErr)}`,
-              });
-            }
-          }
-
-          const nextStage =
-            input.decision === 'accepted' || input.decision === 'accepted_with_notes'
-              ? 'judge_endorsed'
-              : 'pending_judge_endorsement';
-
-          try {
-            await supabase
-              .from('final_secure_archives')
-              .update({ current_stage: nextStage })
-              .eq('signed_deed_id', signedDeedId);
-          } catch {
-            // best-effort
-          }
-
-          try {
-            await supabase.from('archive_operation_logs').insert({
-              signed_deed_id: signedDeedId,
-              action_type:
-                input.decision === 'accepted' || input.decision === 'accepted_with_notes'
-                  ? 'JUDGE_ENDORSED'
-                  : 'JUDGE_REVIEW_NOTES',
-              timestamp: now,
-              user_id: user.id,
-              device: null,
-              ip: null,
-              previous_hash: null,
-              new_hash: null,
-              metadata: {
-                judgeSubmissionId: input.id,
-                decision: input.decision,
-                notes: input.notes ?? null,
-              },
-            });
-          } catch {
-            // best-effort
-          }
-        }
-
-        return {
-          success: true,
-          id: data.id as string,
-          status: data.status as JudgeSubmissionStatus,
-          decision: (data.decision ?? null) as JudgeDecision | null,
-          judgeNotes: (data.judge_notes ?? null) as string | null,
-          updatedAt: data.updated_at as string,
-          decidedAt: (data.decided_at ?? null) as string | null,
-          signedPdfUrl,
-        };
-      } catch (error: any) {
-        console.error('decideSubmission error:', error);
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({ 
-          code: 'INTERNAL_SERVER_ERROR', 
-          message: error?.message || 'حدث خطأ غير متوقع أثناء حفظ القرار' 
-        });
-      }
+      const user = await requireSession(input.sessionToken);
+      return JudgeDeedService.decideSubmission(user, input);
     }),
 });
 

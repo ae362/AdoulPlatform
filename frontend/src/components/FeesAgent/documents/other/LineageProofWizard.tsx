@@ -506,12 +506,10 @@ import {
                 return;
               }
               
-              setState(prev => ({ ...prev, step: 4 }));
               setState(prev => ({ ...prev, step: 5 }));
             }}
             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold shadow-lg"
           >
-            التالي
             التالي: شهادة اللفيف (الشهود)
           </button>
         </div>

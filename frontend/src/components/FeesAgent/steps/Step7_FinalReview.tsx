@@ -99,8 +99,52 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   
+  // Judge Picker & Visual Progression State
+  const [isJudgePickerOpen, setIsJudgePickerOpen] = useState(false);
+  const [selectedJudgeUserId, setSelectedJudgeUserId] = useState('');
+  const [manualJudgePartyNames, setManualJudgePartyNames] = useState('');
+  const [judgeSendVisualPhase, setJudgeSendVisualPhase] = useState<'idle' | 'launch' | 'transit' | 'success' | 'error'>('idle');
+  const [judgeSendStatusText, setJudgeSendStatusText] = useState('');
 
-  // High-Res Viewer State
+  const listJudgesQuery = trpc.messaging.listJudges.useQuery(
+    { sessionToken: sessionToken || '' },
+    { enabled: !!sessionToken && isJudgePickerOpen, retry: false }
+  );
+
+  const availableJudgesData = useMemo(() => {
+    const rawJudges = listJudgesQuery.data || [];
+    const judges = rawJudges.map((j: any) => ({
+      id: String(j.id),
+      fullName: String(j.full_name || j.fullName || 'قاضٍ غير مسمى'),
+      email: j.email || undefined,
+    }));
+    return {
+      appellateCourt: notaryProfile?.appellate_court || undefined,
+      primaryCourt: notaryProfile?.primary_court || undefined,
+      source: 'regional_profiles',
+      judges,
+    };
+  }, [listJudgesQuery.data, notaryProfile]);
+
+  const availableJudgesQuery = useMemo(() => ({
+    data: availableJudgesData,
+    isFetching: listJudgesQuery.isFetching,
+    error: listJudgesQuery.error,
+  }), [availableJudgesData, listJudgesQuery.isFetching, listJudgesQuery.error]);
+
+  const judgePartyNames = useMemo(() => {
+    const sellers = (state.sellers || []).map((s) => s.name).filter(Boolean);
+    const buyers = (state.buyers || []).map((b) => b.name).filter(Boolean);
+    const all = [...sellers, ...buyers];
+    return all.join('، ');
+  }, [state.sellers, state.buyers]);
+
+  const judgeDispatchDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const judgeDispatchTime = useMemo(
+    () => new Date().toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' }),
+    []
+  );
+
   const [viewerZoom, setViewerZoom] = useState(1);
   const [viewerPanOffset, setViewerPanOffset] = useState({ x: 0, y: 0 });
   const [isDraggingViewer, setIsDraggingViewer] = useState(false);
@@ -145,6 +189,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   const createMarriageRecordMutation = trpc.marriageRecords.create.useMutation();
   const [showJudgeNotesHelper, setShowJudgeNotesHelper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const optionalAttachmentsInputRef = useRef<HTMLInputElement | null>(null);
   const draftEditorRef = useRef<HTMLTextAreaElement>(null);
   const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
   const registrySyncRef = useRef(false);
@@ -476,36 +521,113 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     });
 
   const deriveRegistryCategory = (field: string) => {
-    if (field.includes('idImage')) return 'id_images';
-    if (field.includes('passportImage')) return 'passport_images';
-    if (field.includes('entryStampImage')) return 'entry_stamp_images';
-    if (field.includes('titleDocuments')) return 'title_documents';
-    if (field.includes('ownershipCertificates')) return 'ownership_certificates';
-    if (field.includes('additionalDocuments')) return 'additional_documents';
-    if (field.includes('templatePdf')) return 'post_registration';
-    if (field.includes('conversionCertificate')) return 'conversion_certificate';
-    return 'attachments';
+    const f = field.toLowerCase();
+    if (f.includes('idimage') || f.includes('id_image')) return 'بطاقة التعريف الوطنية';
+    if (f.includes('passportimage') || f.includes('passport')) return 'جواز السفر';
+    if (f.includes('entrystampimage') || f.includes('entrystamp')) return 'ختم الدخول';
+    if (f.includes('titledocuments') || f.includes('title_doc')) return 'سند الملكية';
+    if (f.includes('ownershipcertificates') || f.includes('ownership')) return 'شهادة الملكية';
+    if (f.includes('nationalitycertificate')) return 'شهادة الجنسية';
+    if (f.includes('medicalcertificate')) return 'شهادة طبية';
+    if (f.includes('criminalrecord')) return 'السجل العدلي';
+    if (f.includes('capacitycertificate')) return 'شهادة الأهلية';
+    if (f.includes('deathcertificate')) return 'شهادة الوفاة';
+    if (f.includes('engagementcertificate')) return 'شهادة الخطوبة';
+    if (f.includes('buildingproof')) return 'إثبات البناء';
+    if (f.includes('possessionproof')) return 'إثبات الحيازة';
+    if (f.includes('promisetosell')) return 'وعد بالبيع';
+    if (f.includes('additionaldocuments')) return 'وثائق إضافية';
+    if (f.includes('templatepdf')) return 'الرسم المسجل';
+    if (f.includes('conversioncertificate')) return 'شهادة التحويل';
+    return 'مرفق إضافي';
   };
 
-  const collectRegistryFiles = (value: unknown, path = ''): { category: string; field: string; file: File }[] => {
-    const out: { category: string; field: string; file: File }[] = [];
+  const collectRegistryFiles = (value: unknown, path = ''): { category: string; field: string; file?: File; name: string; size: number; type: string; base64?: string; url?: string }[] => {
+    const out: { category: string; field: string; file?: File; name: string; size: number; type: string; base64?: string; url?: string }[] = [];
     const visited = new WeakSet<object>();
 
     const walk = (v: unknown, p: string) => {
       if (!v) return;
+      if (p === 'step7JudgeAttachment' || p.startsWith('step7JudgeAttachment.')) return; // Exclude primary judge deed
+
       if (v instanceof File) {
-        out.push({ category: deriveRegistryCategory(p), field: p, file: v });
+        out.push({
+          category: deriveRegistryCategory(p),
+          field: p,
+          file: v,
+          name: v.name,
+          size: v.size,
+          type: v.type || 'application/octet-stream',
+        });
         return;
       }
+
+      if (typeof Blob !== 'undefined' && v instanceof Blob) {
+        const name = (v as any).name || `${p.split('.').pop() || 'file'}`;
+        out.push({
+          category: deriveRegistryCategory(p),
+          field: p,
+          name,
+          size: v.size,
+          type: v.type || 'application/octet-stream',
+          file: v instanceof File ? v : new File([v], name, { type: v.type }),
+        });
+        return;
+      }
+
       if (typeof v !== 'object') return;
       if (visited.has(v as object)) return;
       visited.add(v as object);
+
+      const obj = v as Record<string, any>;
+      if (obj.file instanceof File) {
+        out.push({
+          category: deriveRegistryCategory(p),
+          field: p,
+          file: obj.file,
+          name: obj.name || obj.file.name,
+          size: obj.size || obj.file.size,
+          type: obj.type || obj.file.type || 'application/octet-stream',
+          base64: typeof obj.base64 === 'string' ? obj.base64 : undefined,
+          url: typeof obj.url === 'string' ? obj.url : undefined,
+        });
+        return;
+      }
+
+      if (typeof obj.base64 === 'string' && obj.base64.trim().length > 0 && typeof obj.name === 'string') {
+        out.push({
+          category: deriveRegistryCategory(p),
+          field: p,
+          name: obj.name,
+          size: obj.size || Math.round(obj.base64.length * 0.75),
+          type: obj.type || 'application/octet-stream',
+          base64: obj.base64,
+          url: typeof obj.url === 'string' ? obj.url : undefined,
+        });
+        return;
+      }
+
+      if (typeof obj.data === 'string' && obj.data.startsWith('data:') && typeof obj.name === 'string') {
+        const parts = obj.data.split(',');
+        const mime = parts[0]?.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const b64 = parts[1] || '';
+        out.push({
+          category: deriveRegistryCategory(p),
+          field: p,
+          name: obj.name,
+          size: obj.size || Math.round(b64.length * 0.75),
+          type: obj.type || mime,
+          base64: b64,
+        });
+        return;
+      }
 
       if (Array.isArray(v)) {
         v.forEach((item, idx) => walk(item, `${p}[${idx}]`));
         return;
       }
-      Object.entries(v as Record<string, unknown>).forEach(([k, val]) => {
+
+      Object.entries(obj).forEach(([k, val]) => {
         const next = p ? `${p}.${k}` : k;
         walk(val, next);
       });
@@ -531,11 +653,11 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   };
 
   const buildRegistryUploadPlan = () => {
-    const candidates = collectRegistryFiles(state).filter((c) => c.file.size > 0);
-    const unique = new Map<string, { category: string; field: string; file: File }>();
+    const candidates = collectRegistryFiles(state).filter((c) => (c.file && c.file.size > 0) || (c.base64 && c.base64.length > 0));
+    const unique = new Map<string, { category: string; field: string; file?: File; name: string; size: number; type: string; base64?: string }>();
 
     for (const c of candidates) {
-      const key = `${c.file.name}|${c.file.size}|${c.file.type}|${c.field}`;
+      const key = `${c.name}|${c.size}|${c.type}|${c.field}`;
       unique.set(key, c);
     }
 
@@ -544,6 +666,10 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       category: c.category,
       field: c.field,
       file: c.file,
+      name: c.name,
+      size: c.size,
+      type: c.type,
+      base64: c.base64,
     }));
     items.sort((a, b) => a.key.localeCompare(b.key));
 
@@ -622,22 +748,27 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
 
       for (const item of pending) {
         try {
-          const base64 = await readFileAsBase64(item.file);
+          let base64 = item.base64;
+          if (!base64 && item.file) {
+            base64 = await readFileAsBase64(item.file);
+          }
+          if (!base64) continue;
+
           await addSavedRasmAttachmentMutation.mutateAsync({
             sessionToken,
             id: recordId,
             category: item.category,
             field: item.field,
             file: {
-              name: item.file.name,
-              type: item.file.type || 'application/octet-stream',
-              size: item.file.size,
+              name: item.name,
+              type: item.type || 'application/octet-stream',
+              size: item.size,
               base64,
             },
           });
           registryUploadedKeysRef.current.add(item.key);
         } catch (e: any) {
-          failures.push(`${item.file.name}: ${e?.message ?? 'upload failed'}`);
+          failures.push(`${item.name}: ${e?.message ?? 'upload failed'}`);
         } finally {
           done += 1;
           setSaveFinalProgress({ total, done });
@@ -679,7 +810,18 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     }
   };
 
-  const handleSendToJudge = async () => {
+  const handleOpenJudgePicker = () => {
+    if (!state.step7JudgeAttachment) {
+      alert('يرجى إرفاق وثيقة الرسم المعتمدة للقاضي أولاً (إجباري).');
+      return;
+    }
+    setJudgeSendError(null);
+    setJudgeSendVisualPhase('idle');
+    setJudgeSendStatusText('');
+    setIsJudgePickerOpen(true);
+  };
+
+  const handleSendToJudge = async (judgeId?: string) => {
     setJudgeSendError(null);
 
     if (!sessionToken) {
@@ -687,21 +829,46 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       return;
     }
 
+    if (!state.step7JudgeAttachment) {
+      setJudgeSendError('يرجى إرفاق وثيقة الرسم المعتمدة للقاضي أولاً (إجباري).');
+      return;
+    }
+
+    const targetJudgeId = judgeId || selectedJudgeUserId;
+
+    setJudgeSendVisualPhase('launch');
+    setJudgeSendStatusText('جاري تجهيز الرسم للإرسال...');
+
+    const transitTimer = setTimeout(() => {
+      setJudgeSendVisualPhase('transit');
+      setJudgeSendStatusText('يتم نقل الرسم إلى المراجعة القضائية...');
+    }, 400);
+
     try {
       const allFiles = collectRegistryFiles(state);
-      const additionalAttachments = await Promise.all(
+      const rawAttachments = await Promise.all(
         allFiles.map(async (c) => {
-          const base64 = await readFileAsBase64(c.file);
+          let base64 = c.base64;
+          if (!base64 && c.file) {
+            try {
+              base64 = await readFileAsBase64(c.file);
+            } catch (readErr) {
+              console.error('Failed to read file base64:', c.name, readErr);
+            }
+          }
+          if (!base64 && !c.url) return null;
           return {
-            name: c.file.name,
-            size: c.file.size,
-            type: c.file.type || 'application/octet-stream',
+            name: c.name,
+            size: c.size || (base64 ? Math.round(base64.length * 0.75) : 0),
+            type: c.type || 'application/octet-stream',
             category: c.category,
             field: c.field,
-            base64,
+            base64: base64 || undefined,
+            url: c.url || undefined,
           };
         })
       );
+      const additionalAttachments = rawAttachments.filter(Boolean);
 
       const judgeAttachment = state.step7JudgeAttachment;
       let mainDeedAttachment = null;
@@ -719,17 +886,36 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
         fileNumber: state.meta.fileNumber,
         documentType: state.documentType,
         summary: buildJudgeSummary(),
+        selectedJudgeUserId: targetJudgeId ? targetJudgeId : undefined,
         payload: {
           ...buildJudgePayload(),
+          judgePartyNames: judgePartyNames || manualJudgePartyNames,
           attachment: mainDeedAttachment,
           attachments: additionalAttachments,
         },
       });
 
-      setJudgeSubmissionId((res as any)?.submissionId);
-      setState(prev => ({ ...prev, judgeSubmissionId: (res as any)?.submissionId }));
-      setWorkflowStep('judicial_review');
+      clearTimeout(transitTimer);
+      const submissionId = (res as any)?.submissionId;
+      setJudgeSubmissionId(submissionId);
+      setState(prev => ({
+        ...prev,
+        step7JudgeSubmissionId: submissionId,
+        judgeSubmissionId: submissionId
+      }));
+
+      setJudgeSendVisualPhase('success');
+      setJudgeSendStatusText('تم إرسال الرسم بنجاح إلى القاضي المكلف بالتوثيق');
+
+      setTimeout(() => {
+        setIsJudgePickerOpen(false);
+        setJudgeSendVisualPhase('idle');
+        setWorkflowStep('judicial_review');
+      }, 1200);
     } catch (err: any) {
+      clearTimeout(transitTimer);
+      setJudgeSendVisualPhase('error');
+      setJudgeSendStatusText('تعذر إرسال الرسم إلى القاضي');
       setJudgeSendError(err?.message || 'تعذر إرسال الرسم إلى القاضي. حاول مرة أخرى.');
     }
   };
@@ -751,6 +937,31 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       setJudgeAttachment({ name: file.name, size: file.size, type: file.type, base64 });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleAddOptionalAttachments = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newFiles = Array.from(files);
+    setState((prev) => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        additionalDocuments: [
+          ...(prev.meta?.additionalDocuments || []),
+          ...newFiles,
+        ],
+      },
+    }));
+  };
+
+  const handleRemoveOptionalAttachment = (indexToRemove: number) => {
+    setState((prev) => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        additionalDocuments: (prev.meta?.additionalDocuments || []).filter((_, idx) => idx !== indexToRemove),
+      },
+    }));
   };
 
   const markStage = async (stage: 'sending' | 'inclusion' | 'done') => {
@@ -1015,11 +1226,38 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     });
   }, [startMode]);
 
-  const Step7_FinalReview_V2 = () => {
-    // Logic and hooks have been lifted to FeesAgent root.
-    
-    return (
+  // Render directly without nested component definitions to prevent remounts and input focus loss
+  return (
       <div className="space-y-8 animate-fadeIn">
+        {/* Judge Picker Modal & Progression Bar */}
+        <JudgePickerModal
+          isOpen={isJudgePickerOpen}
+          onClose={() => {
+            if (!submitToJudgeMutation.isPending && judgeSendVisualPhase !== 'transit') {
+              setIsJudgePickerOpen(false);
+              setJudgeSendVisualPhase('idle');
+            }
+          }}
+          appellateCourt={notaryProfile?.appellate_court || undefined}
+          primaryCourt={notaryProfile?.primary_court || undefined}
+          documentType={state.documentType}
+          judgePartyNames={judgePartyNames}
+          manualJudgePartyNames={manualJudgePartyNames}
+          setManualJudgePartyNames={setManualJudgePartyNames}
+          judgeDispatchDate={judgeDispatchDate}
+          judgeDispatchTime={judgeDispatchTime}
+          availableJudgesQuery={availableJudgesQuery}
+          selectedJudgeUserId={selectedJudgeUserId}
+          setSelectedJudgeUserId={setSelectedJudgeUserId}
+          handleSendToJudge={handleSendToJudge}
+          isSubmittingToJudge={submitToJudgeMutation.isPending}
+          judgeSendError={judgeSendError || null}
+          judgeSendVisualPhase={judgeSendVisualPhase}
+          setJudgeSendVisualPhase={setJudgeSendVisualPhase}
+          judgeSendStatusText={judgeSendStatusText}
+          notaryProfile={notaryProfile || undefined}
+        />
+
         {showDeedPreviewModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -1102,16 +1340,17 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
           </div>
         )}
 
-        {/* Phase 2: Smart Drafting */}
-        <div id="ai-drafting" className="bg-white rounded-xl shadow-md border-r-4 border-indigo-600 overflow-hidden">
-          <div className="bg-indigo-50 p-4 border-b border-indigo-100">
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <span>✍️</span> المرحلة الثانية: الصياغة الذكية (Smart Drafting)
-            </h3>
-          </div>
+        {/* Phase 2: Smart Drafting - Only show in Intake mode */}
+        {startMode === 'intake' && (
+          <div id="ai-drafting" className="bg-white rounded-xl shadow-md border-r-4 border-indigo-600 overflow-hidden">
+            <div className="bg-indigo-50 p-4 border-b border-indigo-100">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>✍️</span> المرحلة الثانية: الصياغة الذكية (Smart Drafting)
+              </h3>
+            </div>
           <div className="p-8 text-center space-y-6">
             {!selectedTemplateId && !showTemplateSelector && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div 
                   onClick={() => {
                     const draft = generateDocumentDraft(state);
@@ -1129,42 +1368,8 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                   className="p-6 border-2 border-dashed border-indigo-300 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer flex flex-col items-center justify-center gap-3"
                 >
                   <div className="text-4xl">📝</div>
-                  <h4 className="font-bold text-indigo-900 text-lg">اختيار نموذج</h4>
+                  <h4 className="font-bold text-indigo-900 text-lg">اختيار نموذج معتمد</h4>
                   <p className="text-sm text-indigo-700">اختيار نموذج معتمد وتعبئته</p>
-                </div>
-
-                <div className="flex flex-col items-center justify-center gap-4">
-                  <div className="w-full h-full p-6 border-2 border-dashed border-indigo-300 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer flex flex-col items-center justify-center gap-3"
-                       onClick={() => document.getElementById('draft-upload')?.click()}>
-                    <div className="text-4xl">📂</div>
-                    <h4 className="font-bold text-indigo-900 text-lg">استيراد ملف</h4>
-                    <p className="text-sm text-indigo-700">Word, PDF, Text</p>
-                  </div>
-                  <input
-                    id="draft-upload"
-                    type="file"
-                    accept=".doc,.docx,.pdf,.txt"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const base64 = await new Promise<string>((resolve) => {
-                          const reader = new FileReader();
-                          reader.onload = (e) => resolve(e.target?.result as string);
-                          reader.readAsDataURL(file);
-                        });
-                        setJudgeAttachment({
-                          name: file.name,
-                          size: file.size,
-                          base64: base64
-                        });
-                        setState(prev => ({ 
-                          ...prev, 
-                          draft: `[تم استيراد الملف: ${file.name}]\n\n(يمكنكم متابعة الإجراءات وإرسال هذا الملف إلى القاضي في المرحلة الموالية)` 
-                        }));
-                      }
-                    }}
-                  />
                 </div>
               </div>
             )}
@@ -1272,6 +1477,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
             )}
           </div>
         </div>
+        )}
 
         {/* Phase 3: Fiscal Nature & Lifecycle */}
         <div className="bg-white rounded-xl shadow-md border-r-4 border-yellow-500 overflow-hidden">
@@ -1359,36 +1565,21 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                     <li className="flex items-center gap-2"><span className="text-green-500">✅</span> قابل للتعديل</li>
                                     <li className="flex items-center gap-2"><span className="text-green-500">✅</span> مهيأ للانتقال إلى منصة المالية</li>
                                 </ul>
-                                <div className="mb-4 flex flex-col gap-2 text-right">
-                                  <label className="text-sm font-semibold text-gray-700">إرفاق ملف من جهازك (اختياري)</label>
-                                  <div className="flex flex-wrap gap-3 items-center">
-                                    <button
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <button
+                                      onClick={() => setWorkflowStep('registration_input')}
+                                      className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md flex items-center justify-center gap-2"
+                                  >
+                                      <span>🏦</span> الانتقال إلى مرحلة التسجيل والتنبر
+                                  </button>
+                                  <button
                                       type="button"
-                                      onClick={() => fileInputRef.current?.click()}
-                                      className="px-4 py-2 rounded-lg border border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 text-sm font-bold"
-                                    >
-                                      اختر ملفًا
-                                    </button>
-                                    {judgeAttachment && (
-                                      <span className="text-sm text-gray-700">
-                                        {judgeAttachment.name} ({(judgeAttachment.size / 1024).toFixed(0)} KB)
-                                      </span>
-                                    )}
-                                    <input
-                                      ref={fileInputRef}
-                                      type="file"
-                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                      className="hidden"
-                                      onChange={(e) => handleAttachmentChange(e.target.files?.[0] || null)}
-                                    />
-                                  </div>
+                                      onClick={() => setFiscalNature(null)}
+                                      className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
+                                  >
+                                      <span>↩️</span> تغيير الطبيعة الجبائية
+                                  </button>
                                 </div>
-                                <button
-                                    onClick={() => setWorkflowStep('registration_input')}
-                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md flex items-center justify-center gap-2"
-                                >
-                                    <span>🏦</span> الانتقال إلى مرحلة التسجيل والتنبر
-                                </button>
                             </div>
                         )}
 
@@ -1445,12 +1636,21 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                 <div className="bg-white p-3 rounded border border-blue-100 mb-6 text-sm text-gray-600">
                                     سيتم إضافة النص التالي تلقائيًا للرسم: "وبعد تسجيل هذا الرسم بمصلحة التسجيل تحت عدد … بتاريخ …"
                                 </div>
-                                <button
-                                    onClick={() => setWorkflowStep('fiscal_semi_final')}
-                                    className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md"
-                                >
-                                    حفظ وإعادة الصياغة الذكية
-                                </button>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <button
+                                      onClick={() => setWorkflowStep('fiscal_semi_final')}
+                                      className="flex-1 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md"
+                                  >
+                                      حفظ وإعادة الصياغة الذكية
+                                  </button>
+                                  <button
+                                      type="button"
+                                      onClick={() => setWorkflowStep('fiscal_draft')}
+                                      className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
+                                  >
+                                      <span>↩️</span> الرجوع للحفظ المؤقت (جبائي)
+                                  </button>
+                                </div>
                             </div>
                         )}
 
@@ -1463,24 +1663,35 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                 </div>
                                 <p className="text-yellow-800 mb-4">بعد استكمال إجراءات التسجيل والتنبر، أصبح الرسم جاهزًا للاطلاع القضائي.</p>
                                 <ul className="space-y-2 text-sm text-gray-700 mb-6 bg-white p-4 rounded-lg border border-yellow-100">
-                                    <li className="flex items-center gap-2"><span className="text-green-500">✅</span> صياغة مكتملة</li>
+                                    <li className="flex items-center gap-2"><span className="text-green-500">✅</span> صياغة مكتملة ومسجلة جبائياً</li>
                                     <li className="flex items-center gap-2"><span className="text-red-500">⛔</span> غير مرقّم بعد</li>
                                     <li className="flex items-center gap-2"><span className="text-red-500">⛔</span> غير مدرج في سجل البيانات</li>
                                     <li className="flex items-center gap-2"><span className="text-blue-500">📤</span> يُرسل فقط إلى القاضي المكلف بالتوثيق</li>
                                 </ul>
                                 <div className="mb-4 flex flex-col gap-2 text-right">
-                                  <label className="text-sm font-semibold text-gray-700">إرفاق ملف من جهازك (اختياري)</label>
+                                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                                    <span>📂</span>
+                                    <span>إرفاق وثيقة الرسم المعتمدة للقاضي (إجباري)</span>
+                                    <span className="text-red-500 font-bold">*</span>
+                                  </label>
                                   <div className="flex flex-wrap gap-3 items-center">
                                     <button
                                       type="button"
                                       onClick={() => fileInputRef.current?.click()}
-                                      className="px-4 py-2 rounded-lg border border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 text-sm font-bold"
+                                      className="px-4 py-2 rounded-lg border-2 border-amber-600 text-amber-900 bg-amber-100 hover:bg-amber-200 text-sm font-black shadow-sm flex items-center gap-2"
                                     >
-                                      اختر ملفًا
+                                      <span>📂</span>
+                                      <span>اختر ملفًا للقاضي</span>
                                     </button>
-                                    {judgeAttachment && (
-                                      <span className="text-sm text-gray-700">
-                                        {judgeAttachment.name} ({(judgeAttachment.size / 1024).toFixed(0)} KB)
+                                    {judgeAttachment ? (
+                                      <span className="text-sm font-bold text-green-700 flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                        <span>✅</span>
+                                        <span>{judgeAttachment.name}</span>
+                                        <span className="text-xs text-gray-500">({(judgeAttachment.size / 1024).toFixed(0)} KB)</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-red-500 font-bold bg-red-50 px-2.5 py-1 rounded border border-red-200">
+                                        ⚠️ الملف إجباري قبل الإرسال للقاضي
                                       </span>
                                     )}
                                     <input
@@ -1492,13 +1703,72 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                     />
                                   </div>
                                 </div>
-                                <button
-                                    onClick={handleSendToJudge}
-                                    disabled={submitToJudgeMutation.isPending}
-                                    className="w-full py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 shadow-md flex items-center justify-center gap-2"
-                                >
-                                    <span>⚖️</span> الإرسال إلى القاضي المكلف بالتوثيق
-                                </button>
+
+                                {startMode === 'drafting' && (
+                                  <div className="mb-4 flex flex-col gap-2 text-right p-4 bg-white/80 rounded-xl border border-dashed border-amber-300">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                                        <span>📎</span>
+                                        <span>إرفاق مرفقات إضافية مع الرسم (اختياري)</span>
+                                      </label>
+                                      <span className="text-[11px] text-gray-500 font-medium">(صور هويات، وثائق، شواهد إضافية)</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => optionalAttachmentsInputRef.current?.click()}
+                                        className="px-3.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                      >
+                                        <span>➕</span>
+                                        <span>إضافة مرفقات</span>
+                                      </button>
+                                      <input
+                                        ref={optionalAttachmentsInputRef}
+                                        type="file"
+                                        multiple
+                                        accept="image/*,application/pdf,.doc,.docx"
+                                        className="hidden"
+                                        onChange={(e) => handleAddOptionalAttachments(e.target.files)}
+                                      />
+                                    </div>
+
+                                    {state.meta.additionalDocuments && state.meta.additionalDocuments.length > 0 && (
+                                      <div className="mt-2 space-y-1.5">
+                                        {state.meta.additionalDocuments.map((file, idx) => (
+                                          <div key={idx} className="flex items-center justify-between bg-yellow-50/70 border border-yellow-200 px-3 py-1.5 rounded-lg text-xs">
+                                            <span className="font-bold text-gray-800 truncate max-w-[280px]">
+                                              📄 {file.name} <span className="text-[10px] text-gray-500 font-normal">({(file.size / 1024).toFixed(0)} KB)</span>
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveOptionalAttachment(idx)}
+                                              className="text-red-500 hover:text-red-700 font-black p-1 hover:bg-red-50 rounded"
+                                              title="حذف المرفق"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <button
+                                      onClick={handleOpenJudgePicker}
+                                      disabled={submitToJudgeMutation.isPending}
+                                      className="flex-1 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 shadow-md flex items-center justify-center gap-2"
+                                  >
+                                      <span>⚖️</span> اختيار القاضي المكلف بالتوثيق والإرسال
+                                  </button>
+                                  <button
+                                      type="button"
+                                      onClick={() => setWorkflowStep('registration_input')}
+                                      className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
+                                  >
+                                      <span>↩️</span> الرجوع لبيانات التسجيل
+                                  </button>
+                                </div>
                             </div>
                         )}
 
@@ -1565,7 +1835,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                                 <div className="flex items-center gap-3 mb-4">
                                     <span className="text-2xl">🟦</span>
-                                    <h4 className="text-xl font-bold text-blue-900">4️⃣ الرسم الرسمي الجاهز (رسمي – غير مضمن)</h4>
+                                    <h4 className="text-xl font-bold text-blue-900">5️⃣ الرسم الرسمي الجاهز (رسمي – غير مضمن)</h4>
                                 </div>
                                 <div className="bg-white p-4 rounded-lg border border-blue-100 mb-6">
                                     <p className="text-gray-700 mb-2">
@@ -1622,12 +1892,21 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                     <li className="flex items-center gap-2"><span className="text-gray-500">▪</span> لا أرقام مالية</li>
                                     <li className="flex items-center gap-2"><span className="text-green-500">✅</span> قابل للتعديل</li>
                                 </ul>
-                                <button
-                                    onClick={() => setWorkflowStep('normal_semi_final')}
-                                    className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 shadow-md"
-                                >
-                                    الانتقال إلى شبه النهائي
-                                </button>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <button
+                                      onClick={() => setWorkflowStep('normal_semi_final')}
+                                      className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 shadow-md"
+                                  >
+                                      الانتقال إلى شبه النهائي
+                                  </button>
+                                  <button
+                                      type="button"
+                                      onClick={() => setFiscalNature(null)}
+                                      className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
+                                  >
+                                      <span>↩️</span> تغيير الطبيعة الجبائية
+                                  </button>
+                                </div>
                             </div>
                         )}
 
@@ -1638,13 +1917,112 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                     <span className="text-2xl">🟡</span>
                                     <h4 className="text-xl font-bold text-yellow-900">2️⃣ شبه نهائي (غير جبائي)</h4>
                                 </div>
-                                <button
-                                    onClick={handleSendToJudge}
-                                    disabled={submitToJudgeMutation.isPending}
-                                    className="w-full py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 shadow-md flex items-center justify-center gap-2"
-                                >
-                                    <span>📤</span> إرسال إلى القاضي المكلف بالتوثيق
-                                </button>
+                                <p className="text-yellow-800 mb-4">الرسم غير خاضع للتسجيل الجبائي، وجاهز للإرسال للاطلاع القضائي.</p>
+                                <ul className="space-y-2 text-sm text-gray-700 mb-6 bg-white p-4 rounded-lg border border-yellow-100">
+                                    <li className="flex items-center gap-2"><span className="text-green-500">✅</span> صياغة مكتملة ومراجعة</li>
+                                    <li className="flex items-center gap-2"><span className="text-blue-500">📤</span> يُرسل مباشرة إلى القاضي المكلف بالتوثيق</li>
+                                </ul>
+                                <div className="mb-4 flex flex-col gap-2 text-right">
+                                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                                    <span>📂</span>
+                                    <span>إرفاق وثيقة الرسم المعتمدة للقاضي (إجباري)</span>
+                                    <span className="text-red-500 font-bold">*</span>
+                                  </label>
+                                  <div className="flex flex-wrap gap-3 items-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => fileInputRef.current?.click()}
+                                      className="px-4 py-2 rounded-lg border-2 border-amber-600 text-amber-900 bg-amber-100 hover:bg-amber-200 text-sm font-black shadow-sm flex items-center gap-2"
+                                    >
+                                      <span>📂</span>
+                                      <span>اختر ملفًا للقاضي</span>
+                                    </button>
+                                    {judgeAttachment ? (
+                                      <span className="text-sm font-bold text-green-700 flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                        <span>✅</span>
+                                        <span>{judgeAttachment.name}</span>
+                                        <span className="text-xs text-gray-500">({(judgeAttachment.size / 1024).toFixed(0)} KB)</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-red-500 font-bold bg-red-50 px-2.5 py-1 rounded border border-red-200">
+                                        ⚠️ الملف إجباري قبل الإرسال للقاضي
+                                      </span>
+                                    )}
+                                    <input
+                                      ref={fileInputRef}
+                                      type="file"
+                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                      onChange={(e) => handleAttachmentChange(e.target.files?.[0] || null)}
+                                    />
+                                  </div>
+                                </div>
+
+                                {startMode === 'drafting' && (
+                                  <div className="mb-4 flex flex-col gap-2 text-right p-4 bg-white/80 rounded-xl border border-dashed border-amber-300">
+                                    <div className="flex items-center justify-between">
+                                      <label className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                                        <span>📎</span>
+                                        <span>إرفاق مرفقات إضافية مع الرسم (اختياري)</span>
+                                      </label>
+                                      <span className="text-[11px] text-gray-500 font-medium">(صور هويات، وثائق، شواهد إضافية)</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => optionalAttachmentsInputRef.current?.click()}
+                                        className="px-3.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                      >
+                                        <span>➕</span>
+                                        <span>إضافة مرفقات</span>
+                                      </button>
+                                      <input
+                                        ref={optionalAttachmentsInputRef}
+                                        type="file"
+                                        multiple
+                                        accept="image/*,application/pdf,.doc,.docx"
+                                        className="hidden"
+                                        onChange={(e) => handleAddOptionalAttachments(e.target.files)}
+                                      />
+                                    </div>
+
+                                    {state.meta.additionalDocuments && state.meta.additionalDocuments.length > 0 && (
+                                      <div className="mt-2 space-y-1.5">
+                                        {state.meta.additionalDocuments.map((file, idx) => (
+                                          <div key={idx} className="flex items-center justify-between bg-yellow-50/70 border border-yellow-200 px-3 py-1.5 rounded-lg text-xs">
+                                            <span className="font-bold text-gray-800 truncate max-w-[280px]">
+                                              📄 {file.name} <span className="text-[10px] text-gray-500 font-normal">({(file.size / 1024).toFixed(0)} KB)</span>
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveOptionalAttachment(idx)}
+                                              className="text-red-500 hover:text-red-700 font-black p-1 hover:bg-red-50 rounded"
+                                              title="حذف المرفق"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <button
+                                      onClick={handleOpenJudgePicker}
+                                      disabled={submitToJudgeMutation.isPending}
+                                      className="flex-1 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 shadow-md flex items-center justify-center gap-2"
+                                  >
+                                      <span>⚖️</span> اختيار القاضي المكلف بالتوثيق والإرسال
+                                  </button>
+                                  <button
+                                      type="button"
+                                      onClick={() => setWorkflowStep('normal_draft')}
+                                      className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-bold hover:bg-gray-50 flex items-center justify-center gap-2"
+                                  >
+                                      <span>↩️</span> الرجوع للحفظ المؤقت العادي
+                                  </button>
+                                </div>
                             </div>
                         )}
 
@@ -1652,7 +2030,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                         {workflowStep === 'judicial_review' && (
                               <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 text-center">
                                  <div className="text-4xl mb-4">⚖️</div>
-                                 <h4 className="text-xl font-bold text-purple-900 mb-2">تم الإرسال للاطلاع القضائي</h4>
+                                 <h4 className="text-xl font-bold text-purple-900 mb-2">3️⃣ تم الإرسال للاطلاع القضائي</h4>
                                  {judgeSendError && (
                                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-right text-sm text-red-700">
                                      {judgeSendError}
@@ -1701,7 +2079,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                                 <div className="flex items-center gap-3 mb-4">
                                     <span className="text-2xl">🟦</span>
-                                    <h4 className="text-xl font-bold text-blue-900">الرسم الرسمي الجاهز (رسمي – غير مضمن)</h4>
+                                    <h4 className="text-xl font-bold text-blue-900">4️⃣ الرسم الرسمي الجاهز (رسمي – غير مضمن)</h4>
                                 </div>
                                 <div className="bg-white p-4 rounded-lg border border-blue-100 mb-6">
                                     <p className="text-gray-700 mb-2">
@@ -1745,46 +2123,34 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
         </div>
         
         <div className="flex gap-4 justify-between pt-8">
-          <button
-            onClick={() => setState((prev) => ({ ...prev, step: 6 }))}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
-          >
-            ← تعديل
-          </button>
+          {startMode === 'drafting' ? (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 0, documentType: '' }))}
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-md"
+            >
+              <span>↩️</span> العودة لاختيار نوع الرسم
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 6 }))}
+              className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            >
+              ← تعديل
+            </button>
+          )}
           
           <button
             onClick={async () => {
                 await handleFinalize();
-                // Navigate to the save tab
                 navigate('/dashboard?module=fees&tab=saved'); 
             }}
             className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg flex items-center gap-2"
           >
             <span>💾</span> حفظ وإنهاء
           </button>
-
-          {/* Step 8 Removed as per request */}
-          {/* {!(state.documentType === 'توكيل_رسمي' && state.tawkilScope?.legalActions?.type === 'marriage') && (
-            <button
-              onClick={() => setState((prev) => ({ ...prev, step: 8 }))}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-            >
-              التالي: التسجيل بالمالية
-            </button>
-          )} */}
         </div>
       </div>
-    );
-  };
-
-  // ============================================================================
-  // خطوة 8: التسجيل بالمالية
-  // ============================================================================
-
-
-  return (
-    <div className="space-y-6">
-      <Step7_FinalReview_V2 />
-    </div>
   );
 };

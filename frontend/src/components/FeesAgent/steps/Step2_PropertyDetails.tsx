@@ -18,10 +18,49 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
     });
 
     const handlePropertyChange = (index: number, field: keyof PropertyDetails, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempProperties((prev) => {
+            const newProperties = [...prev];
+            if (newProperties[index]) {
+              newProperties[index] = { ...newProperties[index], [field]: fileObj };
+            }
+            return newProperties;
+          });
+          setState((prev) => {
+            const newProperties = [...(prev.properties || [])];
+            if (newProperties[index]) {
+              newProperties[index] = { ...newProperties[index], [field]: fileObj };
+            }
+            return { ...prev, properties: newProperties };
+          });
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       setTempProperties((prev) => {
         const newProperties = [...prev];
         newProperties[index] = { ...newProperties[index], [field]: value };
+        if (newProperties[index]) {
+          newProperties[index] = { ...newProperties[index], [field]: value };
+        }
         return newProperties;
+      });
+      setState((prev) => {
+        const newProperties = [...(prev.properties || [])];
+        if (newProperties[index]) {
+          newProperties[index] = { ...newProperties[index], [field]: value };
+        }
+        return { ...prev, properties: newProperties };
       });
     };
 
@@ -92,12 +131,52 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
     };
 
     const handleTitleDocumentChange = (propIndex: number, docIndex: number, field: keyof TitleDocumentDetails, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempProperties((prev) => {
+            const newProperties = [...prev];
+            const newDocs = [...(newProperties[propIndex]?.titleDocuments || [])];
+            newDocs[docIndex] = { ...newDocs[docIndex], [field]: fileObj };
+            newProperties[propIndex] = { ...newProperties[propIndex], titleDocuments: newDocs };
+            return newProperties;
+          });
+          setState((prev) => {
+            const newProperties = [...(prev.properties || [])];
+            if (newProperties[propIndex]) {
+              const newDocs = [...(newProperties[propIndex]?.titleDocuments || [])];
+              newDocs[docIndex] = { ...newDocs[docIndex], [field]: fileObj };
+              newProperties[propIndex] = { ...newProperties[propIndex], titleDocuments: newDocs };
+            }
+            return { ...prev, properties: newProperties };
+          });
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       setTempProperties((prev) => {
         const newProperties = [...prev];
-        const newDocs = [...newProperties[propIndex].titleDocuments];
+        const newDocs = [...(newProperties[propIndex]?.titleDocuments || [])];
         newDocs[docIndex] = { ...newDocs[docIndex], [field]: value };
         newProperties[propIndex] = { ...newProperties[propIndex], titleDocuments: newDocs };
         return newProperties;
+      });
+      setState((prev) => {
+        const newProperties = [...(prev.properties || [])];
+        if (newProperties[propIndex]) {
+          const newDocs = [...(newProperties[propIndex]?.titleDocuments || [])];
+          newDocs[docIndex] = { ...newDocs[docIndex], [field]: value };
+          newProperties[propIndex] = { ...newProperties[propIndex], titleDocuments: newDocs };
+        }
+        return { ...prev, properties: newProperties };
       });
     };
 
@@ -125,12 +204,52 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
 
     // Ownership Certificate Helpers
     const handleOwnershipCertificateChange = (propIndex: number, certIndex: number, field: keyof OwnershipCertificateDetails, value: any) => {
+      if (value instanceof File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = String(reader.result || '').split(',').pop() || '';
+          const fileObj = {
+            name: value.name,
+            size: value.size,
+            type: value.type || 'application/octet-stream',
+            base64: b64,
+            file: value,
+          };
+          setTempProperties((prev) => {
+            const newProperties = [...prev];
+            const newCerts = [...(newProperties[propIndex]?.ownershipCertificates || [])];
+            newCerts[certIndex] = { ...newCerts[certIndex], [field]: fileObj };
+            newProperties[propIndex] = { ...newProperties[propIndex], ownershipCertificates: newCerts };
+            return newProperties;
+          });
+          setState((prev) => {
+            const newProperties = [...(prev.properties || [])];
+            if (newProperties[propIndex]) {
+              const newCerts = [...(newProperties[propIndex]?.ownershipCertificates || [])];
+              newCerts[certIndex] = { ...newCerts[certIndex], [field]: fileObj };
+              newProperties[propIndex] = { ...newProperties[propIndex], ownershipCertificates: newCerts };
+            }
+            return { ...prev, properties: newProperties };
+          });
+        };
+        reader.readAsDataURL(value);
+        return;
+      }
       setTempProperties((prev) => {
         const newProperties = [...prev];
-        const newCerts = [...(newProperties[propIndex].ownershipCertificates || [])];
+        const newCerts = [...(newProperties[propIndex]?.ownershipCertificates || [])];
         newCerts[certIndex] = { ...newCerts[certIndex], [field]: value };
         newProperties[propIndex] = { ...newProperties[propIndex], ownershipCertificates: newCerts };
         return newProperties;
+      });
+      setState((prev) => {
+        const newProperties = [...(prev.properties || [])];
+        if (newProperties[propIndex]) {
+          const newCerts = [...(newProperties[propIndex]?.ownershipCertificates || [])];
+          newCerts[certIndex] = { ...newCerts[certIndex], [field]: value };
+          newProperties[propIndex] = { ...newProperties[propIndex], ownershipCertificates: newCerts };
+        }
+        return { ...prev, properties: newProperties };
       });
     };
 
@@ -657,6 +776,19 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                             onChange={(e) => handleTitleDocumentChange(index, docIndex, 'file', e.target.files?.[0] || null)}
                             className="w-full p-3 border border-gray-300 rounded-lg bg-white"
                           />
+                          {doc.file && (
+                            <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                              <span className="truncate font-medium">📎 تم إرفاق: {(doc.file as any)?.name || 'صورة السند'}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleTitleDocumentChange(index, docIndex, 'file', null)}
+                                className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                                title="حذف المرفق"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -728,6 +860,19 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                               onChange={(e) => handleOwnershipCertificateChange(index, certIndex, 'file', e.target.files?.[0] || null)}
                               className="w-full p-2 border border-gray-300 rounded-lg"
                             />
+                            {cert.file && (
+                              <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
+                                <span className="truncate font-medium">📎 تم إرفاق: {(cert.file as any)?.name || 'صورة الشهادة'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOwnershipCertificateChange(index, certIndex, 'file', null)}
+                                  className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                                  title="حذف المرفق"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1021,6 +1166,12 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                               onChange={(e) => handlePropertyChange(index, 'architecturalPlansFile', e.target.files?.[0] || null)}
                               className="w-full p-2 border border-blue-300 rounded text-sm"
                             />
+                            {property.architecturalPlansFile && (
+                              <div className="mt-1 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-2 py-1 rounded">
+                                <span className="truncate">📎 {(property.architecturalPlansFile as any)?.name || 'التصاميم المعمارية'}</span>
+                                <button type="button" onClick={() => handlePropertyChange(index, 'architecturalPlansFile', null)} className="text-red-500 font-bold ml-1">✕</button>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-2">تصاميم الإسمنت المسلح</label>
@@ -1030,6 +1181,12 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                               onChange={(e) => handlePropertyChange(index, 'concreteDesignFile', e.target.files?.[0] || null)}
                               className="w-full p-2 border border-blue-300 rounded text-sm"
                             />
+                            {property.concreteDesignFile && (
+                              <div className="mt-1 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-2 py-1 rounded">
+                                <span className="truncate">📎 {(property.concreteDesignFile as any)?.name || 'تصاميم الإسمنت'}</span>
+                                <button type="button" onClick={() => handlePropertyChange(index, 'concreteDesignFile', null)} className="text-red-500 font-bold ml-1">✕</button>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-2">دفتر التحملات</label>
@@ -1039,6 +1196,12 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                               onChange={(e) => handlePropertyChange(index, 'specificationBookletFile', e.target.files?.[0] || null)}
                               className="w-full p-2 border border-blue-300 rounded text-sm"
                             />
+                            {property.specificationBookletFile && (
+                              <div className="mt-1 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-2 py-1 rounded">
+                                <span className="truncate">📎 {(property.specificationBookletFile as any)?.name || 'دفتر التحملات'}</span>
+                                <button type="button" onClick={() => handlePropertyChange(index, 'specificationBookletFile', null)} className="text-red-500 font-bold ml-1">✕</button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
