@@ -10,7 +10,8 @@ import {
   Minus, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle, 
+  AlertCircle,
+  AlertTriangle,
   Trash2,
   Maximize2,
   ChevronLeft,
@@ -44,6 +45,12 @@ export const HighResViewer = ({
   isDarkMode,
   onUpdateDraft,
   inlineEditMode,
+  activeViewMode = 'preview',
+  onlyOfficeConfig,
+  onlyOfficeDsUrl,
+  onSaveAndCloseOnlyOffice,
+  isSavingOnlyOffice = false,
+  onCloseOnlyOffice,
   updateZoom,
   onRegisterPlainTextGetter,
   renderNonce,
@@ -51,6 +58,7 @@ export const HighResViewer = ({
 }: any) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
+  const [onlyOfficeFailed, setOnlyOfficeFailed] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const a4Ref = useRef<HTMLDivElement>(null);
@@ -219,7 +227,7 @@ export const HighResViewer = ({
     !String(effectiveDocUrl || '').startsWith('html://') &&
     String(effectiveDocUrl || '') !== 'draft://main';
 
-  const canInlineEdit = isWord || isDraft;
+  const canInlineEdit = isWord || isDraft || inlineEditMode;
 
   // Legacy PDF overlay editing is intentionally disabled.
   // AuditHub uses PDF for accurate preview and OnlyOffice for real editing.
@@ -286,19 +294,20 @@ export const HighResViewer = ({
 
   useEffect(() => {
     if (!onRegisterPlainTextGetter) return;
-    onRegisterPlainTextGetter(() => wordPreviewRef.current?.getPlainText?.() || '');
-  }, [onRegisterPlainTextGetter, docUrl]);
+    onRegisterPlainTextGetter(() => wordPreviewRef.current?.getPlainText?.() || editContent || '');
+  }, [onRegisterPlainTextGetter, docUrl, editContent]);
 
   useEffect(() => {
-    if (!canInlineEdit) {
-      setIsEditing(false);
-      return;
-    }
     if (typeof inlineEditMode === 'boolean') {
       setIsEditing(inlineEditMode);
-      if (inlineEditMode) setShowOverlay(false);
+      if (inlineEditMode) {
+        setShowOverlay(false);
+        if (!editContent) {
+          setEditContent(doc?.content || doc?.rawContent || '');
+        }
+      }
     }
-  }, [inlineEditMode, canInlineEdit, docUrl]);
+  }, [inlineEditMode, docUrl, doc]);
 
   const downloadCurrentDoc = () => {
     try {
@@ -389,10 +398,120 @@ export const HighResViewer = ({
     pageRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  useEffect(() => {
+    const raw =
+      doc?.content ||
+      doc?.rawContent ||
+      (typeof doc?.rasmHtml === 'string' ? stripHtmlToPlainText(doc.rasmHtml) : '') ||
+      '';
+    if (raw) {
+      setEditContent((prev) => (prev ? prev : raw));
+    }
+  }, [doc]);
+
+  useEffect(() => {
+    if (onRegisterPlainTextGetter) {
+      onRegisterPlainTextGetter(() => editContent || doc?.content || doc?.rawContent || (typeof doc?.rasmHtml === 'string' ? stripHtmlToPlainText(doc.rasmHtml) : '') || '');
+    }
+  }, [editContent, doc, onRegisterPlainTextGetter]);
+
+  if (activeViewMode === 'onlyoffice') {
+    return (
+      <div className="w-full h-full flex flex-col relative overflow-hidden bg-slate-100">
+        {/* Top Banner Button */}
+        <div className="h-12 bg-[#023120] text-[#E6BE8A] flex items-center justify-between px-6 z-20 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className={`w-2.5 h-2.5 rounded-full ${onlyOfficeFailed ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`}></div>
+            <span className="text-xs font-bold font-amiri">
+              {onlyOfficeFailed
+                ? 'المحرر العدلي المدمج (تعديل مباشر) - يتم حفظ التغييرات وتوليد نسخة PDF تلقائياً'
+                : 'محرر OnlyOffice المباشر - يتم حفظ التغييرات وتوليد نسخة PDF تلقائياً'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isSavingOnlyOffice}
+              onClick={onSaveAndCloseOnlyOffice}
+              className="px-4 py-1.5 rounded-xl font-black text-xs flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {isSavingOnlyOffice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>حفظ وإغلاق المحرر</span>
+            </button>
+            {onCloseOnlyOffice && (
+              <button
+                type="button"
+                onClick={onCloseOnlyOffice}
+                className="px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 bg-white/10 text-white hover:bg-white/20 transition-all active:scale-95"
+              >
+                <span>إلغاء</span>
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Editor Body */}
+        <div className="flex-1 relative overflow-hidden bg-slate-200/50">
+          {onlyOfficeDsUrl && onlyOfficeConfig && !onlyOfficeFailed ? (
+            <OnlyOfficeEditor
+              dsUrl={onlyOfficeDsUrl}
+              config={onlyOfficeConfig}
+              mode="embedded"
+              onError={() => {
+                setOnlyOfficeFailed(true);
+              }}
+            />
+          ) : (
+            <div className="w-full h-full overflow-y-auto p-8 flex justify-center items-start custom-scrollbar">
+              <div className="w-[794px] min-h-[1123px] bg-white shadow-2xl rounded-sm p-12 text-right dir-rtl flex flex-col">
+                {onlyOfficeFailed && (
+                  <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs font-bold font-amiri shadow-xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>خادم OnlyOffice غير متاح حالياً (أوفلاين). تم تفعيل المحرر المدمج السريع لمتابعة التعديل وحفظ التغييرات مباشرة.</span>
+                  </div>
+                )}
+                <textarea
+                  value={editContent}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditContent(val);
+                    onUpdateDraft?.(val);
+                  }}
+                  className="w-full flex-1 min-h-[950px] border-none outline-none resize-none font-amiri text-[15pt] leading-[2.2] text-justify bg-transparent"
+                  dir="rtl"
+                  placeholder="اكتب أو عدّل نص الرسم العدلي هنا..."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (inlineEditMode) {
+    return (
+      <div className="w-full h-full overflow-y-auto bg-slate-200/60 p-8 flex justify-center items-start custom-scrollbar">
+        <div className="w-[794px] min-h-[1123px] bg-white shadow-2xl rounded-sm p-12 text-right dir-rtl">
+          <textarea
+            value={editContent}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEditContent(val);
+              onUpdateDraft?.(val);
+            }}
+            className="w-full h-full min-h-[1000px] border-none outline-none resize-none font-amiri text-[15pt] leading-[2.2] text-justify bg-transparent"
+            dir="rtl"
+            placeholder="اكتب أو عدّل نص الرسم العدلي هنا..."
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
       <div className="flex-1 w-full h-full flex flex-col overflow-hidden relative group bg-[#f8fafc]">
           {/* VIEW OVERLAY / UNLOCK SCREEN */}
-          {showOverlay && !isEditing && (
+          {showOverlay && !isEditing && !inlineEditMode && (
             <div 
               onClick={(e) => {
                 e.preventDefault();
@@ -419,31 +538,31 @@ export const HighResViewer = ({
             </div>
           )}
 
-          {/* FLOATING ACTION PILL (PREMIUM DESIGN) */}
+          {/* FLOATING ACTION PILL (COMPACT & CONTAINED) */}
           {!showOverlay && (
-            <div dir="ltr" className="fixed bottom-8 left-[50%] -translate-x-1/2 z-[200] flex items-center gap-2 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl p-3 rounded-full border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-500">
+            <div dir="ltr" className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-slate-900/90 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/15 shadow-xl transition-all">
                 {/* Page Navigation */}
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/10">
-                  <button onClick={(e) => { e.stopPropagation(); scrollToPage(Math.max(0, currentPage - 1)); }} className="p-2 text-white/60 hover:text-blue-400 hover:bg-white/10 rounded-full transition-all duration-300"><ChevronLeft className="w-4 h-4" /></button>
-                  <span className="min-w-[60px] text-center font-bold text-sm text-white px-2">{currentPage + 1} / {pages.length}</span>
-                  <button onClick={(e) => { e.stopPropagation(); scrollToPage(Math.min(pages.length - 1, currentPage + 1)); }} className="p-2 text-white/60 hover:text-blue-400 hover:bg-white/10 rounded-full transition-all duration-300"><ChevronRight className="w-4 h-4" /></button>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-full border border-white/10">
+                  <button onClick={(e) => { e.stopPropagation(); scrollToPage(Math.max(0, currentPage - 1)); }} className="p-1 text-white/70 hover:text-blue-400 hover:bg-white/10 rounded-full transition-all"><ChevronLeft className="w-3.5 h-3.5" /></button>
+                  <span className="min-w-[45px] text-center font-bold text-xs text-white px-1">{currentPage + 1} / {pages.length}</span>
+                  <button onClick={(e) => { e.stopPropagation(); scrollToPage(Math.min(pages.length - 1, currentPage + 1)); }} className="p-1 text-white/70 hover:text-blue-400 hover:bg-white/10 rounded-full transition-all"><ChevronRight className="w-3.5 h-3.5" /></button>
                 </div>
 
-                <div className="w-px h-6 bg-white/20"></div>
+                <div className="w-px h-4 bg-white/20"></div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); isDraft && handleExportPdf(); }} className="p-2.5 text-white/60 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all duration-300" title="Export PDF"><Download className="w-4 h-4" /></button>
-                  <button className="p-2.5 text-white/60 hover:bg-blue-500/20 hover:text-blue-400 rounded-full transition-all duration-300" title="Print"><Printer className="w-4 h-4" /></button>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={(e) => { e.stopPropagation(); isDraft && handleExportPdf(); }} className="p-1.5 text-white/70 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all" title="Export PDF"><Download className="w-3.5 h-3.5" /></button>
+                  <button className="p-1.5 text-white/70 hover:bg-blue-500/20 hover:text-blue-400 rounded-full transition-all" title="Print"><Printer className="w-3.5 h-3.5" /></button>
                 </div>
 
-                <div className="w-px h-6 bg-white/20"></div>
+                <div className="w-px h-4 bg-white/20"></div>
 
                 {/* Zoom Controls */}
-                <div className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); updateZoom(zoom - 0.1); }} className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all rounded-full"><Minus className="w-4 h-4" /></button>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-xs font-bold text-white min-w-[45px] text-center">{Math.round(zoom * 100)}%</span>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={(e) => { e.stopPropagation(); updateZoom(zoom - 0.1); }} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 active:scale-90 transition-all rounded-full"><Minus className="w-3.5 h-3.5" /></button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-white min-w-[35px] text-center">{Math.round(zoom * 100)}%</span>
                     <input 
                       type="range"
                       min="0.3"
@@ -451,10 +570,10 @@ export const HighResViewer = ({
                       step="0.05"
                       value={zoom}
                       onChange={(e) => updateZoom(parseFloat(e.target.value))}
-                      className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 focus:outline-none"
+                      className="w-14 h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 focus:outline-none"
                     />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); updateZoom(zoom + 0.1); }} className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 active:scale-110 transition-all rounded-full"><Plus className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); updateZoom(zoom + 0.1); }} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 active:scale-110 transition-all rounded-full"><Plus className="w-3.5 h-3.5" /></button>
                 </div>
             </div>
           )}
@@ -478,17 +597,17 @@ export const HighResViewer = ({
               }}
           >
               {(() => {
-                const shouldRenderSmartDraft = !hasRealBinaryUrl && !!doc?.rasmHtml;
-                const shouldRenderDraftText = !hasRealBinaryUrl && isDraft;
-                const shouldRenderWord = isWord;
+                const shouldRenderSmartDraft = !hasRealBinaryUrl && !!doc?.rasmHtml && !inlineEditMode;
+                const shouldRenderDraftText = (!hasRealBinaryUrl && isDraft) || (inlineEditMode && !isWord && !doc?.docxUrl && !doc?.editableUrl);
+                const shouldRenderWord = isWord || (inlineEditMode && !!(doc?.docxUrl || doc?.editableUrl));
                 const baseWidth = shouldRenderSmartDraft ? 800 : PAGE_WIDTH;
                 const pageCount = Math.max(1, pages.length);
                 const baseHeight = (pageCount * PAGE_HEIGHT) + ((pageCount - 1) * PAGE_GAP) + 200;
                 // For PDFs: do not CSS-scale the iframe (it becomes blurry). Keep layout zoom at 1 and control zoom via URL hash.
-                const layoutZoom = isPDF ? 1 : zoom;
+                const layoutZoom = (isPDF && !inlineEditMode) ? 1 : zoom;
                 const scaledWidth = Math.round(baseWidth * layoutZoom);
                 const scaledHeight = Math.round(baseHeight * layoutZoom);
-                const isDocxLike = Boolean(shouldRenderSmartDraft || shouldRenderDraftText || shouldRenderWord);
+                const isDocxLike = Boolean(shouldRenderSmartDraft || shouldRenderDraftText || shouldRenderWord || inlineEditMode);
 
                 return (
                   <div className="flex min-h-full justify-center pt-8 pb-32">
@@ -498,20 +617,38 @@ export const HighResViewer = ({
                           <div className="flex flex-col items-center gap-12">
                             {shouldRenderSmartDraft ? (
                               <div className="w-[800px]">
-                                <RasmDocxPreview textContent={stripHtmlToPlainText(doc.rasmHtml)} isDarkMode={isDarkMode} />
+                                <RasmDocxPreview htmlContent={doc.rasmHtml || doc.rawContent} textContent={doc.rasmHtml || doc.rawContent} isDarkMode={isDarkMode} />
                               </div>
                             ) : shouldRenderDraftText ? (
                               <div ref={a4Ref} className="flex flex-col gap-32">
-                                <WordPreview key={`draft-${doc?.id || ''}-${renderNonce || 0}`} ref={wordPreviewRef} editable={isEditing && canInlineEdit} textContent={editContent || doc.content} isDarkMode={isDarkMode} msWordRtlJustify={true} />
+                                <WordPreview 
+                                  key={`draft-${doc?.id || ''}-${renderNonce || 0}`} 
+                                  ref={wordPreviewRef} 
+                                  editable={isEditing && canInlineEdit} 
+                                  textContent={editContent || doc?.content || doc?.rawContent || (typeof doc?.rasmHtml === 'string' ? stripHtmlToPlainText(doc.rasmHtml) : '')} 
+                                  htmlContent={doc?.rasmHtml || doc?.rawContent} 
+                                  onContentChange={(newText) => {
+                                    setEditContent(newText);
+                                    onUpdateDraft?.(newText);
+                                  }}
+                                  isDarkMode={isDarkMode} 
+                                  msWordRtlJustify={true} 
+                                />
                               </div>
-                            ) : shouldRenderWord ? (
+                            ) : shouldRenderWord || inlineEditMode ? (
                               <>
                                 <WordPreview
-                                  key={String(effectiveDocUrl || 'word')}
+                                  key={String(doc?.docxUrl || doc?.editableUrl || effectiveDocUrl || 'word')}
                                   ref={wordPreviewRef}
                                   sourceTag={sourceTag}
                                   editable={isEditing && canInlineEdit}
-                                  url={effectiveDocUrl}
+                                  url={doc?.docxUrl || doc?.editableUrl || (isWord ? effectiveDocUrl : undefined)}
+                                  textContent={editContent || doc?.content || doc?.rawContent || (typeof doc?.rasmHtml === 'string' ? stripHtmlToPlainText(doc.rasmHtml) : '')}
+                                  htmlContent={doc?.rasmHtml || doc?.rawContent}
+                                  onContentChange={(newText) => {
+                                    setEditContent(newText);
+                                    onUpdateDraft?.(newText);
+                                  }}
                                   isDarkMode={isDarkMode}
                                   msWordRtlJustify={true}
                                 />
@@ -535,6 +672,7 @@ export const HighResViewer = ({
                               }
                             >
                               <iframe
+                                key={String(pdfBlobUrl || effectiveDocUrl || docUrl || doc?.id || renderNonce || 'pdf-viewer')}
                                 src={getJudgeLikePdfViewerUrl(pdfBlobUrl || effectiveDocUrl || docUrl, zoom)}
                                 className="absolute inset-0 w-full h-full border-0"
                                 title="PDF Viewer"

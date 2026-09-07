@@ -16,6 +16,8 @@ import puppeteer from 'puppeteer';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import crypto from 'crypto';
+import http from 'http';
+import https from 'https';
 
 const rasmPdfService = new RasmPdfService();
 
@@ -182,6 +184,33 @@ async function finalizeSigningVersionForUser({
   user: { id: string; role: string };
   versionId: string;
 }) {
+  // Fast cache check: return existing finalized PDF if already generated for this versionId
+  try {
+    const { data: cachedPdfRows } = await supabase
+      .from('deed_attachments')
+      .select('id, file_url, metadata')
+      .eq('category', 'audit_final_pdf')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const cachedPdf = (cachedPdfRows ?? []).find((row: any) => {
+      const metaVId = String(row?.metadata?.versionId || row?.metadata?.version_id || '').trim();
+      return metaVId === versionId && row?.file_url;
+    });
+
+    if (cachedPdf?.file_url) {
+      return {
+        versionId,
+        status: 'finalized' as const,
+        finalPdfUrl: String(cachedPdf.file_url),
+        finalDocxUrl: '',
+        baseDocSha256: null,
+        patchSha256: null,
+        finalPdfSha256: String(cachedPdf?.metadata?.finalPdfSha256 || ''),
+        finalDocxSha256: '',
+      };
+    }
+  } catch {}
   const { data: version, error: versionError } = await supabase
     .from('audit_doc_versions')
     .select('id, saved_rasm_id, base_doc_url, base_doc_sha256, patch_json, patch_sha256')
@@ -2064,13 +2093,66 @@ export const feesAgentRouter = router({
     getOnlyOfficeConfig: publicProcedure
       .input(z.object({
         sessionToken: z.string(),
-        savedRasmId: z.string().uuid(),
+        savedRasmId: z.string().uuid().optional(),
+        id: z.string().uuid().optional(),
+        editorType: z.string().optional(),
       }))
       .output(z.object({
-        dsUrl: z.string(),
-        config: z.record(z.unknown()),
+        dsUrl: z.string().nullable().optional(),
+        documentServerUrl: z.string().nullable().optional(),
+        config: z.record(z.unknown()).nullable().optional(),
+        offline: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
+        const rasmId = input.savedRasmId || input.id;
+        if (!rasmId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Missing savedRasmId or id' });
+        }
+
+        const candidateUrls = [
+          String(process.env.ONLYOFFICE_DS_URL || '').trim(),
+          'http://localhost:8082',
+          'http://localhost:8080',
+        ].filter(Boolean);
+
+        // Fast ping check (< 1000ms) across candidate URLs to detect active Document Server
+        const checkUrl = (targetUrl: string): Promise<string | null> => {
+          return new Promise((resolve) => {
+            try {
+              const parsed = new URL(targetUrl);
+              const isHttps = parsed.protocol === 'https:';
+              const client = isHttps ? https : http;
+              const pingUrl = `${parsed.protocol}//${parsed.host}/web-apps/apps/api/documents/api.js`;
+              const req = client.get(pingUrl, { timeout: 800 }, (res) => {
+                if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
+                  resolve(`${parsed.protocol}//${parsed.host}`);
+                } else {
+                  resolve(null);
+                }
+              });
+              req.on('error', () => resolve(null));
+              req.on('timeout', () => {
+                req.destroy();
+                resolve(null);
+              });
+            } catch {
+              resolve(null);
+            }
+          });
+        };
+
+        const checkResults = await Promise.all(candidateUrls.map(checkUrl));
+        const activeDsUrl = checkResults.find(Boolean) || null;
+
+        if (!activeDsUrl) {
+          return {
+            offline: true,
+            dsUrl: null,
+            documentServerUrl: null,
+            config: null,
+          };
+        }
+
         const { data: session, error: sessionError } = await supabase
           .from('user_sessions')
           .select('user_id')
@@ -2094,7 +2176,7 @@ export const feesAgentRouter = router({
         const { data: rasm, error: rasmError } = await supabase
           .from('saved_rasms')
           .select('id, notary_user_id, file_number')
-          .eq('id', input.savedRasmId)
+          .eq('id', rasmId)
           .single();
 
         if (rasmError || !rasm) throw new TRPCError({ code: 'NOT_FOUND', message: 'Saved rasm not found' });
@@ -2104,7 +2186,7 @@ export const feesAgentRouter = router({
           .from('deed_attachments')
           .select('id, category, file_name, file_url, mime_type, created_at')
           .eq('record_type', 'saved_rasm')
-          .eq('record_id', input.savedRasmId)
+          .eq('record_id', rasmId)
           .order('created_at', { ascending: false });
 
         if (attError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: attError.message });
@@ -2122,21 +2204,19 @@ export const feesAgentRouter = router({
 
         if (!base) throw new TRPCError({ code: 'NOT_FOUND', message: 'No DOCX attachment found for editing' });
 
-        const dsUrl = String(process.env.ONLYOFFICE_DS_URL || '').trim();
-        if (!dsUrl) throw new TRPCError({ code: 'BAD_REQUEST', message: 'ONLYOFFICE_DS_URL is not configured on backend' });
-
+        const dsUrl = activeDsUrl;
         const publicBackend = String(process.env.PUBLIC_BACKEND_URL || `http://localhost:${Number(process.env.PORT) || 4000}`).trim();
 
         const fileSecret = String(process.env.ONLYOFFICE_FILE_TOKEN_SECRET || '').trim();
         const callbackSecret = String(process.env.ONLYOFFICE_CALLBACK_TOKEN_SECRET || '').trim();
 
         const fileToken = fileSecret ? hmacToken(fileSecret, String(base.id)) : '';
-        const cbToken = callbackSecret ? hmacToken(callbackSecret, `${input.savedRasmId}:${String(base.id)}`) : '';
+        const cbToken = callbackSecret ? hmacToken(callbackSecret, `${rasmId}:${String(base.id)}`) : '';
 
         const directBaseFileUrl = String(base.file_url || base.fileUrl || '').trim();
         const proxiedFileUrl = `${publicBackend}/onlyoffice/file/${String(base.id)}${fileToken ? `?token=${fileToken}` : ''}`;
         const fileUrl = /^https?:\/\//i.test(directBaseFileUrl) ? directBaseFileUrl : proxiedFileUrl;
-        const callbackUrl = `${publicBackend}/onlyoffice/callback/${input.savedRasmId}/${String(base.id)}${cbToken ? `?token=${cbToken}` : ''}`;
+        const callbackUrl = `${publicBackend}/onlyoffice/callback/${rasmId}/${String(base.id)}${cbToken ? `?token=${cbToken}` : ''}`;
 
         const title = String(base.file_name || base.fileName || rasm.file_number || 'document.docx');
         const key = `${String(base.id)}-${Date.parse(String(base.created_at || '')) || Date.now()}`;
@@ -2184,7 +2264,7 @@ export const feesAgentRouter = router({
           config.token = signOnlyOfficeJwt(onlyOfficeJwtSecret, config);
         }
 
-        return { dsUrl, config: config as any };
+        return { dsUrl, documentServerUrl: dsUrl, config: config as any, offline: false };
       }),
 
     forceOnlyOfficeSave: publicProcedure
@@ -3166,6 +3246,11 @@ export const feesAgentRouter = router({
         savedAttachmentId: z.string().nullable(),
         savedCategory: z.string().nullable(),
         savedUrl: z.string().nullable(),
+        previewPdfUrl: z.string().nullable().optional(),
+        pdfPreviewUrl: z.string().nullable().optional(),
+        previewDocxUrl: z.string().nullable().optional(),
+        primaryDocxUrl: z.string().nullable().optional(),
+        versionId: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const { data: session, error: sessionError } = await supabase
@@ -3227,6 +3312,9 @@ export const feesAgentRouter = router({
         let savedAttachmentId: string | null = null;
         let savedCategory: string | null = null;
         let savedUrl: string | null = null;
+        let previewPdfUrl: string | null = null;
+        let previewDocxUrl: string | null = null;
+        let versionId: string | null = null;
 
         // Handle file uploads if provided
         if (input.files?.length) {
@@ -3235,18 +3323,48 @@ export const feesAgentRouter = router({
           const canonicalDocument = files.find((f) => String(f.category || '').toLowerCase() === 'document');
 
           for (const f of files) {
-            if (canonicalDocument && f === canonicalDocument) {
-              const fileBuffer = Buffer.from(f.base64, 'base64');
-              const fileSha = sha256Hex(fileBuffer);
-              const mimeType = f.type || 'application/octet-stream';
-              const lowerName = String(f.name || '').toLowerCase();
-              const extension = lowerName.endsWith('.docx')
-                ? 'docx'
-                : lowerName.endsWith('.doc')
-                  ? 'doc'
-                  : mimeType.includes('pdf')
-                    ? 'pdf'
-                    : 'bin';
+            const fileBuffer = Buffer.from(f.base64, 'base64');
+            const fileSha = sha256Hex(fileBuffer);
+            const lowerName = String(f.name || '').toLowerCase();
+            const isDocx = lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || String(f.type || '').includes('wordprocessingml');
+
+            if (isDocx || (canonicalDocument && f === canonicalDocument)) {
+              const mimeType = isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : (f.type || 'application/octet-stream');
+              const extension = isDocx ? 'docx' : (lowerName.endsWith('.pdf') ? 'pdf' : 'bin');
+              
+              // Extract text and HTML content from docx buffer if available
+              let extractedDocxText: string | null = null;
+              let extractedDocxHtml: string | null = null;
+              if (isDocx) {
+                try {
+                  const PizZip = require('pizzip');
+                  const zip = new PizZip(fileBuffer);
+                  const docXml = zip.file('word/document.xml')?.asText();
+                  if (docXml) {
+                    extractedDocxText = docXml
+                      .replace(/<w:p[^>]*>/g, '\n')
+                      .replace(/<[^>]+>/g, '')
+                      .replace(/&amp;/g, '&')
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>')
+                      .replace(/&quot;/g, '"')
+                      .replace(/&apos;/g, "'")
+                      .trim();
+                    if (extractedDocxText) {
+                      extractedDocxHtml = extractedDocxText
+                        .split(/\r?\n/)
+                        .map((l: string) => l.trim())
+                        .filter(Boolean)
+                        .map((l: string) => `<p>${l}</p>`)
+                        .join('\n');
+                    }
+                  }
+                } catch (extractErr) {
+                  // eslint-disable-next-line no-console
+                  console.warn('[updateSavedRasm] text extraction error:', extractErr);
+                }
+              }
+
               const uploaded = await uploadBufferToDocumentsBucket({
                 path: `saved/${input.id}/${fileSha}.${extension}`,
                 buffer: fileBuffer,
@@ -3254,22 +3372,45 @@ export const feesAgentRouter = router({
                 upsert: true,
               });
 
-              // Idempotent: keep exactly one "document" attachment per saved_rasm.
-              await removeSavedRasmStorageByCategory(input.id, ['document']);
+              let convertedPdfUrl: string | null = null;
+              let pdfBuffer: Buffer | null = null;
+
+              if (isDocx) {
+                try {
+                  const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: fileBuffer });
+                  if (pdfRes?.pdfBuffer?.length) {
+                    pdfBuffer = pdfRes.pdfBuffer;
+                    const pdfSha = sha256Hex(pdfBuffer);
+                    const uploadedPdf = await uploadBufferToDocumentsBucket({
+                      path: `saved/${input.id}/${pdfSha}.pdf`,
+                      buffer: pdfBuffer,
+                      contentType: 'application/pdf',
+                      upsert: true,
+                    });
+                    convertedPdfUrl = uploadedPdf.url;
+                  }
+                } catch (convErr) {
+                  // eslint-disable-next-line no-console
+                  console.warn('[updateSavedRasm] LibreOffice PDF conversion warning:', convErr);
+                }
+              }
+
+              // Clean previous primary document entries to keep repository tidy
+              await removeSavedRasmStorageByCategory(input.id, ['document', 'audit_final_docx', 'judge_attachment_docx']);
               await supabase
                 .from('deed_attachments')
                 .delete()
                 .eq('record_type', 'saved_rasm')
                 .eq('record_id', input.id)
-                .eq('category', 'document');
+                .in('category', ['document', 'audit_final_docx', 'judge_attachment_docx']);
 
-              const { data: inserted, error: insertError } = await supabase
+              const { data: insertedDocx, error: insertError } = await supabase
                 .from('deed_attachments')
                 .insert({
                   record_id: input.id,
                   record_type: 'saved_rasm',
-                  category: 'document',
-                  file_name: f.name,
+                  category: 'audit_final_docx',
+                  file_name: f.name || 'document.docx',
                   file_url: uploaded.url,
                   storage_path: uploaded.path,
                   mime_type: mimeType,
@@ -3283,28 +3424,97 @@ export const feesAgentRouter = router({
                 .select('id, file_url, category')
                 .single();
 
-              if (insertError || !inserted) {
+              if (insertError || !insertedDocx) {
                 throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: insertError?.message ?? 'Failed to add attachment' });
               }
 
-              savedAttachmentId = inserted.id;
-              savedCategory = inserted.category;
-              savedUrl = inserted.file_url;
+              if (convertedPdfUrl && pdfBuffer) {
+                await supabase
+                  .from('deed_attachments')
+                  .delete()
+                  .eq('record_type', 'saved_rasm')
+                  .eq('record_id', input.id)
+                  .eq('category', 'audit_final_pdf');
 
-              const { error: pointerError } = await supabase
-                .from('saved_rasms')
-                .update({
-                  payload: sanitizePersistedPayload({
-                    ...(existing.payload as object || {}),
-                    ...(input.payload ?? {}),
-                    latestDocumentUrl: uploaded.url,
-                    latestDocumentMimeType: mimeType,
-                    latestDocumentUpdatedAt: nowIso,
-                    latestSavedAttachmentId: inserted.id,
-                  }),
-                })
-                .eq('id', input.id);
-              if (pointerError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: pointerError.message });
+                await supabase
+                  .from('deed_attachments')
+                  .insert({
+                    record_id: input.id,
+                    record_type: 'saved_rasm',
+                    category: 'audit_final_pdf',
+                    file_name: f.name ? f.name.replace(/\.docx$/i, '.pdf') : 'document.pdf',
+                    file_url: convertedPdfUrl,
+                    storage_path: `saved/${input.id}/${sha256Hex(pdfBuffer)}.pdf`,
+                    mime_type: 'application/pdf',
+                    file_size: pdfBuffer.length,
+                    metadata: {
+                      sha256: sha256Hex(pdfBuffer),
+                      source: 'audit_hub_libreoffice_pdf',
+                    },
+                  });
+              }
+
+              const generatedVersionId = crypto.randomUUID();
+              savedAttachmentId = insertedDocx.id;
+              savedCategory = insertedDocx.category;
+              savedUrl = convertedPdfUrl || uploaded.url;
+              previewPdfUrl = convertedPdfUrl;
+              previewDocxUrl = uploaded.url;
+              versionId = generatedVersionId;
+
+              const updatedPayload = sanitizePersistedPayload({
+                ...(existing.payload as object || {}),
+                ...(input.payload ?? {}),
+                draft: extractedDocxText || input.draft || (existing.payload as any)?.draft,
+                rasmHtml: extractedDocxHtml || input.draft || (existing.payload as any)?.rasmHtml,
+                primaryAttachmentUrl: uploaded.url,
+                primary_docx_url: uploaded.url,
+                pdf_preview_url: convertedPdfUrl || undefined,
+                latestDocumentUrl: convertedPdfUrl || uploaded.url,
+                latestDraftPdfUrl: convertedPdfUrl || undefined,
+                latestDraftDocxUrl: uploaded.url,
+                latestDocxVersionId: generatedVersionId,
+                latestDocumentMimeType: isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : mimeType,
+                latestDocumentUpdatedAt: nowIso,
+                latestSavedAttachmentId: insertedDocx.id,
+              });
+
+              const updateSavedRasmCanonical = async () => {
+                const fullPatch: any = {
+                  payload: updatedPayload,
+                  primary_docx_url: uploaded.url,
+                  pdf_preview_url: convertedPdfUrl,
+                  latest_draft_docx_url: uploaded.url,
+                  latest_draft_version_id: generatedVersionId,
+                  latest_draft_sha256: fileSha,
+                  latest_draft_updated_at: nowIso,
+                  updated_at: nowIso,
+                };
+                if (extractedDocxText) fullPatch.draft = extractedDocxText;
+
+                let res = await supabase.from('saved_rasms').update(fullPatch).eq('id', input.id);
+                if (!res.error) return res;
+
+                // Retry without optional columns for compatibility across schemas
+                const fallbackPatch: any = {
+                  payload: updatedPayload,
+                  latest_draft_docx_url: uploaded.url,
+                  latest_draft_version_id: generatedVersionId,
+                  latest_draft_sha256: fileSha,
+                  latest_draft_updated_at: nowIso,
+                  updated_at: nowIso,
+                };
+                if (extractedDocxText) fallbackPatch.draft = extractedDocxText;
+
+                res = await supabase.from('saved_rasms').update(fallbackPatch).eq('id', input.id);
+                if (!res.error) return res;
+
+                // Minimal payload fallback
+                return await supabase.from('saved_rasms').update({ payload: updatedPayload }).eq('id', input.id);
+              };
+
+              const pointerRes = await updateSavedRasmCanonical();
+              if (pointerRes.error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: pointerRes.error.message });
               continue;
             }
 
@@ -3339,7 +3549,28 @@ export const feesAgentRouter = router({
           // non-fatal
         }
 
-        return { success: true, savedAttachmentId, savedCategory, savedUrl };
+        const cbTimestamp = Date.now();
+        const appendCb = (u?: string | null) => {
+          if (!u) return u ?? null;
+          const sep = u.includes('?') ? '&' : '?';
+          return `${u}${sep}cb=${cbTimestamp}`;
+        };
+
+        const finalPreviewPdfUrl = appendCb(previewPdfUrl);
+        const finalPreviewDocxUrl = appendCb(previewDocxUrl);
+        const finalSavedUrl = appendCb(savedUrl);
+
+        return {
+          success: true,
+          savedAttachmentId,
+          savedCategory,
+          savedUrl: finalSavedUrl,
+          previewPdfUrl: finalPreviewPdfUrl,
+          pdfPreviewUrl: finalPreviewPdfUrl,
+          previewDocxUrl: finalPreviewDocxUrl,
+          primaryDocxUrl: finalPreviewDocxUrl,
+          versionId,
+        };
       }),
 
     listSavedRasms: publicProcedure
@@ -3955,6 +4186,137 @@ export const feesAgentRouter = router({
             if (!refetch.error && refetch.data) finalAttachments = refetch.data;
           }
         } catch (e) {
+        }
+
+        // Unify companion attachments from associated judge submissions and payload pools
+        try {
+          const payloadObj = (row.payload as any ?? {});
+          const judgeSubId =
+            payloadObj?.step7JudgeSubmissionId ||
+            payloadObj?.judgeSubmissionId ||
+            payloadObj?.submissionId ||
+            null;
+
+          const candidateSubmissionIds = new Set<string>();
+          if (judgeSubId && typeof judgeSubId === 'string') {
+            candidateSubmissionIds.add(judgeSubId);
+          }
+
+          if (row.file_number) {
+            const { data: matchedSubs } = await supabase
+              .from('judge_submissions')
+              .select('id, payload')
+              .eq('notary_user_id', user.id)
+              .eq('file_number', row.file_number)
+              .limit(5);
+            if (matchedSubs && Array.isArray(matchedSubs)) {
+              matchedSubs.forEach((sub: any) => {
+                if (sub?.id) candidateSubmissionIds.add(String(sub.id));
+              });
+            }
+          }
+
+          for (const subId of candidateSubmissionIds) {
+            const { data: judgeAtts } = await supabase
+              .from('deed_attachments')
+              .select('id, category, file_name, file_url, mime_type, file_size, metadata, created_at')
+              .eq('record_type', 'judge_submission')
+              .eq('record_id', subId);
+
+            if (judgeAtts && Array.isArray(judgeAtts)) {
+              for (const jAtt of judgeAtts) {
+                if (jAtt.file_url && !finalAttachments.some((existing: any) => existing.file_url === jAtt.file_url)) {
+                  finalAttachments.push(jAtt);
+                }
+              }
+            }
+
+            const { data: subRow } = await supabase
+              .from('judge_submissions')
+              .select('payload, created_at')
+              .eq('id', subId)
+              .maybeSingle();
+
+            if (subRow?.payload && typeof subRow.payload === 'object') {
+              const subPayload = subRow.payload as Record<string, unknown>;
+              const extraFiles = [
+                subPayload?.attachment,
+                subPayload?.judgeAttachment,
+                subPayload?.manualRasmFile,
+                subPayload?.judgeAcceptedDoc,
+                subPayload?.baseDoc,
+                ...(Array.isArray(subPayload?.attachments) ? subPayload.attachments : []),
+                ...(Array.isArray(subPayload?.files) ? subPayload.files : []),
+                ...(Array.isArray(subPayload?.supportingDocuments) ? subPayload.supportingDocuments : []),
+                ...(Array.isArray(subPayload?.id_cards) ? subPayload.id_cards : []),
+                ...(Array.isArray(subPayload?.fiscal_receipts) ? subPayload.fiscal_receipts : []),
+              ].filter(Boolean);
+
+              extraFiles.forEach((f: any, idx: number) => {
+                const name = String(f.name || f.fileName || f.filename || f.file_name || `مرفق_قضائي_${idx + 1}`);
+                const mime = f.type || f.mimeType || f.mime_type || null;
+                let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || '').trim();
+                if (!url && typeof f.base64 === 'string' && f.base64.trim()) {
+                  const b64 = f.base64.trim();
+                  url = b64.startsWith('data:') ? b64 : `data:${mime || 'application/octet-stream'};base64,${b64}`;
+                }
+
+                if (url && !finalAttachments.some((x: any) => (x.file_url && x.file_url === url) || (x.file_name === name && x.file_size === f.size))) {
+                  finalAttachments.push({
+                    id: String(f.id || `judge_sub_att_${subId}_${idx}`),
+                    category: String(f.category || f.field || 'judge_companion_attachment'),
+                    file_name: name,
+                    file_url: url,
+                    mime_type: mime ? String(mime) : null,
+                    file_size: typeof f.size === 'number' ? f.size : (typeof f.fileSize === 'number' ? f.fileSize : null),
+                    metadata: {
+                      field: f.field,
+                      source: 'judge_submission_payload',
+                      submissionId: subId,
+                      ...(f.metadata || {}),
+                    },
+                    created_at: String(subRow.created_at || row.created_at),
+                  });
+                }
+              });
+            }
+          }
+
+          const rasmExtraFiles = [
+            ...(Array.isArray(payloadObj?.attachments) ? payloadObj.attachments : []),
+            ...(Array.isArray(payloadObj?.files) ? payloadObj.files : []),
+            ...(Array.isArray(payloadObj?.supportingDocuments) ? payloadObj.supportingDocuments : []),
+            ...(Array.isArray(payloadObj?.id_cards) ? payloadObj.id_cards : []),
+            ...(Array.isArray(payloadObj?.fiscal_receipts) ? payloadObj.fiscal_receipts : []),
+          ].filter(Boolean);
+
+          rasmExtraFiles.forEach((f: any, idx: number) => {
+            const name = String(f.name || f.fileName || f.filename || f.file_name || `مرفق_${idx + 1}`);
+            const mime = f.type || f.mimeType || f.mime_type || null;
+            let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || '').trim();
+            if (!url && typeof f.base64 === 'string' && f.base64.trim()) {
+              const b64 = f.base64.trim();
+              url = b64.startsWith('data:') ? b64 : `data:${mime || 'application/octet-stream'};base64,${b64}`;
+            }
+
+            if (url && !finalAttachments.some((x: any) => (x.file_url && x.file_url === url) || (x.file_name === name && x.file_size === f.size))) {
+              finalAttachments.push({
+                id: String(f.id || `rasm_payload_att_${row.id}_${idx}`),
+                category: String(f.category || f.field || 'supporting_attachment'),
+                file_name: name,
+                file_url: url,
+                mime_type: mime ? String(mime) : null,
+                file_size: typeof f.size === 'number' ? f.size : (typeof f.fileSize === 'number' ? f.fileSize : null),
+                metadata: {
+                  field: f.field,
+                  source: 'saved_rasm_payload',
+                  ...(f.metadata || {}),
+                },
+                created_at: String(row.created_at),
+              });
+            }
+          });
+        } catch (err) {
         }
 
         // If there is an audit doc version (edited artifact), surface it for Saved Documents.
@@ -4639,7 +5001,7 @@ export const feesAgentRouter = router({
 
         const { data: row, error } = await supabase
           .from('saved_rasms')
-          .select('id, notary_user_id, payload, latest_draft_version_id, latest_draft_docx_url')
+          .select('*')
           .eq('id', input.id)
           .single();
 
@@ -4713,6 +5075,44 @@ export const feesAgentRouter = router({
             mime.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
           );
         };
+
+        // 1. CANONICAL UPDATED PDF PREVIEW POINTER
+        // If a direct compiled/converted PDF preview URL exists on the canonical row or payload, return it immediately!
+        const canonicalPdfUrl =
+          (row as any)?.pdf_preview_url ||
+          payloadObj?.pdf_preview_url ||
+          payloadObj?.latestDraftPdfUrl ||
+          payloadObj?.latestSigningPdfUrl ||
+          null;
+
+        if (canonicalPdfUrl && isPdfCandidate(canonicalPdfUrl, null, 'application/pdf')) {
+          return {
+            rasmId: row.id,
+            finalPdfUrl: String(canonicalPdfUrl),
+            versionId: latestDraftVersionId || payloadObj?.latestDocxVersionId || payloadObj?.latestDocumentVersionId || null,
+            source: 'saved_pdf' as const,
+            debugJson: buildDebugJson('canonical_saved_rasms_pdf_preview', {
+              canonicalPdfUrl,
+            }),
+          };
+        }
+
+        // 2. Freshly saved audit_final_pdf or audit_draft_pdf attachment
+        const auditFinalPdf = attList.find((item: any) => {
+          const category = String(item?.category || '').toLowerCase();
+          return (category === 'audit_final_pdf' || category === 'audit_draft_pdf') && isPdfCandidate(item?.file_url, item?.file_name, item?.mime_type);
+        });
+        if (auditFinalPdf?.file_url) {
+          return {
+            rasmId: row.id,
+            finalPdfUrl: String(auditFinalPdf.file_url),
+            versionId: latestDraftVersionId || String(auditFinalPdf?.metadata?.versionId || auditFinalPdf?.metadata?.version_id || '').trim() || null,
+            source: 'saved_pdf' as const,
+            debugJson: buildDebugJson('audit_final_pdf_match', {
+              matchedAttachmentId: String(auditFinalPdf?.id || ''),
+            }),
+          };
+        }
 
         const pickAttachmentByVersion = (items: any[], desiredVersionId: string | null) => {
           if (!items.length) return null;

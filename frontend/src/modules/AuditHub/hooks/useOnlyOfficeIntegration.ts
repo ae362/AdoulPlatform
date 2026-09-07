@@ -11,6 +11,7 @@ export interface UseOnlyOfficeIntegrationProps {
   primaryBusy: boolean;
   isEmbeddedOnlyOfficePreviewTab: boolean;
   activeDocVersion: ActiveDocVersion;
+  editMode?: boolean;
 }
 
 export const useOnlyOfficeIntegration = ({
@@ -20,6 +21,7 @@ export const useOnlyOfficeIntegration = ({
   primaryBusy,
   isEmbeddedOnlyOfficePreviewTab,
   activeDocVersion,
+  editMode = false,
 }: UseOnlyOfficeIntegrationProps) => {
   const onlyOfficeBaselineRef = useRef<{ versionId: string | null; updatedAt: string | null }>({
     versionId: null,
@@ -44,7 +46,7 @@ export const useOnlyOfficeIntegration = ({
   const onlyOfficeEmbeddedRetryRef = useRef(0);
 
   const isEmbeddedOnlyOfficeActive =
-    isEmbeddedOnlyOfficePreviewTab && activeDocVersion === 'base';
+    editMode && isEmbeddedOnlyOfficePreviewTab && activeDocVersion === 'base';
   const shouldRenderOnlyOfficePrimaryPane = isEmbeddedOnlyOfficeActive;
   const shouldMountEmbeddedOnlyOffice =
     isEmbeddedOnlyOfficeActive &&
@@ -116,6 +118,16 @@ export const useOnlyOfficeIntegration = ({
 
         if (requestSeq !== onlyOfficeRequestSeqRef.current) return false;
 
+        if (res?.offline) {
+          setOnlyOfficeError('خادم OnlyOffice غير متاح حالياً.');
+          setOnlyOfficeDsUrl(null);
+          setOnlyOfficeConfig(null);
+          setOnlyOfficeOpen(false);
+          setOnlyOfficeLoadStartedAt(null);
+          setOnlyOfficePaneStatus('error');
+          return false;
+        }
+
         const nextDsUrl = (res?.documentServerUrl || res?.dsUrl || null) as string | null;
         const nextConfig = (res?.config || null) as Record<string, unknown> | null;
 
@@ -167,8 +179,8 @@ export const useOnlyOfficeIntegration = ({
     baselineOverride?: { versionId: string | null; updatedAt: string | null };
   }) => {
     const baseline = opts?.baselineOverride || onlyOfficeBaselineRef.current;
-    const maxAttempts = opts?.maxAttempts ?? 10;
-    const intervalMs = opts?.intervalMs ?? 1000;
+    const maxAttempts = opts?.maxAttempts ?? 3;
+    const intervalMs = opts?.intervalMs ?? 200;
 
     return (async () => {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {

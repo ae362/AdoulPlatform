@@ -20,14 +20,20 @@ export function escapeXml(text: string) {
 type InlineStyle = {
   bold?: boolean;
   italic?: boolean;
+  fontSize?: number;
 };
+
+export function buildPageBreakXml() {
+  return '<w:p><w:pPr><w:bidi/><w:jc w:val="both"/><w:rPr><w:rFonts w:ascii="Amiri" w:hAnsi="Amiri" w:eastAsia="Amiri" w:cs="Amiri"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:rtl/><w:lang w:val="ar-SA"/></w:rPr></w:pPr><w:r><w:br w:type="page"/></w:r></w:p>';
+}
 
 function buildRunXml(text: string, style: InlineStyle) {
   const safe = escapeXml(text);
+  const szVal = style.fontSize ? String(style.fontSize) : '26';
   const runPrParts: string[] = [
-    '<w:rFonts w:ascii="Traditional Arabic" w:hAnsi="Traditional Arabic" w:eastAsia="Traditional Arabic" w:cs="Traditional Arabic"/>',
-    '<w:sz w:val="28"/>',
-    '<w:szCs w:val="28"/>',
+    '<w:rFonts w:ascii="Amiri" w:hAnsi="Amiri" w:eastAsia="Amiri" w:cs="Amiri"/>',
+    `<w:sz w:val="${szVal}"/>`,
+    `<w:szCs w:val="${szVal}"/>`,
     '<w:color w:val="000000"/>',
     '<w:rtl/>',
     '<w:lang w:val="ar-SA"/>'
@@ -44,17 +50,17 @@ function buildRunXml(text: string, style: InlineStyle) {
 }
 
 function buildBreakRunXml() {
-  return '<w:r><w:rPr><w:rFonts w:ascii="Traditional Arabic" w:hAnsi="Traditional Arabic" w:cs="Traditional Arabic"/><w:sz w:val="28"/><w:szCs w:val="28"/><w:color w:val="000000"/><w:rtl/><w:lang w:val="ar-SA"/></w:rPr><w:br/></w:r>';
+  return '<w:r><w:rPr><w:rFonts w:ascii="Amiri" w:hAnsi="Amiri" w:eastAsia="Amiri" w:cs="Amiri"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:color w:val="000000"/><w:rtl/><w:lang w:val="ar-SA"/></w:rPr><w:br/></w:r>';
 }
 
-export function buildRtlParagraphXml(runsXml: string) {
+export function buildRtlParagraphXml(runsXml: string, align: 'both' | 'right' | 'center' = 'both') {
   return (
     '<w:p>' +
     '<w:pPr>' +
     '<w:pStyle w:val="Normal"/>' +
     '<w:bidi/>' +
-    '<w:jc w:val="right"/>' +
-    '<w:spacing w:after="0" w:line="360" w:lineRule="auto"/>' +
+    `<w:jc w:val="${align}"/>` +
+    '<w:spacing w:before="120" w:after="160" w:line="360" w:lineRule="auto"/>' +
     '<w:ind w:right="140" w:left="140"/>' +
     '<w:pBdr>' +
     '<w:top w:val="nil"/>' +
@@ -63,6 +69,13 @@ export function buildRtlParagraphXml(runsXml: string) {
     '<w:right w:val="nil"/>' +
     '<w:between w:val="nil"/>' +
     '</w:pBdr>' +
+    '<w:rPr>' +
+    '<w:rFonts w:ascii="Amiri" w:hAnsi="Amiri" w:eastAsia="Amiri" w:cs="Amiri"/>' +
+    '<w:sz w:val="26"/>' +
+    '<w:szCs w:val="26"/>' +
+    '<w:rtl/>' +
+    '<w:lang w:val="ar-SA"/>' +
+    '</w:rPr>' +
     '</w:pPr>' +
     runsXml +
     '</w:p>'
@@ -111,10 +124,43 @@ export function htmlToPlainText(html: string) {
 }
 
 function buildParagraphFromElement(el: Element, listPrefix?: string) {
+  const element = el as HTMLElement;
+  const tag = element.tagName.toLowerCase();
+
+  // Page break detection
+  if (
+    element.classList.contains('page-break') ||
+    element.classList.contains('pagebreak') ||
+    element.style?.pageBreakBefore === 'always' ||
+    element.style?.pageBreakAfter === 'always'
+  ) {
+    return buildPageBreakXml();
+  }
+
+  const isHeading = /^h[1-6]$/.test(tag);
+  const headingSizeMap: Record<string, number> = {
+    h1: 34,
+    h2: 30,
+    h3: 28,
+    h4: 26,
+    h5: 24,
+    h6: 22,
+  };
+  const baseSize = isHeading ? (headingSizeMap[tag] || 28) : undefined;
+  const baseBold = isHeading ? true : undefined;
+
+  let align: 'both' | 'right' | 'center' = 'both';
+  const textAlign = (element.style?.textAlign || element.getAttribute('align') || '').toLowerCase();
+  if (textAlign === 'center' || element.classList.contains('text-center')) {
+    align = 'center';
+  } else if (textAlign === 'right') {
+    align = 'right';
+  }
+
   const runs: string[] = [];
 
   if (listPrefix) {
-    runs.push(buildRunXml(listPrefix, { bold: true }));
+    runs.push(buildRunXml(listPrefix, { bold: true, fontSize: baseSize }));
   }
 
   const walk = (node: Node, style: InlineStyle) => {
@@ -126,36 +172,40 @@ function buildParagraphFromElement(el: Element, listPrefix?: string) {
 
     if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-    const element = node as HTMLElement;
-    const tag = element.tagName.toLowerCase();
+    const childEl = node as HTMLElement;
+    const childTag = childEl.tagName.toLowerCase();
 
-    if (tag === 'br') {
+    if (childTag === 'br') {
       runs.push(buildBreakRunXml());
       return;
     }
 
     const nextStyle: InlineStyle = { ...style };
-    if (tag === 'strong' || tag === 'b') nextStyle.bold = true;
-    if (tag === 'em' || tag === 'i') nextStyle.italic = true;
+    if (childTag === 'strong' || childTag === 'b') nextStyle.bold = true;
+    if (childTag === 'em' || childTag === 'i') nextStyle.italic = true;
 
     // For nested blocks inside a paragraph, just walk children.
-    element.childNodes.forEach((child) => walk(child, nextStyle));
+    childEl.childNodes.forEach((child) => walk(child, nextStyle));
   };
 
-  el.childNodes.forEach((child) => walk(child, {}));
+  const initialStyle: InlineStyle = {};
+  if (baseBold) initialStyle.bold = true;
+  if (baseSize) initialStyle.fontSize = baseSize;
+
+  el.childNodes.forEach((child) => walk(child, initialStyle));
 
   // Ensure at least one run so Word doesn't drop the paragraph
   if (runs.length === 0) {
-    runs.push(buildRunXml('', {}));
+    runs.push(buildRunXml('', initialStyle));
   }
 
-  return buildRtlParagraphXml(runs.join(''));
+  return buildRtlParagraphXml(runs.join(''), align);
 }
 
 export function htmlToWordBodyInnerXml(html: string) {
   if (typeof document === 'undefined') {
     const lines = htmlToPlainText(html).split(/\n/);
-    return lines.map((l) => buildRtlParagraphXml(buildRunXml(l, {}))).join('');
+    return lines.map((l) => buildRtlParagraphXml(buildRunXml(l, {}), 'both')).join('');
   }
 
   const wrapper = document.createElement('div');
@@ -163,7 +213,7 @@ export function htmlToWordBodyInnerXml(html: string) {
 
   const paragraphs: string[] = [];
 
-  const blockSelector = 'p,div,h1,h2,h3,h4,h5,h6';
+  const blockSelector = 'p,div,h1,h2,h3,h4,h5,h6,hr.page-break,hr.pagebreak,.page-break,.pagebreak';
   const blocks = Array.from(wrapper.querySelectorAll(blockSelector));
 
   // If there are no block tags, treat whole content as one paragraph.
@@ -173,6 +223,9 @@ export function htmlToWordBodyInnerXml(html: string) {
   }
 
   for (const block of blocks) {
+    if (block.parentElement && blocks.includes(block.parentElement) && block.tagName.toLowerCase() !== 'hr' && !block.classList.contains('page-break')) {
+      continue;
+    }
     paragraphs.push(buildParagraphFromElement(block));
   }
 

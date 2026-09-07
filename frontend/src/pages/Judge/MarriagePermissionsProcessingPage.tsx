@@ -19,8 +19,10 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { MarriagePermissionApprovalTemplate } from '../../components/MarriagePermissionApprovalTemplate';
 import { MarriageDocumentView } from '../../components/MarriageDocumentView';
+import { MarriageDualInspectorModal, ComplianceRule } from './components/MarriageDualInspectorModal';
+import { MarriageAttachmentItem } from './components/MarriageAttachmentCarousel';
 import { useAuth } from '../../contexts/AuthContext';
-import { X, Plus, Minus, Download, Search, FileText, CheckCircle2, AlertCircle, Paperclip, Shield } from 'lucide-react';
+import { X, Plus, Minus, Download, Search, FileText, CheckCircle2, AlertCircle, Paperclip, Shield, Columns } from 'lucide-react';
 
 ChartJS.register(
   CategoryScale,
@@ -56,6 +58,7 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
   const [activeDocTab, setActiveDocTab] = useState<'original' | 'compare' | 'attachments'>('original');
   const [modalDocTab, setModalDocTab] = useState<'original' | 'attachments'>('original');
   const [selectedAttachmentUrl, setSelectedAttachmentUrl] = useState<string | null>(null);
+  const [isDualInspectorOpen, setIsDualInspectorOpen] = useState(false);
 
   // tRPC Queries
   const { data: rawRequests, refetch, isLoading } = trpc.permissions.getAllMarriage.useQuery();
@@ -71,10 +74,76 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
     [rawRequests, user?.id]
   );
 
-  const selectedRequest = useMemo(() => 
-    requests?.find(r => r.id === selectedRequestId), 
+  const selectedRequest = useMemo(() =>
+    requests?.find(r => r.id === selectedRequestId),
     [requests, selectedRequestId]
   );
+
+  // Categorize attachments for the Dual Inspector
+  const parsedAttachments = useMemo(() => {
+    if (!selectedRequest) return { husband: [] as MarriageAttachmentItem[], wife: [] as MarriageAttachmentItem[], additional: [] as MarriageAttachmentItem[] };
+    const husband: MarriageAttachmentItem[] = [];
+    const wife: MarriageAttachmentItem[] = [];
+    const additional: MarriageAttachmentItem[] = [];
+    const rawList: any[] = [];
+    try {
+      if (selectedRequest.attachments) {
+        const parsed = typeof selectedRequest.attachments === 'string' ? JSON.parse(selectedRequest.attachments) : selectedRequest.attachments;
+        if (Array.isArray(parsed)) rawList.push(...parsed);
+        else if (parsed?.url || parsed?.fileUrl) rawList.push(parsed);
+      }
+    } catch (e) {}
+    try {
+      const dataAtt = (selectedRequest.data as any)?.attachments || (selectedRequest.data as any)?.files;
+      if (dataAtt) {
+        const parsed = typeof dataAtt === 'string' ? JSON.parse(dataAtt) : dataAtt;
+        if (Array.isArray(parsed)) rawList.push(...parsed);
+        else if (parsed?.url || parsed?.fileUrl) rawList.push(parsed);
+      }
+    } catch (e) {}
+    const seenUrls = new Set();
+    const uniqueItems = [];
+    for (const item of rawList) {
+      const url = typeof item === 'string' ? item : (item.fileUrl || item.url || item.path);
+      if (url && !seenUrls.has(url)) { seenUrls.add(url); uniqueItems.push(typeof item === 'string' ? { fileUrl: item, title: '' } : item); }
+    }
+    uniqueItems.forEach((item, idx) => {
+      const url = item.fileUrl || item.url || '';
+      const title = item.title || item.name || item.fileName || `مستند إثبات رقم ${idx + 1}`;
+      const lower = (title + ' ' + url).toLowerCase();
+      let type: 'PDF' | 'DOCX' | 'IMAGE' | 'HTML' | string = 'PDF';
+      if (url.match(/\.(png|jpe?g|webp|gif|bmp|svg)($|\?)/i) || url.startsWith('data:image')) type = 'IMAGE';
+      else if (url.match(/\.(docx|doc)($|\?)/i)) type = 'DOCX';
+      else if (url.match(/\.html?($|\?)/i)) type = 'HTML';
+
+      if (lower.includes('suitor') || lower.includes('husband') || lower.includes('خاطب') || lower.includes('cin_suitor')) {
+        husband.push({ id: item.id || `att-${idx}`, title, fileUrl: url, type, group: 'husband' });
+      } else if (lower.includes('bride') || lower.includes('wife') || lower.includes('مخطوبة') || lower.includes('cin_bride')) {
+        wife.push({ id: item.id || `att-${idx}`, title, fileUrl: url, type, group: 'wife' });
+      } else {
+        additional.push({ id: item.id || `att-${idx}`, title, fileUrl: url, type, group: 'additional' });
+      }
+    });
+    return { husband, wife, additional };
+  }, [selectedRequest]);
+
+  // Automated compliance checks for Dual Inspector
+  const complianceChecks = useMemo<ComplianceRule[]>(() => {
+    if (!selectedRequest) return [];
+    const data = (selectedRequest.data as any) || {};
+    const suitorAge = Number(data.suitorAge) || 0;
+    const brideAge = Number(data.brideAge) || 0;
+    const isMinor = (suitorAge > 0 && suitorAge < 18) || (brideAge > 0 && brideAge < 18);
+    const isPolygamy = data.marriageType === 'تعدد';
+    const hasConflicts = !!data.hasConflicts;
+    const medicalFound = parsedAttachments.husband.some((a) => a.title.includes('طب') || a.fileUrl.includes('med')) || parsedAttachments.wife.some((a) => a.title.includes('طب')) || parsedAttachments.additional.some((a) => a.title.includes('طب'));
+    return [
+      { id: 'rule-age', label: 'المادة 19 و 20 (سن الزواج)', description: 'فحص سن الرشد.', status: (isMinor ? 'red' : 'green') as 'red' | 'green', category: 'age', message: isMinor ? `عائق السن: ${suitorAge < 18 ? `الخاطب قاصر (${suitorAge} سنة) ` : ''}${brideAge < 18 ? `المخطوبة قاصرة (${brideAge} سنة)` : ''}` : 'طرفا العقد راشدان قانوناً.' },
+      { id: 'rule-status', label: 'المادة 65 (الحالة المدنية)', description: 'فحص التصريحات.', status: (hasConflicts ? 'red' : 'green') as 'red' | 'green', category: 'status', message: hasConflicts ? 'تم رصد تعارض في سجلات الحالة المدنية.' : 'البيانات مطابقة وسليمة.' },
+      { id: 'rule-polygamy', label: 'المادة 40 (التعدد)', description: 'ضوابط التعدد.', status: (isPolygamy ? 'amber' : 'green') as 'amber' | 'green', category: 'custom', message: isPolygamy ? 'طلب تعددي - يتطلب فحص المبرر.' : 'زواج عادي أحادي.' },
+      { id: 'rule-medical', label: 'المادة 65 (الشهادة الطبية)', description: 'فحص الشهادة الطبية.', status: (medicalFound ? 'green' : 'amber') as 'green' | 'amber', category: 'medical', message: 'تم فحص المرفقات الطبية.' }
+    ];
+  }, [selectedRequest, parsedAttachments]);
 
   // Statistics Calculation
   const stats = useMemo(() => {
@@ -345,10 +414,13 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                           
                           <button 
                             onClick={() => setIsZoomed(true)}
+                            onClick={() => setIsDualInspectorOpen(true)}
                             className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-xl flex items-center gap-3 active:scale-95"
                           >
                              <Search size={16} />
                              معاينة واختبار (Zoom)
+                             <Columns size={16} />
+                             معاينة مزدوجة
                           </button>
                           
                           <button 
@@ -404,6 +476,7 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                                 <div 
                                   className="w-full max-w-[850px] bg-white shadow-[0_30px_70px_rgba(0,0,0,0.15)] relative transition-all duration-700 hover:shadow-[0_45px_100px_rgba(0,0,0,0.2)] rounded-sm cursor-zoom-in group/doc grow-0 h-fit"
                                   onClick={() => setIsZoomed(true)}
+                                  onClick={() => setIsDualInspectorOpen(true)}
                                 >
                                    <div className="p-1 pointer-events-none scale-[0.98] origin-top">
                                       <MarriageDocumentView data={selectedRequest.data || {}} notaryData={selectedRequest as any} />
@@ -470,9 +543,11 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                                          />
                                          <div 
                                            onClick={() => setIsZoomed(true)}
+                                           onClick={() => setIsDualInspectorOpen(true)}
                                            className="absolute top-6 right-6 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl opacity-0 group-hover/viewer:opacity-100 transition-all cursor-pointer hover:scale-110 active:scale-95 z-20"
                                          >
                                             <Search size={20} />
+                                            <Columns size={20} />
                                          </div>
                                       </div>
                                    ) : (
@@ -678,254 +753,24 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
         </div>
       )}
 
-      {/* Full Preview & Compare Modal - Redesigned Audit Station */}
-      {isZoomed && selectedRequest && (
-        <div className="fixed inset-0 bg-[#0f172a]/98 backdrop-blur-3xl z-[800] flex items-center justify-center p-0 animate-fadeIn">
-           <div className="w-full h-full flex flex-col overflow-hidden">
-              
-              {/* MODAL HEADER: Dark Judicial Glass */}
-              <div className="bg-slate-900/50 border-b border-white/5 px-10 py-5 flex items-center justify-between shadow-2xl z-50">
-                 <div className="flex items-center gap-10">
-                    <div className="flex items-center gap-4">
-                       <button 
-                         onClick={() => { setIsZoomed(false); setModalZoom(1); setDragOffset({ x: 0, y: 0 }); setModalDocTab('original'); }}
-                         className="w-12 h-12 bg-white/5 hover:bg-red-500/20 text-white hover:text-red-400 rounded-2xl flex items-center justify-center transition-all border border-white/10 group active:scale-90"
-                         title="Close Inspection"
-                       >
-                          <X size={24} className="group-hover:rotate-90 transition-transform" />
-                       </button>
-                       <div className="hidden lg:block">
-                          <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
-                             محطة الفحص والتدقيق الرقمي
-                             <span className="bg-blue-500 text-[10px] px-2 py-0.5 rounded-md font-black uppercase">v4.2</span>
-                          </h2>
-                          <div className="flex items-center gap-3 mt-1">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Live Inspection Mode • {selectedRequest.request_number}</p>
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* INTERFACE TABS */}
-                    <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-[1.5rem] flex gap-2 border border-white/5 shadow-2xl">
-                       <button 
-                         onClick={() => { setModalDocTab('original'); setModalZoom(1.2); setDragOffset({x:0, y:0}); }}
-                         className={`px-8 py-3 rounded-[1.1rem] text-[11px] font-black transition-all flex items-center gap-3 ${modalDocTab === 'original' ? 'bg-blue-600 text-white shadow-xl ring-1 ring-white/10 scale-[1.05]' : 'text-slate-500 hover:text-slate-300'}`}
-                       >
-                          <FileText size={16} />
-                          طلب الإذن الرئيسي
-                       </button>
-                       <button 
-                         onClick={() => { setModalDocTab('attachments'); setModalZoom(1.8); setDragOffset({x:0, y:0}); }}
-                         className={`px-8 py-3 rounded-[1.1rem] text-[11px] font-black transition-all flex items-center gap-3 ${modalDocTab === 'attachments' ? 'bg-blue-600 text-white shadow-xl ring-1 ring-white/10 scale-[1.05]' : 'text-slate-500 hover:text-slate-300'}`}
-                       >
-                          <Paperclip size={16} />
-                          المرفقات المرقمنة
-                       </button>
-                    </div>
-                 </div>
-
-                 <div className="flex items-center gap-6">
-                    {/* ZOOM ENGINE */}
-                    <div className="flex items-center bg-black/60 text-white rounded-2xl p-1 gap-1 border border-white/5">
-                       <button 
-                         onClick={() => setModalZoom(prev => Math.min(prev + 0.25, 4))}
-                         className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-all text-xl"
-                       >
-                          <Plus size={18} />
-                       </button>
-                       <div className="px-6 font-black text-[12px] font-mono border-x border-white/5 min-w-[70px] text-center text-blue-400">
-                          {Math.round(modalZoom * 100)}%
-                       </div>
-                       <button 
-                         onClick={() => setModalZoom(prev => Math.max(prev - 0.25, 0.5))}
-                         className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-all text-xl"
-                       >
-                          <Minus size={18} />
-                       </button>
-                       <button 
-                         onClick={() => { setModalZoom(modalDocTab === 'attachments' ? 1.8 : 1.2); setDragOffset({x:0, y:0}); }}
-                         className="px-4 text-[9px] font-black uppercase tracking-tighter hover:text-blue-400 transition-colors"
-                       >
-                         Reset
-                       </button>
-                    </div>
-
-                    <button 
-                      onClick={() => handleExportPDF(`zoom-marriage-${selectedRequest.id}`, `audit-${selectedRequest.request_number}`)}
-                      className="bg-white text-slate-900 h-12 px-8 rounded-2xl flex items-center gap-3 transition-all font-black text-xs shadow-2xl hover:scale-105 active:scale-95 group"
-                    >
-                       <Download size={16} className="group-hover:-translate-y-1 transition-transform" />
-                       تصدير نسخة التدقيق
-                    </button>
-                 </div>
-              </div>
-
-              <div className="flex-1 flex overflow-hidden">
-                 {/* SIDEBAR: SMART ANALYTICS (Ultra Sleek Dark) */}
-                 <div className="w-[320px] bg-[#020617] text-white p-8 overflow-y-auto shrink-0 shadow-[20px_0_50px_rgba(0,0,0,0.3)] z-20 flex flex-col border-r border-white/5">
-                    <div className="mb-10">
-                       <div className="flex items-center gap-4 mb-6">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                             <Shield size={20} className="text-blue-400" />
-                          </div>
-                          <div>
-                             <h4 className="text-[11px] font-black tracking-[1px] text-blue-100 uppercase">مركز الامتثال</h4>
-                             <p className="text-[8px] text-slate-500 font-black uppercase mt-0.5">Automated Analysis</p>
-                          </div>
-                       </div>
-                       <div className="h-[1px] w-full bg-slate-800"></div>
-                    </div>
-                    
-                    <div className="flex-1 space-y-10 custom-scrollbar pr-2">
-                       <Section label="نقاط المراقبة القانونية">
-                          <ComparisonPanel data={selectedRequest.data || {}} zoomMode />
-                       </Section>
-
-                       <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-black border border-white/10">
-                          <p className="text-[9px] font-black opacity-40 mb-3 text-blue-400 uppercase tracking-widest">توصية النظام القضائي</p>
-                          <p className="text-[11px] font-bold leading-relaxed text-slate-300">
-                             لم يتم رصد أي تناقضات جوهرية بين طلب الإذن والوثائق الملحقة. يرجى مطابقة الهوية البصرية بعناية قبل التوقيع الرقمي.
-                          </p>
-                       </div>
-                    </div>
-
-                    <div className="mt-8 pt-8 border-t border-white/5">
-                       <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-4">
-                          <span>Operator ID:</span>
-                          <span className="font-mono text-slate-400">{user?.id?.slice(0, 8) || 'JUDGE-01'}</span>
-                       </div>
-                       <button 
-                         onClick={() => setIsDecisionModalOpen(true)}
-                         className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-black text-xs transition-all shadow-xl shadow-blue-900/40"
-                       >
-                          اتخاذ القرار النهائي
-                       </button>
-                    </div>
-                 </div>
-
-                 {/* MAIN: THE CANVAS (High resolution viewport) */}
-                 <div 
-                   className={`flex-1 overflow-hidden bg-[#0f172a] shadow-inner flex justify-center items-start relative select-none animate-fadeIn ${modalZoom > 1 || modalDocTab === 'attachments' ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                   onMouseDown={handleMouseDown}
-                   onMouseMove={handleMouseMove}
-                   onMouseUp={handleMouseUp}
-                   onMouseLeave={handleMouseUp}
-                 >
-                    <div 
-                       className={`origin-top pointer-events-none will-change-transform mt-12 mb-40 ${isDragging ? '' : 'transition-transform duration-300'}`}
-                       style={{ 
-                         transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(${modalZoom})`,
-                         width: '1100px',
-                       }}
-                    >
-                       <div 
-                          id={`zoom-marriage-${selectedRequest.id}`}
-                          className="pointer-events-auto bg-white shadow-[0_50px_150px_rgba(0,0,0,0.6)] ring-1 ring-white/10 rounded-sm overflow-hidden"
-                       >
-                          {modalDocTab === 'original' ? (
-                             <div className="p-0.5">
-                                <MarriageDocumentView data={selectedRequest.data || {}} notaryData={selectedRequest as any} />
-                             </div>
-                          ) : (
-                             <div className="w-full h-[1600px] bg-white overflow-hidden flex flex-col relative">
-                                {selectedAttachmentUrl ? (
-                                   <>
-                                      <iframe 
-                                        src={`${selectedAttachmentUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`} 
-                                        className="flex-1 w-full h-full border-0 select-none pointer-events-none" 
-                                        title="Attachment" 
-                                      />
-                                      {/* Interaction Layer */}
-                                      <div className="absolute inset-0 z-10 bg-transparent" />
-                                   </>
-                                ) : (
-                                   <div className="h-[800px] flex flex-col items-center justify-center text-slate-200">
-                                      <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mb-6 border-2 border-dashed border-slate-100">
-                                         <FileText size={40} className="opacity-20" />
-                                      </div>
-                                      <p className="text-xl font-black text-slate-300">يرجى اختيار وثيقة للمعاينة</p>
-                                      <p className="text-sm font-bold text-slate-400 mt-2">استخدم اللوحة الجانبية على اليسار</p>
-                                   </div>
-                                )}
-                             </div>
-                          )}
-                       </div>
-                    </div>
-
-                    {/* INTERACTIVE HUD */}
-                    <div className="absolute bottom-10 left-10 right-10 flex justify-between items-end pointer-events-none">
-                       <div className="bg-slate-900/90 backdrop-blur-2xl text-white px-8 py-4 rounded-3xl border border-white/10 shadow-2xl flex items-center gap-6 animate-slideUp">
-                          <div className="flex items-center gap-3 border-l border-white/20 pl-6">
-                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                             <span className="text-[10px] font-black tracking-widest uppercase">Canvas Active</span>
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-300">👋 انقر واسحب للمناورة بالوثيقة • 🔍 استخدم أدوات التحكم أعلاه</p>
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* ATTACHMENTS LIST PANEL (Sleek High-Capacity) */}
-                 {modalDocTab === 'attachments' && (
-                    <div className="w-[300px] bg-[#020617] border-r border-white/5 overflow-hidden shrink-0 shadow-2xl z-20 flex flex-col animate-slideInRight">
-                       <div className="p-8 border-b border-white/5 bg-slate-900/50">
-                          <div className="flex items-center justify-between mb-2">
-                             <span className="text-[11px] font-black text-blue-400 uppercase tracking-widest">أرشيف المرفقات</span>
-                             <span className="bg-white/10 text-white text-[8px] px-2 py-0.5 rounded font-black italic">SECURE</span>
-                          </div>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase">قائمة الوثائق المستخرجة لهذا الملف</p>
-                       </div>
-                       
-                       <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
-                          {(() => {
-                             const attachments = [];
-                             try {
-                                if (selectedRequest.attachments) {
-                                   const parsed = typeof selectedRequest.attachments === 'string' ? JSON.parse(selectedRequest.attachments) : selectedRequest.attachments;
-                                   if (Array.isArray(parsed)) attachments.push(...parsed);
-                                   else if (parsed.url) attachments.push(parsed.url);
-                                }
-                             } catch(e) {}
-                             
-                             if (attachments.length === 0) return (
-                                <div className="text-center py-20">
-                                   <Paperclip size={40} className="mx-auto text-slate-800 mb-4 opacity-50" />
-                                   <p className="text-slate-500 font-bold italic text-xs">لا توجد وثائق متاحة</p>
-                                </div>
-                             );
-                             
-                             return attachments.map((url: any, idx: number) => (
-                                <button 
-                                   key={idx}
-                                   onClick={() => setSelectedAttachmentUrl(url)}
-                                   className={`w-full p-5 rounded-2xl transition-all flex items-center gap-4 group relative border ${selectedAttachmentUrl === url ? 'bg-blue-600 border-blue-400 text-white shadow-xl translate-x-1' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${selectedAttachmentUrl === url ? 'bg-white/20' : 'bg-slate-800'}`}>
-                                      <FileText size={16} />
-                                   </div>
-                                   <div className="text-right flex-1 overflow-hidden">
-                                      <p className={`text-[11px] font-black truncate transition-colors ${selectedAttachmentUrl === url ? 'text-white' : 'text-slate-300'}`}>الوثائق المرقمنة #{idx + 1}</p>
-                                      <p className="text-[9px] text-slate-500 font-bold mt-0.5 uppercase tracking-tighter overflow-hidden truncate">Valid Digital Copy</p>
-                                   </div>
-                                   {selectedAttachmentUrl === url && (
-                                     <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-                                   )}
-                                </button>
-                             ));
-                          })()}
-                       </div>
-                       
-                       <div className="p-8 bg-black/40 border-t border-white/5">
-                          <div className="bg-blue-900/20 border border-blue-900/30 p-4 rounded-xl">
-                             <p className="text-[9px] font-black text-blue-400 uppercase mb-1">Audit Note</p>
-                             <p className="text-[10px] text-slate-400 leading-tight">جميع المرفقات مشفرة ومؤمنة بالنظام.</p>
-                          </div>
-                       </div>
-                    </div>
-                 )}
-              </div>
-           </div>
-        </div>
+      {/* Marriage Permissions Dual Document Inspector Modal */}
+      {selectedRequest && (
+        <MarriageDualInspectorModal
+          isOpen={isDualInspectorOpen}
+          onClose={() => setIsDualInspectorOpen(false)}
+          requestNumber={selectedRequest.request_number || ''}
+          requestData={selectedRequest.data || {}}
+          notaryData={selectedRequest as any}
+          primaryPdfUrl={(selectedRequest as any)?.primaryPdfUrl || (selectedRequest as any)?.pdf_url || (selectedRequest as any)?.url}
+          husbandAttachments={parsedAttachments.husband}
+          wifeAttachments={parsedAttachments.wife}
+          additionalAttachments={parsedAttachments.additional}
+          complianceChecks={complianceChecks}
+          onOpenDecisionModal={() => {
+            setIsDualInspectorOpen(false);
+            setIsDecisionModalOpen(true);
+          }}
+        />
       )}
 
       {/* Decision Document Preview Modal */}
@@ -1180,7 +1025,7 @@ const AdminMarriageForm = ({ onClose, onSuccess }: any) => {
       await createMutation.mutateAsync({
         fullName: `${formData.suitorFirstNameAr} ${formData.suitorLastNameAr}`,
         professionalNumber: user?.full_name || 'JUDGE-ADMIN',
-        jurisdiction: user?.jurisdiction || 'محكمة الاستئناف بتطوان',
+        jurisdiction: (user as any)?.jurisdiction || 'محكمة الاستئناف بتطوان',
         data: formData,
       });
       alert('تم تسجيل طلب الزواج بنجاح');

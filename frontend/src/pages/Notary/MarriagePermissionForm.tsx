@@ -316,14 +316,14 @@ const MarriagePermissionForm: React.FC<MarriagePermissionFormProps> = ({
       return {
         ...prev,
         finalSignature: completed,
-        finalSignatureData: completed ? nextSignatures.adoul2 || nextSignatures.adoul1 : null,
+        finalSignatureData: (completed ? nextSignatures.adoul2 || nextSignatures.adoul1 : null) as any,
         notarySigning: {
           enabled: true,
           completed,
           completedAt: completed ? new Date().toISOString() : null,
           signatures: nextSignatures,
         },
-      };
+      } as any;
     });
 
     if (activeNotarySlot === 'adoul1' && hasDualNotaryPair) {

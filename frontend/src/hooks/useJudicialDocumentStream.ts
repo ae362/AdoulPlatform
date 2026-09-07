@@ -104,8 +104,13 @@ export function useJudicialDocumentStream(
           headers['x-session-token'] = sessionToken;
         }
 
-        const response = await fetch(rawInput, {
+        const cacheBustedUrl = rawInput.startsWith('data:') || rawInput.startsWith('blob:') || rawInput.includes('cb=')
+          ? rawInput
+          : `${rawInput}${rawInput.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+
+        const response = await fetch(cacheBustedUrl, {
           signal: abortController.signal,
+          cache: 'no-store',
           headers: Object.keys(headers).length > 0 ? headers : undefined,
         });
 

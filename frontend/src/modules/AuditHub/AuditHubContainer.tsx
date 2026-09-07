@@ -29,6 +29,7 @@ import {
   Pencil,
   Save,
   Upload,
+  FileDown,
   Edit3,
   AlertCircle,
   PlusCircle,
@@ -57,6 +58,7 @@ import {
 import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
 import type { FeesAgentState } from '../FeesAgent';
+import { generateDocxBlobFromTemplate } from '../../utils/docxTemplate';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { saveAs } from 'file-saver';
@@ -519,9 +521,12 @@ export const AuditHubContainer: React.FC = () => {
           : (att.url || att.fileUrl || att.file_url || att.fileURL || att.publicUrl || att.public_url || null);
       if (!url) return null;
 
-      const category = (att.category || fallbackCategory || 'judge_attachment').toString();
+      const category = (att.category || fallbackCategory || 'supporting_doc').toString();
+      const isManual = Boolean((att?.field || '').toString().includes('manualRasmFile')) ||
+        Boolean((att?.category || '').toString().toLowerCase() === 'manual_rasm');
+      const isPrimaryFlag = Boolean(att?.isJudgePrimary) || Boolean(att?.isPrimary);
       return {
-        id: `judge-submission-attachment-${category}-${name}-${String(att.size || '')}`,
+        id: att.id || `judge-submission-attachment-${category}-${name}-${String(att.size || '')}`,
         category,
         fileName: name,
         name,
@@ -529,21 +534,27 @@ export const AuditHubContainer: React.FC = () => {
         url,
         mimeType: type,
         type,
-        isJudgePrimary:
-          Boolean(att?.isJudgePrimary) ||
-          category.toLowerCase().includes('judge_attachment') ||
-          Boolean((att?.field || '').toString().includes('manualRasmFile')),
+        isJudgePrimary: isPrimaryFlag || isManual,
       };
     };
 
     const out: any[] = [];
 
-    const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
-    if (singleDoc) out.push(singleDoc);
+    const extraCandidateFiles = [
+      effectiveJudgePayload?.attachment,
+      effectiveJudgePayload?.judgeAttachment,
+      effectiveJudgePayload?.manualRasmFile,
+      effectiveJudgePayload?.judgeAcceptedDoc,
+      effectiveJudgePayload?.baseDoc,
+      ...(Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : []),
+      ...(Array.isArray(effectiveJudgePayload?.files) ? effectiveJudgePayload.files : []),
+      ...(Array.isArray(effectiveJudgePayload?.supportingDocuments) ? effectiveJudgePayload.supportingDocuments : []),
+      ...(Array.isArray(effectiveJudgePayload?.id_cards) ? effectiveJudgePayload.id_cards : []),
+      ...(Array.isArray(effectiveJudgePayload?.fiscal_receipts) ? effectiveJudgePayload.fiscal_receipts : []),
+    ].filter(Boolean);
 
-    const list = Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : [];
-    for (const att of list) {
-      const d = normalizeToDoc(att, att?.category);
+    for (const att of extraCandidateFiles) {
+      const d = normalizeToDoc(att, att?.category || att?.field || 'supporting_doc');
       if (!d) continue;
       out.push(d);
     }
@@ -641,20 +652,75 @@ export const AuditHubContainer: React.FC = () => {
   }, [isWordLikeDoc, judgeAttachmentDocs]);
 
   const judgePrimaryDoc = useMemo(() => {
-    const canonicalPreviewUrl = String((effectiveJudgeSubmission as any)?.previewUrl || '').trim();
+    // 1. Canonical compiled preview URL from submission record
+    const canonicalPreviewUrl = String(
+      (effectiveJudgeSubmission as any)?.previewUrl ||
+      (effectiveJudgeSubmission as any)?.finalPdfUrl ||
+      (effectiveJudgeSubmission as any)?.preview_url ||
+      ''
+    ).trim();
+
     if (canonicalPreviewUrl) {
       return {
         id: `judge-primary-preview-${String((effectiveJudgeSubmission as any)?.id || '')}`,
         category: 'judge_attachment',
         fileName:
-          String((effectiveJudgeSubmission as any)?.previewName || 'judge-preview.pdf').trim() || 'judge-preview.pdf',
+          String((effectiveJudgeSubmission as any)?.previewName || 'المحرر القضائي المعتمد.pdf').trim() || 'المحرر القضائي المعتمد.pdf',
         name:
-          String((effectiveJudgeSubmission as any)?.previewName || 'judge-preview.pdf').trim() || 'judge-preview.pdf',
+          String((effectiveJudgeSubmission as any)?.previewName || 'المحرر القضائي المعتمد.pdf').trim() || 'المحرر القضائي المعتمد.pdf',
         fileUrl: canonicalPreviewUrl,
         url: canonicalPreviewUrl,
         mimeType: String((effectiveJudgeSubmission as any)?.previewMimeType || 'application/pdf'),
         type: String((effectiveJudgeSubmission as any)?.previewMimeType || 'application/pdf'),
         isJudgePrimary: true,
+      };
+    }
+
+    // 2. Compiled PDF from rasmQuery.data or payload pointers
+    const rasmData = rasmQuery.data as any;
+    const candidatePdfUrls = [
+      { url: rasmData?.previewUrl || rasmData?.preview_url, name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf' },
+      { url: rasmData?.finalPdfUrl || rasmData?.final_pdf_url, name: 'المستند النهائي المعتمد.pdf' },
+      { url: rasmData?.latestDraftPdfUrl, name: 'مسودة الرسم المعتمدة.pdf' },
+      { url: rasmData?.latestSigningPdfUrl, name: 'مستند التوقيع المعتمد.pdf' },
+      { url: (rasmData?.state as any)?.latestSigningPdfUrl || (rasmData?.state as any)?.previewUrl || (rasmData?.state as any)?.latestDraftPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+      { url: (rasmData?.payload as any)?.previewUrl || (rasmData?.payload as any)?.finalPdfUrl || (rasmData?.payload as any)?.latestDraftPdfUrl || (rasmData?.payload as any)?.latestSigningPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+      { url: (effectiveJudgePayload as any)?.previewUrl || (effectiveJudgePayload as any)?.finalPdfUrl || (effectiveJudgePayload as any)?.latestSigningPdfUrl || (effectiveJudgePayload as any)?.latestDraftPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+    ];
+
+    for (const cand of candidatePdfUrls) {
+      const u = String(cand.url || '').trim();
+      if (u && (u.toLowerCase().endsWith('.pdf') || u.includes('.pdf') || u.startsWith('data:application/pdf') || u.startsWith('http') || u.startsWith('blob:'))) {
+        return {
+          id: `judge-primary-pdf-${String(rasmData?.id || (effectiveJudgeSubmission as any)?.id || '')}`,
+          category: 'judge_attachment',
+          fileName: cand.name,
+          name: cand.name,
+          fileUrl: u,
+          url: u,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        };
+      }
+    }
+
+    // 3. Prefer compiled PDF from judgeAttachmentDocs if available
+    const compiledPdfFromAttachments = judgeAttachmentDocs.find((d: any) => isPdfLikeDoc(d));
+    if (compiledPdfFromAttachments) {
+      return {
+        ...compiledPdfFromAttachments,
+        isJudgePrimary: true,
+      };
+    }
+
+    // 4. Prefer official binary DOCX attachment if available
+    const compiledWordFromAttachments = judgeAttachmentDocs.find((d: any) => isWordLikeDoc(d));
+    if (compiledWordFromAttachments) {
+      return {
+        ...compiledWordFromAttachments,
+        isJudgePrimary: true,
+        isWord: true,
       };
     }
 
@@ -672,6 +738,7 @@ export const AuditHubContainer: React.FC = () => {
       if (!url) return null;
 
       const category = (att.category || fallbackCategory || 'judge_attachment').toString();
+      const isWord = isWordLikeDoc({ fileName: name, mimeType: type, url });
       return {
         id: `judge-primary-${category}-${name}-${String(att.size || '')}`,
         category,
@@ -681,13 +748,14 @@ export const AuditHubContainer: React.FC = () => {
         url,
         mimeType: type,
         type,
+        isWord,
         isJudgePrimary: true,
       };
     };
 
     const list = Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : [];
     const manual = list.find((a: any) => (a?.field || '').toString().includes('manualRasmFile'));
-    const judgeCategory = list.find((a: any) => (a?.category || '').toString().toLowerCase() === 'judge_attachment');
+    const judgeCategory = list.find((a: any) => (a?.category || '').toString().toLowerCase() === 'judge_attachment' || (a?.category || '').toString().toLowerCase() === 'judge_attachment_docx');
 
     const primaryAttachment = manual || judgeCategory || null;
     const primaryAttachmentDoc = normalizeToDoc(primaryAttachment, primaryAttachment?.category);
@@ -696,11 +764,13 @@ export const AuditHubContainer: React.FC = () => {
     const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
     if (singleDoc) return singleDoc;
 
+    // 5. Fallback ONLY to HTML or text draft if no compiled binary exists
     if (effectiveJudgePayload?.rasmHtml) {
       return {
         id: 'judge-smart-rasm',
         fileName: 'المحرر القضائي (المعتمد)',
         rasmHtml: effectiveJudgePayload.rasmHtml,
+        rawContent: effectiveJudgePayload.rasmHtml,
         isSmartDraft: true,
         isJudgePrimary: true,
       };
@@ -712,12 +782,13 @@ export const AuditHubContainer: React.FC = () => {
         fileName: 'مسودة القاضي',
         isDraft: true,
         content: effectiveJudgePayload.draft,
+        rawContent: effectiveJudgePayload.draft,
         isJudgePrimary: true,
       };
     }
 
     return null;
-  }, [effectiveJudgePayload, effectiveJudgeSubmission]);
+  }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, isWordLikeDoc, judgeAttachmentDocs, rasmQuery.data]);
 
   const attachmentTabDocs = useMemo(() => {
     const normalizeSavedAttachment = (att: any) => {
@@ -742,16 +813,7 @@ export const AuditHubContainer: React.FC = () => {
       };
     };
 
-    const isMainRasmCategory = (category: string) =>
-      category === 'primary_attachment' ||
-      category === 'deed' ||
-      category === 'rasm' ||
-      category === 'contract' ||
-      category === 'title_documents' ||
-      category === 'post_registration' ||
-      category.includes('judge_attachment');
-
-    const rawSaved = Array.isArray((rasmQuery.data as any)?.attachments) ? rasmQuery.data.attachments : [];
+    const rawSaved = Array.isArray((rasmQuery.data as any)?.attachments) ? (rasmQuery.data as any).attachments : [];
     const savedDocs = rawSaved
       .map(normalizeSavedAttachment)
       .filter(Boolean)
@@ -760,16 +822,8 @@ export const AuditHubContainer: React.FC = () => {
         return !category.startsWith('audit_');
       });
 
-    const mainDocUrls = new Set(
-      [judgePrimaryDoc, judgeAttachmentDoc]
-        .map((doc: any) => String(doc?.url || doc?.fileUrl || '').trim())
-        .filter(Boolean)
-    );
-    const mainDocNames = new Set(
-      [judgePrimaryDoc, judgeAttachmentDoc]
-        .map((doc: any) => String(doc?.fileName || doc?.name || '').trim().toLowerCase())
-        .filter(Boolean)
-    );
+    const primaryUrl = String(judgePrimaryDoc?.url || judgePrimaryDoc?.fileUrl || '').trim();
+    const primaryName = String(judgePrimaryDoc?.fileName || judgePrimaryDoc?.name || '').trim().toLowerCase();
 
     const merged = [...judgeAttachmentDocs, ...savedDocs];
     const seen = new Set<string>();
@@ -777,18 +831,19 @@ export const AuditHubContainer: React.FC = () => {
       const category = String(doc?.category || '').toLowerCase();
       const url = String(doc?.url || doc?.fileUrl || '').trim();
       const fileName = String(doc?.fileName || doc?.name || '').trim().toLowerCase();
-      if (Boolean(doc?.isJudgePrimary) || isMainRasmCategory(category)) {
-        return false;
-      }
-      if (url && mainDocUrls.has(url)) return false;
-      if (fileName && mainDocNames.has(fileName)) return false;
 
-      const key = `${String(doc?.url || '').trim()}||${String(doc?.fileName || doc?.name || '').trim()}`;
+      // Filter out only if it's the primary deed itself or an internal audit edit artifact
+      if (primaryUrl && url === primaryUrl) return false;
+      if (primaryName && fileName === primaryName && (category === 'primary_attachment' || category === 'deed' || category === 'rasm')) return false;
+      if (category.startsWith('audit_')) return false;
+      if (Boolean(doc?.isJudgePrimary) && (category === 'primary_attachment' || category === 'deed' || category === 'rasm')) return false;
+
+      const key = `${url}||${fileName}`;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [judgeAttachmentDoc, judgeAttachmentDocs, judgePrimaryDoc, (rasmQuery.data as any)?.attachments]);
+  }, [judgeAttachmentDocs, judgePrimaryDoc, (rasmQuery.data as any)?.attachments]);
 
   useEffect(() => {
     if (activeTab !== 'attachments') return;
@@ -969,6 +1024,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   const [activeEditedArtifact, setActiveEditedArtifact] = useState<null | {
     versionId: string;
     url: string;
+    pdfUrl?: string | null;
     kind: 'pdf' | 'docx';
   }>(null);
   const [onlyOfficeMode, setOnlyOfficeMode] = useState<'overlay' | 'embedded'>('overlay');
@@ -1056,16 +1112,50 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   const onlyOfficeRequestSeqRef = useRef(0);
   const onlyOfficeEmbeddedRetryRef = useRef(0);
 
+  type ActiveViewMode = 'preview' | 'onlyoffice';
+  const [activeViewMode, setActiveViewMode] = useState<ActiveViewMode>('preview');
+  const [isImportingDocx, setIsImportingDocx] = useState(false);
+  const docxImportInputRef = useRef<HTMLInputElement>(null);
+
+  const [isAuditHubEditMode, setIsAuditHubEditMode] = useState(false);
+  const [isSavingEdits, setIsSavingEdits] = useState(false);
+
+  const currentDraftText = useMemo(() => {
+    const raw =
+      (state as any)?.draft ||
+      (rasmQuery.data as any)?.draft ||
+      ((rasmQuery.data as any)?.payload as any)?.draft ||
+      ((rasmQuery.data as any)?.payload as any)?.rasmHtml ||
+      (state as any)?.rasmHtml ||
+      (selectedVaultDoc as any)?.content ||
+      (selectedVaultDoc as any)?.rawContent ||
+      (judgePrimaryDoc as any)?.rawContent ||
+      '';
+    if (typeof raw === 'string' && raw.includes('<') && raw.includes('>')) {
+      return stripHtmlToPlainText(raw);
+    }
+    return String(raw || '').trim();
+  }, [judgePrimaryDoc, rasmQuery.data, selectedVaultDoc, state]);
+
   const forcedViewerDoc = useMemo(() => {
-    if ((activeDocVersion as any) === 'edited') return selectedVaultDoc;
-    if (selectedVaultDoc && isWordLikeDoc(selectedVaultDoc)) return selectedVaultDoc;
-    if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) return judgePrimaryDoc;
-    return selectedVaultDoc;
-  }, [activeDocVersion, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc]);
+    const base = (() => {
+      if ((activeDocVersion as any) === 'edited') return selectedVaultDoc;
+      if (selectedVaultDoc && isWordLikeDoc(selectedVaultDoc)) return selectedVaultDoc;
+      if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) return judgePrimaryDoc;
+      return selectedVaultDoc;
+    })();
+
+    if (!base) return base;
+    return {
+      ...base,
+      content: base.content || currentDraftText,
+      rawContent: base.rawContent || currentDraftText,
+    };
+  }, [activeDocVersion, currentDraftText, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc]);
   const isEmbeddedOnlyOfficePreviewTab =
     activeTab === 'formal' || activeTab === 'legal' || activeTab === 'data';
   const isEmbeddedOnlyOfficeActive =
-    isEmbeddedOnlyOfficePreviewTab && activeDocVersion === 'base';
+    (activeViewMode === 'onlyoffice' || isAuditHubEditMode) && isEmbeddedOnlyOfficePreviewTab && activeDocVersion === 'base';
   const shouldRenderOnlyOfficePrimaryPane = isEmbeddedOnlyOfficeActive;
   const shouldMountEmbeddedOnlyOffice =
     isEmbeddedOnlyOfficeActive &&
@@ -1246,7 +1336,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       }
 
       const outBytes = await pdfDoc.save();
-      const blob = new Blob([outBytes], { type: 'application/pdf' });
+      const blob = new Blob([outBytes as any], { type: 'application/pdf' });
       const fileName = `primary-${Date.now()}.pdf`;
       const file = new File([blob], fileName, { type: 'application/pdf' });
       await uploadPrimaryFile(file);
@@ -1466,7 +1556,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   useEffect(() => {
     if (!rasmQuery.data) return;
 
-    const attachments = rasmQuery.data.attachments || [];
+    const attachments = (rasmQuery.data as any)?.attachments || [];
     const persistedEditedDocxAttachment = attachments.find((attachment: any) => {
       const category = String(attachment?.category || '').toLowerCase();
       return category === 'audit_final_docx' || category === 'audit_draft_docx';
@@ -1511,7 +1601,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   useEffect(() => {
     if (!rasmQuery.data) return;
     
-    const savedChecklist = (rasmQuery.data.payload as any)?.finalReviewChecklist;
+    const savedChecklist = ((rasmQuery.data as any)?.payload as any)?.finalReviewChecklist;
     if (!savedChecklist || typeof savedChecklist !== 'object') return;
     setPreSaveChecks({
       inclusionComplete: !!savedChecklist.inclusionComplete,
@@ -1782,7 +1872,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     try {
       if (!(rasmQuery.data as any)?.payload) return;
 
-      const s = rasmQuery.data.payload as any;
+      const s = (rasmQuery.data as any)?.payload as any;
       if (!s || typeof s !== 'object') return;
 
       setState(s);
@@ -1909,9 +1999,11 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         return;
       }
 
-      // Base mode: open the same judge-approved/base document first.
+      // Base mode: open the compiled PDF primary document first, then judge Word attachment.
       // Edited artifacts should only take over automatically when (activeDocVersion as any) === 'edited'.
-      if (judgeWordAttachmentDoc) {
+      if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) {
+        setSelectedVaultDoc(judgePrimaryDoc);
+      } else if (judgeWordAttachmentDoc) {
         setSelectedVaultDocNormalized(judgeWordAttachmentDoc);
       } else if (judgePrimaryDoc) {
         setSelectedVaultDoc(judgePrimaryDoc);
@@ -1936,8 +2028,8 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         setSelectedVaultDocNormalized(deed);
       } else if (Array.isArray(attachments) && attachments.length > 0) {
         setSelectedVaultDocNormalized(attachments[0]);
-      } else if (rasmQuery.data && (rasmQuery.data.draft || (s as any)?.draft)) {
-        const draftContent = rasmQuery.data.draft || (s as any)?.draft;
+      } else if (rasmQuery.data && ((rasmQuery.data as any).draft || (s as any)?.draft)) {
+        const draftContent = (rasmQuery.data as any).draft || (s as any)?.draft;
         if (draftContent) {
           setSelectedVaultDoc({
             id: 'draft-doc',
@@ -2205,6 +2297,511 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     }, 0);
   }, [isEmbeddedOnlyOfficeActive, loadOnlyOfficeConfig, onlyOfficeMode]);
 
+  const handleSaveEditsAndExit = useCallback(async () => {
+    if (!rasmId || !sessionToken) return;
+    setIsSavingEdits(true);
+    try {
+      if (onlyOfficeConfig) {
+        const documentKey = String((onlyOfficeConfig as any)?.document?.key || '').trim();
+        if (documentKey) {
+          try {
+            await forceOnlyOfficeSaveMutation.mutateAsync({
+              sessionToken,
+              savedRasmId: rasmId,
+              documentKey,
+            });
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Force save OnlyOffice warning:', err);
+          }
+        }
+      }
+
+      const text =
+        editedPlainTextGetterRef.current?.() ||
+        (state as any)?.draft ||
+        currentDraftText ||
+        '';
+
+      let newPdfUrl: string | null = null;
+      let newVersionId: string | null = null;
+
+      // Try savePatchDraft if baseDocUrl is available
+      const attachments = (rasmQuery.data as any)?.attachments || [];
+      const pickUrl = (att: any) =>
+        att?.fileUrl || att?.url || att?.file_url || att?.publicUrl || att?.remoteUrl || null;
+      const isDocxLikeItem = (a: any) => {
+        const name = String(a?.fileName || a?.name || '').toLowerCase();
+        const cat = String(a?.category || '').toLowerCase();
+        const type = String(a?.mimeType || a?.type || '').toLowerCase();
+        return cat.includes('docx') || name.endsWith('.docx') || type.includes('wordprocessingml');
+      };
+      const baseDocxAtt = attachments.find((a: any) => isDocxLikeItem(a)) || selectedVaultDoc;
+      const baseDocUrl = baseDocxAtt ? pickUrl(baseDocxAtt) : null;
+
+      if (baseDocUrl && typeof baseDocUrl === 'string' && /^https?:/i.test(baseDocUrl)) {
+        try {
+          const patch = { version: 1 as const, ops: [{ op: 'set_plain_text' as const, value: text }] };
+          const res = await savePatchDraftMutation.mutateAsync({
+            sessionToken,
+            savedRasmId: rasmId,
+            baseDocUrl,
+            patch,
+            supersedesVersionId: latestAuditVersionId || undefined,
+          });
+          newPdfUrl = (res as any)?.previewPdfUrl || (res as any)?.previewDocxUrl || null;
+          newVersionId = (res as any)?.versionId || null;
+          if (newVersionId) {
+            setLatestAuditVersionId(newVersionId);
+          }
+        } catch (patchErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[handleSaveEditsAndExit] savePatchDraft fallback:', patchErr);
+        }
+      }
+
+      if (text) {
+        await updateSavedRasmMutation.mutateAsync({
+          sessionToken,
+          id: rasmId,
+          draft: text,
+        });
+      }
+
+      // Invalidate queries and fetch fresh state
+      await rasmQuery.refetch();
+      try {
+        await trpcUtils.feesAgent.documents.getSavedRasm.invalidate({ sessionToken, id: rasmId });
+      } catch {}
+      try {
+        await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken } as any);
+      } catch {}
+
+      // Revoke any active primary blob URL
+      revokePrimaryDocBlobUrl();
+
+      // Force Cache Invalidation & Blob Re-creation
+      const resolvedPdf =
+        newPdfUrl ||
+        (rasmQuery.data as any)?.latestDraftPdfUrl ||
+        (rasmQuery.data as any)?.latestDraftDocxUrl ||
+        null;
+
+      if (resolvedPdf) {
+        const cacheBustedUrl = `${resolvedPdf}${resolvedPdf.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+        setSelectedVaultDoc({
+          id: `edited-${newVersionId || Date.now()}`,
+          fileUrl: cacheBustedUrl,
+          url: cacheBustedUrl,
+          mimeType: 'application/pdf',
+          category: 'audit_final_pdf',
+          content: text,
+          rawContent: text,
+        });
+        setActiveEditedArtifact({
+          versionId: newVersionId || String(Date.now()),
+          url: cacheBustedUrl,
+          kind: 'pdf',
+        });
+        setActiveDocVersion('edited');
+      }
+
+      setViewerDocRenderNonce((n) => n + 1);
+      setIsAuditHubEditMode(false);
+    } catch (e: any) {
+      alert('حدث خطأ أثناء حفظ التعديلات: ' + (e?.message || String(e)));
+    } finally {
+      setIsSavingEdits(false);
+    }
+  }, [
+    currentDraftText,
+    forceOnlyOfficeSaveMutation,
+    latestAuditVersionId,
+    onlyOfficeConfig,
+    rasmId,
+    rasmQuery,
+    savePatchDraftMutation,
+    selectedVaultDoc,
+    sessionToken,
+    state,
+    trpcUtils,
+    updateSavedRasmMutation,
+  ]);
+
+  const handleStartOnlyOfficeEdit = useCallback(async () => {
+    setActiveViewMode('onlyoffice');
+    await loadOnlyOfficeConfig({ mode: 'embedded', force: true });
+  }, [loadOnlyOfficeConfig]);
+
+  const handleSaveAndCloseOnlyOffice = useCallback(async () => {
+    if (!rasmId || !sessionToken) return;
+    setIsSavingEdits(true);
+    try {
+      if (onlyOfficeConfig) {
+        const documentKey = String((onlyOfficeConfig as any)?.document?.key || '').trim();
+        if (documentKey) {
+          try {
+            await forceOnlyOfficeSaveMutation.mutateAsync({
+              sessionToken,
+              savedRasmId: rasmId,
+              documentKey,
+            });
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Force save OnlyOffice warning:', err);
+          }
+        }
+      }
+
+      const text =
+        editedPlainTextGetterRef.current?.() ||
+        (state as any)?.draft ||
+        currentDraftText ||
+        '';
+
+      if (text) {
+        try {
+          await updateSavedRasmMutation.mutateAsync({
+            sessionToken,
+            id: rasmId,
+            draft: text,
+          });
+        } catch {}
+      }
+
+      // Try savePatchDraft if baseDocUrl is available
+      const attachments = (rasmQuery.data as any)?.attachments || [];
+      const pickUrl = (att: any) =>
+        att?.fileUrl || att?.url || att?.file_url || att?.publicUrl || att?.remoteUrl || null;
+      const isDocxLikeItem = (a: any) => {
+        const name = String(a?.fileName || a?.name || '').toLowerCase();
+        const cat = String(a?.category || '').toLowerCase();
+        const type = String(a?.mimeType || a?.type || '').toLowerCase();
+        return cat.includes('docx') || name.endsWith('.docx') || type.includes('wordprocessingml');
+      };
+      const baseDocxAtt = attachments.find((a: any) => isDocxLikeItem(a)) || selectedVaultDoc;
+      const baseDocUrl = baseDocxAtt ? pickUrl(baseDocxAtt) : null;
+
+      if (text && baseDocUrl && typeof baseDocUrl === 'string' && /^https?:/i.test(baseDocUrl)) {
+        try {
+          const patch = { version: 1 as const, ops: [{ op: 'set_plain_text' as const, value: text }] };
+          await savePatchDraftMutation.mutateAsync({
+            sessionToken,
+            savedRasmId: rasmId,
+            baseDocUrl,
+            patch,
+            supersedesVersionId: latestAuditVersionId || undefined,
+          });
+        } catch {}
+      }
+
+      await rasmQuery.refetch();
+      try {
+        await trpcUtils.feesAgent.documents.getSavedRasm.invalidate({ sessionToken, id: rasmId });
+        await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken } as any);
+      } catch {}
+
+      revokePrimaryDocBlobUrl();
+
+      const freshRes = await rasmQuery.refetch();
+      const freshData = (freshRes?.data || null) as any;
+      const latestPdfUrl =
+        freshData?.latestDraftPdfUrl ||
+        (freshData?.attachments || []).find(
+          (a: any) =>
+            String(a?.category || '').toLowerCase() === 'audit_final_pdf' ||
+            String(a?.file_name || a?.fileName || '').endsWith('.pdf')
+        )?.file_url;
+
+      if (latestPdfUrl) {
+        const cacheBusted = `${latestPdfUrl}${latestPdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+        setSelectedVaultDoc({
+          id: `edited-${Date.now()}`,
+          fileUrl: cacheBusted,
+          url: cacheBusted,
+          mimeType: 'application/pdf',
+          category: 'audit_final_pdf',
+          content: text,
+          rawContent: text,
+        });
+        setActiveEditedArtifact({
+          versionId: String(Date.now()),
+          url: cacheBusted,
+          kind: 'pdf',
+        });
+        setActiveDocVersion('edited');
+      }
+
+      setViewerDocRenderNonce((n) => n + 1);
+      setActiveViewMode('preview');
+    } catch (err: any) {
+      alert('حدث خطأ أثناء حفظ التعديلات: ' + (err?.message || String(err)));
+    } finally {
+      setIsSavingEdits(false);
+    }
+  }, [
+    currentDraftText,
+    forceOnlyOfficeSaveMutation,
+    latestAuditVersionId,
+    onlyOfficeConfig,
+    rasmId,
+    rasmQuery,
+    savePatchDraftMutation,
+    selectedVaultDoc,
+    sessionToken,
+    state,
+    trpcUtils,
+    updateSavedRasmMutation,
+  ]);
+
+  const resolveActiveDocxTarget = useCallback(() => {
+    // Helper to sanitize filename to clean .docx extension
+    const sanitizeDocxFileName = (name?: string) => {
+      const base = (name || `رسم_عدلي_${finalRecord.serial || 'document'}`)
+        .replace(/\.pdf$/i, '')
+        .replace(/\.docx$/i, '')
+        .trim();
+      return `${base || 'document'}.docx`;
+    };
+
+    // Extract active rasm text / HTML content across all possible sources
+    const activeContent =
+      (typeof currentDraftText === 'string' && currentDraftText.trim().length > 0 ? currentDraftText : '') ||
+      (typeof (state as any)?.draft === 'string' && (state as any).draft.trim().length > 0 ? (state as any).draft : '') ||
+      (selectedVaultDoc as any)?.content ||
+      (selectedVaultDoc as any)?.rawContent ||
+      (selectedVaultDoc as any)?.textContent ||
+      (selectedVaultDoc as any)?.previewTextContent ||
+      (selectedVaultDoc as any)?.rasmHtml ||
+      (rasmQuery.data as any)?.rasmHtml ||
+      (rasmQuery.data as any)?.payload?.rasmHtml ||
+      (rasmQuery.data as any)?.payload?.draft ||
+      (rasmQuery.data as any)?.payload?.content ||
+      (rasmQuery.data as any)?.draft ||
+      '';
+
+    const defaultFileName = sanitizeDocxFileName(selectedVaultDoc?.fileName || (rasmQuery.data as any)?.documentType || finalRecord.serial);
+
+    // 1. Freshly imported or edited artifact in current session (if DOCX)
+    if (activeEditedArtifact?.url && activeEditedArtifact.kind === 'docx') {
+      return {
+        url: activeEditedArtifact.url,
+        fileName: defaultFileName,
+        textContent: activeContent
+      };
+    }
+
+    // 2. Currently selected document if explicitly a DOCX asset (NOT a PDF)
+    // 2. Canonical DB row primary_docx_url pointer
+    const canonicalDocxUrl =
+      (rasmQuery.data as any)?.primary_docx_url ||
+      (rasmQuery.data as any)?.payload?.primary_docx_url ||
+      (rasmQuery.data as any)?.payload?.primaryAttachmentUrl ||
+      (rasmQuery.data as any)?.latestDraftDocxUrl;
+
+    if (canonicalDocxUrl && typeof canonicalDocxUrl === 'string' && !canonicalDocxUrl.startsWith('html://') && canonicalDocxUrl !== 'draft://main') {
+      const lower = canonicalDocxUrl.toLowerCase();
+      if (!lower.endsWith('.pdf') && !lower.includes('application/pdf')) {
+        return {
+          url: canonicalDocxUrl,
+          fileName: defaultFileName,
+          textContent: activeContent
+        };
+      }
+    }
+
+    // 3. Currently selected document if explicitly a DOCX asset (NOT a PDF)
+    const selectedDocxUrl = (selectedVaultDoc as any)?.docxUrl;
+    if (selectedDocxUrl && typeof selectedDocxUrl === 'string' && !selectedDocxUrl.startsWith('html://') && selectedDocxUrl !== 'draft://main') {
+      return {
+        url: selectedDocxUrl,
+        fileName: defaultFileName,
+        textContent: activeContent
+      };
+    }
+
+    const selectedUrl = selectedVaultDoc?.url || selectedVaultDoc?.fileUrl;
+    const selectedName = String(selectedVaultDoc?.fileName || '').toLowerCase();
+    const selectedMime = String(selectedVaultDoc?.mimeType || selectedVaultDoc?.type || '').toLowerCase();
+    const isExplicitDocx = (selectedName.endsWith('.docx') || selectedMime.includes('wordprocessingml')) && !selectedName.endsWith('.pdf') && !selectedMime.includes('pdf');
+
+    if (isExplicitDocx && selectedUrl && typeof selectedUrl === 'string' && !selectedUrl.startsWith('html://') && selectedUrl !== 'draft://main') {
+      return {
+        url: selectedUrl,
+        fileName: defaultFileName,
+        textContent: activeContent
+      };
+    }
+
+    // 3. Persisted DOCX attachment in database record
+    // 4. Persisted DOCX attachment in database record
+    const attachments = (rasmQuery.data as any)?.attachments || [];
+    const primaryDocx = attachments.find((a: any) => {
+      const cat = String(a?.category || '').toLowerCase();
+      const name = String(a?.fileName || a?.name || a?.file_name || '').toLowerCase();
+      const mime = String(a?.mimeType || a?.type || a?.mime_type || '').toLowerCase();
+      return (cat === 'audit_final_docx' || cat === 'primary_attachment' || cat === 'judge_attachment_docx' || name.endsWith('.docx') || mime.includes('wordprocessingml')) && !name.endsWith('.pdf') && !mime.includes('pdf');
+    });
+
+    if (primaryDocx && (primaryDocx.fileUrl || primaryDocx.url)) {
+      return { 
+        url: primaryDocx.fileUrl || primaryDocx.url, 
+        fileName: sanitizeDocxFileName(primaryDocx.fileName || primaryDocx.name || defaultFileName),
+        textContent: activeContent
+      };
+    }
+
+    // 4. Default / Fallback: Compile fresh native DOCX from active content
+    // 5. Default / Fallback: Compile fresh native DOCX from active content
+    return { 
+      url: undefined,
+      textContent: activeContent, 
+      fileName: defaultFileName
+    };
+  }, [activeEditedArtifact, currentDraftText, finalRecord.serial, rasmQuery.data, selectedVaultDoc, state]);
+
+  const handleDownloadDocx = useCallback(async () => {
+    try {
+      const target = resolveActiveDocxTarget();
+      const fileName = target.fileName || `رسم_عدلي_${finalRecord.serial || 'document'}.docx`;
+
+      // If target.url is present, check if it's a valid DOCX binary stream
+      if (target.url && typeof target.url === 'string' && (target.url.startsWith('http') || target.url.startsWith('data:') || target.url.startsWith('blob:'))) {
+        try {
+          const resp = await fetch(target.url);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            // Guard: If the fetched blob is a PDF, do NOT download it as .docx; fall through to template compilation!
+            if (!blob.type.includes('pdf')) {
+              const objectUrl = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = objectUrl;
+              link.download = fileName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(objectUrl);
+              return;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('Direct docx fetch failed, falling back to compile template:', fetchErr);
+        }
+      }
+
+      // If target.url was not docx or direct fetch was bypassed, compile native OpenXML .docx from active content
+      const contentToCompile = (target.textContent && target.textContent.trim().length > 0)
+        ? target.textContent
+        : (currentDraftText || (state as any)?.draft || (rasmQuery.data as any)?.rasmHtml || (rasmQuery.data as any)?.draft || '');
+
+      if (contentToCompile && contentToCompile.trim().length > 0) {
+        const docxBlob = await generateDocxBlobFromTemplate(contentToCompile);
+        const objectUrl = URL.createObjectURL(docxBlob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      alert('لم يتم العثور على محتوى لتصديره بصيغة Word (.docx).');
+    } catch (err: any) {
+      alert('حدث خطأ أثناء تصدير ملف Word: ' + (err?.message || String(err)));
+    }
+  }, [currentDraftText, finalRecord.serial, rasmQuery.data, resolveActiveDocxTarget, state]);
+
+  const handleImportDocxFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !rasmId || !sessionToken) return;
+    e.target.value = '';
+    setIsImportingDocx(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      const res = await updateSavedRasmMutation.mutateAsync({
+        sessionToken,
+        id: rasmId,
+        files: [{
+          name: file.name,
+          size: file.size,
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          category: 'document',
+          base64,
+        }],
+      });
+
+      await rasmQuery.refetch();
+      try {
+        await trpcUtils.feesAgent.documents.getSavedRasm.invalidate({ sessionToken, id: rasmId });
+        await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken } as any);
+      } catch {}
+
+      revokePrimaryDocBlobUrl();
+
+      const timeStamp = Date.now();
+      const rawPdfUrl = (res as any)?.pdfPreviewUrl || (res as any)?.previewPdfUrl || (res as any)?.savedUrl;
+      const rawDocxUrl = (res as any)?.primaryDocxUrl || (res as any)?.previewDocxUrl || (res as any)?.fileUrl || (res as any)?.files?.[0]?.url || (res as any)?.files?.[0]?.fileUrl;
+      
+      const freshPdfUrl = rawPdfUrl ? (rawPdfUrl.includes('cb=') ? rawPdfUrl : `${rawPdfUrl}${rawPdfUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : null;
+      const freshDocxUrl = rawDocxUrl ? (rawDocxUrl.includes('cb=') ? rawDocxUrl : `${rawDocxUrl}${rawDocxUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64}`;
+      const versionId = (res as any)?.versionId || `imported-${timeStamp}`;
+
+      // 1. Force state override immediately
+      setSelectedVaultDoc({
+        id: (res as any)?.savedAttachmentId || (res as any)?.attachmentId || versionId,
+        url: freshPdfUrl || freshDocxUrl,
+        fileUrl: freshPdfUrl || freshDocxUrl,
+        docxUrl: freshDocxUrl,
+        fileName: file.name,
+        mimeType: freshPdfUrl ? 'application/pdf' : (file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        type: freshPdfUrl ? 'application/pdf' : (file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        category: 'audit_final_pdf',
+      });
+
+      setActiveEditedArtifact({
+        versionId,
+        url: freshDocxUrl,
+        pdfUrl: freshPdfUrl,
+        kind: 'docx',
+      });
+
+      setActiveDocVersion('edited');
+      setViewerDocRenderNonce((n) => n + 1);
+      setActiveViewMode('preview');
+
+      // 2. Await full tRPC refetch
+      try {
+        await trpcUtils.feesAgent.documents.getSavedRasm.refetch({ sessionToken, id: rasmId });
+      } catch {}
+      await rasmQuery.refetch();
+      try {
+        await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken } as any);
+      } catch {}
+
+      alert('تم استبدال النسخة الرئيسية وتحديث المعاينة بنجاح');
+    } catch (err: any) {
+      alert('فشل رفع ومعالجة ملف Word: ' + (err?.message || String(err)));
+    } finally {
+      setIsImportingDocx(false);
+    }
+  }, [rasmId, rasmQuery, revokePrimaryDocBlobUrl, sessionToken, trpcUtils.feesAgent.documents, updateSavedRasmMutation]);
+
+  const handleToggleEditMode = useCallback(async () => {
+    if (!isAuditHubEditMode) {
+      if (currentDraftText) {
+        updateDraftContent(currentDraftText);
+      }
+      setIsAuditHubEditMode(true);
+    } else {
+      setIsAuditHubEditMode(false);
+    }
+  }, [currentDraftText, isAuditHubEditMode]);
+
   const refreshAfterOnlyOfficeSave = useCallback((opts?: {
     requirePdf?: boolean;
     requestedAfterMs?: number;
@@ -2402,50 +2999,18 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
     setSigningTransition({
       active: true,
-      progress: 48,
-      message: 'جاري التحقق من المستند الرئيسي الأخير...',
+      progress: 75,
+      message: 'جاري تجهيز المستند الرئيسي للتوقيع...',
     });
-
-    try {
-      await syncLatestSavedDraftState({
-        requestedAfterMs: clickStartedAtMs,
-        baselineOverride: baselineAtClick,
-        forceSaveRequestId: awaitedForceSaveRequestId,
-      });
-    } catch {}
 
     let finalPdfUrl: string | null = null;
     try {
-      const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
-      for (let attempt = 0; attempt < 6; attempt++) {
-        setSigningTransition({
-          active: true,
-          progress: Math.min(72 + attempt * 4, 92),
-          message:
-            attempt === 0
-              ? 'جاري تجهيز المستند الرئيسي للتوقيع...'
-              : 'جاري تثبيت آخر حفظ من المستند قبل فتح رواق التوقيع...',
-        });
-        const prepared = await prepareSigningPortalDocumentMutation.mutateAsync({
-          sessionToken: sessionToken || '',
-          id: rasmId,
-          forceSaveRequestId: awaitedForceSaveRequestId,
-        });
-        // eslint-disable-next-line no-console
-        console.warn('[AUDITHUB -> SIGNING] prepareSigningPortalDocument', {
-          rasmId,
-          attempt,
-          forceSaveRequestId: awaitedForceSaveRequestId,
-          finalPdfUrl: prepared?.finalPdfUrl || null,
-          versionId: prepared?.versionId || null,
-          source: prepared?.source || null,
-          debugJson: prepared?.debugJson || null,
-        });
-        finalPdfUrl = String(prepared?.finalPdfUrl || '').trim() || null;
-        if (finalPdfUrl) break;
-        if (!awaitedForceSaveRequestId) break;
-        await wait(550 + attempt * 150);
-      }
+      const prepared = await prepareSigningPortalDocumentMutation.mutateAsync({
+        sessionToken: sessionToken || '',
+        id: rasmId,
+        forceSaveRequestId: awaitedForceSaveRequestId,
+      });
+      finalPdfUrl = String(prepared?.finalPdfUrl || '').trim() || null;
     } catch (err: any) {
       setSigningTransition({ active: false, progress: 0, message: '' });
       alert('تعذر تجهيز المستند الرئيسي للتوقيع.\n\n' + (err?.message || String(err)));
@@ -2610,7 +3175,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       return;
     }
 
-    const latestRasmData: any = await syncLatestSavedDraftState();
+    const latestRasmData: any = rasmQuery.data;
     const latestAttachments = Array.isArray(latestRasmData?.attachments) ? latestRasmData.attachments : [];
     const latestEditedDocxAttachment = latestAttachments.find((attachment: any) => {
       const category = String(attachment?.category || '').toLowerCase();
@@ -3081,7 +3646,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       <div className="flex flex-1 overflow-hidden min-w-0">
         
         {/* ZONE 2: Left Sidebar */}
-        <aside className="w-[260px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col shadow-sm z-40 relative">
+        <aside className="w-[210px] xl:w-[220px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col shadow-sm z-40 relative">
            <div className="p-6">
                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">أقسام الملف</h3>
                <nav className="space-y-1">
@@ -3296,13 +3861,14 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                     </div>
                 </div>
             ) : activeTab === 'formal' || activeTab === 'legal' || activeTab === 'data' ? (
-            <div className="flex h-full min-w-0">
+            <div className="flex h-full min-w-0 pb-[80px]">
                     {/* Left Half: Document Preview */}
-              <div className="flex-1 relative bg-slate-200/50 border-l border-slate-200 p-4 flex flex-col min-w-0 overflow-hidden">
+              <div className="flex-1 relative bg-slate-200/50 border-l border-slate-200 p-2.5 flex flex-col min-w-0 overflow-hidden">
                         <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(0,0,0,0.05)] border border-slate-200 h-full overflow-hidden relative group flex flex-col">
-                            {/* Document Actions Bar (Premium Edit Controls) */}
-                            <div className="h-[52px] bg-slate-50/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-3.5 z-[100] shrink-0">
-                                <div className="flex items-center gap-2">
+                            {/* Document Actions Bar (Optimized Responsive Layout for 100% Zoom) */}
+                            <div className="h-12 bg-white/95 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-3 z-30 shrink-0 gap-2 overflow-x-auto no-scrollbar" dir="rtl">
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {/* Primary Save & Sign Button */}
                                     <button 
                                       onClick={() => {
                                         if (!state) {
@@ -3320,60 +3886,47 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
                                       disabled={!state || isRedirecting}
-                                      className={`px-6 py-2 rounded-full text-white font-black text-[11px] flex items-center gap-2.5 transition-all shadow-lg active:scale-95 group ${
+                                      className={`px-3.5 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
                                         state && !isRedirecting
-                                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:brightness-110 cursor-pointer'
-                                          : 'bg-blue-400 cursor-not-allowed opacity-60'
+                                          ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 cursor-pointer shadow-emerald-700/20'
+                                          : 'bg-emerald-400 cursor-not-allowed opacity-60'
                                       }`}
+                                      title="حفظ الرسم وتأهيله للتوقيع الرقمي"
                                     >
+                                        <ShieldCheck className="w-3.5 h-3.5" />
                                         <span>حفظ وتصنيف (رواق التوقيع)</span>
-                                        <ShieldCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                     </button>
 
-                                    <div className="h-6 w-px bg-slate-200 mx-1"></div>
+                                    {/* Compact Readiness Indicator */}
                                     {(activeEditedArtifact?.versionId || (rasmQuery.data as any)?.latestDraftVersionId) && (
-                                      <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                                        <div className="flex flex-col leading-none">
-                                          <span className="text-[10px] font-black text-slate-500">جاهزية الملف</span>
-                                          <span className={`text-[10px] font-black ${stats.qualityColor}`}>{stats.qualityLabel}</span>
+                                      <div className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-1 shadow-inner shrink-0">
+                                        <span className="text-[10px] font-bold text-slate-500">الجاهزية</span>
+                                        <div className="w-16 h-2 overflow-hidden rounded-full bg-slate-200 ring-1 ring-slate-300/50">
+                                          <div
+                                            className={`h-full rounded-full transition-all duration-500 ${stats.qualityColor.replace('text-', 'bg-')}`}
+                                            style={{ width: `${Math.max(stats.fillRatio, 8)}%` }}
+                                          />
                                         </div>
-                                        <div className="relative w-[32rem]">
-                                          <div className="h-3 overflow-hidden rounded-full bg-slate-200/90 ring-1 ring-slate-300/80">
-                                            <div
-                                              className={`relative h-full rounded-full transition-all duration-500 ${stats.qualityColor.replace('text-', 'bg-')}`}
-                                              style={{ width: `${Math.max(stats.fillRatio, 8)}%` }}
-                                            >
-                                              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/50 to-white/0 opacity-80 animate-[pulse_1.8s_ease-in-out_infinite]" />
-                                            </div>
-                                          </div>
-                                          <div className="mt-1 flex justify-between px-0.5 text-[9px] font-black text-slate-400">
-                                            <span>0%</span>
-                                            <span>50%</span>
-                                            <span>100%</span>
-                                          </div>
-                                        </div>
-                                        <div className="flex flex-col items-center leading-none">
-                                          <span className={`min-w-[2.5rem] text-center text-[11px] font-black ${stats.qualityColor}`}>{stats.fillRatio}%</span>
-                                          <span className="text-[9px] font-black text-slate-400">{stats.filledCount}/{stats.totalTrackedFields}</span>
-                                        </div>
+                                        <span className={`text-[10px] font-black ${stats.qualityColor}`}>{stats.fillRatio}%</span>
                                       </div>
                                     )}
 
+                                    {/* Revert / Refresh Draft Button */}
                                     <button 
                                         onClick={() => void revertSavedEdit()}
                                         disabled={revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)}
-                                        className={`px-6 py-2 rounded-full font-black text-[11px] flex items-center gap-2.5 transition-all shadow-lg active:scale-95 group ${
+                                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
                                           revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)
-                                            ? 'bg-blue-300 text-white cursor-not-allowed opacity-70'
-                                            : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:brightness-110'
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer'
                                         }`}
+                                        title="تحديث واستعادة النسخة المحفوظة"
                                     >
+                                        <RotateCcw className="w-3.5 h-3.5" />
                                         <span>تحديث النسخة</span>
-                                        <RotateCcw className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                     </button>
 
-                                    <div className="h-6 w-px bg-slate-200 mx-1"></div>
-
+                                    {/* Saved Documents Archive Button */}
                                     <button 
                                         onClick={() => {
                                           try {
@@ -3381,185 +3934,119 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                           } catch {}
                                           navigate('/saved-documents');
                                         }}
-                                        className="px-6 py-2 rounded-full font-black text-[11px] flex items-center gap-2.5 transition-all shadow-lg active:scale-95 group bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:brightness-110"
+                                        className="px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                        title="عرض المحفوظات"
                                     >
+                                        <FolderArchive className="w-3.5 h-3.5" />
                                         <span>عرض المحفوظات</span>
-                                        <FolderArchive className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                     </button>
-
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                     {isEmbeddedOnlyOfficeActive && (
-                                       <div
-                                         title={onlyOfficeError || undefined}
-                                         className={`flex items-center gap-2.5 rounded-lg py-1 px-3 shadow-inner ${
-                                         onlyOfficePaneStatus === 'ready'
-                                           ? 'bg-emerald-50 border border-emerald-200'
-                                           : onlyOfficePaneStatus === 'error'
-                                             ? 'bg-amber-50 border border-amber-200'
-                                             : 'bg-white border border-slate-200'
-                                       }`}
-                                       >
-                                          <div className={`w-2 h-2 rounded-full ${
-                                            onlyOfficePaneStatus === 'ready'
-                                              ? 'bg-emerald-500'
-                                              : onlyOfficePaneStatus === 'error'
-                                                ? 'bg-amber-500'
-                                                : 'bg-blue-500 animate-pulse'
-                                          }`}></div>
-                                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
-                                            {onlyOfficePaneStatus === 'ready'
-                                              ? 'OnlyOffice Embedded'
-                                              : onlyOfficePaneStatus === 'error'
-                                                ? 'Fallback Preview'
-                                                : 'Loading OnlyOffice'}
-                                          </span>
-                                       </div>
-                                     )}
-                                     <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-lg py-1 px-3 shadow-inner shadow-slate-50">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Mode: Preview</span>
+                                {/* Left Action Block: Export / Import DOCX */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                     {/* Export DOCX Button */}
+                                     <button
+                                       type="button"
+                                       onClick={handleDownloadDocx}
+                                       className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+                                       title="تنزيل الملف بصيغة Word الرسمية (.docx)"
+                                     >
+                                       <FileDown className="w-3.5 h-3.5" />
+                                       <span>تنزيل Word</span>
+                                     </button>
+
+                                     {/* Import DOCX Button */}
+                                     <button
+                                       type="button"
+                                       disabled={isImportingDocx}
+                                       onClick={() => docxImportInputRef.current?.click()}
+                                       className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                                       title="رفع نسخة Word معدلة واستبدال النسخة الحالية"
+                                     >
+                                       {isImportingDocx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                       <span>رفع نسخة Word</span>
+                                     </button>
+                                     <input
+                                       type="file"
+                                       accept=".docx"
+                                       ref={docxImportInputRef}
+                                       className="hidden"
+                                       onChange={handleImportDocxFile}
+                                     />
+
+                                     <div className="h-4 w-px bg-slate-200 mx-0.5"></div>
+
+                                     {/* Status Badge */}
+                                     <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/80 rounded-lg py-1 px-2.5 shadow-sm shrink-0">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span className="text-[10px] font-bold text-emerald-800">
+                                          معاينة الرسم
+                                        </span>
                                      </div>
                                 </div>
                             </div>
 
-                            <div className="flex-1 relative overflow-hidden bg-slate-200/20">
-                                {shouldRenderOnlyOfficePrimaryPane ? (
-                                  shouldMountEmbeddedOnlyOffice ? (
-                                    <OnlyOfficeEditor
-                                      key={`onlyoffice-embedded-${onlyOfficeRenderNonce}`}
-                                      dsUrl={onlyOfficeDsUrl as string}
-                                      config={onlyOfficeConfig as Record<string, unknown>}
-                                      mode="embedded"
-                                      onReady={() => {
-                                        setOnlyOfficeError(null);
-                                        setOnlyOfficePaneStatus('ready');
-                                      }}
-                                      onError={(message) => {
-                                        setOnlyOfficeError(message);
-                                        setOnlyOfficePaneStatus('error');
-                                      }}
-                                    />
-                                  ) : shouldShowEmbeddedOnlyOfficeLoader ? (
-                                    <div className="h-full w-full bg-white flex items-center justify-center p-8">
-                                      <div className="max-w-md w-full rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center shadow-sm">
-                                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 border border-blue-100">
-                                          <Edit3 className="w-6 h-6 text-blue-600 animate-pulse" />
-                                        </div>
-                                        <div className="text-base font-black text-slate-900 mb-2">
-                                          جاري فتح المستند داخل OnlyOffice
-                                        </div>
-                                        <div className="text-sm font-bold text-slate-600">
-                                          يتم تحميل محرر المستند مباشرة داخل نافذة المعاينة.
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <HighResViewer 
-                                        doc={forcedViewerDoc}
-                                        docSourceMeta={{
-                                          selectedDocSource: activeDocVersion,
-                                          baseDocUrl: baseDocUrlForDebug,
-                                          editedDocUrl: editedDocUrlForDebug,
-                                          versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
-                                          rasmId,
-                                          submissionId: judgeSubmissionId || null,
-                                          reason:
-                                            (activeDocVersion as any) === 'edited'
-                                              ? 'activeDocVersion=edited'
-                                              : (forcedViewerDoc as any)?.category
-                                                ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
-                                                : 'no-selectedVaultDoc',
-                                        }}
-                                        zoom={viewerZoom}
-                                        isDragging={isDragging}
-                                        onMouseDown={handleViewerMouseDown}
-                                        onMouseMove={handleViewerMouseMove}
-                                        onMouseUp={handleViewerMouseUp}
-                                        onWheel={handleViewerWheel}
-                                        containerRef={viewerContainerRef}
-                                        isDarkMode={isDarkMode}
-                                        onUpdateDraft={updateDraftContent}
-                                        inlineEditMode={false}
-                                        updateZoom={updateZoom}
-                                        renderNonce={viewerDocRenderNonce}
-                                        pdfTextEditor={{
-                                          active: pdfFormEditorOpen && isSelectedPdf,
-                                          tool: pdfTextTool,
-                                          pageIndex: pdfTextPageIndex,
-                                          pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
-                                          edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
-                                          textInput: pdfTextInput,
-                                          fontSize: pdfTextFontSize,
-                                          onAddRect: addPdfRedactionRect,
-                                          onAddText: addPdfOverlayText,
-                                        }}
-                                        onRegisterPlainTextGetter={(fn: () => string) => {
-                                          editedPlainTextGetterRef.current = fn;
-                                        }}
-                                    />
-                                  )
-                                ) : (
-                                  <HighResViewer 
-                                      doc={forcedViewerDoc}
-                                      docSourceMeta={{
-                                        selectedDocSource: activeDocVersion,
-                                        baseDocUrl: baseDocUrlForDebug,
-                                        editedDocUrl: editedDocUrlForDebug,
-                                        versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
-                                        rasmId,
-                                        submissionId: judgeSubmissionId || null,
-                                        reason:
-                                          (activeDocVersion as any) === 'edited'
-                                            ? 'activeDocVersion=edited'
-                                            : (forcedViewerDoc as any)?.category
-                                              ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
-                                              : 'no-selectedVaultDoc',
-                                      }}
-                                      zoom={viewerZoom}
-                                      isDragging={isDragging}
-                                      onMouseDown={handleViewerMouseDown}
-                                      onMouseMove={handleViewerMouseMove}
-                                      onMouseUp={handleViewerMouseUp}
-                                      onWheel={handleViewerWheel}
-                                      containerRef={viewerContainerRef}
-                                      isDarkMode={isDarkMode}
-                                      onUpdateDraft={updateDraftContent}
-                                      inlineEditMode={false}
-                                      updateZoom={updateZoom}
-                                      renderNonce={viewerDocRenderNonce}
-                                      pdfTextEditor={{
-                                        active: pdfFormEditorOpen && isSelectedPdf,
-                                        tool: pdfTextTool,
-                                        pageIndex: pdfTextPageIndex,
-                                        pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
-                                        edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
-                                        textInput: pdfTextInput,
-                                        fontSize: pdfTextFontSize,
-                                        onAddRect: addPdfRedactionRect,
-                                        onAddText: addPdfOverlayText,
-                                      }}
-                                      onRegisterPlainTextGetter={(fn: () => string) => {
-                                        editedPlainTextGetterRef.current = fn;
-                                      }}
-                                  />
-                                )}
-                            </div>
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-900/90 backdrop-blur text-white px-2 py-1.5 rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-50" dir="ltr">
-                                <button onClick={() => updateZoom(viewerZoom - 0.1)} className="p-1.5 hover:bg-white/10 rounded-full"><Minus className="w-4 h-4" /></button>
-                                <span className="text-xs font-mono font-bold w-12 text-center">{Math.round(viewerZoom * 100)}%</span>
-                                <button onClick={() => updateZoom(viewerZoom + 0.1)} className="p-1.5 hover:bg-white/10 rounded-full"><Plus className="w-4 h-4" /></button>
+                            {/* Viewer Canvas */}
+                            <div className="flex-1 relative overflow-hidden bg-slate-100">
+                               <HighResViewer 
+                                   doc={forcedViewerDoc}
+                                   docSourceMeta={{
+                                     selectedDocSource: activeDocVersion,
+                                     baseDocUrl: baseDocUrlForDebug,
+                                     editedDocUrl: editedDocUrlForDebug,
+                                     versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
+                                     rasmId,
+                                     submissionId: judgeSubmissionId || null,
+                                     reason:
+                                       (activeDocVersion as any) === 'edited'
+                                         ? 'activeDocVersion=edited'
+                                         : (forcedViewerDoc as any)?.category
+                                           ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
+                                           : 'no-selectedVaultDoc',
+                                   }}
+                                   zoom={viewerZoom}
+                                   isDragging={isDragging}
+                                   onMouseDown={handleViewerMouseDown}
+                                   onMouseMove={handleViewerMouseMove}
+                                   onMouseUp={handleViewerMouseUp}
+                                   onWheel={handleViewerWheel}
+                                   containerRef={viewerContainerRef}
+                                   isDarkMode={isDarkMode}
+                                   onUpdateDraft={updateDraftContent}
+                                   inlineEditMode={isAuditHubEditMode}
+                                   activeViewMode={activeViewMode}
+                                   onlyOfficeConfig={onlyOfficeConfig}
+                                   onlyOfficeDsUrl={onlyOfficeDsUrl}
+                                   onSaveAndCloseOnlyOffice={handleSaveAndCloseOnlyOffice}
+                                   isSavingOnlyOffice={isSavingEdits}
+                                   onCloseOnlyOffice={() => setActiveViewMode('preview')}
+                                   updateZoom={updateZoom}
+                                   renderNonce={viewerDocRenderNonce}
+                                   pdfTextEditor={{
+                                     active: pdfFormEditorOpen && isSelectedPdf,
+                                     tool: pdfTextTool,
+                                     pageIndex: pdfTextPageIndex,
+                                     pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
+                                     edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
+                                     textInput: pdfTextInput,
+                                     fontSize: pdfTextFontSize,
+                                     onAddRect: addPdfRedactionRect,
+                                     onAddText: addPdfOverlayText,
+                                   }}
+                                   onRegisterPlainTextGetter={(fn: () => string) => {
+                                     editedPlainTextGetterRef.current = fn;
+                                   }}
+                               />
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Half: Validation Cards */}
-                    <div className="w-[450px] bg-white h-full overflow-y-auto p-6 shadow-xl relative z-10 flex flex-col">
+                    {/* Right Panel in RTL: Validation Cards & Registration References */}
+                    <div className="w-[340px] xl:w-[370px] 2xl:w-[400px] bg-white h-full overflow-y-auto p-4 shadow-sm border-r border-slate-200 flex flex-col shrink-0">
                         {activeTab === 'data' ? (
-                          <div className="space-y-6 pb-20">
-                                <h3 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-blue-600" />
+                          <div className="space-y-5 pb-16">
+                                <h3 className="text-base font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                                    <FileText className="w-4 h-4 text-blue-600" />
                                     مراجع تضمين الشهادة/العقد
                                 </h3>
 

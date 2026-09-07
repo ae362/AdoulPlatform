@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { renderAsync } from 'docx-preview';
 // @ts-ignore
 import PizZip from 'pizzip';
-import { injectPlainTextIntoDocxZip } from '../utils/docxTemplate';
+import { injectPlainTextIntoDocxZip, injectHtmlIntoDocxZip } from '../utils/docxTemplate';
 import { logViewerEvent } from '../utils/documentTelemetry';
 import { FileDown, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 
@@ -14,7 +14,9 @@ interface WordPreviewProps {
   url?: string;
   isDarkMode?: boolean;
   textContent?: string;
+  htmlContent?: string;
   editable?: boolean;
+  onContentChange?: (text: string) => void;
   onReady?: () => void;
   sourceTag?: 'base' | 'edited';
   msWordRtlJustify?: boolean;
@@ -89,8 +91,16 @@ function enforceMsWordRtlLastLineRight(root: HTMLElement | null) {
           overflow: visible !important;
           position: relative !important;
         }
+        .rasm-document-body p,
+        .rasm-sandbox-page p,
         .docx-wrapper p,
-        .docx-preview-content-wrapper p {
+        .docx-preview-content-wrapper p,
+        .docx-wrapper .docx p,
+        .docx-preview-content p {
+          font-family: 'Amiri', 'Traditional Arabic', serif !important;
+          font-size: 14pt !important;
+          line-height: 1.8 !important;
+          margin-bottom: 1rem !important;
           text-align: justify !important;
           text-justify: inter-word !important;
           text-align-last: right !important;
@@ -149,32 +159,41 @@ function enforceMsWordRtlLastLineRight(root: HTMLElement | null) {
 }
 
 async function arrayBufferFromUrl(url: string, signal: AbortSignal) {
-  const isSupabasePublic = url.includes('supabase.co/storage/v1/object/public/');
   const cacheBustedUrl = `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
 
   const resp = await fetch(cacheBustedUrl, {
     cache: 'no-store',
     mode: 'cors',
-    credentials: isSupabasePublic ? 'omit' : 'include',
+    credentials: 'omit',
     signal,
   });
   if (!resp.ok) throw new Error(`Failed to load document (${resp.status})`);
   return await resp.arrayBuffer();
 }
 
-async function arrayBufferFromTextContent(textContent: string, signal: AbortSignal) {
-  const templateResp = await fetch('/templates/headers/DECOR ADOUL 33.docx', { signal });
+async function arrayBufferFromContent(content: string, signal: AbortSignal) {
+  const templateResp = await fetch('/templates/headers/DECOR ADOUL 33.docx', {
+    signal,
+    cache: 'no-store',
+    mode: 'cors',
+    credentials: 'omit',
+  });
   if (!templateResp.ok) throw new Error('Failed to fetch template');
   const templateBuffer = await templateResp.arrayBuffer();
 
   const zip = new PizZip(templateBuffer);
-  injectPlainTextIntoDocxZip(zip, textContent);
+  const isHtml = /<[a-z][\s\S]*>/i.test(content) || content.includes('</p>') || content.includes('</div>');
+  if (isHtml) {
+    injectHtmlIntoDocxZip(zip, content);
+  } else {
+    injectPlainTextIntoDocxZip(zip, content);
+  }
   const output = zip.generate({ type: 'uint8array' }) as Uint8Array;
   return output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength) as ArrayBuffer;
 }
 
 export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>(
-  ({ url, isDarkMode, textContent, editable, onReady, sourceTag, msWordRtlJustify = true, submissionId, fallbackText }, ref) => {
+  ({ url, isDarkMode, textContent, htmlContent, editable, onContentChange, onReady, sourceTag, msWordRtlJustify = true, submissionId, fallbackText }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const renderIdRef = useRef(0);
@@ -185,7 +204,7 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
     React.useImperativeHandle(ref, () => ({
       getPlainText: () => {
         const el = containerRef.current;
-        if (!el) return '';
+        if (!el) return textContent || htmlContent || fallbackText || '';
 
         const clone = el.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('style,script,noscript,link,meta,svg').forEach((n) => n.remove());
@@ -195,25 +214,16 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
         if (raw) return raw;
 
         const wrapper = clone.querySelector('.docx-wrapper') as HTMLElement | null;
-        return (wrapper?.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/g, '').trim();
+        return (wrapper?.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/g, '').trim() || textContent || htmlContent || fallbackText || '';
       },
     }));
 
     useEffect(() => {
-      try {
-        const el = containerRef.current;
-        if (!el) return;
-        el.setAttribute('contenteditable', editable ? 'true' : 'false');
-        el.setAttribute('spellcheck', 'false');
-        (el as any).contentEditable = editable ? 'true' : 'false';
-        el.style.outline = editable ? '2px solid rgba(37, 99, 235, 0.35)' : 'none';
-        el.style.outlineOffset = editable ? '6px' : '0px';
-      } catch {
-        // ignore
+      if (editable) {
+        setLoading(false);
+        return;
       }
-    }, [editable]);
 
-    useEffect(() => {
       const renderId = ++renderIdRef.current;
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -238,6 +248,7 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
           container.style.position = 'static';
 
           let buffer: ArrayBuffer;
+          const rawContent = htmlContent || textContent;
           if (url) {
             if (url.startsWith('data:') || url.startsWith('blob:')) {
               const resp = await fetch(url, { signal: abort.signal });
@@ -246,8 +257,8 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
             } else {
               buffer = await arrayBufferFromUrl(url, abort.signal);
             }
-          } else if (textContent) {
-            buffer = await arrayBufferFromTextContent(textContent, abort.signal);
+          } else if (rawContent) {
+            buffer = await arrayBufferFromContent(rawContent, abort.signal);
           } else {
             setLoading(false);
             return;
@@ -348,13 +359,32 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
 
       run();
       return () => abort.abort();
-    }, [url, textContent, sourceTag, onReady, msWordRtlJustify, submissionId]);
+    }, [editable, url, textContent, htmlContent, sourceTag, onReady, msWordRtlJustify, submissionId]);
 
     useEffect(() => {
       return () => {
         abortRef.current?.abort();
       };
     }, []);
+
+    // Structured A4 editor container when in editable mode
+    if (editable) {
+      const displayText = textContent || htmlContent || fallbackText || '';
+      return (
+        <div className="w-full h-full overflow-y-auto bg-slate-200/50 p-8 flex justify-center custom-scrollbar">
+          <div 
+            ref={containerRef}
+            contentEditable={true}
+            suppressContentEditableWarning
+            onInput={(e) => onContentChange?.((e.currentTarget.innerText || e.currentTarget.textContent || '').replace(/\u00a0/g, ' ').trim())}
+            className="w-[794px] min-h-[1123px] bg-white shadow-xl p-12 text-right dir-rtl outline-none font-amiri text-lg leading-relaxed rounded-sm whitespace-pre-wrap"
+            style={{ fontFamily: "'Amiri', serif", fontSize: "14pt", lineHeight: "2.0", direction: "rtl", textAlign: "justify" }}
+          >
+            {displayText || "جاري تحميل محتوى الرسم..."}
+          </div>
+        </div>
+      );
+    }
 
     // Graceful fallback for legacy .doc or non-zip documents
     if (isLegacyDoc) {

@@ -924,7 +924,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#5a0c0b] via-[#800020] to-[#5a0c0b] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"></div>
         </header>
 
-        <div className="flex-1 min-w-0 overflow-auto p-6">
+        <div className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || active === 'notarySigning' ? 'p-0' : 'p-6'}`}>
           <Suspense fallback={<RouteLoader />}>{renderModule()}</Suspense>
         </div>
       </main>

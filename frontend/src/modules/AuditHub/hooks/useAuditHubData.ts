@@ -75,9 +75,12 @@ export const useAuditHubData = ({
           : (att.url || att.fileUrl || att.file_url || att.fileURL || att.publicUrl || att.public_url || null);
       if (!url) return null;
 
-      const category = (att.category || fallbackCategory || 'judge_attachment').toString();
+      const category = (att.category || fallbackCategory || 'supporting_doc').toString();
+      const isManual = Boolean((att?.field || '').toString().includes('manualRasmFile')) ||
+        Boolean((att?.category || '').toString().toLowerCase() === 'manual_rasm');
+      const isPrimaryFlag = Boolean(att?.isJudgePrimary) || Boolean(att?.isPrimary);
       return {
-        id: `judge-submission-attachment-${category}-${name}-${String(att.size || '')}`,
+        id: att.id || `judge-submission-attachment-${category}-${name}-${String(att.size || '')}`,
         category,
         fileName: name,
         name,
@@ -85,21 +88,27 @@ export const useAuditHubData = ({
         url,
         mimeType: type,
         type,
-        isJudgePrimary:
-          Boolean(att?.isJudgePrimary) ||
-          category.toLowerCase().includes('judge_attachment') ||
-          Boolean((att?.field || '').toString().includes('manualRasmFile')),
+        isJudgePrimary: isPrimaryFlag || isManual,
       };
     };
 
     const out: any[] = [];
 
-    const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
-    if (singleDoc) out.push(singleDoc);
+    const extraCandidateFiles = [
+      effectiveJudgePayload?.attachment,
+      effectiveJudgePayload?.judgeAttachment,
+      effectiveJudgePayload?.manualRasmFile,
+      effectiveJudgePayload?.judgeAcceptedDoc,
+      effectiveJudgePayload?.baseDoc,
+      ...(Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : []),
+      ...(Array.isArray(effectiveJudgePayload?.files) ? effectiveJudgePayload.files : []),
+      ...(Array.isArray(effectiveJudgePayload?.supportingDocuments) ? effectiveJudgePayload.supportingDocuments : []),
+      ...(Array.isArray(effectiveJudgePayload?.id_cards) ? effectiveJudgePayload.id_cards : []),
+      ...(Array.isArray(effectiveJudgePayload?.fiscal_receipts) ? effectiveJudgePayload.fiscal_receipts : []),
+    ].filter(Boolean);
 
-    const list = Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : [];
-    for (const att of list) {
-      const d = normalizeToDoc(att, att?.category);
+    for (const att of extraCandidateFiles) {
+      const d = normalizeToDoc(att, att?.category || att?.field || 'supporting_doc');
       if (!d) continue;
       out.push(d);
     }
@@ -198,20 +207,69 @@ export const useAuditHubData = ({
   }, [isWordLikeDoc, judgeAttachmentDocs]);
 
   const judgePrimaryDoc = useMemo(() => {
-    const canonicalPreviewUrl = String((effectiveJudgeSubmission as any)?.previewUrl || '').trim();
+    // 1. Canonical compiled preview URL from submission record
+    const canonicalPreviewUrl = String((effectiveJudgeSubmission as any)?.previewUrl || (effectiveJudgeSubmission as any)?.finalPdfUrl || (effectiveJudgeSubmission as any)?.preview_url || '').trim();
     if (canonicalPreviewUrl) {
       return {
         id: `judge-primary-preview-${String((effectiveJudgeSubmission as any)?.id || '')}`,
         category: 'judge_attachment',
         fileName:
-          String((effectiveJudgeSubmission as any)?.previewName || 'judge-preview.pdf').trim() || 'judge-preview.pdf',
+          String((effectiveJudgeSubmission as any)?.previewName || 'المحرر القضائي المعتمد.pdf').trim() || 'المحرر القضائي المعتمد.pdf',
         name:
-          String((effectiveJudgeSubmission as any)?.previewName || 'judge-preview.pdf').trim() || 'judge-preview.pdf',
+          String((effectiveJudgeSubmission as any)?.previewName || 'المحرر القضائي المعتمد.pdf').trim() || 'المحرر القضائي المعتمد.pdf',
         fileUrl: canonicalPreviewUrl,
         url: canonicalPreviewUrl,
         mimeType: String((effectiveJudgeSubmission as any)?.previewMimeType || 'application/pdf'),
         type: String((effectiveJudgeSubmission as any)?.previewMimeType || 'application/pdf'),
         isJudgePrimary: true,
+      };
+    }
+
+    // 2. Direct compiled PDF from rasmQuery.data or payload pointers
+    const rasmData = rasmQuery.data as any;
+    const candidatePdfUrls = [
+      { url: rasmData?.previewUrl || rasmData?.preview_url, name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf' },
+      { url: rasmData?.finalPdfUrl || rasmData?.final_pdf_url, name: 'المستند النهائي المعتمد.pdf' },
+      { url: rasmData?.latestDraftPdfUrl, name: 'مسودة الرسم المعتمدة.pdf' },
+      { url: rasmData?.latestSigningPdfUrl, name: 'مستند التوقيع المعتمد.pdf' },
+      { url: (rasmData?.state as any)?.latestSigningPdfUrl || (rasmData?.state as any)?.previewUrl || (rasmData?.state as any)?.latestDraftPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+      { url: (rasmData?.payload as any)?.previewUrl || (rasmData?.payload as any)?.finalPdfUrl || (rasmData?.payload as any)?.latestDraftPdfUrl || (rasmData?.payload as any)?.latestSigningPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+      { url: (effectiveJudgePayload as any)?.previewUrl || (effectiveJudgePayload as any)?.finalPdfUrl || (effectiveJudgePayload as any)?.latestSigningPdfUrl || (effectiveJudgePayload as any)?.latestDraftPdfUrl, name: 'المحرر القضائي المعتمد.pdf' },
+    ];
+
+    for (const cand of candidatePdfUrls) {
+      const u = String(cand.url || '').trim();
+      if (u && (u.toLowerCase().endsWith('.pdf') || u.includes('.pdf') || u.startsWith('data:application/pdf') || u.startsWith('http') || u.startsWith('blob:'))) {
+        return {
+          id: `judge-primary-pdf-${String(rasmData?.id || (effectiveJudgeSubmission as any)?.id || '')}`,
+          category: 'judge_attachment',
+          fileName: cand.name,
+          name: cand.name,
+          fileUrl: u,
+          url: u,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        };
+      }
+    }
+
+    // 3. Prefer compiled PDF from judgeAttachmentDocs if available
+    const compiledPdfFromAttachments = judgeAttachmentDocs.find((d: any) => isPdfLikeDoc(d));
+    if (compiledPdfFromAttachments) {
+      return {
+        ...compiledPdfFromAttachments,
+        isJudgePrimary: true,
+      };
+    }
+
+    // 4. Prefer official binary DOCX attachment if available
+    const compiledWordFromAttachments = judgeAttachmentDocs.find((d: any) => isWordLikeDoc(d));
+    if (compiledWordFromAttachments) {
+      return {
+        ...compiledWordFromAttachments,
+        isJudgePrimary: true,
+        isWord: true,
       };
     }
 
@@ -229,6 +287,7 @@ export const useAuditHubData = ({
       if (!url) return null;
 
       const category = (att.category || fallbackCategory || 'judge_attachment').toString();
+      const isWord = isWordLikeDoc({ fileName: name, mimeType: type, url });
       return {
         id: `judge-primary-${category}-${name}-${String(att.size || '')}`,
         category,
@@ -238,13 +297,14 @@ export const useAuditHubData = ({
         url,
         mimeType: type,
         type,
+        isWord,
         isJudgePrimary: true,
       };
     };
 
     const list = Array.isArray(effectiveJudgePayload?.attachments) ? effectiveJudgePayload.attachments : [];
     const manual = list.find((a: any) => (a?.field || '').toString().includes('manualRasmFile'));
-    const judgeCategory = list.find((a: any) => (a?.category || '').toString().toLowerCase() === 'judge_attachment');
+    const judgeCategory = list.find((a: any) => (a?.category || '').toString().toLowerCase() === 'judge_attachment' || (a?.category || '').toString().toLowerCase() === 'judge_attachment_docx');
 
     const primaryAttachment = manual || judgeCategory || null;
     const primaryAttachmentDoc = normalizeToDoc(primaryAttachment, primaryAttachment?.category);
@@ -253,11 +313,13 @@ export const useAuditHubData = ({
     const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
     if (singleDoc) return singleDoc;
 
+    // 5. Fallback ONLY to HTML or text draft if no compiled binary exists
     if (effectiveJudgePayload?.rasmHtml) {
       return {
         id: 'judge-smart-rasm',
         fileName: 'المحرر القضائي (المعتمد)',
         rasmHtml: effectiveJudgePayload.rasmHtml,
+        rawContent: effectiveJudgePayload.rasmHtml,
         isSmartDraft: true,
         isJudgePrimary: true,
       };
@@ -269,12 +331,13 @@ export const useAuditHubData = ({
         fileName: 'مسودة القاضي',
         isDraft: true,
         content: effectiveJudgePayload.draft,
+        rawContent: effectiveJudgePayload.draft,
         isJudgePrimary: true,
       };
     }
 
     return null;
-  }, [effectiveJudgePayload, effectiveJudgeSubmission]);
+  }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, judgeAttachmentDocs]);
 
   const attachmentTabDocs = useMemo(() => {
     const normalizeSavedAttachment = (att: any) => {
@@ -299,16 +362,7 @@ export const useAuditHubData = ({
       };
     };
 
-    const isMainRasmCategory = (category: string) =>
-      category === 'primary_attachment' ||
-      category === 'deed' ||
-      category === 'rasm' ||
-      category === 'contract' ||
-      category === 'title_documents' ||
-      category === 'post_registration' ||
-      category.includes('judge_attachment');
-
-    const rawSaved = Array.isArray((rasmQuery.data as any)?.attachments) ? rasmQuery.data.attachments : [];
+    const rawSaved = Array.isArray((rasmQuery.data as any)?.attachments) ? (rasmQuery.data as any).attachments : [];
     const savedDocs = rawSaved
       .map(normalizeSavedAttachment)
       .filter(Boolean)
@@ -317,16 +371,8 @@ export const useAuditHubData = ({
         return !category.startsWith('audit_');
       });
 
-    const mainDocUrls = new Set(
-      [judgePrimaryDoc, judgeAttachmentDoc]
-        .map((doc: any) => String(doc?.url || doc?.fileUrl || '').trim())
-        .filter(Boolean)
-    );
-    const mainDocNames = new Set(
-      [judgePrimaryDoc, judgeAttachmentDoc]
-        .map((doc: any) => String(doc?.fileName || doc?.name || '').trim().toLowerCase())
-        .filter(Boolean)
-    );
+    const primaryUrl = String(judgePrimaryDoc?.url || judgePrimaryDoc?.fileUrl || '').trim();
+    const primaryName = String(judgePrimaryDoc?.fileName || judgePrimaryDoc?.name || '').trim().toLowerCase();
 
     const merged = [...judgeAttachmentDocs, ...savedDocs];
     const seen = new Set<string>();
@@ -334,18 +380,19 @@ export const useAuditHubData = ({
       const category = String(doc?.category || '').toLowerCase();
       const url = String(doc?.url || doc?.fileUrl || '').trim();
       const fileName = String(doc?.fileName || doc?.name || '').trim().toLowerCase();
-      if (Boolean(doc?.isJudgePrimary) || isMainRasmCategory(category)) {
-        return false;
-      }
-      if (url && mainDocUrls.has(url)) return false;
-      if (fileName && mainDocNames.has(fileName)) return false;
 
-      const key = `${String(doc?.url || '').trim()}||${String(doc?.fileName || doc?.name || '').trim()}`;
+      // Filter out only if it's the primary deed itself or an internal audit edit artifact
+      if (primaryUrl && url === primaryUrl) return false;
+      if (primaryName && fileName === primaryName && (category === 'primary_attachment' || category === 'deed' || category === 'rasm')) return false;
+      if (category.startsWith('audit_')) return false;
+      if (Boolean(doc?.isJudgePrimary) && (category === 'primary_attachment' || category === 'deed' || category === 'rasm')) return false;
+
+      const key = `${url}||${fileName}`;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [judgeAttachmentDoc, judgeAttachmentDocs, judgePrimaryDoc, (rasmQuery.data as any)?.attachments]);
+  }, [judgeAttachmentDocs, judgePrimaryDoc, (rasmQuery.data as any)?.attachments]);
 
   useEffect(() => {
     if (activeTab !== 'attachments') return;

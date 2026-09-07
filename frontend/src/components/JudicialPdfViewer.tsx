@@ -58,10 +58,10 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
 
         const baseViewport = page.getViewport({ scale: 1 });
         const scale = targetWidth / Math.max(1, baseViewport.width);
-        const viewport = page.getViewport({ scale });
         
         // Scale by device pixel ratio for crystal clear high-DPI rendering
-        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const dpr = Math.max(2.0, window.devicePixelRatio || 1);
+        const viewport = page.getViewport({ scale: scale * dpr });
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -74,22 +74,20 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
           dpr,
         });
 
-        const cssWidth = Math.round(viewport.width);
-        const cssHeight = Math.round(viewport.height);
-        setPageHeight(cssHeight);
-
-        // Canvas buffer scaled by DPR
-        canvas.width = Math.round(viewport.width * dpr);
-        canvas.height = Math.round(viewport.height * dpr);
+        // Set canvas internal resolution to high DPI
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
         
-        // CSS display size constrained to viewport
+        // CSS display size constrained to target CSS dimensions
+        const cssWidth = Math.round(viewport.width / dpr);
+        const cssHeight = Math.round(viewport.height / dpr);
+        setPageHeight(cssHeight);
         canvas.style.width = `${cssWidth}px`;
         canvas.style.height = `${cssHeight}px`;
 
         const ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
@@ -146,7 +144,7 @@ const JudicialPdfPageItem: React.FC<PageRenderItemProps> = ({
   }, [pdfDoc, pageNumber, targetWidth, submissionId]);
 
   return (
-    <div className="relative mx-auto bg-white shadow-2xl rounded-sm border border-slate-200/80 overflow-hidden mb-8 last:mb-0 transition-shadow">
+    <div className="relative mx-auto bg-white shadow-2xl rounded-sm border border-slate-200/80 overflow-hidden mb-8 last:mb-0 transition-shadow aspect-[210/297] max-w-full">
       {!isSingleMode && (
         <div className="flex items-center justify-between px-4 py-2 bg-slate-100/80 border-b border-slate-200 text-xs font-black text-slate-500 font-mono">
           <span>صفحة {pageNumber}</span>

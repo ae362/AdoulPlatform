@@ -4,7 +4,8 @@ import { trpc } from '../../../trpc';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle2,
-  AlertCircle, Paperclip, Shield, Archive, Lock, Pencil, Highlighter, Eraser, RotateCcw, RotateCw, Trash2, Loader2, Image as ImageIcon
+  AlertCircle, Paperclip, Shield, Archive, Lock, Pencil, Highlighter, Eraser, RotateCcw, RotateCw, Trash2, Loader2, Image as ImageIcon,
+  Columns
 } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { RasmHtmlPreview } from '../../../components/SmartDrafting/RasmHtmlPreview';
@@ -15,8 +16,15 @@ import { JudicialPdfViewer } from '../../../components/JudicialPdfViewer';
 import { DocumentViewerErrorBoundary } from '../../../components/Judge/DocumentViewerErrorBoundary';
 import { useJudicialDocumentStream } from '../../../hooks/useJudicialDocumentStream';
 import { useViewerAnnotationState } from '../../../hooks/useViewerAnnotationState';
-import { pickNormalizedDocument, pickBestSavedDocsAttachment, NormalizedDocument, SavedDocAttachment } from '../../../utils/savedDocsPicker';
+import { pickNormalizedDocument, pickBestSavedDocsAttachment, deduplicateAttachments, NormalizedDocument, SavedDocAttachment } from '../../../utils/savedDocsPicker';
 import { logViewerEvent } from '../../../utils/documentTelemetry';
+import { DualDocInspectorModal } from './components/DualDocInspectorModal';
+
+const getJudgeLikePdfViewerUrl = (url: string) => {
+  if (!url) return '';
+  const cleanUrl = url.split('#')[0];
+  return `${cleanUrl}#view=FitH&zoom=100&toolbar=1`;
+};
 
 const stripHtmlToPlainText = (html: string) => {
   if (!html) return '';
@@ -108,6 +116,7 @@ export default function JudicialDeedsAuditPlatform() {
   const [activeTab, setActiveTab] = useState<'ocr' | 'compare' | 'legal'>('ocr');
   const [decision, setDecision] = useState<'accepted' | 'accepted_with_notes' | 'substantive_notes'>('accepted_with_notes');
   const [notes, setNotes] = useState('');
+  const [dualViewOpen, setDualViewOpen] = useState(false);
   
   // Submission data query
   const submissionQuery = trpc.judge.getSubmission.useQuery(
@@ -413,8 +422,38 @@ export default function JudicialDeedsAuditPlatform() {
       deepScanPayload(payload);
     }
 
-    return list;
+    const dedupedAttachments = deduplicateAttachments(
+      list.filter((d) => !d.isPrimary),
+      primaryDoc
+    );
+
+    return primaryDoc ? [list[0], ...dedupedAttachments] : dedupedAttachments;
   }, [primaryDoc, savedRasmAttachments, payload]);
+
+  const dualViewAttachments = useMemo(() => {
+    return repositoryDocs
+      .filter((d) => !d.isPrimary)
+      .map((d) => ({
+        id: String(d.id),
+        title: String(d.name || 'مرفق'),
+        fileUrl: String(d.url || ''),
+        mimeType: d.mimeType || (d.type === 'PDF' ? 'application/pdf' : d.type === 'IMAGE' ? 'image/jpeg' : undefined),
+        type: d.type,
+        category: d.category,
+        size: d.size,
+      }));
+  }, [repositoryDocs]);
+
+  const dualViewPrimaryPdfUrl = useMemo(() => {
+    return (
+      primaryDoc?.streamUrl ||
+      submission?.previewUrl ||
+      submission?.finalPdfUrl ||
+      payload?.previewUrl ||
+      payload?.finalPdfUrl ||
+      ''
+    );
+  }, [primaryDoc, submission, payload]);
 
   const selectDoc = (url: string, title?: string, type?: 'PDF' | 'DOCX' | 'IMAGE' | 'HTML', rawContent?: string) => {
     setSelectedDocUrl(url);
@@ -475,15 +514,26 @@ export default function JudicialDeedsAuditPlatform() {
            </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
            <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-emerald-500/30 rounded-full">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
               <span className="text-[11px] font-mono text-emerald-400">SECURE JUDICIAL NODE - ACTIVE</span>
            </div>
 
+           {/* Dual View Modal Trigger */}
+           <button
+             type="button"
+             onClick={() => setDualViewOpen(true)}
+             className="px-3.5 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 hover:bg-amber-500/30 transition-all shadow-lg active:scale-95 cursor-pointer"
+             title="فتح منصة المعاينة المزدوجة والمطابقة جنباً إلى جنب"
+           >
+             <Columns className="w-4 h-4" />
+             <span>معاينة مزدوجة (مطابقة المرفقات)</span>
+           </button>
+
            <button 
              onClick={handleCompleteReview}
-             className="px-4 py-1.5 bg-[#03442c] hover:bg-[#04593a] text-[#E6BE8A] text-xs font-bold rounded-lg transition-all flex items-center gap-2 border border-[#E6BE8A]/40 shadow-xs"
+             className="px-4 py-1.5 bg-[#03442c] hover:bg-[#04593a] text-[#E6BE8A] text-xs font-bold rounded-lg transition-all flex items-center gap-2 border border-[#E6BE8A]/40 shadow-xs cursor-pointer"
            >
               <Download size={14} />
               <span>تصدير ملف المراجعة الكامل (PDF)</span>
@@ -635,9 +685,20 @@ export default function JudicialDeedsAuditPlatform() {
                      <Paperclip size={15} className="text-[#023120]" />
                      مستودع الوثائق
                   </h3>
-                  <span className="bg-[#023120] text-[#E6BE8A] text-[10px] px-2.5 py-0.5 rounded-full font-black">
-                     {repositoryDocs.length} {repositoryDocs.length === 1 ? 'ملف' : 'ملفات'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                     <button
+                       type="button"
+                       onClick={() => setDualViewOpen(true)}
+                       className="px-2 py-0.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                       title="فتح المعاينة المزدوجة والمطابقة"
+                     >
+                        <Columns size={11} />
+                        <span>معاينة مزدوجة</span>
+                     </button>
+                     <span className="bg-[#023120] text-[#E6BE8A] text-[10px] px-2.5 py-0.5 rounded-full font-black">
+                        {repositoryDocs.length} {repositoryDocs.length === 1 ? 'ملف' : 'ملفات'}
+                     </span>
+                  </div>
                </div>
                <p className="text-[10px] text-slate-500 font-bold font-amiri">الوثائق والبيانات المعتمدة والمرفقات</p>
             </div>
@@ -731,20 +792,18 @@ export default function JudicialDeedsAuditPlatform() {
               }}
             />
 
-            {/* SCROLLABLE DOCUMENT PANE (BELOW TOOLBAR WITH DEDICATED PADDING) */}
+            {/* SCROLLABLE DOCUMENT PANE (MATCHING NOTARY SIGNING CORRIDOR) */}
             <div 
-              className="flex-1 overflow-auto custom-scrollbar p-8 sm:p-12 flex flex-col items-center justify-start relative select-none"
+              className="flex-1 h-full w-full overflow-y-auto bg-slate-950 p-6 flex justify-center items-start custom-scrollbar select-none relative"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
                <div 
-                  className={`origin-top pointer-events-auto ${isDragging ? '' : 'transition-transform duration-200 ease-out'}`}
+                  className={`w-full max-w-[850px] min-h-[1123px] bg-white shadow-2xl rounded-sm overflow-hidden my-4 origin-top pointer-events-auto ${isDragging ? '' : 'transition-transform duration-200 ease-out'}`}
                   style={{ 
                     transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(${zoom})`,
-                    width: '860px',
-                    maxWidth: '100%',
                   }}
                >
                   <DocumentViewerErrorBoundary
@@ -752,15 +811,15 @@ export default function JudicialDeedsAuditPlatform() {
                     documentName={selectedDocTitle || primaryDoc?.title || 'مستند المعاينة القضائي'}
                     onReset={documentStream.refetch}
                   >
-                     <div className="bg-white shadow-2xl ring-1 ring-black/10 rounded-md min-h-[1100px] relative pointer-events-auto overflow-hidden">
+                     <div className="w-full min-h-[1123px] relative pointer-events-auto bg-white">
                         {documentStream.isLoading ? (
-                           <div className="flex flex-col items-center justify-center h-[1100px] bg-slate-50">
+                           <div className="flex flex-col items-center justify-center h-[1123px] bg-slate-50">
                               <Loader2 className="w-12 h-12 text-[#023120] animate-spin mb-4" />
                               <h4 className="text-xl font-black font-amiri text-slate-800">جاري تحميل وتجهيز المستند الرقمي...</h4>
                               <p className="text-xs font-bold text-slate-400 mt-2">Connecting to authenticated stream pipeline</p>
                            </div>
                         ) : activeFileType === 'IMAGE' && (documentStream.blobUrl || activeStreamUrl) ? (
-                           <div className="flex flex-col items-center justify-center p-8 bg-slate-900/5 min-h-[900px] w-full">
+                           <div className="flex flex-col items-center justify-center p-8 bg-slate-900/5 min-h-[1123px] w-full">
                               <div className="relative group max-w-full flex flex-col items-center">
                                  <img
                                    src={documentStream.blobUrl || activeStreamUrl || ''}
@@ -782,9 +841,10 @@ export default function JudicialDeedsAuditPlatform() {
                               </div>
                            </div>
                         ) : activeFileType === 'PDF' && (documentStream.blobUrl || activeStreamUrl) ? (
-                           <JudicialPdfViewer
-                             url={documentStream.blobUrl || activeStreamUrl || ''}
-                             submissionId={id}
+                           <iframe
+                             src={getJudgeLikePdfViewerUrl(documentStream.blobUrl || activeStreamUrl || '')}
+                             className="w-full h-[1123px] border-none"
+                             title={selectedDocTitle || primaryDoc?.title || 'Judicial Deed Document'}
                            />
                         ) : activeFileType === 'DOCX' && (documentStream.blobUrl || activeStreamUrl) ? (
                            <WordPreview
@@ -813,8 +873,17 @@ export default function JudicialDeedsAuditPlatform() {
                   </DocumentViewerErrorBoundary>
                </div>
             </div>
-         </section>
+          </section>
       </main>
+
+      {/* 3. DUAL DOCUMENT INSPECTION & COMPARISON MODAL */}
+      <DualDocInspectorModal
+        isOpen={dualViewOpen}
+        onClose={() => setDualViewOpen(false)}
+        primaryPdfUrl={dualViewPrimaryPdfUrl}
+        primaryTitle={primaryDoc?.title || submission?.documentType || 'المحرر القضائي المعتمد برسم التوثيق'}
+        attachments={dualViewAttachments}
+      />
     </div>
   );
 }

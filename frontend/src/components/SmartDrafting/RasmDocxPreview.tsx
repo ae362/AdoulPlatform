@@ -5,11 +5,12 @@ import { Loader2, Scale, FileDown, AlertTriangle } from 'lucide-react';
 import { renderAsync } from 'docx-preview';
 // @ts-ignore
 import PizZip from 'pizzip';
-import { injectPlainTextIntoDocxZip } from '../../utils/docxTemplate';
+import { injectPlainTextIntoDocxZip, injectHtmlIntoDocxZip } from '../../utils/docxTemplate';
 import { logViewerEvent } from '../../utils/documentTelemetry';
 
 interface Props {
   textContent?: string;
+  htmlContent?: string;
   blobUrl?: string | null;
   isDarkMode?: boolean;
   templatePath?: string;
@@ -28,7 +29,7 @@ const scheduleNonBlocking = (fn: () => void | Promise<void>) => {
   return setTimeout(fn, 16);
 };
 
-export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath, submissionId }: Props) => {
+export const RasmDocxPreview = ({ textContent, htmlContent, blobUrl, isDarkMode, templatePath, submissionId }: Props) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath
   const activeBlobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!textContent && !blobUrl) return;
+    if (!textContent && !htmlContent && !blobUrl) return;
 
     setIsGenerating(true);
     setErrorMessage(null);
@@ -48,7 +49,7 @@ export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath
       activeBlobUrlRef.current = null;
     }
 
-    logViewerEvent('RENDER_START', { type: 'DOCX_PREVIEW', submissionId, hasText: !!textContent, hasBlob: !!blobUrl });
+    logViewerEvent('RENDER_START', { type: 'DOCX_PREVIEW', submissionId, hasText: !!(textContent || htmlContent), hasBlob: !!blobUrl });
 
     const container = document.createElement('div');
     container.style.position = 'fixed';
@@ -68,22 +69,28 @@ export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath
 
     const run = async () => {
       try {
+        const rawContent = htmlContent || textContent || '';
         let blob: Blob;
 
         if (blobUrl) {
-          const resp = await fetch(blobUrl);
+          const resp = await fetch(blobUrl, { cache: 'no-store', mode: 'cors', credentials: 'omit' });
           if (!resp.ok) throw new Error(`Failed to fetch docx blob: ${resp.status}`);
           blob = await resp.blob();
         } else {
           const tpl = templatePath || DEFAULT_TEMPLATE;
-          const templateResponse = await fetch(tpl, { cache: 'no-store' });
+          const templateResponse = await fetch(tpl, { cache: 'no-store', mode: 'cors', credentials: 'omit' });
           if (!templateResponse.ok) {
             throw new Error(`Failed to fetch template: ${tpl}`);
           }
 
           const arrayBuffer = await templateResponse.arrayBuffer();
           const zip = new PizZip(arrayBuffer);
-          injectPlainTextIntoDocxZip(zip, textContent || '');
+          const isHtml = Boolean(htmlContent) || /<[a-z][\s\S]*>/i.test(rawContent) || rawContent.includes('</p>') || rawContent.includes('</div>');
+          if (isHtml) {
+            injectHtmlIntoDocxZip(zip, rawContent);
+          } else {
+            injectPlainTextIntoDocxZip(zip, rawContent);
+          }
 
           const output = zip.generate({ type: 'uint8array' }) as Uint8Array;
           blob = new Blob([output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength) as ArrayBuffer], {
@@ -93,6 +100,36 @@ export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath
 
         if (cancelled) return;
         container.innerHTML = '';
+
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+          @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+          .docx-wrapper,
+          .docx-preview-content-wrapper {
+            background: #ffffff !important;
+            direction: ltr !important;
+            padding: 0 !important;
+          }
+          .rasm-document-body p,
+          .rasm-sandbox-page p,
+          .docx-wrapper .docx p,
+          .docx-preview-content p {
+            font-family: 'Amiri', 'Traditional Arabic', serif !important;
+            font-size: 14pt !important;
+            line-height: 1.8 !important;
+            margin-bottom: 1rem !important;
+            text-align: justify !important;
+            text-justify: inter-word !important;
+            direction: rtl !important;
+            unicode-bidi: embed !important;
+          }
+          .docx-wrapper table,
+          .docx-preview-content table {
+            direction: rtl !important;
+            max-width: 100% !important;
+          }
+        `;
+        container.appendChild(styleEl);
 
         try {
           await renderAsync(blob, container, undefined, {
@@ -111,7 +148,7 @@ export const RasmDocxPreview = ({ textContent, blobUrl, isDarkMode, templatePath
           });
         } catch (e) {
           console.error('docx-preview parsing error:', e);
-          container.innerHTML = `<div style="padding: 50px; text-align: right; direction: rtl; font-family: 'Traditional Arabic', serif; font-size: 24px;">${textContent || ''}</div>`;
+          container.innerHTML = `<div style="padding: 50px; text-align: right; direction: rtl; font-family: 'Amiri', 'Traditional Arabic', serif; font-size: 24px; line-height: 1.8;">${rawContent || ''}</div>`;
         }
 
         if (cancelled) return;

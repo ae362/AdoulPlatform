@@ -23,7 +23,12 @@ export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) 
 
     // If input is plain text (no HTML tags), format paragraphs cleanly
     if (!raw.includes('<div') && !raw.includes('<p') && !raw.includes('<table') && !raw.includes('<html')) {
-      const paragraphs = raw.split(/\n\s*\n/).map(p => `<p style="margin: 12px 0; text-align: justify; line-height: 2;">${p.replace(/\n/g, '<br/>')}</p>`).join('');
+      const paragraphs = raw
+        .split(/(?:\r?\n){2,}|\n(?=[^\n]{10,})/g)
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => `<p class="deed-paragraph" style="margin-bottom: 1.5rem; text-align: justify; line-height: 2.2; font-size: 15pt;">${p.replace(/\n/g, '<br/>')}</p>`)
+        .join('');
       raw = wrapInFullHtml(paragraphs, getHeaderHtml('DECOR ADOUL 33'));
     } else if (!raw.includes('id="rasm-document-wrapper"') && !raw.includes('rasm-document-body')) {
       if (!raw.includes('<html') && !raw.includes('<body')) {
@@ -94,9 +99,24 @@ export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) 
           padding: 40px 48px;
           box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
           border-radius: 4px;
-          line-height: 1.85;
-          font-size: 15px;
+          line-height: 2.2;
+          font-size: 15pt;
           -webkit-font-smoothing: antialiased;
+        }
+
+        .rasm-document-body p,
+        .rasm-sandbox-page p,
+        .deed-paragraph,
+        .docx-wrapper .docx p,
+        .docx-preview-content p {
+          font-family: 'Amiri', 'Traditional Arabic', serif !important;
+          font-size: 15pt !important;
+          line-height: 2.2 !important;
+          margin-bottom: 1.5rem !important;
+          text-align: justify !important;
+          text-justify: inter-word !important;
+          direction: rtl !important;
+          unicode-bidi: embed !important;
         }
 
         .rasm-sandbox-page table {
@@ -111,18 +131,13 @@ export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) 
           padding: 8px 12px;
           text-align: right;
           vertical-align: middle;
+          font-family: 'Amiri', 'Traditional Arabic', serif !important;
         }
 
         .rasm-sandbox-page img {
           max-width: 100%;
           height: auto;
           display: inline-block;
-        }
-
-        .rasm-sandbox-page p {
-          margin: 10px 0;
-          text-align: justify;
-          text-justify: inter-word;
         }
 
         .rasm-sandbox-page hr {
@@ -140,7 +155,7 @@ export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) 
           }
         }
       </style>
-      <div class="rasm-sandbox-page" dir="rtl">
+      <div class="rasm-sandbox-page rasm-document-body" dir="rtl">
         ${formattedHtml}
       </div>
     `;

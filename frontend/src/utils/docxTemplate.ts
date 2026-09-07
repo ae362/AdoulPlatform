@@ -28,8 +28,33 @@ export function injectHtmlIntoDocxZip(zip: any, html: string) {
   if (!docXml) throw new Error('Missing word/document.xml in template');
 
   const bodyInnerXml = htmlToWordBodyInnerXml(html);
-  const nextDocXml = replaceDocumentXmlBody(docXml, bodyInnerXml);
-  zip.file('word/document.xml', nextDocXml);
+  zip.file('word/document.xml', replaceDocumentXmlBody(docXml, bodyInnerXml));
+}
+
+export async function generateDocxBlobFromTemplate(htmlOrText: string, templatePath = '/templates/headers/DECOR ADOUL 33.docx'): Promise<Blob> {
+  try {
+    const resp = await fetch(templatePath, { cache: 'no-store', mode: 'cors', credentials: 'omit' });
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch template: ${templatePath}`);
+    }
+    const arrayBuffer = await resp.arrayBuffer();
+    const zip = new PizZip(arrayBuffer);
+    const isHtml = /<[a-z][\s\S]*>/i.test(htmlOrText) || htmlOrText.includes('</p>') || htmlOrText.includes('</div>');
+    if (isHtml) {
+      injectHtmlIntoDocxZip(zip, htmlOrText);
+    } else {
+      injectPlainTextIntoDocxZip(zip, htmlOrText);
+    }
+    return zip.generate({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      compression: 'DEFLATE',
+    }) as Blob;
+  } catch (err) {
+    console.warn('[generateDocxBlobFromTemplate] Fallback to html/text only docx generator:', err);
+    const isHtml = /<[a-z][\s\S]*>/i.test(htmlOrText) || htmlOrText.includes('</p>') || htmlOrText.includes('</div>');
+    return isHtml ? buildDocxBlobFromHtmlOnly(htmlOrText) : buildDocxBlobFromTextOnly(htmlOrText);
+  }
 }
 
 export function buildDocxBlobFromHtmlOnly(html: string) {
@@ -45,6 +70,7 @@ export function buildDocxBlobFromHtmlOnly(html: string) {
   return zip.generate({
     type: 'blob',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    compression: 'DEFLATE',
   }) as Blob;
 }
 
@@ -59,45 +85,7 @@ export function injectPlainTextIntoDocxZip(zip: any, text: string) {
 
   const safeText = String(text ?? '').trim();
   const bodyInnerXml = plainTextToWordBodyInnerXml(safeText);
-
-  // Simplified robust insertion: Find <w:body> and insert after the first paragraph (banner)
-  const bodyMatch = /<w:body[^>]*>/.exec(docXml);
-  if (!bodyMatch) {
-    zip.file('word/document.xml', replaceDocumentXmlBody(docXml, bodyInnerXml));
-    return;
-  }
-
-  const bodyStartIdx = bodyMatch.index + bodyMatch[0].length;
-  const bodyEndIdx = docXml.indexOf('</w:body>', bodyStartIdx);
-  if (bodyEndIdx === -1) {
-    zip.file('word/document.xml', replaceDocumentXmlBody(docXml, bodyInnerXml));
-    return;
-  }
-
-  // Look for first paragraph ending </w:p> to attempt skipping banner
-  const firstParaEndIdx = docXml.indexOf('</w:p>', bodyStartIdx);
-  const sectMatch = /<w:sectPr[^>]*>/.exec(docXml);
-  const sectPrIdx = sectMatch ? sectMatch.index : -1;
-
-  let insertionPoint = bodyStartIdx;
-  
-  // If first paragraph exists and is before sectPr, insert after it.
-  if (firstParaEndIdx !== -1 && firstParaEndIdx < bodyEndIdx) {
-    if (sectPrIdx === -1 || firstParaEndIdx < sectPrIdx) {
-       insertionPoint = firstParaEndIdx + 6;
-    }
-  }
-
-  // Safety: don't insert after sectPr
-  if (sectPrIdx !== -1 && insertionPoint > sectPrIdx) {
-    insertionPoint = sectPrIdx;
-  }
-
-  // Ensure clean XML insertion
-  const cleanBodyInner = bodyInnerXml.replace(/>\s+</g, '><').trim();
-  
-  const finalDocXml = docXml.slice(0, insertionPoint) + cleanBodyInner + docXml.slice(insertionPoint);
-  zip.file('word/document.xml', finalDocXml);
+  zip.file('word/document.xml', replaceDocumentXmlBody(docXml, bodyInnerXml));
 }
 
 /**
@@ -116,5 +104,6 @@ export function buildDocxBlobFromTextOnly(text: string) {
   return zip.generate({
     type: 'blob',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    compression: 'DEFLATE',
   }) as Blob;
 }

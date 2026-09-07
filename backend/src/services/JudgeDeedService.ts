@@ -200,6 +200,7 @@ export class JudgeDeedService {
 
     const payloadObject = ((data.payload ?? {}) as Record<string, unknown>);
     const savedRasmIdRaw = payloadObject?.savedRasmId;
+    let savedRasmStateObj: Record<string, unknown> | null = null;
     if (typeof savedRasmIdRaw === 'string' && savedRasmIdRaw) {
       savedRasmId = savedRasmIdRaw;
       const { data: savedRasmRow } = await supabase
@@ -209,12 +210,12 @@ export class JudgeDeedService {
         .maybeSingle();
 
       if (savedRasmRow?.state && typeof savedRasmRow.state === 'object') {
-        const stateObj = savedRasmRow.state as Record<string, unknown>;
-        if (typeof stateObj.latestDraftVersionId === 'string') {
-          savedRasmLatestDraftVersionId = stateObj.latestDraftVersionId;
+        savedRasmStateObj = savedRasmRow.state as Record<string, unknown>;
+        if (typeof savedRasmStateObj.latestDraftVersionId === 'string') {
+          savedRasmLatestDraftVersionId = savedRasmStateObj.latestDraftVersionId;
         }
-        if (typeof stateObj.latestDraftDocxUrl === 'string') {
-          savedRasmLatestDraftDocxUrl = stateObj.latestDraftDocxUrl;
+        if (typeof savedRasmStateObj.latestDraftDocxUrl === 'string') {
+          savedRasmLatestDraftDocxUrl = savedRasmStateObj.latestDraftDocxUrl;
         }
       }
 
@@ -328,17 +329,52 @@ export class JudgeDeedService {
       }
     });
 
-    if (savedRasmAttachments.length > 0) {
-      const pdfAttachment = savedRasmAttachments.find((att) => {
+    // 1. Direct compiled PDF stream from payload pointers or saved_rasms.state
+    const payloadCandidates = [
+      { url: payloadObject?.previewUrl, name: payloadObject?.previewName },
+      { url: payloadObject?.finalPdfUrl, name: 'المستند_النهائي.pdf' },
+      { url: payloadObject?.latestSigningPdfUrl, name: 'مستند_التوقيع.pdf' },
+      { url: payloadObject?.latestDraftPdfUrl, name: 'مسودة_الرسم.pdf' },
+      { url: savedRasmStateObj?.latestSigningPdfUrl, name: 'مستند_التوقيع.pdf' },
+      { url: savedRasmStateObj?.previewUrl, name: 'المستند_القضائي_المعتمد.pdf' },
+      { url: savedRasmStateObj?.latestDraftPdfUrl, name: 'مسودة_الرسم.pdf' },
+      { url: savedRasmStateObj?.finalPdfUrl, name: 'المستند_النهائي.pdf' },
+    ];
+
+    for (const cand of payloadCandidates) {
+      const u = typeof cand.url === 'string' ? cand.url.trim() : '';
+      if (u && (u.toLowerCase().endsWith('.pdf') || u.includes('.pdf') || u.startsWith('data:application/pdf') || u.startsWith('http') || u.startsWith('blob:'))) {
+        previewUrl = u;
+        previewName = typeof cand.name === 'string' ? cand.name : 'المستند القضائي المعتمد.pdf';
+        previewMimeType = 'application/pdf';
+        break;
+      }
+    }
+
+    // 2. Direct compiled PDF from savedRasmAttachments (audit_final_pdf, judge_attachment, etc.)
+    if (!previewUrl && savedRasmAttachments.length > 0) {
+      // Prioritize audit_final_pdf and judge_attachment first
+      const priorityPdf = savedRasmAttachments.find((att) => {
+        const cat = String(att.category || '').toLowerCase();
+        const mime = (att.mimeType || '').toLowerCase();
+        const name = (att.fileName || '').toLowerCase();
+        const url = (att.fileUrl || '').toLowerCase();
+        const isPdf = mime.includes('pdf') || name.endsWith('.pdf') || url.includes('.pdf');
+        return isPdf && (cat === 'audit_final_pdf' || cat === 'judge_attachment' || cat === 'primary_attachment');
+      });
+
+      const fallbackPdf = savedRasmAttachments.find((att) => {
         const mime = (att.mimeType || '').toLowerCase();
         const name = (att.fileName || '').toLowerCase();
         const url = (att.fileUrl || '').toLowerCase();
         return mime.includes('pdf') || name.endsWith('.pdf') || url.includes('.pdf');
       });
-      if (pdfAttachment?.fileUrl) {
-        previewUrl = String(pdfAttachment.fileUrl);
-        previewName = pdfAttachment.fileName || 'rasm.pdf';
-        previewMimeType = pdfAttachment.mimeType || 'application/pdf';
+
+      const chosenPdf = priorityPdf || fallbackPdf;
+      if (chosenPdf?.fileUrl) {
+        previewUrl = String(chosenPdf.fileUrl);
+        previewName = chosenPdf.fileName || 'المستند القضائي المعتمد.pdf';
+        previewMimeType = chosenPdf.mimeType || 'application/pdf';
       }
     }
 
