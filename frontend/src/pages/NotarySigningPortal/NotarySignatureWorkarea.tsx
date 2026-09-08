@@ -2131,8 +2131,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#efe4ce_0%,#0f2520_24%,#071110_100%)] font-sans text-slate-100" dir="rtl">
-      <div className="relative shrink-0 overflow-hidden border-b border-[#d3bc92]/25 bg-[linear-gradient(135deg,rgba(11,34,29,0.96)_0%,rgba(16,53,45,0.96)_52%,rgba(21,84,70,0.93)_100%)] shadow-[0_24px_60px_rgba(0,0,0,0.32)] z-20">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#B30000] font-sans text-slate-100" dir="rtl">
+      <div className="relative shrink-0 overflow-hidden border-b border-red-800/50 bg-[linear-gradient(135deg,#8B0000_0%,#B30000_50%,#D32F2F_100%)] text-white shadow-2xl z-20">
         <div className="absolute -left-12 top-2 h-28 w-28 rounded-full bg-[#d7b06a]/20 blur-3xl" />
         <div className="absolute bottom-0 right-12 h-36 w-36 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex min-h-24 flex-wrap items-center justify-between gap-6 px-6 py-5 lg:px-8">
@@ -2411,7 +2411,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           </div>
         )}
         
-        <div className="relative flex h-full flex-[3] flex-col overflow-hidden rounded-[2rem] border border-[#d3bc92]/20 bg-[linear-gradient(180deg,rgba(11,31,27,0.95)_0%,rgba(8,18,17,0.98)_100%)] shadow-[0_30px_70px_rgba(0,0,0,0.28)]">
+        <div className="relative flex h-full flex-[3] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,#0a0a0a_0%,#000000_100%)] shadow-[0_30px_70px_rgba(0,0,0,0.5)]">
           <div className="border-b border-white/10 px-5 py-4 lg:px-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-right">
@@ -2432,7 +2432,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-1 items-start justify-center overflow-auto overscroll-contain bg-[linear-gradient(180deg,rgba(12,26,23,0.45)_0%,rgba(4,10,10,0.68)_100%)] py-6">
+          <div className="flex flex-1 items-start justify-center overflow-auto overscroll-contain bg-black p-6">
             <div 
               className="transition-all duration-200"
               style={{

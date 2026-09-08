@@ -207,6 +207,34 @@ export const useAuditHubData = ({
   }, [isWordLikeDoc, judgeAttachmentDocs]);
 
   const judgePrimaryDoc = useMemo(() => {
+    const rasmData = rasmQuery.data as any;
+    const rasmPayload = (rasmData?.payload as any) || {};
+
+    // 0. Prioritize explicit primary / updated PDF from saved_rasms table / rasmQuery.data
+    const rasmPdfPreviewUrl =
+      rasmData?.pdf_preview_url ||
+      rasmData?.pdfPreviewUrl ||
+      rasmPayload?.pdf_preview_url ||
+      rasmPayload?.pdfPreviewUrl;
+
+    if (rasmPdfPreviewUrl) {
+      const u = String(rasmPdfPreviewUrl).trim();
+      if (u) {
+        return {
+          id: `rasm-primary-pdf-${String(rasmData?.id || (effectiveJudgeSubmission as any)?.id || '')}`,
+          category: 'audit_final_pdf',
+          fileName: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+          name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+          fileUrl: u,
+          url: u,
+          docxUrl: rasmData?.primary_docx_url || rasmData?.primaryDocxUrl || rasmPayload?.primary_docx_url || rasmPayload?.primaryDocxUrl || undefined,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        };
+      }
+    }
+
     // 1. Canonical compiled preview URL from submission record
     const canonicalPreviewUrl = String((effectiveJudgeSubmission as any)?.previewUrl || (effectiveJudgeSubmission as any)?.finalPdfUrl || (effectiveJudgeSubmission as any)?.preview_url || '').trim();
     if (canonicalPreviewUrl) {
@@ -226,7 +254,6 @@ export const useAuditHubData = ({
     }
 
     // 2. Direct compiled PDF from rasmQuery.data or payload pointers
-    const rasmData = rasmQuery.data as any;
     const candidatePdfUrls = [
       { url: rasmData?.previewUrl || rasmData?.preview_url, name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf' },
       { url: rasmData?.finalPdfUrl || rasmData?.final_pdf_url, name: 'المستند النهائي المعتمد.pdf' },
@@ -414,6 +441,62 @@ export const useAuditHubData = ({
     }
   }, [activeTab, attachmentTabDocs, setSelectedAttachmentTabDoc]);
 
+  const baseSelectedDoc = useMemo(() => {
+    const rasmData = rasmQuery.data as any;
+    const rasmPayload = (rasmData?.payload as any) || {};
+
+    const pdfUrl =
+      rasmData?.pdf_preview_url ||
+      rasmData?.pdfPreviewUrl ||
+      rasmPayload?.pdf_preview_url ||
+      rasmPayload?.pdfPreviewUrl ||
+      rasmData?.previewUrl ||
+      rasmData?.preview_url ||
+      null;
+
+    const docxUrl =
+      rasmData?.primary_docx_url ||
+      rasmData?.primaryDocxUrl ||
+      rasmPayload?.primary_docx_url ||
+      rasmPayload?.primaryDocxUrl ||
+      rasmData?.latest_draft_docx_url ||
+      rasmData?.latestDraftDocxUrl ||
+      null;
+
+    if (pdfUrl) {
+      return {
+        id: `rasm-canonical-pdf-${String(rasmData?.id || 'active')}`,
+        category: 'audit_final_pdf',
+        fileName: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+        name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+        fileUrl: pdfUrl,
+        url: pdfUrl,
+        docxUrl: docxUrl || undefined,
+        mimeType: 'application/pdf',
+        type: 'application/pdf',
+        isJudgePrimary: true,
+      };
+    }
+
+    if (docxUrl) {
+      return {
+        id: `rasm-canonical-docx-${String(rasmData?.id || 'active')}`,
+        category: 'audit_final_docx',
+        fileName: 'المحرر القضائي المعتمد.docx',
+        name: 'المحرر القضائي المعتمد.docx',
+        fileUrl: docxUrl,
+        url: docxUrl,
+        docxUrl: docxUrl,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        isWord: true,
+        isJudgePrimary: true,
+      };
+    }
+
+    return judgePrimaryDoc || judgeWordAttachmentDoc || judgeAttachmentDoc || null;
+  }, [judgeAttachmentDoc, judgePrimaryDoc, judgeWordAttachmentDoc, rasmQuery.data]);
+
   return {
     rasmQuery,
     payload,
@@ -429,6 +512,7 @@ export const useAuditHubData = ({
     isWordLikeDoc,
     judgeWordAttachmentDoc,
     judgePrimaryDoc,
+    baseSelectedDoc,
     attachmentTabDocs
   };
 };

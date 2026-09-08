@@ -104,6 +104,10 @@ export const SignedRasmViewer: React.FC = () => {
   const [isFinalArchiveConfirmOpen, setIsFinalArchiveConfirmOpen] = useState(false);
   const [sentToJudgeAt, setSentToJudgeAt] = useState<string | null>(null);
   const [archivedFinallyAt, setArchivedFinallyAt] = useState<string | null>(null);
+  const [paginationSuccess, setPaginationSuccess] = useState<string | null>(null);
+  const [paginationError, setPaginationError] = useState<string | null>(null);
+  const [forcedPdfUrl, setForcedPdfUrl] = useState<string | null>(null);
+  const [renderNonce, setRenderNonce] = useState(0);
 
   const handleEditToggle = () => {
     if (isEditingFields) {
@@ -161,6 +165,38 @@ export const SignedRasmViewer: React.FC = () => {
   const sealMutation = trpc.feesAgent.documents.sealSignedDeedForCorrespondence.useMutation();
   const sendToJudgeMutation = trpc.feesAgent.documents.sendSignedDeedToJudge.useMutation();
   const archivePostJudgeMutation = trpc.feesAgent.documents.archiveSignedDeedPostJudge.useMutation();
+  const applyPaginationMutation = trpc.feesAgent.documents.applyPagination.useMutation();
+
+  const handleApplyTopPagination = async () => {
+    if (!id || !sessionToken) return;
+    setPaginationError(null);
+    setPaginationSuccess(null);
+    try {
+      const res: any = await applyPaginationMutation.mutateAsync({
+        sessionToken,
+        signedDeedId: id,
+        position: 'TOP_HEADER',
+      });
+      if (res?.success) {
+        const stampedUrl = res.signedPdfUrl || res.pdfPreviewUrl;
+        if (stampedUrl) {
+          const cacheBustedUrl = `${stampedUrl}${stampedUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+          setForcedPdfUrl(cacheBustedUrl);
+          setRenderNonce((prev) => prev + 1);
+        }
+        setPaginationSuccess(
+          res.totalPages
+            ? `تم إدراج ترقيم الصفحات بنجاح في أعلى كل صفحة (إجمالي ${res.totalPages} صفحات)`
+            : 'تم إدراج ترقيم الصفحات بنجاح في رأس الوثيقة'
+        );
+        await deedQuery.refetch();
+      } else {
+        setPaginationError('تعذر إدراج ترقيم الصفحات في الرسم الموقع.');
+      }
+    } catch (e: any) {
+      setPaginationError(e?.message || 'خطأ أثناء إدراج ترقيم الصفحات');
+    }
+  };
 
   const deed = (deedQuery.data ?? null) as null | {
     id: string;
@@ -209,6 +245,8 @@ export const SignedRasmViewer: React.FC = () => {
       email: string | null;
     } | null;
   };
+
+  const activePdfUrl = forcedPdfUrl || deed?.signedPdfUrl || null;
 
   const hasAnyFooterStrip = deed?.signedPdfHasInclusionFooterStrip ?? false;
   const footerStripCreated = (deed?.signedPdfFooterStripVersion ?? 0) >= 17;
@@ -300,7 +338,7 @@ export const SignedRasmViewer: React.FC = () => {
       return deed.sealHash;
     }
 
-    const sealResult = await sealMutation.mutateAsync({
+    const sealResult: any = await sealMutation.mutateAsync({
       sessionToken,
       signedDeedId: id,
       device: {
@@ -319,7 +357,7 @@ export const SignedRasmViewer: React.FC = () => {
       setJudgeSendSuccess(null);
       setFinalArchiveError(null);
       await ensureSealed();
-      const result = await sendToJudgeMutation.mutateAsync({
+      const result: any = await sendToJudgeMutation.mutateAsync({
         sessionToken,
         signedDeedId: id,
         device: {
@@ -329,7 +367,7 @@ export const SignedRasmViewer: React.FC = () => {
       setSentToJudgeAt(result.timestamp || new Date().toISOString());
       if (result.submissionId) {
         try {
-          const submission = await utils.feesAgent.documents.getMyJudgeSubmission.fetch({
+          const submission: any = await utils.feesAgent.documents.getMyJudgeSubmission.fetch({
             sessionToken,
             submissionId: result.submissionId,
           });
@@ -373,7 +411,7 @@ export const SignedRasmViewer: React.FC = () => {
       setFinalArchiveError(null);
       setJudgeSendError(null);
       await ensureSealed();
-      const result = await archivePostJudgeMutation.mutateAsync({
+      const result: any = await archivePostJudgeMutation.mutateAsync({
         sessionToken,
         signedDeedId: id,
         device: {
@@ -466,9 +504,27 @@ export const SignedRasmViewer: React.FC = () => {
               <p className="text-slate-600 font-bold text-sm mt-1">الصنف: {categoryLabel(deed.category)}</p>
             </div>
             <div className="flex items-center gap-3">
-              {deed.signedPdfUrl && (
+              <button
+                type="button"
+                onClick={handleApplyTopPagination}
+                disabled={applyPaginationMutation.isPending || !activePdfUrl}
+                className={`px-4 py-2 rounded-lg font-black transition-all flex items-center gap-2 ${
+                  applyPaginationMutation.isPending || !activePdfUrl
+                    ? 'bg-indigo-950/30 text-indigo-400/50 border border-indigo-900/30 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-900/20 active:scale-[0.98]'
+                }`}
+                title="إدراج ترقيم الصفحات في أعلى الوثيقة"
+              >
+                {applyPaginationMutation.isPending ? (
+                  <Loader className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Hash className="w-4 h-4" />
+                )}
+                <span>إدراج ترقيم الصفحات (أعلى)</span>
+              </button>
+              {activePdfUrl && (
                 <a
-                  href={deed.signedPdfUrl}
+                  href={activePdfUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="px-4 py-2 rounded-lg bg-slate-900 text-white font-black hover:bg-slate-800 transition-colors flex items-center gap-2"
@@ -482,133 +538,6 @@ export const SignedRasmViewer: React.FC = () => {
         </div>
       </div>
 
-      <div className="sticky top-[112px] z-40 signed-rasm-no-print px-4 md:px-8 pt-4">
-        <div className="bg-white/95 backdrop-blur rounded-3xl border border-slate-200 shadow-lg p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-black transition-colors"
-            >
-              رجوع
-            </button>
-            <button
-              type="button"
-              onClick={handleSendToJudge}
-              disabled={!canSendToJudge}
-              className={
-                `px-4 py-3 rounded-2xl text-sm font-black transition-all ` +
-                getStepButtonClass(sendStepDone, sendToJudgeMutation.isPending, 'solid')
-              }
-              title={
-                !qrStepDone
-                  ? 'أكمل أولاً خطوة إنشاء شريط مراجع التضمين / QR'
-                  : archiveStepDone
-                    ? 'تم إتمام هذا المسار بالفعل'
-                    : effectiveSentToJudgeAt
-                      ? 'إعادة إحالة الرسم أو تحديث الإحالة الحالية لدى قاضي التوثيق'
-                      : 'إحالة الرسم إلى قاضي التوثيق'
-              }
-            >
-              {getStepIndicator(sendStepDone, sendStepLocked, sendToJudgeMutation.isPending)}
-              {sendToJudgeMutation.isPending
-                ? 'جاري الإحالة...'
-                : effectiveSentToJudgeAt
-                  ? 'إعادة إحالة الرسم إلى القاضي'
-                  : 'إحالة الرسم إلى قاضي التوثيق'}
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenFinalArchiveConfirm}
-              disabled={!canArchiveFinally}
-              className={
-                `px-4 py-3 rounded-2xl text-sm font-black transition-all ` +
-                getStepButtonClass(archiveStepDone, archivePostJudgeMutation.isPending, 'solid')
-              }
-              title={
-                archiveStepDone
-                  ? 'تم إيداع هذا الرسم ضمن المحفوظات العدلية النهائية'
-                  : !judgeAccepted
-                    ? 'يتم فتح هذا الزر فقط بعد قبول الرسم من طرف قاضي التوثيق'
-                    : 'إيداع الرسم ضمن المحفوظات العدلية النهائية'
-              }
-            >
-              {getStepIndicator(archiveStepDone, archiveStepLocked, archivePostJudgeMutation.isPending)}
-              {archivePostJudgeMutation.isPending
-                ? 'جاري الإيداع...'
-                : effectiveArchivedFinallyAt
-                  ? 'تم الإيداع النهائي'
-                  : 'إيداع الرسم ضمن المحفوظات النهائية'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsFooterConfirmOpen(true)}
-              disabled={footerStripCreated || embedFooterStripMutation.isPending}
-              className={
-                `px-4 py-3 rounded-2xl text-sm font-black transition-all ` +
-                getStepButtonClass(footerStripCreated, embedFooterStripMutation.isPending, 'solid')
-              }
-            >
-              {getStepIndicator(footerStripCreated, false, embedFooterStripMutation.isPending)}
-              {footerStripCreated ? 'تم إنشاء الشريط' : 'إدراج شريط التضمين'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="fixed bottom-6 left-6 z-[2000] signed-rasm-no-print pointer-events-none">
-        <div className="pointer-events-auto bg-slate-950 text-white rounded-3xl shadow-2xl border border-white/10 p-3 w-[320px]">
-          <div className="text-[11px] font-black tracking-[0.18em] text-slate-300 px-2 pb-2">
-            SIGNED RASM ACTIONS
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="w-full px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-black transition-colors"
-            >
-              رجوع إلى الرسوم الموقعة
-            </button>
-            <button
-              type="button"
-              onClick={handleSendToJudge}
-              disabled={!canSendToJudge}
-              className={
-                `w-full px-4 py-3 rounded-2xl font-black transition-all ` +
-                getStepButtonClass(sendStepDone, sendToJudgeMutation.isPending, 'dark')
-              }
-            >
-              <span className="inline-flex items-center justify-center">
-                {getStepIndicator(sendStepDone, sendStepLocked, sendToJudgeMutation.isPending)}
-              </span>
-              {sendToJudgeMutation.isPending
-                ? 'جاري الإحالة...'
-                : effectiveSentToJudgeAt
-                  ? 'إعادة إحالة الرسم إلى قاضي التوثيق'
-                  : 'إحالة الرسم إلى قاضي التوثيق'}
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenFinalArchiveConfirm}
-              disabled={!canArchiveFinally}
-              className={
-                `w-full px-4 py-3 rounded-2xl font-black transition-all ` +
-                getStepButtonClass(archiveStepDone, archivePostJudgeMutation.isPending, 'dark')
-              }
-            >
-              <span className="inline-flex items-center justify-center">
-                {getStepIndicator(archiveStepDone, archiveStepLocked, archivePostJudgeMutation.isPending)}
-              </span>
-              {archivePostJudgeMutation.isPending
-                ? 'جاري الإيداع...'
-                : effectiveArchivedFinallyAt
-                  ? 'تم إيداع الرسم نهائياً'
-                  : 'إيداع الرسم ضمن المحفوظات العدلية النهائية'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="w-full px-4 md:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="relative z-0 lg:col-span-2 bg-white rounded-3xl shadow-lg border border-slate-200 p-6 signed-rasm-print-surface">
           <div className="flex items-center gap-2 text-slate-900 font-black text-lg signed-rasm-no-print">
@@ -617,10 +546,11 @@ export const SignedRasmViewer: React.FC = () => {
           </div>
 
           <div className="mt-4 rounded-2xl overflow-hidden border border-slate-200 bg-white relative z-0">
-            {deed.signedPdfUrl ? (
+            {activePdfUrl ? (
               <iframe
+                key={`signed-rasm-frame-${renderNonce}-${activePdfUrl}`}
                 title="signed-rasm"
-                src={deed.signedPdfUrl}
+                src={activePdfUrl}
                 className="w-full h-[70vh] relative z-0"
               />
             ) : (
@@ -632,6 +562,18 @@ export const SignedRasmViewer: React.FC = () => {
               </div>
             )}
           </div>
+
+          {paginationError && (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 text-sm font-black">
+              {paginationError}
+            </div>
+          )}
+
+          {paginationSuccess && (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 text-sm font-black">
+              {paginationSuccess}
+            </div>
+          )}
 
           {embedFooterError && (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 text-sm font-black">
@@ -744,6 +686,26 @@ export const SignedRasmViewer: React.FC = () => {
                 title={hasAnyFooterStrip ? 'زر مؤقت: إعادة إنشاء الشريط بدون QR' : 'لا يوجد شريط مراجع مدمج بعد'}
               >
                 إزالة QR (مؤقت)
+              </button>
+
+              <button
+                type="button"
+                onClick={handleApplyTopPagination}
+                disabled={applyPaginationMutation.isPending || !deed?.signedPdfUrl}
+                className={
+                  `flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black transition-all ` +
+                  (applyPaginationMutation.isPending || !deed?.signedPdfUrl
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.98]')
+                }
+                title="إدراج ترقيم الصفحات في رأس الوثيقة"
+              >
+                {applyPaginationMutation.isPending ? (
+                  <Loader className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Hash className="w-4 h-4" />
+                )}
+                <span>إدراج ترقيم الصفحات (أعلى)</span>
               </button>
 
               <button
@@ -1135,7 +1097,7 @@ export const SignedRasmViewer: React.FC = () => {
                         setFinalArchiveError(null);
                         setJudgeSendError(null);
                         await ensureSealed();
-                        const result = await archivePostJudgeMutation.mutateAsync({
+                        const result: any = await archivePostJudgeMutation.mutateAsync({
                           sessionToken,
                           signedDeedId: id,
                           device: {

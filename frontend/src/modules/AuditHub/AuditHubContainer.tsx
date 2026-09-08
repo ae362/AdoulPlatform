@@ -176,6 +176,7 @@ export const AuditHubContainer: React.FC = () => {
 
   const [vaultModal, setVaultModal] = useState<{ isOpen: boolean; title: string; type: 'ids' | 'certificates' | 'none' }>({ isOpen: false, title: '', type: 'none' });
   const [selectedVaultDoc, setSelectedVaultDoc] = useState<any>(null);
+  const [forcedViewerDocState, setForcedViewerDoc] = useState<any>(null);
 
   const primaryFileInputRef = useRef<HTMLInputElement>(null);
   const [primaryTextEditorOpen, setPrimaryTextEditorOpen] = useState(false);
@@ -652,6 +653,34 @@ export const AuditHubContainer: React.FC = () => {
   }, [isWordLikeDoc, judgeAttachmentDocs]);
 
   const judgePrimaryDoc = useMemo(() => {
+    const rasmData = rasmQuery.data as any;
+    const rasmPayload = (rasmData?.payload as any) || {};
+
+    // 0. Prioritize explicit primary / updated PDF from saved_rasms table / rasmQuery.data
+    const rasmPdfPreviewUrl =
+      rasmData?.pdf_preview_url ||
+      rasmData?.pdfPreviewUrl ||
+      rasmPayload?.pdf_preview_url ||
+      rasmPayload?.pdfPreviewUrl;
+
+    if (rasmPdfPreviewUrl) {
+      const u = String(rasmPdfPreviewUrl).trim();
+      if (u) {
+        return {
+          id: `rasm-primary-pdf-${String(rasmData?.id || (effectiveJudgeSubmission as any)?.id || '')}`,
+          category: 'audit_final_pdf',
+          fileName: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+          name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf',
+          fileUrl: u,
+          url: u,
+          docxUrl: rasmData?.primary_docx_url || rasmData?.primaryDocxUrl || rasmPayload?.primary_docx_url || rasmPayload?.primaryDocxUrl || undefined,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        };
+      }
+    }
+
     // 1. Canonical compiled preview URL from submission record
     const canonicalPreviewUrl = String(
       (effectiveJudgeSubmission as any)?.previewUrl ||
@@ -677,7 +706,6 @@ export const AuditHubContainer: React.FC = () => {
     }
 
     // 2. Compiled PDF from rasmQuery.data or payload pointers
-    const rasmData = rasmQuery.data as any;
     const candidatePdfUrls = [
       { url: rasmData?.previewUrl || rasmData?.preview_url, name: rasmData?.previewName || 'المحرر القضائي المعتمد.pdf' },
       { url: rasmData?.finalPdfUrl || rasmData?.final_pdf_url, name: 'المستند النهائي المعتمد.pdf' },
@@ -1138,9 +1166,11 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   }, [judgePrimaryDoc, rasmQuery.data, selectedVaultDoc, state]);
 
   const forcedViewerDoc = useMemo(() => {
+    if (forcedViewerDocState) return forcedViewerDocState;
     const base = (() => {
       if ((activeDocVersion as any) === 'edited') return selectedVaultDoc;
       if (selectedVaultDoc && isWordLikeDoc(selectedVaultDoc)) return selectedVaultDoc;
+      if (selectedVaultDoc && (selectedVaultDoc?.category === 'audit_final_pdf' || String(selectedVaultDoc?.id || '').startsWith('imported-'))) return selectedVaultDoc;
       if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) return judgePrimaryDoc;
       return selectedVaultDoc;
     })();
@@ -1151,7 +1181,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       content: base.content || currentDraftText,
       rawContent: base.rawContent || currentDraftText,
     };
-  }, [activeDocVersion, currentDraftText, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc]);
+  }, [forcedViewerDocState, activeDocVersion, currentDraftText, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc]);
   const isEmbeddedOnlyOfficePreviewTab =
     activeTab === 'formal' || activeTab === 'legal' || activeTab === 'data';
   const isEmbeddedOnlyOfficeActive =
@@ -2735,46 +2765,47 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         }],
       });
 
-      await rasmQuery.refetch();
-      try {
-        await trpcUtils.feesAgent.documents.getSavedRasm.invalidate({ sessionToken, id: rasmId });
-        await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken } as any);
-      } catch {}
-
       revokePrimaryDocBlobUrl();
 
       const timeStamp = Date.now();
-      const rawPdfUrl = (res as any)?.pdfPreviewUrl || (res as any)?.previewPdfUrl || (res as any)?.savedUrl;
-      const rawDocxUrl = (res as any)?.primaryDocxUrl || (res as any)?.previewDocxUrl || (res as any)?.fileUrl || (res as any)?.files?.[0]?.url || (res as any)?.files?.[0]?.fileUrl;
+      const rawPdfUrl = (res as any)?.pdfPreviewUrl || (res as any)?.previewPdfUrl || (res as any)?.fileUrl || (res as any)?.savedUrl;
+      const rawDocxUrl = (res as any)?.primaryDocxUrl || (res as any)?.previewDocxUrl || (res as any)?.docxUrl || (res as any)?.files?.[0]?.url || (res as any)?.files?.[0]?.fileUrl;
       
-      const freshPdfUrl = rawPdfUrl ? (rawPdfUrl.includes('cb=') ? rawPdfUrl : `${rawPdfUrl}${rawPdfUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : null;
-      const freshDocxUrl = rawDocxUrl ? (rawDocxUrl.includes('cb=') ? rawDocxUrl : `${rawDocxUrl}${rawDocxUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64}`;
-      const versionId = (res as any)?.versionId || `imported-${timeStamp}`;
+      const cbPdfUrl = rawPdfUrl ? (rawPdfUrl.includes('cb=') ? rawPdfUrl : `${rawPdfUrl}${rawPdfUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : `${rawDocxUrl}?cb=${timeStamp}`;
+      const cbDocxUrl = rawDocxUrl ? (rawDocxUrl.includes('cb=') ? rawDocxUrl : `${rawDocxUrl}${rawDocxUrl.includes('?') ? '&' : '?'}cb=${timeStamp}`) : `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64}`;
 
-      // 1. Force state override immediately
+      // 1. Force state update immediately in React state
       setSelectedVaultDoc({
-        id: (res as any)?.savedAttachmentId || (res as any)?.attachmentId || versionId,
-        url: freshPdfUrl || freshDocxUrl,
-        fileUrl: freshPdfUrl || freshDocxUrl,
-        docxUrl: freshDocxUrl,
-        fileName: file.name,
-        mimeType: freshPdfUrl ? 'application/pdf' : (file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
-        type: freshPdfUrl ? 'application/pdf' : (file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        id: `imported-${timeStamp}`,
+        url: cbPdfUrl,
+        fileUrl: cbPdfUrl,
+        docxUrl: cbDocxUrl,
+        mimeType: 'application/pdf',
         category: 'audit_final_pdf',
+        fileName: file.name
+      });
+
+      setForcedViewerDoc({
+        id: `imported-${timeStamp}`,
+        url: cbPdfUrl,
+        fileUrl: cbPdfUrl,
+        docxUrl: cbDocxUrl,
+        mimeType: 'application/pdf',
+        category: 'audit_final_pdf'
       });
 
       setActiveEditedArtifact({
-        versionId,
-        url: freshDocxUrl,
-        pdfUrl: freshPdfUrl,
-        kind: 'docx',
+        versionId: `imported-${timeStamp}`,
+        url: cbDocxUrl,
+        pdfUrl: cbPdfUrl,
+        kind: 'docx'
       });
 
       setActiveDocVersion('edited');
       setViewerDocRenderNonce((n) => n + 1);
       setActiveViewMode('preview');
 
-      // 2. Await full tRPC refetch
+      // 2. Refetch query to align background cache
       try {
         await trpcUtils.feesAgent.documents.getSavedRasm.refetch({ sessionToken, id: rasmId });
       } catch {}

@@ -98,12 +98,13 @@ export const HighResViewer = ({
     ''
   ) as string;
   const effectiveDocUrl = (() => {
-    if (forcedBasePdfUrl) return forcedBasePdfUrl;
     const u = String(docUrl || '');
     const r = String(docRemoteUrl || '');
     if (u.startsWith('blob:')) return u;
     if (u.startsWith('data:')) return r || u;
-    return u || r;
+    if (u || r) return u || r;
+    if (forcedBasePdfUrl) return forcedBasePdfUrl;
+    return '';
   })();
 
   // For some hosts (e.g. object storage), direct <iframe src="https://...pdf"> can render blank/black
@@ -672,8 +673,8 @@ export const HighResViewer = ({
                               }
                             >
                               <iframe
-                                key={String(pdfBlobUrl || effectiveDocUrl || docUrl || doc?.id || renderNonce || 'pdf-viewer')}
-                                src={getJudgeLikePdfViewerUrl(pdfBlobUrl || effectiveDocUrl || docUrl, zoom)}
+                                key={doc?.url || doc?.fileUrl || 'active-pdf-viewer'}
+                                src={getJudgeLikePdfViewerUrl(doc?.url || doc?.fileUrl || pdfBlobUrl || effectiveDocUrl, zoom)}
                                 className="absolute inset-0 w-full h-full border-0"
                                 title="PDF Viewer"
                               />

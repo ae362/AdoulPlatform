@@ -6,6 +6,14 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { releaseStuViaBeacon } from '../utils/stuReleaseBeacon';
 import {
+    getJudicialSpeechDocument,
+    getJudgeLikePdfViewerUrl,
+} from '../hooks/useJudicialSpeechData';
+import {
+    StampPositionModal,
+    type NormalizedPosition,
+} from '../pages/Judge/components/StampPositionModal';
+import {
     DEFAULT_ARABIC_STAMP_CONFIG,
     StampPlacementLayer,
     clampPlacement,
@@ -91,265 +99,13 @@ interface DeedForSpeech {
     timeline: TimelineEvent[];
 }
 
-type StampPlacementModalProps = {
-    open: boolean;
-    pdfUrl: string;
-    initialPlacement: SvgStampPlacement | null;
-    stampSvgMarkup: string;
-    onClose: () => void;
-    onConfirm: (placement: SvgStampPlacement) => void;
-};
-
-const DEFAULT_STAMP_WIDTH_PCT = 0.24;
-
-const PlacementPage: React.FC<{
-    pdfDoc: any;
-    pageNumber: number;
-    placement: SvgStampPlacement | null;
-    stampSvgMarkup: string;
-    onPlacementChange: (placement: SvgStampPlacement) => void;
-}> = ({ pdfDoc, pageNumber, placement, stampSvgMarkup, onPlacementChange }) => {
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const wrapperRef = useRef<HTMLDivElement | null>(null);
-    const [pageBox, setPageBox] = useState<PageViewportBox>({ width: 1, height: 1 });
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const renderPage = async () => {
-            const canvas = canvasRef.current;
-            const wrapper = wrapperRef.current;
-            if (!canvas || !wrapper || !pdfDoc) return;
-
-            const page = await pdfDoc.getPage(pageNumber);
-            if (cancelled) return;
-
-            const baseViewport = page.getViewport({ scale: 1 });
-            const availableWidth = Math.max(320, Math.min(960, wrapper.parentElement?.clientWidth || 920));
-            const scale = availableWidth / Math.max(1, baseViewport.width);
-            const viewport = page.getViewport({ scale });
-            const ratio = Math.max(1, window.devicePixelRatio || 1);
-            const context = canvas.getContext('2d');
-            if (!context) return;
-
-            canvas.width = Math.round(viewport.width * ratio);
-            canvas.height = Math.round(viewport.height * ratio);
-            canvas.style.width = `${Math.round(viewport.width)}px`;
-            canvas.style.height = `${Math.round(viewport.height)}px`;
-
-            context.setTransform(ratio, 0, 0, ratio, 0, 0);
-            context.fillStyle = '#ffffff';
-            context.fillRect(0, 0, viewport.width, viewport.height);
-            await page.render({ canvasContext: context, viewport }).promise;
-
-            if (!cancelled) {
-                setPageBox({
-                    width: Math.round(viewport.width),
-                    height: Math.round(viewport.height),
-                });
-            }
-        };
-
-        void renderPage();
-        const handleResize = () => void renderPage();
-        window.addEventListener('resize', handleResize);
-        return () => {
-            cancelled = true;
-            window.removeEventListener('resize', handleResize);
-        };
-    }, [pdfDoc, pageNumber]);
-
-    const commitPlacement = (clientX: number, clientY: number) => {
-        const wrapper = wrapperRef.current;
-        if (!wrapper) return;
-        const rect = wrapper.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-
-        const widthPct = DEFAULT_STAMP_WIDTH_PCT;
-        const heightPct = (DEFAULT_STAMP_WIDTH_PCT * rect.width) / Math.max(1, rect.height);
-        const rawX = (clientX - rect.left) / rect.width;
-        const rawY = (clientY - rect.top) / rect.height;
-
-        onPlacementChange(
-            clampPlacement(
-                {
-                    page: pageNumber,
-                    xPct: rawX,
-                    yPct: rawY,
-                    widthPct,
-                    heightPct,
-                    rotation: 0,
-                },
-                { width: 1, height: 1 }
-            )
-        );
-    };
-
-    return (
-        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-black text-slate-500">صفحة {pageNumber}</span>
-                <span className="text-[11px] font-bold text-slate-400">انقر لتحديد الموضع ثم اسحب المستطيل إن لزم</span>
-            </div>
-            <div ref={wrapperRef} className="relative mx-auto w-fit overflow-hidden rounded-sm border border-slate-300 bg-white shadow-lg">
-                <canvas ref={canvasRef} className="block max-w-full bg-white" />
-                <div
-                    className="absolute inset-0 z-10 cursor-crosshair bg-transparent"
-                    onClick={(event) => {
-                        const target = event.target as HTMLElement;
-                        if (target.closest('[data-stamp-selection-box="true"]')) return;
-                        commitPlacement(event.clientX, event.clientY);
-                    }}
-                >
-                    {placement?.page === pageNumber ? (
-                        <StampPlacementLayer
-                            page={pageNumber}
-                            pageBox={pageBox}
-                            placement={placement}
-                            svgMarkup={stampSvgMarkup}
-                            onChange={onPlacementChange}
-                        />
-                    ) : null}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const StampPlacementModal: React.FC<StampPlacementModalProps> = ({
-    open,
-    pdfUrl,
-    initialPlacement,
-    stampSvgMarkup,
-    onClose,
-    onConfirm,
-}) => {
-    const [pdfDoc, setPdfDoc] = useState<any>(null);
-    const [pageCount, setPageCount] = useState(0);
-    const [placement, setPlacement] = useState<SvgStampPlacement | null>(initialPlacement);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!open) return;
-        setPlacement(initialPlacement);
-    }, [open, initialPlacement]);
-
-    useEffect(() => {
-        if (!open || !pdfUrl) {
-            setPdfDoc(null);
-            setPageCount(0);
-            return;
-        }
-
-        let cancelled = false;
-        setIsLoading(true);
-        setError(null);
-
-        const load = async () => {
-            try {
-                const response = await fetch(pdfUrl, {
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                });
-                if (!response.ok) {
-                    throw new Error(`تعذر تحميل نسخة الرسم (${response.status})`);
-                }
-                const bytes = await response.arrayBuffer();
-                const nextPdfDoc = await pdfjsLib.getDocument({ data: bytes } as any).promise;
-                if (cancelled) return;
-                setPdfDoc(nextPdfDoc);
-                setPageCount(Math.max(1, nextPdfDoc.numPages || 1));
-            } catch (nextError: any) {
-                if (cancelled) return;
-                setPdfDoc(null);
-                setPageCount(0);
-                setError(nextError?.message || 'تعذر فتح وضع اختيار موضع الطابع.');
-            } finally {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        void load();
-        return () => {
-            cancelled = true;
-        };
-    }, [open, pdfUrl]);
-
-    if (!open) return null;
-
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-6 backdrop-blur-sm">
-            <div className="flex h-[92vh] w-full max-w-[1280px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl" dir="rtl">
-                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
-                    <div>
-                        <h3 className="text-lg font-black text-slate-900">وضع اختيار موضع طابع المحكمة</h3>
-                        <p className="text-sm font-bold text-slate-500">هذه المعاينة مخصصة فقط لتحديد الموضع بدقة. سيعاد تحميل النسخة المختومة في العارض الرئيسي بعد التوليد.</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-2xl border border-slate-200 bg-white p-3 text-slate-500 transition-colors hover:bg-slate-100"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto bg-slate-100 p-6">
-                    {isLoading ? (
-                        <div className="flex h-full items-center justify-center text-sm font-black text-slate-500">جاري تحميل نسخة الرسم الحالية لوضع الموضع...</div>
-                    ) : error ? (
-                        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-right text-sm font-black text-red-700">{error}</div>
-                    ) : pdfDoc && pageCount > 0 ? (
-                        <div className="space-y-6">
-                            {Array.from({ length: pageCount }, (_, index) => (
-                                <PlacementPage
-                                    key={index + 1}
-                                    pdfDoc={pdfDoc}
-                                    pageNumber={index + 1}
-                                    placement={placement}
-                                    stampSvgMarkup={stampSvgMarkup}
-                                    onPlacementChange={setPlacement}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-right text-sm font-black text-amber-700">
-                            لا توجد نسخة PDF صالحة لفتح وضع اختيار الموضع.
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-6 py-4">
-                    <div className="text-sm font-bold text-slate-500">
-                        {placement ? `تم تحديد الموضع على الصفحة ${placement.page}. يمكنك تحريك المستطيل أو تغيير حجمه قبل التأكيد.` : 'اختر موضع الطابع بالنقر داخل الصفحة المطلوبة.'}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-2xl border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
-                        >
-                            إلغاء
-                        </button>
-                        <button
-                            type="button"
-                            disabled={!placement}
-                            onClick={() => placement && onConfirm(placement)}
-                            className={`rounded-2xl px-5 py-3 text-sm font-black text-white ${
-                                placement ? 'bg-amber-600 hover:bg-amber-500' : 'cursor-not-allowed bg-slate-400'
-                            }`}
-                        >
-                            تأكيد موضع الطابع
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+function extractCourtCity(raw?: string | null): string {
+    if (!raw || typeof raw !== 'string') return 'شفشاون';
+    let s = raw.trim();
+    s = s.replace(/^(المحكمة\s+الابتدائية|محكمة\s+الاستئناف|قسم\s+التوثيق|قسم\s+قضاء\s+الأسرة|ابتدائية)\s*/u, '');
+    s = s.replace(/^بـ?(\s*)/u, '');
+    return s.trim() || 'شفشاون';
+}
 
 export const JudicialSpeechModule: React.FC = () => {
     const { sessionToken, user } = useAuth();
@@ -374,18 +130,14 @@ export const JudicialSpeechModule: React.FC = () => {
     const [isGeneratingCourtStamp, setIsGeneratingCourtStamp] = useState(false);
     const [courtStampNotice, setCourtStampNotice] = useState<string | null>(null);
     const [judgeCourtId, setJudgeCourtId] = useState<string | null>(null);
-    const [courtCity, setCourtCity] = useState('الرباط');
+    const [courtCity, setCourtCity] = useState('شفشاون');
     const [judgeSignature, setJudgeSignature] = useState<string | null>(null);
     const [isSignaturePendingPlacement, setIsSignaturePendingPlacement] = useState(false);
     const [isStampPlacementPending, setIsStampPlacementPending] = useState(false);
     const [isPlacementModeOpen, setIsPlacementModeOpen] = useState(false);
-    const [stampPlacement, setStampPlacement] = useState<{
-        xPct: number;
-        yPct: number;
-        widthPct: number;
-        heightPct: number;
-        page: number;
-    } | null>(null);
+    const [signaturePosition, setSignaturePosition] = useState<NormalizedPosition | null>(null);
+    const [courtStampPosition, setCourtStampPosition] = useState<NormalizedPosition | null>(null);
+    const [stampPlacement, setStampPlacement] = useState<SvgStampPlacement | null>(null);
     const [judgePreviewPageMetrics, setJudgePreviewPageMetrics] = useState<{
         page: number;
         cssWidth: number;
@@ -580,7 +332,22 @@ export const JudicialSpeechModule: React.FC = () => {
     const deeds = useMemo(() => {
         return (submissions ?? [])
             .filter((sub) => sub.status === 'pending' || sub.status === 'in_review')
-            .map((sub): DeedForSpeech => ({
+            .map((sub: any): DeedForSpeech => {
+            const payload = sub?.payload && typeof sub.payload === 'object' ? sub.payload : {};
+            const rawCity =
+                sub.courtCity ||
+                sub.notaryCity ||
+                sub.city ||
+                payload.courtCity ||
+                payload.primary_court ||
+                payload.court_name ||
+                payload.court ||
+                payload.city ||
+                payload.notaryCity ||
+                payload.jurisdiction ||
+                'شفشاون';
+            const extractedCity = extractCourtCity(rawCity);
+            return {
             id: sub.id,
             serialNumber: sub.fileNumber || '... ',
             category: sub.documentType || 'رسم غير مصنف',
@@ -588,9 +355,10 @@ export const JudicialSpeechModule: React.FC = () => {
                 { name: sub.notaryName || 'العدل الأول', position: 'FIRST' },
                 { name: 'ذ. أحمد بناني', position: 'SECOND' }
             ],
-            city: 'الرباط',
+            city: extractedCity,
             timestamp: new Date(sub.createdAt).toLocaleString('ar-MA'),
-            status: (sub.status === 'pending' || sub.status === 'in_review' || sub.status === 'READY') ? 'READY' : 'APPROVED_JUDGE',
+            status: (sub.status === 'pending' || sub.status === 'in_review') ? 'READY' : 'APPROVED_JUDGE',
+            text: sub.summary || 'نموذج نص الرسم العدلي المستخرج من قاعدة البيانات...',
             hasFirstNotarySign: true,
             hasSecondNotarySign: true,
             registrationCorrect: true,
@@ -601,7 +369,8 @@ export const JudicialSpeechModule: React.FC = () => {
                 { id: '1', type: 'SIGN', label: 'توقيع العدل الأول', timestamp: new Date(sub.createdAt).toLocaleString('ar-MA'), actor: sub.notaryName || 'ذ. محمد العلمي' },
                 { id: '2', type: 'SEND', label: 'إرسال إلى قاضي التوثيق', timestamp: new Date(sub.createdAt).toLocaleString('ar-MA'), actor: 'النظام الآلي' }
             ]
-        }));
+            };
+        });
     }, [submissions]);
 
     const selectedDeed = useMemo(() => {
@@ -623,7 +392,7 @@ export const JudicialSpeechModule: React.FC = () => {
                 ],
                 city: 'الرباط',
                 timestamp: new Date(fullDeedData.createdAt).toLocaleString('ar-MA'),
-                status: (fullDeedData.status === 'pending' || fullDeedData.status === 'in_review' || fullDeedData.status === 'READY') ? 'READY' : 'APPROVED_JUDGE',
+                status: (fullDeedData.status === 'pending' || fullDeedData.status === 'in_review') ? 'READY' : 'APPROVED_JUDGE',
                 text: fullDeedData.summary || 'نموذج نص الرسم العدلي المستخرج من قاعدة البيانات...',
                 hasSecondNotarySign: true,
                 registrationCorrect: true,
@@ -681,13 +450,26 @@ export const JudicialSpeechModule: React.FC = () => {
 
     useEffect(() => {
         if (!selectedDeed) return;
-        const payloadCity =
-            typeof (fullDeedData as any)?.payload?.courtCity === 'string' && (fullDeedData as any).payload.courtCity.trim()
-                ? (fullDeedData as any).payload.courtCity.trim()
-                : typeof (fullDeedData as any)?.payload?.city === 'string' && (fullDeedData as any).payload.city.trim()
-                    ? (fullDeedData as any).payload.city.trim()
-                    : selectedDeed.city || 'الرباط';
-        setCourtCity(payloadCity);
+        const payload = (fullDeedData as any)?.payload || {};
+        const rawNotaryCity =
+            (fullDeedData as any)?.courtCity ||
+            (fullDeedData as any)?.notaryCity ||
+            (fullDeedData as any)?.notaryProfile?.primary_court ||
+            (fullDeedData as any)?.notaryProfile?.court_name ||
+            (fullDeedData as any)?.notaryProfile?.city ||
+            (fullDeedData as any)?.city ||
+            payload.courtCity ||
+            payload.primary_court ||
+            payload.court_name ||
+            payload.court ||
+            payload.city ||
+            payload.notaryCity ||
+            payload.jurisdiction ||
+            selectedDeed.city ||
+            (selectedDeed as any)?.courtCity ||
+            (selectedDeed as any)?.jurisdiction ||
+            'شفشاون';
+        setCourtCity(extractCourtCity(rawNotaryCity));
         setJudgeCourtId(
             typeof (fullDeedData as any)?.payload?.judgeCourtIdentifier?.id === 'string' &&
             (fullDeedData as any).payload.judgeCourtIdentifier.id.trim()
@@ -702,7 +484,11 @@ export const JudicialSpeechModule: React.FC = () => {
         else setRegistryType('other');
     }, [selectedDeedId, selectedDeed, fullDeedData]);
 
-    const judgePdfUrl = previewOverrideUrl || selectedDeed?.previewUrl || '';
+    const canonicalPdfUrl = useMemo(() => {
+        return getJudicialSpeechDocument(fullDeedData, previewOverrideUrl);
+    }, [fullDeedData, previewOverrideUrl]);
+
+    const judgePdfUrl = canonicalPdfUrl || previewOverrideUrl || selectedDeed?.previewUrl || '';
     const stampSvgMarkup = useMemo(() => {
         return renderStampSvgString({
             ...DEFAULT_ARABIC_STAMP_CONFIG,
@@ -1727,7 +1513,7 @@ export const JudicialSpeechModule: React.FC = () => {
             });
 
             const modifiedBytes = await pdfDoc.save();
-            const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+            const blob = new Blob([modifiedBytes as unknown as BlobPart], { type: 'application/pdf' });
             setJudgeEditedPdfBytes(modifiedBytes);
             setPreviewOverrideUrl(URL.createObjectURL(blob));
             setJudgeSignatureNotice('تم إدراج توقيع القاضي داخل الرسم بنجاح.');
@@ -1812,7 +1598,7 @@ export const JudicialSpeechModule: React.FC = () => {
                 judgeEditedPdfBytes.byteOffset,
                 judgeEditedPdfBytes.byteOffset + judgeEditedPdfBytes.byteLength
             );
-            return arrayBufferToBase64(sliced);
+            return arrayBufferToBase64(sliced as ArrayBuffer);
         }
         const sourceUrl = previewOverrideUrl || selectedDeed?.previewUrl || null;
         if (!sourceUrl || !judgeSignature) return undefined;
@@ -1844,7 +1630,7 @@ export const JudicialSpeechModule: React.FC = () => {
         const y = Math.max(130, pdfH * 0.18);
         activePage.drawImage(embeddedImage, { x, y, width: sigW, height: sigH });
         const modifiedBytes = await pdfDoc.save();
-        return arrayBufferToBase64(modifiedBytes.buffer);
+        return arrayBufferToBase64(modifiedBytes.buffer as ArrayBuffer);
     };
 
     const handleJudgePreviewClick = async (event: React.MouseEvent<HTMLElement>) => {
@@ -1878,7 +1664,7 @@ export const JudicialSpeechModule: React.FC = () => {
             const y = Math.max(130, pdfH * 0.18);
             activePage.drawImage(embeddedImage, { x, y, width: sigW, height: sigH });
             const modifiedBytes = await pdfDoc.save();
-            const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+            const blob = new Blob([modifiedBytes as unknown as BlobPart], { type: 'application/pdf' });
             setJudgeEditedPdfBytes(modifiedBytes);
             setPreviewOverrideUrl(URL.createObjectURL(blob));
             setJudgeSignatureNotice('تم إدراج توقيع القاضي داخل الرسم. يمكنك الآن اعتماد الخطاب.');
@@ -1889,7 +1675,7 @@ export const JudicialSpeechModule: React.FC = () => {
     };
 
     const handleStampDeed = async () => {
-        if (!selectedDeed || !selectedDeedId || selectedDeed.status !== 'READY' || !hasStep3Completed) return;
+        if (!selectedDeed || !selectedDeedId || selectedDeed.status !== 'READY') return;
         
         setIsStamping(true);
         try {
@@ -1942,29 +1728,48 @@ export const JudicialSpeechModule: React.FC = () => {
         setGeneratedInclusion(res);
     };
 
-    const handleGenerateJudgeCourtStamp = async () => {
+    const handleGenerateJudgeCourtStampWithPositions = async (
+        customSigPos?: NormalizedPosition | null,
+        customStampPos?: NormalizedPosition | null
+    ) => {
         if (!selectedDeedId) return;
         setCourtStampNotice(null);
         setIsGeneratingCourtStamp(true);
         setJudgeEditedPdfBytes(null);
+        const sigPos = customSigPos ?? signaturePosition;
+        const stPos = customStampPos ?? courtStampPosition;
         try {
+            const effectiveCity = courtCity.trim() || selectedDeed?.city || (fullDeedData as any)?.payload?.courtCity || 'شفشاون';
             const res = await generateCourtStampMutation.mutateAsync({
                 sessionToken: sessionToken || '',
                 id: selectedDeedId,
-                courtCity: courtCity.trim(),
+                courtCity: effectiveCity,
+                signaturePosition: sigPos || undefined,
+                stampPosition: stPos || undefined,
+                placement: (sigPos || stPos) ? {
+                    signaturePosition: sigPos || undefined,
+                    stampPosition: stPos || undefined,
+                    page: stPos?.page || sigPos?.page,
+                } : undefined,
             });
-            setPreviewOverrideUrl(res.stampedPdfUrl ? `${res.stampedPdfUrl}${res.stampedPdfUrl.includes('?') ? '&' : '?'}v=${Date.now()}` : null);
+            const freshUrl = res.stampedPdfUrl
+                ? `${res.stampedPdfUrl}${res.stampedPdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`
+                : null;
+            setPreviewOverrideUrl(freshUrl);
             setIsStampPlacementPending(false);
             setIsPlacementModeOpen(false);
-            setStampPlacement(null);
-            setCourtStampNotice('تم توليد طابع المحكمة الجديد وإدراجه داخل الرسم بنجاح.');
+            setCourtStampNotice('تم توليد طابع المحكمة وإدراج الخطاب الرسمي بدقة في الموضع المحدد.');
             void refetchSubmission();
             void refetchList();
         } catch (error: any) {
-            alert(error?.message || 'تعذر توليد طابع المحكمة.');
+            alert(error?.message || 'تعذر توليد طابع المحكمة والخطاب.');
         } finally {
             setIsGeneratingCourtStamp(false);
         }
+    };
+
+    const handleGenerateJudgeCourtStamp = async () => {
+        await handleGenerateJudgeCourtStampWithPositions();
     };
 
     const handleRevertJudgeCourtStamp = async () => {
@@ -2016,16 +1821,19 @@ export const JudicialSpeechModule: React.FC = () => {
                 forceRegenerate: true,
                 origin: typeof window !== 'undefined' ? window.location.origin : undefined,
             });
+            const effectiveCity = courtCity.trim() || selectedDeed?.city || (fullDeedData as any)?.payload?.courtCity || 'شفشاون';
             const generated = await generateCourtIdMutation.mutateAsync({
                 sessionToken: sessionToken || '',
                 id: selectedDeedId,
-                courtCity: courtCity.trim(),
+                courtCity: effectiveCity,
             });
             setJudgeEditedPdfBytes(null);
             setJudgeCourtId(generated.generatedId || null);
+            const fallbackEmbeddedUrl = (embedded as any)?.signedPdfUrl;
+            const targetStreamUrl = generated.stampedPdfUrl || fallbackEmbeddedUrl;
             setPreviewOverrideUrl(
-                (generated.stampedPdfUrl || embedded.signedPdfUrl)
-                    ? `${generated.stampedPdfUrl || embedded.signedPdfUrl}${String(generated.stampedPdfUrl || embedded.signedPdfUrl).includes('?') ? '&' : '?'}v=${Date.now()}`
+                targetStreamUrl
+                    ? `${targetStreamUrl}${String(targetStreamUrl).includes('?') ? '&' : '?'}v=${Date.now()}`
                     : null
             );
             setGeneratedInclusion({
@@ -2284,770 +2092,516 @@ export const JudicialSpeechModule: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main 3-Panel Content */}
+            {/* Main 2-Column Master Workspace */}
             <div className="flex-1 flex overflow-hidden">
                 
-                {/* 1️⃣ LEFT PANEL: Interactive PDF Preview (45% width) */}
-                <div className="w-[45%] border-l border-slate-200 bg-slate-100 flex flex-col shadow-inner relative overflow-hidden">
-                    <div className="sticky top-0 z-20 p-4 bg-white/80 backdrop-blur-md border-b flex justify-between items-center px-8">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-[#1f3c88]" /> معاينة النسخة الرسمية المؤرشفة
+                {/* 1️⃣ RIGHT SIDEBAR: Controls, Verification & Actions (30% width) */}
+                <div className="w-[30%] min-w-[380px] max-w-[460px] h-full border-l border-slate-200 bg-white flex flex-col shadow-lg z-20 overflow-hidden">
+                    {/* Header */}
+                    <div className="p-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-[#1f3c88] rounded-xl text-blue-300">
+                                <Scale className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h3 className="font-black text-sm text-white">لوحة الاعتماد القضائي</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Judicial Endorsement Board</p>
+                            </div>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800/40">
+                            مباشر ومحمي
                         </span>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setJudgePreviewPage((prev) => Math.max(1, prev - 1))}
-                                    disabled={judgePreviewPage <= 1}
-                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors disabled:text-slate-300 disabled:hover:bg-transparent"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                                <span className="min-w-[72px] text-center text-[11px] font-black text-slate-600">
-                                    صفحة {judgePreviewPage} / {pdfPageCount}
+                    </div>
+
+                    {/* Scrollable Body */}
+                    <div className="flex-1 p-5 space-y-5 overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
+                        
+                        {/* [1] Judicial Status Bar */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Info className="w-3.5 h-3.5 text-[#1f3c88]" /> بطاقة الرسم
                                 </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setJudgePreviewPage((prev) => Math.min(pdfPageCount, prev + 1))}
-                                    disabled={judgePreviewPage >= pdfPageCount}
-                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors disabled:text-slate-300 disabled:hover:bg-transparent"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1">
-                                <button
-                                    type="button"
-                                    title="تصغير"
-                                    onClick={() => setDocZoom((prev) => Math.max(0.5, Number((prev - 0.1).toFixed(2))))}
-                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 font-bold text-xs transition-colors"
-                                >
-                                    −
-                                </button>
-                                <span className="min-w-[44px] text-center text-[11px] font-black text-slate-600">
-                                    {Math.round(docZoom * 100)}%
+                                <span className="text-[10px] font-black text-[#1f3c88] bg-blue-50 px-2 py-0.5 rounded-md">
+                                    {selectedDeed.category}
                                 </span>
-                                <button
-                                    type="button"
-                                    title="تكبير"
-                                    onClick={() => setDocZoom((prev) => Math.min(2.0, Number((prev + 0.1).toFixed(2))))}
-                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 font-bold text-xs transition-colors"
-                                >
-                                    +
-                                </button>
                             </div>
-                            <button
-                                type="button"
-                                title="طباعة الرسم"
-                                onClick={() => {
-                                    if (!judgePdfUrl) return;
-                                    const w = window.open(judgePdfUrl, '_blank');
-                                    if (w) w.focus();
-                                }}
-                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
-                            >
-                                <Printer className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                title="تحميل النسخة الرسمية"
-                                onClick={() => {
-                                    if (!judgePdfUrl) return;
-                                    const link = document.createElement('a');
-                                    link.href = judgePdfUrl;
-                                    link.download = selectedDeed?.previewName || `rasm-${selectedDeed?.serialNumber || selectedDeed?.id}.pdf`;
-                                    link.target = '_blank';
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                }}
-                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
-                            >
-                                <Download className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 p-6 md:p-10 flex justify-center items-start overflow-auto select-none bg-slate-200/60">
-                        {selectedDeed && (
-                            (selectedDeed.previewMimeType || '').toLowerCase().includes('pdf') ||
-                            (previewOverrideUrl || selectedDeed.previewUrl || '').toLowerCase().includes('.pdf') ||
-                            (previewOverrideUrl || selectedDeed.previewUrl || '').startsWith('data:application/pdf') ||
-                            (previewOverrideUrl || selectedDeed.previewUrl || '').startsWith('blob:')
-                        ) ? (
-                            <div
-                                ref={judgePreviewRef}
-                                style={{
-                                    transform: `scale(${docZoom})`,
-                                    transformOrigin: 'top center',
-                                }}
-                                className="w-full flex flex-col items-center justify-start transition-transform duration-150"
-                            >
-                                <div
-                                    ref={judgePageWrapperRef}
-                                    className="relative shadow-2xl bg-white rounded-sm border border-slate-200/80 overflow-hidden mx-auto"
-                                >
-                                    <canvas
-                                        ref={judgePreviewCanvasRef}
-                                        className="block max-w-full bg-white"
-                                    />
-                                    <div
-                                        className={`absolute inset-0 z-20 ${
-                                            isSignaturePendingPlacement ? 'pointer-events-auto' : 'pointer-events-none'
-                                        }`}
-                                    >
-                                        {isSignaturePendingPlacement && (
-                                            <button
-                                                type="button"
-                                                aria-label="تحديد موضع التوقيع"
-                                                onClick={handleJudgePreviewClick}
-                                                className="absolute inset-0 w-full h-full cursor-crosshair bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
-                                            />
-                                        )}
-                                    </div>
-
-                                    {isJudgePreviewRendering && (
-                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px]">
-                                            <div className="w-10 h-10 border-3 border-[#1f3c88] border-t-transparent rounded-full animate-spin mb-3"></div>
-                                            <p className="text-xs font-bold text-slate-500">جاري تحميل الرسم القضائي...</p>
-                                        </div>
-                                    )}
-
-                                    {judgePreviewError && (
-                                        <div className="absolute inset-x-6 bottom-6 z-30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50/95 p-4 text-center shadow-lg">
-                                            <p className="text-sm font-black text-amber-800">{judgePreviewError}</p>
-                                            {judgePdfUrl && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => window.open(judgePdfUrl, '_blank')}
-                                                    className="text-xs font-black text-[#1f3c88] underline hover:text-blue-700"
-                                                >
-                                                    فتح الرسم في نافذة مستقلة
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                {isSignaturePendingPlacement && (
-                                    <div className="mt-4 max-w-lg rounded-2xl border border-blue-300 bg-blue-50/95 px-5 py-3 text-center text-sm font-black text-blue-700 shadow-xl backdrop-blur">
-                                        انقر داخل معاينة الرسم لإدراج توقيع القاضي باستعمال نفس أسلوب تضمين التوقيع داخل PDF.
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div
-                                style={{
-                                    transform: `scale(${docZoom})`,
-                                    transformOrigin: 'top center',
-                                }}
-                                className="w-[794px] min-h-[1123px] bg-white shadow-2xl p-16 relative border border-slate-200 transition-transform duration-150"
-                            >
-
-                            {/* Document Header */}
-                            <div className="text-center mb-12 space-y-4">
-                                <p className="font-['Amiri',_serif] text-xl">المملكة المغربية</p>
-                                <p className="font-['Amiri',_serif] text-lg leading-tight">المندوبية العامة لإدارة السجون وإعادة الإدماج<br/>المحكمة الابتدائية بـ {selectedDeed.city}</p>
-                                <div className="h-px bg-slate-200 w-32 mx-auto my-6"></div>
-                            </div>
-
-                            {/* Deed Content */}
-                            <div className="space-y-8 font-['Amiri',_serif] text-xl leading-relaxed text-slate-800 relative z-10">
-                                <p className="text-center font-bold text-2xl mb-8 underline decoration-double underline-offset-8 decoration-slate-200">{selectedDeed.category}</p>
-                                <p className="text-justify indent-12">{selectedDeed.text}</p>
-                                <p className="text-justify indent-12">هذا ما نص عليه الطرفان بعد تأكدهما من منطوق الوثيقة، وبناء عليه تم تحرير هذا الرسم وفق الضوابط الشرعية والقانونية الجاري بها العمل، وتم توقيعه إلكترونياً من قبل العدول المحررين قبل رفه للقضاء قصد الخطاب.</p>
-                            </div>
-
-                            {/* Signatures Area */}
-                            <div className="mt-20 grid grid-cols-2 gap-12 border-t border-slate-100 pt-12">
-                                <div className="space-y-4 text-center">
-                                    <p className="font-bold text-slate-400 text-[10px] uppercase tracking-widest">العدل الأول</p>
-                                    <div className="h-20 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden relative group">
-                                        <div className="text-[#1f3c88] font-['Alex_Brush',_cursive] text-4xl opacity-70 -rotate-3 select-none">
-                                            {selectedDeed.notaries[0].name}
-                                        </div>
-                                        <div className="absolute inset-x-0 bottom-0 h-1 bg-emerald-500/30"></div>
-                                    </div>
-                                    <p className="font-black text-slate-600 text-xs">{selectedDeed.notaries[0].name}</p>
-                                </div>
-                                <div className="space-y-4 text-center">
-                                    <p className="font-bold text-slate-400 text-[10px] uppercase tracking-widest">العدل العاطف</p>
-                                    <div className="h-20 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden relative">
-                                        {selectedDeed.hasSecondNotarySign ? (
-                                            <div className="text-[#1f3c88] font-['Alex_Brush',_cursive] text-4xl opacity-70 rotate-2 select-none">
-                                                {selectedDeed.notaries[1].name}
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-300 text-[10px] font-black uppercase tracking-widest animate-pulse">Awaiting Sign</span>
-                                        )}
-                                        <div className={`absolute inset-x-0 bottom-0 h-1 ${selectedDeed.hasSecondNotarySign ? 'bg-emerald-500/30' : 'bg-red-500/30'}`}></div>
-                                    </div>
-                                    <p className="font-black text-slate-600 text-xs">{selectedDeed.notaries[1].name}</p>
-                                </div>
-                            </div>
-
-                            {/* JUDICIAL PHASE: Speech & Approval Area */}
-                            <div className="mt-4 border-t border-slate-100 relative pt-4 transition-all duration-1000">
-                                {selectedDeed.status === 'APPROVED_JUDGE' ? (
-                                    <div className="flex flex-col items-start justify-start text-right space-y-3 animate-in zoom-in duration-700">
-                                        <div className="flex flex-col items-start space-y-1">
-                                            <p className="font-['Amiri',_serif] text-3xl font-black text-[#1f3c88] tracking-widest leading-none">{protocolPrefix}</p>
-                                            <div className="w-10 h-px bg-[#1f3c88]/10"></div>
-                                            <p className="font-['Amiri',_serif] text-2xl font-bold text-[#1f3c88] leading-tight">{protocolSub}</p>
-                                            <p className="font-['Amiri',_serif] text-xl font-bold text-slate-700 leading-tight">{protocolJudge}</p>
-                                        </div>
-
-                                        <div className="flex gap-6 text-[9px] font-bold text-slate-400 border-y border-slate-50 py-1.5 w-full justify-start">
-                                            <span>بتاريخ: {formattedDate} مـ</span>
-                                            <span>الموافق لـ: {hijriDate} هـ</span>
-                                        </div>
-                                        
-                                        <div className="mt-2 flex items-center justify-between w-full px-6">
-                                            <div className="flex flex-col items-center gap-1.5">
-                                                <div className="relative p-3 border border-[#4B0082]/10 rounded-full bg-purple-50 mx-auto">
-                                                    <Fingerprint className="w-6 h-6 text-[#4B0082] opacity-70 rotate-12" />
-                                                </div>
-                                                <p className="font-['Amiri',_serif] text-base font-black text-[#4B0082] leading-none">{user?.full_name || 'ذ. محمـد المسير'}</p>
-                                            </div>
-
-                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-right space-y-1.5 w-48 shadow-inner">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Seal ID</span>
-                                                    <span className="text-[8px] font-mono font-bold text-purple-600">{selectedDeed.judgeId?.substring(0,10)}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">File No</span>
-                                                    <span className="text-[8px] font-mono font-bold text-slate-700">{selectedDeed.judgeFileNo || '2026/042'}</span>
-                                                </div>
-                                                <div className="h-px bg-slate-200"></div>
-                                                <div className="text-[6px] font-mono text-slate-400 break-all leading-none">
-                                                    {selectedDeed.judgeHash?.substring(0, 24)}...
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="border border-dashed border-blue-100 bg-blue-50/10 rounded-2xl p-4 transition-all hover:bg-blue-50/20 group relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-[40px]"></div>
-                                        <div className="flex flex-col items-center justify-center text-center space-y-2">
-                                            <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center border border-blue-50">
-                                                <Stamp className="w-5 h-5 text-[#1f3c88] opacity-50" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[#1f3c88] font-black text-lg tracking-tight leading-none">منطقة المخاطبة الختامية</p>
-                                                <p className="text-blue-700/40 text-[10px] font-bold italic mt-1 px-4 leading-normal">هذه المساحة مخصصة للخطاب القضائي ومراجعة الاعتماد النهائي.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* --- DOUBLE QR FOOTER (The Professional Standard) --- */}
-                            <div className="absolute bottom-12 inset-x-12 flex justify-between items-end">
-                                {/* PHASE 1 QR (Notary) - BOTTOM LEFT */}
-                                <div className="flex flex-col items-start gap-2 group transition-all">
-                                    <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl shadow-sm group-hover:shadow-md transition-shadow">
-                                        <QrCode className={`w-14 h-14 ${selectedDeed.notaryHash ? 'text-slate-800' : 'text-slate-200'}`} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Notary Phase QR</span>
-                                        <span className="text-[7px] font-mono text-slate-500 tabular-nums">HASH: {selectedDeed.notaryHash?.substr(0,12)}...</span>
-                                    </div>
-                                </div>
-
-                                {/* PHASE 2 QR (Judicial) - BOTTOM RIGHT */}
-                                <div className={`flex flex-col items-end gap-2 group transition-all duration-1000 ${selectedDeed.status === 'APPROVED_JUDGE' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-10 blur-sm'}`}>
-                                    <div className="p-2 bg-purple-50 border border-purple-100 rounded-xl shadow-sm group-hover:shadow-md transition-shadow">
-                                        <QrCode className="w-14 h-14 text-[#4B0082]" />
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Judicial Phase QR</span>
-                                        <span className="text-[7px] font-mono text-purple-600 tabular-nums">HASH: {selectedDeed.judgeHash?.substr(0,12)}...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 2️⃣ MIDDLE PANEL: Speech Editor & Timeline */}
-                <div className="w-[30%] border-l border-slate-200 flex flex-col bg-white">
-                    <div className="p-6 bg-slate-50 border-b flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-[#6A1B9A]/10 rounded-xl">
-                                <Fingerprint className="w-5 h-5 text-[#6A1B9A]" />
-                            </div>
-                            <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">محرر الخطاب القضائي</h3>
-                        </div>
-                        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 uppercase tracking-widest">Live Link</span>
-                    </div>
-
-                    <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar">
-                        {/* Status Chain Visualizer */}
-                        <div className="bg-[#1f3c88]/5 p-6 rounded-3xl border border-[#1f3c88]/10 space-y-4">
-                            <h4 className="text-[11px] font-black text-[#1f3c88] uppercase tracking-widest text-right">نظام سلسلة الحالة (Status Chain)</h4>
-                            <div className="flex items-center justify-between gap-1">
-                                {[
-                                    { label: 'Draft', active: true },
-                                    { label: 'Signed', active: true },
-                                    { label: 'Judge', active: true },
-                                    { label: 'Approved', active: selectedDeed.status === 'APPROVED_JUDGE' },
-                                    { label: 'Archived', active: false }
-                                ].map((step, idx) => (
-                                    <React.Fragment key={idx}>
-                                        <div className={`flex flex-col items-center gap-1 flex-1`}>
-                                            <div className={`w-3 h-3 rounded-full border-2 ${step.active ? 'bg-emerald-500 border-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-200 border-white'}`}></div>
-                                            <span className={`text-[8px] font-black ${step.active ? 'text-emerald-700' : 'text-slate-400'} uppercase`}>{step.label}</span>
-                                        </div>
-                                        {idx < 4 && <div className={`h-[2px] flex-1 mb-4 ${step.active ? 'bg-emerald-200' : 'bg-slate-100'}`}></div>}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 space-y-8 relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-2 h-full bg-[#1f3c88]/10 group-hover:bg-[#1f3c88]/20 transition-colors"></div>
-                            <label className="flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] mb-4 tracking-widest">
-                                <Info className="w-3 h-3 text-[#1f3c88]" /> منطوق الخطاب الرسمي
-                            </label>
                             
-                            <div className="space-y-6 text-right">
-                                <div className="bg-slate-50/50 p-8 rounded-3xl border border-slate-100 font-['Amiri',_serif] text-slate-800 leading-relaxed transition-all hover:shadow-inner">
-                                    <p className="text-5xl font-black mb-4 text-[#1f3c88] tracking-widest animate-in fade-in slide-in-from-top-4">{protocolPrefix}</p>
-                                    <p className="text-3xl font-bold mb-3 text-[#1f3c88] opacity-90 tracking-tight">{protocolSub}</p>
-                                    <p className="text-2xl font-bold text-slate-600 bg-white/50 py-2 block px-6 rounded-xl border border-slate-200">{protocolJudge}</p>
-                                    <div className="flex justify-start gap-8 text-sm font-black mt-8 text-[#1f3c88]/50 uppercase tracking-tighter">
-                                        <span className="flex items-center gap-2"><Clock className="w-3 h-3" /> {formattedDate} مـ</span>
-                                        <span className="flex items-center gap-2"><History className="w-3 h-3" /> {hijriDate} هـ</span>
+                            <div className="grid grid-cols-2 gap-3 text-right">
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="text-[9px] font-bold text-slate-400">الرقم الوطني الموحد</div>
+                                    <div className="text-xs font-black text-slate-800 truncate font-mono mt-0.5">
+                                        {selectedDeed.serialNumber || selectedDeed.id.substring(0, 10)}
                                     </div>
                                 </div>
+                                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                    <div className="text-[9px] font-bold text-slate-400">العدل الموثق</div>
+                                    <div className="text-xs font-black text-slate-800 truncate mt-0.5">
+                                        {selectedDeed.notaries?.[0]?.name || 'ذ. العدل الموثق'}
+                                    </div>
+                                </div>
+                            </div>
 
-                                <div className="pt-1 space-y-3 text-right">
-                                    <label className="text-xs font-black text-slate-500 flex items-center justify-end gap-2 uppercase tracking-widest">
-                                        تعديل اسم المدينة بعد عبارة المحكمة الابتدائية <MapPin className="w-3 h-3" />
+                            {/* City and Registry letter */}
+                            <div className="pt-1 flex items-center justify-between gap-2">
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-black text-slate-500 mb-1 flex items-center gap-1">
+                                        <MapPin className="w-3 h-3 text-[#1f3c88]" /> دائرة المحكمة
                                     </label>
                                     <input
-                                        value={courtCity}
+                                        value={courtCity || selectedDeed?.city || 'شفشاون'}
                                         onChange={(e) => setCourtCity(e.target.value)}
-                                        placeholder="أدخل اسم المدينة"
-                                        className="w-full rounded-[1.25rem] bg-white border border-slate-200 px-5 py-4 text-right text-base font-black text-slate-700 outline-none focus:ring-4 focus:ring-[#1f3c88]/5 focus:border-[#1f3c88] transition-all"
+                                        placeholder="اسم المدينة (مثال: شفشاون)"
+                                        className="w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-700 outline-none focus:bg-white focus:border-[#1f3c88] transition-all"
                                     />
-                                    <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-5 py-4 text-right">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">المعرف القضائي المولد</div>
-                                        <div className="mt-1 text-base font-black text-[#1f3c88]">{judgeCourtId || '—'}</div>
-                                    </div>
                                 </div>
-
-                                <div className="pt-4 space-y-3 text-right">
-                                    <label className="text-xs font-black text-slate-500 flex items-center justify-end gap-2 uppercase tracking-widest">
-                                        إضافة ملاحظات قضائية <Eye className="w-3 h-3" />
+                                <div className="text-left">
+                                    <label className="text-[10px] font-black text-slate-500 mb-1 block">
+                                        حرف السجل
                                     </label>
-                                    <textarea 
-                                        value={optionalNotes}
-                                        onChange={(e) => setOptionalNotes(e.target.value)}
-                                        placeholder="تضاف هنا أي ملاحظات تكميلية للرسم (اختياري)..."
-                                        className="w-full h-32 p-6 rounded-[1.5rem] bg-slate-50 border border-slate-200 focus:ring-4 focus:ring-[#1f3c88]/5 focus:border-[#1f3c88] outline-none text-slate-700 font-bold text-sm resize-none shadow-inner transition-all"
-                                    />
+                                    <select
+                                        value={registryLetter}
+                                        onChange={(e) => setRegistryLetter(e.target.value)}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-[#1f3c88]"
+                                    >
+                                        {['أ', 'ب', 'ث', 'ج', 'د', 'هـ', 'و'].map((letter) => (
+                                            <option key={letter} value={letter}>{letter}</option>
+                                        ))}
+                                    </select>
                                 </div>
+                            </div>
+                        </div>
 
+                        {/* [2] Calligraphy Seal Preview */}
+                        <div className="bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] rounded-2xl p-4 shadow-sm border border-purple-200/80 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Pen className="w-3.5 h-3.5 text-[#6A1B9A]" /> منطوق الخطاب الملكي
+                                </span>
+                                <span className="text-[9px] font-bold text-purple-600 bg-white/80 px-2 py-0.5 rounded-md border border-purple-100">
+                                    المعاينة الحية
+                                </span>
+                            </div>
+
+                            {/* Royal Calligraphy Card */}
+                            <div className="bg-white/95 rounded-xl p-4 border border-purple-100 shadow-inner text-center space-y-2">
+                                <p className="font-['Amiri',_serif] text-2xl font-black text-[#1f3c88] leading-snug tracking-wide">
+                                    الحمد لله أعلم بأدائها ومراقبتها
+                                </p>
+                                <div className="h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent my-1"></div>
+                                <p className="text-xs font-bold text-[#6A1B9A]">
+                                    {protocolJudge}
+                                </p>
+                                <div className="text-[10px] font-mono text-slate-400">
+                                    {hijriDate} هـ | {formattedDate} م
+                                </div>
+                            </div>
+
+                            {/* Real-time positioning info */}
+                            <div className="flex items-center justify-between bg-white/70 px-3 py-2 rounded-xl border border-purple-100 text-[10px]">
+                                <span className="font-bold text-purple-900">
+                                    الموضع: {courtStampPosition || signaturePosition ? `معايرة يدوية (صفحة ${courtStampPosition?.page || signaturePosition?.page || 1})` : 'الصفحة الأخيرة | أسفل اليسار (تلقائي)'}
+                                </span>
                                 <button
                                     type="button"
-                                    onClick={() => setIsSupportModalOpen(true)}
-                                    className="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-right text-sm font-black text-slate-700 transition-all hover:border-[#1f3c88] hover:bg-white"
+                                    onClick={() => setIsPlacementModeOpen(true)}
+                                    className="text-purple-700 hover:text-purple-900 font-black underline flex items-center gap-1"
                                 >
-                                    <span className="flex items-center justify-end gap-2">
-                                        عرض المرفقات وملاحظات القاضي الأولى
-                                        <Paperclip className="w-4 h-4 text-[#1f3c88]" />
-                                    </span>
+                                    تعديل الموضع
                                 </button>
                             </div>
                         </div>
 
-                        {/* Chronology Section */}
-                        <ChronologyViewer />
-                    </div>
-
-                    <div className="p-8 bg-slate-50 border-t flex items-center justify-between">
-                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Entropy</span>
-                            <span className="text-[12px] font-mono font-bold text-[#1f3c88]">SECURED-SESSION-V2.1</span>
-                         </div>
-                         <div className="flex gap-2">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                         </div>
-                    </div>
-                </div>
-
-                {/* 3️⃣ RIGHT PANEL: Multi-Unit Security Board */}
-                <div className="w-[25%] flex flex-col bg-[#0F172A] text-white">
-                    <div className="p-8 bg-black/20 border-b border-white/5 space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-600 rounded-xl">
-                                <ShieldCheck className="w-5 h-5 text-white" />
-                            </div>
-                            <h3 className="font-black text-white text-sm uppercase tracking-widest">غرفة الاعتماد القضائي</h3>
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter indent-10">Judicial Approval Module</p>
-                    </div>
-
-                    <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                        {/* Status Check List */}
-                        <div className="space-y-3">
-                            {[
-                                { label: 'توقيع العدلين ظاهر بوضوح', checked: selectedDeed.hasFirstNotarySign && selectedDeed.hasSecondNotarySign },
-                                { label: 'تطابق التضمين الرسمي', checked: selectedDeed.matchingTadmine },
-                                { label: 'صحة بيانات التسجيل', checked: selectedDeed.registrationCorrect },
-                                { label: 'جاهزية الرقم الوطني الموحد', checked: true },
-                                { label: 'السجل لم يبلغ 500 رسم', checked: selectedDeed.registrySpaceLeft > 0 }
-                            ].map((item, i) => (
-                                <div 
-                                    key={i} 
-                                    className={`p-4 rounded-xl border transition-all flex items-center justify-between ${
-                                        item.checked 
-                                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-100' 
-                                        : 'bg-red-500/10 border-red-500/30 text-red-200'
-                                    }`}
-                                >
-                                    <span className="text-sm font-bold">{item.label}</span>
-                                    {item.checked ? <CheckCircle2 className="w-4 h-4 text-blue-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsSupportModalOpen(true)}
-                            className="w-full rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-4 text-right transition-all hover:bg-blue-500/15"
-                        >
-                            <span className="flex items-center justify-between gap-3">
-                                <span className="rounded-xl bg-white/10 px-3 py-1 text-[10px] font-black text-blue-200">
-                                    {(selectedDeed.supportAttachments || []).length} مرفق
-                                </span>
-                                <span className="flex items-center gap-2 text-sm font-black text-blue-100">
-                                    <Paperclip className="h-4 w-4 text-blue-300" />
-                                    عرض المرفقات وملاحظات القاضي الأولى
-                                </span>
-                            </span>
-                        </button>
-
-                        {/* National Serial Generation */}
-                        <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 space-y-4">
-                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                <Scale className="w-3 h-3" /> جيل جديد من التوثيق
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500">الرقم الوطني المولد للرسم</label>
-                                <div className="text-3xl font-black text-blue-400 tracking-tighter">
-                                    {selectedDeed.serialNumber}
-                                </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                                بصمة رقمية فريدة مرتبطة بسنة التحرير ورقم السجل. لا يمكن تكراره وطنياً.
-                            </p>
-                        </div>
-
-                        {/* Record Capacity Tracker */}
-                        <div className="space-y-2">
-                             <div className="flex justify-between items-end">
-                                <span className="text-xs font-black text-slate-400 uppercase">سعة السجل الحالي</span>
-                                <span className="text-xs font-mono text-slate-300">{(500 - selectedDeed.registrySpaceLeft)} / 500</span>
-                             </div>
-                             <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000" 
-                                    style={{ width: `${((500 - selectedDeed.registrySpaceLeft) / 500) * 100}%` }}
-                                ></div>
-                             </div>
-                        </div>
-
-                        <div className="space-y-4 border-t border-white/10 pt-4">
+                        {/* [3] Official Court Stamp Controls */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Monitor className="w-4 h-4 text-purple-500" />
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Stamp className="w-3.5 h-3.5 text-[#1f3c88]" /> خاتم المحكمة الابتدائية
+                                </span>
+                                {courtStampNotice && (
+                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                                        {courtStampNotice}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Interactive stamp SVG preview */}
+                            <div className="flex items-center justify-center p-2 bg-slate-50 rounded-xl border border-slate-100">
+                                <div
+                                    className="w-[150px] overflow-hidden [&_svg]:block [&_svg]:h-auto [&_svg]:w-full transition-transform hover:scale-105"
+                                    dangerouslySetInnerHTML={{ __html: stampSvgMarkup }}
+                                />
+                            </div>
+
+                            {/* Court stamp action buttons */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    disabled={!selectedDeedId || !hasStep1Completed || isGeneratingCourtStamp}
+                                    onClick={handleGenerateJudgeCourtStamp}
+                                    className="py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all bg-[#1D4ED8] hover:bg-[#2563eb] text-white shadow-sm disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                >
+                                    {isGeneratingCourtStamp ? (
+                                        <>
+                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span>جاري التوليد...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Stamp className="w-3.5 h-3.5" />
+                                            <span>توليد الخاتم</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={!selectedDeedId || revertCourtStampMutation.isPending}
+                                    onClick={handleRevertJudgeCourtStamp}
+                                    className="py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    {revertCourtStampMutation.isPending ? (
+                                        <>
+                                            <div className="w-3.5 h-3.5 border-2 border-red-700/30 border-t-red-700 rounded-full animate-spin"></div>
+                                            <span>جاري الحذف...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <X className="w-3.5 h-3.5" />
+                                            <span>حذف الخاتم</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Inclusion Reference & Generated ID */}
+                            <div className="pt-2 space-y-2 border-t border-slate-100">
+                                <div className="flex items-center justify-between text-[11px] bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                                    <span className="font-bold text-slate-500">المعرف القضائي:</span>
+                                    <span className="font-black text-[#1f3c88] font-mono">{judgeCourtId || '—'}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsInclusionModalOpen(true)}
+                                    disabled={!selectedDeedId}
+                                    className="w-full py-2 px-3 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 text-blue-800 text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                                >
+                                    <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
+                                    <span>مراجع التضمين والتوليد</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* [3.5] Wacom STU-540 Signature Tablet Section */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Monitor className="w-3.5 h-3.5 text-purple-600" />
                                     لوحة Wacom STU-540
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${isWacomConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
-                                    <span className="text-[10px] font-black uppercase text-slate-500">{isWacomConnected ? 'Connected' : 'Offline'}</span>
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className={`w-2 h-2 rounded-full ${isWacomConnected ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`} />
+                                    <span className="text-[9px] font-bold text-slate-500">
+                                        {isWacomConnected ? 'متصل (Online)' : 'غير متصل (Offline)'}
+                                    </span>
                                 </div>
                             </div>
 
                             {hardwareError && (
-                                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-right text-sm font-black text-red-200">
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-right text-xs font-bold text-rose-700">
                                     {hardwareError}
                                 </div>
                             )}
 
-                            <div className="bg-slate-950/80 rounded-2xl p-5 border border-white/10 space-y-3">
-                                <div className="flex justify-between items-center text-[10px] font-black">
-                                    <span className="text-slate-500 uppercase">Hardware Status</span>
-                                    <span className={`px-2 py-0.5 rounded text-[8px] ${
-                                        stuStatus === 'CONNECTED' ? 'bg-blue-500/20 text-blue-400' :
-                                        stuStatus === 'CAPTURING' ? 'bg-amber-500/20 text-amber-500 animate-pulse' :
-                                        stuStatus === 'SAVED' ? 'bg-emerald-500/20 text-emerald-400' :
-                                        'bg-slate-500/20 text-slate-400'
-                                    }`}>
-                                        {stuStatus}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px] font-black border-t border-white/5 pt-2">
-                                    <span className="text-slate-500 uppercase">Device S/N</span>
-                                    <span className="text-slate-100 font-mono tracking-wider">{tabletDeviceInfo.serial}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px] font-black border-t border-white/5 pt-2">
-                                    <span className="text-slate-500 uppercase">DPI / Precision</span>
-                                    <span className="text-blue-400 font-mono">{tabletDeviceInfo.resolution}</span>
-                                </div>
+                            {/* Device Info Badges */}
+                            <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 text-[10px]">
+                                <span className="text-slate-500 font-bold">الحالة: <span className="font-mono text-slate-800">{stuStatus}</span></span>
+                                <span className="text-slate-400 font-mono text-[9px] truncate max-w-[150px]">{tabletDeviceInfo.serial}</span>
                             </div>
 
-                            <div className="relative group">
-                                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-                                <div className="relative aspect-[4/2.5] bg-[#f8fafc] rounded-2xl border border-white/20 flex flex-col items-center justify-center p-0.5 overflow-hidden shadow-2xl">
-                                    <canvas
-                                        ref={judgeDeviceSigCanvasRef}
-                                        width={800}
-                                        height={480}
-                                        className={`w-full h-full rounded-2xl bg-white ${stuStatus === 'CAPTURING' ? 'block' : 'hidden'}`}
-                                    />
-                                    {stuStatus !== 'CAPTURING' && (
-                                        <div className="w-full h-full flex items-center justify-center relative bg-slate-900">
-                                            {judgeSignature ? (
-                                                <img src={judgeSignature} alt="Judge Signature Preview" className="max-h-[85%] object-contain" />
-                                            ) : (
-                                                <div className="flex flex-col items-center opacity-30">
-                                                    <Cpu className="w-8 h-8 mb-2" />
-                                                    <p className="text-[8px] font-black uppercase tracking-[0.2em]">Judge Signature Channel</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                            {/* Signature Visualizer / Pad Canvas */}
+                            <div className="relative aspect-[4/2.3] bg-slate-900 rounded-xl border border-slate-200 overflow-hidden shadow-inner flex items-center justify-center p-1">
+                                <canvas
+                                    ref={judgeDeviceSigCanvasRef}
+                                    width={800}
+                                    height={480}
+                                    className={`w-full h-full rounded-lg bg-white ${stuStatus === 'CAPTURING' ? 'block' : 'hidden'}`}
+                                />
+                                {stuStatus !== 'CAPTURING' && (
+                                    <div className="w-full h-full flex items-center justify-center relative">
+                                        {judgeSignature ? (
+                                            <img src={judgeSignature} alt="Judge Signature Preview" className="max-h-[85%] object-contain" />
+                                        ) : (
+                                            <div className="flex flex-col items-center opacity-40 text-slate-400 gap-1.5">
+                                                <Cpu className="w-6 h-6" />
+                                                <span className="text-[10px] font-black uppercase tracking-wider">قناة توقيع القاضي المباشر</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
+                            {/* Controls during capturing vs idle */}
                             {stuStatus === 'CAPTURING' ? (
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-3 gap-2">
                                     <button
+                                        type="button"
                                         onClick={() => {
                                             setStuStatus('CONNECTED');
                                             clearJudgeDeviceSignatureCanvas();
                                         }}
-                                        className="flex items-center justify-center gap-2 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-500 rounded-xl transition-all"
+                                        className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-colors"
                                     >
-                                        <span className="text-[10px] font-black">إلغاء</span>
+                                        إلغاء
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={handleClearSTU}
-                                        className="flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-white/5"
+                                        className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1"
                                     >
-                                        <RefreshCcw className="w-4 h-4" />
-                                        <span className="text-[10px] font-black">مسح</span>
+                                        <RefreshCcw className="w-3 h-3" /> مسح
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => void handleSaveJudgeDeviceSignature()}
-                                        className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                                        className="py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-colors shadow flex items-center justify-center gap-1"
                                     >
-                                        <ShieldCheck className="w-4 h-4" />
-                                        <span className="text-[10px] font-black">حفظ التوقيع</span>
+                                        <ShieldCheck className="w-3 h-3" /> حفظ
                                     </button>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setTabletSigningViewMode('full')}
-                                            className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
+                                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-black transition-all ${
                                                 tabletSigningViewMode === 'full'
                                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                             }`}
                                         >
-                                            التوقيع فوق الصفحة الحالية
+                                            كامل الصفحة
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setTabletSigningViewMode('signing-zone')}
-                                            className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
+                                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-black transition-all ${
                                                 tabletSigningViewMode === 'signing-zone'
                                                     ? 'border-amber-500 bg-amber-50 text-amber-700'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                             }`}
                                         >
-                                            التوقيع فوق منطقة التوقيع
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => void adjustTabletPreviewZoom(-0.12)}
-                                            disabled={isSendingPreviewToTablet}
-                                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 transition-all hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
-                                        >
-                                            تصغير على اللوحة
-                                        </button>
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2 text-center text-[11px] font-black text-slate-700">
-                                            {Math.round(tabletPreviewZoom * 100)}%
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => void adjustTabletPreviewZoom(0.12)}
-                                            disabled={isSendingPreviewToTablet}
-                                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 transition-all hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
-                                        >
-                                            تكبير على اللوحة
+                                            منطقة التوقيع
                                         </button>
                                     </div>
 
                                     <button
+                                        type="button"
                                         onClick={() => void handleShowDocumentOnTablet()}
                                         disabled={isSendingPreviewToTablet}
-                                        className="w-full flex items-center justify-center gap-3 py-3 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-200 disabled:text-slate-400 text-slate-800 rounded-2xl transition-all border border-slate-300"
+                                        className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5"
                                     >
-                                        <Monitor className={`w-4 h-4 ${isSendingPreviewToTablet ? 'animate-pulse' : ''}`} />
-                                        <div className="text-right">
-                                            <p className="text-sm font-black">عرض الصفحة الحالية على شاشة اللوحة</p>
-                                            <p className="text-[10px] font-bold opacity-70">Preview current document page on STU-540</p>
-                                        </div>
+                                        <Monitor className={`w-3.5 h-3.5 text-purple-600 ${isSendingPreviewToTablet ? 'animate-pulse' : ''}`} />
+                                        <span>عرض الصفحة على شاشة STU-540</span>
                                     </button>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-2 gap-2">
                                         <button
+                                            type="button"
                                             onClick={() => void connectToSTUDevice()}
-                                            className="w-full flex items-center justify-center gap-3 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl transition-all shadow-lg"
+                                            className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow"
                                         >
-                                            <Cpu className="w-4 h-4" />
-                                            <span className="text-sm font-black">ربط اللوحة</span>
+                                            <Cpu className="w-3.5 h-3.5" />
+                                            <span>ربط اللوحة</span>
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={() => void handleJudgeCaptureStart()}
-                                            disabled={!isWacomConnected || !hasStep2Completed}
-                                            className="w-full flex items-center justify-center gap-3 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-2xl transition-all shadow-lg"
+                                            disabled={!isWacomConnected}
+                                            className="py-2.5 px-3 bg-purple-700 hover:bg-purple-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-1.5 shadow"
                                         >
-                                            <Pen className="w-4 h-4" />
-                                            <span className="text-sm font-black">توقيع القاضي على اللوحة</span>
+                                            <Pen className="w-3.5 h-3.5" />
+                                            <span>توقيع على اللوحة</span>
                                         </button>
                                     </div>
                                 </div>
                             )}
                         </div>
 
+                        {/* [4] Validation Checklist */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-2.5">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> مصفوفة التحقق الرقمي
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400">
+                                    {(500 - selectedDeed.registrySpaceLeft)} / 500 بالسجل
+                                </span>
+                            </div>
+
+                            {[
+                                { label: 'توقيع العدلين ظاهر وموثق', ok: selectedDeed.hasFirstNotarySign && selectedDeed.hasSecondNotarySign },
+                                { label: 'تطابق مراجع التضمين والسجل', ok: selectedDeed.matchingTadmine || !!judgeCourtId },
+                                { label: 'صحة بيانات التسجيل والمحكمة', ok: selectedDeed.registrationCorrect },
+                                { label: 'سلامة البصمة الرقمية (Hash)', ok: !!selectedDeed.notaryHash },
+                                { label: 'سعة السجل (أقل من 500 رسم)', ok: selectedDeed.registrySpaceLeft > 0 }
+                            ].map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                                        item.ok
+                                            ? 'bg-emerald-50/60 border-emerald-200/60 text-emerald-900'
+                                            : 'bg-rose-50/60 border-rose-200/60 text-rose-900'
+                                    }`}
+                                >
+                                    <span>{item.label}</span>
+                                    {item.ok ? (
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                    ) : (
+                                        <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Secondary tools button (Attachments) */}
+                        <button
+                            type="button"
+                            onClick={() => setIsSupportModalOpen(true)}
+                            className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black transition-all flex items-center justify-between shadow-sm"
+                        >
+                            <span className="flex items-center gap-1.5">
+                                <Paperclip className="w-3.5 h-3.5 text-[#1f3c88]" />
+                                <span>المرفقات وملاحظات القاضي الأولى</span>
+                            </span>
+                            <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[10px] text-slate-600 font-bold">
+                                {(selectedDeed.supportAttachments || []).length}
+                            </span>
+                        </button>
+
                     </div>
 
-                    <div className="p-6 bg-slate-900 shadow-2xl space-y-4">
-                        {courtStampNotice && (
-                            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-right text-sm font-black text-blue-100">
-                                {courtStampNotice}
-                            </div>
-                        )}
-                        <div className="rounded-[2rem] border border-white/10 bg-white/5 px-4 py-5">
-                            <div className="mb-3 flex items-center justify-between gap-3">
-                                <div className="text-right">
-                                    <div className="text-sm font-black text-white">معاينة طابع المحكمة الجديد</div>
-                                    <div className="text-[11px] font-bold text-slate-400">تصميم جديد بختم دائري وهوية قضائية أوضح.</div>
-                                </div>
-                                <Stamp className="h-5 w-5 text-blue-300" />
-                            </div>
-                            <div
-                                className="mx-auto w-[210px] overflow-hidden rounded-[2rem] bg-white p-3 shadow-inner [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
-                                dangerouslySetInnerHTML={{ __html: stampSvgMarkup }}
-                            />
-                        </div>
+                    {/* [5] Primary Action Button Section */}
+                    <div className="p-4 bg-white border-t border-slate-200 shadow-lg space-y-2">
                         <button
                             type="button"
-                            disabled={!selectedDeedId || !hasStep1Completed || isGeneratingCourtStamp}
-                            onClick={handleGenerateJudgeCourtStamp}
-                            className={`w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all ${
-                                !selectedDeedId || !hasStep1Completed || isGeneratingCourtStamp
-                                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                    : 'bg-[#1D4ED8] text-white shadow-xl hover:bg-[#2563eb] hover:-translate-y-0.5'
-                            }`}
-                        >
-                            {isGeneratingCourtStamp ? (
-                                <>
-                                    <div className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                    <span>جاري توليد طابع المحكمة...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-lg">⚖️</span>
-                                    <span>توليد طابع المحكمة</span>
-                                </>
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            disabled={!selectedDeedId || revertCourtStampMutation.isPending}
-                            onClick={handleRevertJudgeCourtStamp}
-                            className={`w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all ${
-                                !selectedDeedId || revertCourtStampMutation.isPending
-                                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                    : 'bg-red-600 text-white shadow-xl hover:bg-red-500 hover:-translate-y-0.5'
-                            }`}
-                        >
-                            {revertCourtStampMutation.isPending ? (
-                                <>
-                                    <div className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                    <span>جاري حذف الطابع...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-lg">↩️</span>
-                                    <span>حذف طابع المحكمة</span>
-                                </>
-                            )}
-                        </button>
-                        <div className="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-right">
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="text-xs font-black text-emerald-100">المعرف القضائي المولد تلقائياً مع مراجع التضمين</span>
-                                <span className="text-sm font-black text-emerald-300">{judgeCourtId || '—'}</span>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsInclusionModalOpen(true)}
-                            disabled={!selectedDeedId}
-                            className={`w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all ${
-                                !selectedDeedId
-                                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                    : 'bg-blue-600 text-white shadow-xl hover:bg-blue-500 hover:-translate-y-0.5'
-                            }`}
-                        >
-                            <span className="text-lg">📚</span>
-                            <span>إدراج مراجع التضمين + توليد المعرف</span>
-                        </button>
-                        <button 
-                            disabled={selectedDeed.status !== 'READY' || isStamping || !hasStep3Completed}
+                            disabled={selectedDeed.status !== 'READY' || isStamping}
                             onClick={handleStampDeed}
-                            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all relative overflow-hidden group ${
-                                selectedDeed.status === 'READY' && hasStep3Completed
-                                ? 'bg-gradient-to-r from-[#002366] to-[#4B0082] text-white shadow-xl hover:-translate-y-1' 
-                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                            style={{ backgroundColor: (selectedDeed.status === 'READY') ? '#B30000' : undefined }}
+                            className={`w-full py-4 px-6 rounded-2xl font-black text-base text-white shadow-xl transition-all flex items-center justify-center gap-3 border-2 border-amber-300/40 relative overflow-hidden group ${
+                                selectedDeed.status === 'READY'
+                                    ? 'hover:brightness-110 active:scale-[0.98]'
+                                    : 'bg-slate-400 border-transparent text-slate-100 cursor-not-allowed'
                             }`}
                         >
                             {isStamping ? (
                                 <>
-                                    <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                    <span>جاري اعتماد الخطاب...</span>
+                                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>جاري إصدار الخطاب والتوقيع النهائي...</span>
                                 </>
                             ) : (
                                 <>
-                                    <Stamp className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                                    <span>اعتماد الخطاب</span>
+                                    <Stamp className="w-5 h-5 text-amber-300 group-hover:rotate-12 transition-transform" />
+                                    <span>إصدار الخطاب والتوقيع النهائي</span>
                                 </>
                             )}
-                            {/* Reflection effect */}
                             <div className="absolute inset-x-0 h-1/2 top-0 bg-white/10 -skew-y-12 translate-y-[-100%] group-hover:translate-y-[200%] transition-transform duration-700"></div>
                         </button>
                         
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-black uppercase tracking-widest px-2">
-                            <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> END-TO-END ENCRYPTED</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> SERVER-SYNC 3ms</span>
+                        <div className="flex justify-between items-center text-[9px] text-slate-400 font-bold px-1">
+                            <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 text-emerald-500" /> مشفر بتوقيع الدولة</span>
+                            <span className="font-mono">SOVEREIGN-JUDICIAL-V2</span>
                         </div>
                     </div>
                 </div>
+
+                {/* 2️⃣ CENTER DOCUMENT STAGE: Dedicated Active Document Stream (70% width) */}
+                <div className="flex-1 w-[70%] h-full bg-slate-950 flex flex-col overflow-hidden relative">
+                    {/* Floating ribbon header */}
+                    <div className="h-14 bg-slate-900 border-b border-white/10 px-6 flex items-center justify-between z-10 flex-shrink-0">
+                        <div className="flex items-center gap-3 text-slate-300 text-xs font-black">
+                            <FileText className="w-4 h-4 text-blue-400" />
+                            <span>معاينة النسخة الرسمية الصادرة (High-DPI Vector A4)</span>
+                            <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-mono">
+                                CANONICAL STREAM
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!judgePdfUrl) return;
+                                    window.open(judgePdfUrl, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
+                                title="فتح في نافذة مستقلة"
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>نافذة خارجية</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!judgePdfUrl) return;
+                                    const w = window.open(judgePdfUrl, '_blank');
+                                    if (w) w.focus();
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
+                                title="طباعة الرسم"
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>طباعة</span>
+                            </button>
+                            <a
+                                href={judgePdfUrl || '#'}
+                                download={selectedDeed?.previewName || `rasm_${selectedDeed?.serialNumber || 'deed'}.pdf`}
+                                className="px-3 py-1.5 rounded-xl bg-[#1f3c88] hover:bg-[#2a4ea8] text-white text-xs font-bold transition-colors flex items-center gap-1.5"
+                                title="تحميل ملف PDF"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>تحميل</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* High-DPI Vector A4 Viewer Area */}
+                    <div className="flex-1 overflow-y-auto p-6 flex justify-center items-start custom-scrollbar bg-slate-950">
+                        <div className="w-full max-w-[850px] min-h-[1123px] bg-white shadow-2xl rounded-sm overflow-hidden border border-slate-800 my-2">
+                            {judgePdfUrl ? (
+                                <iframe
+                                    key={judgePdfUrl}
+                                    src={getJudgeLikePdfViewerUrl(judgePdfUrl)}
+                                    className="w-full h-[1123px] border-none bg-white"
+                                    title="Judicial Speech Document Viewer"
+                                />
+                            ) : (
+                                <div className="w-full h-[1123px] flex flex-col items-center justify-center text-slate-400 bg-slate-50 gap-3">
+                                    <FileText className="w-12 h-12 opacity-30 animate-pulse" />
+                                    <p className="font-black text-sm">جاري تحميل وثيقة الرسم المعتمدة...</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
+            {/* Stamp Placement Modal */}
+            <StampPositionModal
+                open={isPlacementModeOpen}
+                pdfUrl={judgePdfUrl}
+                stampSvgMarkup={stampSvgMarkup}
+                initialSignaturePosition={signaturePosition}
+                initialStampPosition={courtStampPosition}
+                onClose={() => setIsPlacementModeOpen(false)}
+                isSubmitting={isGeneratingCourtStamp}
+                onConfirm={async (positions) => {
+                    setSignaturePosition(positions.signaturePosition);
+                    setCourtStampPosition(positions.stampPosition);
+                    setIsPlacementModeOpen(false);
+                    await handleGenerateJudgeCourtStampWithPositions(positions.signaturePosition, positions.stampPosition);
+                }}
+            />
 
             {isInclusionModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">

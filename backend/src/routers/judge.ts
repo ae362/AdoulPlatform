@@ -1,5 +1,6 @@
 import {
   JudgeDeedService,
+  extractCourtCity,
   ListSubmissionsInputSchema,
   GetSubmissionInputSchema,
   DecideSubmissionInputSchema,
@@ -16,6 +17,7 @@ import { sha256Hex } from '../utils/auditDocPatch';
 import puppeteer from 'puppeteer';
 import Bidi from 'bidi-js';
 import { ArabicShaper } from 'arabic-persian-reshaper';
+import { applyJudicialStampAndSignatureToPdf } from '../services/pdfStamper';
 
 type InclusionRegistryType = 'property' | 'marriage' | 'divorce' | 'inheritance' | 'other';
 type FinalArchivingEntryStatus = 'ARCHIVED' | 'FINAL_SECURED';
@@ -1533,6 +1535,17 @@ export const judgeRouter = router({
           fileNumber: (row.file_number ?? '') as string,
           documentType: (row.document_type ?? '') as string,
           summary: (row.summary ?? '') as string,
+          payload: row.payload,
+          courtCity: extractCourtCity(
+            row.payload?.courtCity ||
+            row.payload?.primary_court ||
+            row.payload?.court_name ||
+            row.payload?.court ||
+            row.payload?.city ||
+            row.payload?.notaryCity ||
+            row.payload?.jurisdiction ||
+            'شفشاون'
+          ),
           status: row.status as JudgeSubmissionStatus,
           decision: (row.decision ?? null) as JudgeDecision | null,
           judgeNotes: (row.judge_notes ?? null) as string | null,
@@ -1763,13 +1776,71 @@ export const judgeRouter = router({
       z.object({
         sessionToken: z.string(),
         id: z.string().uuid(),
-        courtCity: z.string().min(1).max(120).optional(),
+        courtCity: z
+          .string()
+          .max(120)
+          .optional()
+          .default('تطوان')
+          .or(z.literal(''))
+          .transform((val) => (val && typeof val === 'string' && val.trim() ? val.trim() : 'تطوان')),
         placement: z
           .object({
-            xPct: z.number().min(0).max(1),
-            yPct: z.number().min(0).max(1),
-            widthPct: z.number().min(0).max(1),
-            heightPct: z.number().min(0).max(1),
+            signaturePosition: z
+              .object({
+                x: z.number().min(0).max(1).optional(),
+                y: z.number().min(0).max(1).optional(),
+                width: z.number().min(0).max(1).optional(),
+                height: z.number().min(0).max(1).optional(),
+                xRatio: z.number().min(0).max(1).optional(),
+                yRatio: z.number().min(0).max(1).optional(),
+                wRatio: z.number().min(0).max(1).optional(),
+                hRatio: z.number().min(0).max(1).optional(),
+                page: z.number().int().positive().optional(),
+              })
+              .optional(),
+            stampPosition: z
+              .object({
+                x: z.number().min(0).max(1).optional(),
+                y: z.number().min(0).max(1).optional(),
+                width: z.number().min(0).max(1).optional(),
+                height: z.number().min(0).max(1).optional(),
+                xRatio: z.number().min(0).max(1).optional(),
+                yRatio: z.number().min(0).max(1).optional(),
+                wRatio: z.number().min(0).max(1).optional(),
+                hRatio: z.number().min(0).max(1).optional(),
+                page: z.number().int().positive().optional(),
+              })
+              .optional(),
+            xPct: z.number().min(0).max(1).optional(),
+            yPct: z.number().min(0).max(1).optional(),
+            widthPct: z.number().min(0).max(1).optional(),
+            heightPct: z.number().min(0).max(1).optional(),
+            page: z.number().int().positive().optional(),
+          })
+          .optional(),
+        signaturePosition: z
+          .object({
+            x: z.number().min(0).max(1).optional(),
+            y: z.number().min(0).max(1).optional(),
+            width: z.number().min(0).max(1).optional(),
+            height: z.number().min(0).max(1).optional(),
+            xRatio: z.number().min(0).max(1).optional(),
+            yRatio: z.number().min(0).max(1).optional(),
+            wRatio: z.number().min(0).max(1).optional(),
+            hRatio: z.number().min(0).max(1).optional(),
+            page: z.number().int().positive().optional(),
+          })
+          .optional(),
+        stampPosition: z
+          .object({
+            x: z.number().min(0).max(1).optional(),
+            y: z.number().min(0).max(1).optional(),
+            width: z.number().min(0).max(1).optional(),
+            height: z.number().min(0).max(1).optional(),
+            xRatio: z.number().min(0).max(1).optional(),
+            yRatio: z.number().min(0).max(1).optional(),
+            wRatio: z.number().min(0).max(1).optional(),
+            hRatio: z.number().min(0).max(1).optional(),
             page: z.number().int().positive().optional(),
           })
           .optional(),
@@ -1779,14 +1850,16 @@ export const judgeRouter = router({
       const { user, submission, payload, signedDeedId } = await requireJudgeSubmission(input.sessionToken, input.id);
       const sourcePdf = await resolveJudgeSourcePdfBuffer({ signedDeedId, payload });
       const originalBuffer = sourcePdf.buffer;
-      const pdfDoc = await PDFDocument.load(originalBuffer);
-      const courtCity =
-        String(
-          input.courtCity ||
-            (payload.courtCity as string) ||
-            (payload.city as string) ||
-            'الرباط'
-        ).trim() || 'الرباط';
+      const courtCity = extractCourtCity(
+        input.courtCity ||
+          (payload.courtCity as string) ||
+          (payload.primary_court as string) ||
+          (payload.court_name as string) ||
+          (payload.court as string) ||
+          (payload.city as string) ||
+          (payload.notaryCity as string) ||
+          'شفشاون'
+      );
       const courtLine = `قاضي التوثيق بالمحكمة الابتدائية بـ ${courtCity}`;
       const generatedId =
         String((payload.judgeCourtIdentifier as any)?.id || '').trim() ||
@@ -1800,59 +1873,93 @@ export const judgeRouter = router({
       const protocolPng = await renderJudgeCourtProtocolPng({
         courtCityLine: courtLine,
       });
-      const stampImage = await pdfDoc.embedPng(stampPng);
-      const protocolImage = await pdfDoc.embedPng(protocolPng);
 
-      const pages = pdfDoc.getPages();
-      const targetPageIndex = input.placement?.page
-        ? Math.max(0, Math.min((input.placement.page || pages.length) - 1, pages.length - 1))
-        : pages.length - 1;
-      const targetPage = pages[targetPageIndex];
-      const pageWidth = targetPage.getWidth();
-      const pageHeight = targetPage.getHeight();
-      const stampWidth = input.placement
-        ? Math.max(72, Math.min(pageWidth, input.placement.widthPct * pageWidth))
-        : Math.min(180, pageWidth * 0.28);
-      const stampHeight = stampWidth;
-      const requestedX = input.placement
-        ? input.placement.xPct * pageWidth
-        : pageWidth - stampWidth - 40;
-      const requestedY = input.placement
-        ? pageHeight - input.placement.yPct * pageHeight - stampHeight
-        : pageHeight * 0.14;
-      const stampX = Math.max(0, Math.min(pageWidth - stampWidth, requestedX));
-      const stampY = Math.max(0, Math.min(pageHeight - stampHeight, requestedY));
+      // Dual positioning support (normalized 0.0 - 1.0)
+      const effSignaturePos = input.signaturePosition || input.placement?.signaturePosition;
+      const effStampPos = input.stampPosition || input.placement?.stampPosition;
 
-      targetPage.drawImage(stampImage, {
-        x: stampX,
-        y: stampY,
-        width: stampWidth,
-        height: stampHeight,
-        opacity: 0.98,
-      });
+      let stampedBuffer: Buffer;
+      if (effSignaturePos || effStampPos) {
+        const stampedRes = await applyJudicialStampAndSignatureToPdf(originalBuffer, {
+          signaturePosition: effSignaturePos,
+          stampPosition: effStampPos || (typeof input.placement?.xPct === 'number' && Number.isFinite(input.placement.xPct) ? {
+            x: input.placement.xPct,
+            y: 1.0 - (input.placement.yPct + (input.placement.heightPct || 0.2)),
+            width: input.placement.widthPct || 0.25,
+            height: input.placement.heightPct || 0.25,
+            page: input.placement.page,
+          } : undefined),
+          signatureImageBuffer: protocolPng,
+          stampImageBuffer: stampPng,
+          defaultTargetPage: input.placement?.page,
+        });
+        stampedBuffer = stampedRes.buffer;
+      } else {
+        // Fallback / legacy placement calculation
+        const pdfDoc = await PDFDocument.load(originalBuffer);
+        const stampImage = await pdfDoc.embedPng(stampPng);
+        const protocolImage = await pdfDoc.embedPng(protocolPng);
+        const pages = pdfDoc.getPages();
+        const targetPageIndex = input.placement?.page
+          ? Math.max(0, Math.min((input.placement.page || pages.length) - 1, pages.length - 1))
+          : pages.length - 1;
+        const targetPage = pages[targetPageIndex];
+        const pageWidth = targetPage.getWidth();
+        const pageHeight = targetPage.getHeight();
+        const rawWidthPct = typeof input.placement?.widthPct === 'number' && Number.isFinite(input.placement.widthPct)
+          ? input.placement.widthPct
+          : 0.28;
+        const stampWidth = Math.max(72, Math.min(pageWidth, rawWidthPct * pageWidth));
+        const stampHeight = stampWidth;
 
-      const protocolWidth = Math.min(310, pageWidth * 0.46);
-      const protocolHeight = protocolWidth * (240 / 700);
-      const sealCenterX = stampX + stampWidth / 2;
-      const protocolX =
-        sealCenterX > pageWidth / 2
-          ? 16
-          : Math.max(16, pageWidth - protocolWidth - 16);
-      const protocolY = Math.max(
-        24,
-        Math.min(pageHeight - protocolHeight - 24, stampY + stampHeight / 2 - protocolHeight / 2)
-      );
+        const rawXPct = typeof input.placement?.xPct === 'number' && Number.isFinite(input.placement.xPct)
+          ? input.placement.xPct
+          : undefined;
+        const rawYPct = typeof input.placement?.yPct === 'number' && Number.isFinite(input.placement.yPct)
+          ? input.placement.yPct
+          : undefined;
 
-      targetPage.drawImage(protocolImage, {
-        x: protocolX,
-        y: protocolY,
-        width: protocolWidth,
-        height: protocolHeight,
-        opacity: 0.98,
-      });
+        const requestedX = rawXPct !== undefined
+          ? rawXPct * pageWidth
+          : pageWidth - stampWidth - 40;
+        const requestedY = rawYPct !== undefined
+          ? pageHeight - rawYPct * pageHeight - stampHeight
+          : pageHeight * 0.14;
+        const stampX = Math.max(0, Math.min(pageWidth - stampWidth, Number.isFinite(requestedX) ? requestedX : 40));
+        const stampY = Math.max(0, Math.min(pageHeight - stampHeight, Number.isFinite(requestedY) ? requestedY : 40));
 
-      const stampedBytes = await pdfDoc.save();
-      const stampedBuffer = Buffer.from(stampedBytes);
+        targetPage.drawImage(stampImage, {
+          x: stampX,
+          y: stampY,
+          width: stampWidth,
+          height: stampHeight,
+          opacity: 0.98,
+        });
+
+        const protocolWidth = Math.min(310, pageWidth * 0.46);
+        const protocolHeight = protocolWidth * (240 / 700);
+        const sealCenterX = stampX + stampWidth / 2;
+        const protocolX =
+          sealCenterX > pageWidth / 2
+            ? 16
+            : Math.max(16, pageWidth - protocolWidth - 16);
+        const protocolY = Math.max(
+          24,
+          Math.min(pageHeight - protocolHeight - 24, stampY + stampHeight / 2 - protocolHeight / 2)
+        );
+
+        targetPage.drawImage(protocolImage, {
+          x: protocolX,
+          y: protocolY,
+          width: protocolWidth,
+          height: protocolHeight,
+          opacity: 0.98,
+        });
+
+        const stampedBytes = await pdfDoc.save();
+        stampedBuffer = Buffer.from(stampedBytes);
+      }
+
       const stampedSha = sha256Hex(stampedBuffer);
       const uploaded = await uploadBufferToDocumentsBucket({
         path: `judge-submissions/${input.id}/court-stamp-${stampedSha}.pdf`,
@@ -1992,7 +2099,13 @@ export const judgeRouter = router({
       z.object({
         sessionToken: z.string(),
         id: z.string().uuid(),
-        courtCity: z.string().min(1).max(120).optional(),
+        courtCity: z
+          .string()
+          .max(120)
+          .optional()
+          .default('تطوان')
+          .or(z.literal(''))
+          .transform((val) => (val && typeof val === 'string' && val.trim() ? val.trim() : 'تطوان')),
       })
     )
     .mutation(async ({ input }) => {

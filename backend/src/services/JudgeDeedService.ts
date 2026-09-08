@@ -45,6 +45,14 @@ export function assertValidTransition(
   }
 }
 
+export function extractCourtCity(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return 'شفشاون';
+  let s = raw.trim();
+  s = s.replace(/^(المحكمة\s+الابتدائية|محكمة\s+الاستئناف|قسم\s+التوثيق|قسم\s+قضاء\s+الأسرة|ابتدائية)\s*/u, '');
+  s = s.replace(/^بـ?(\s*)/u, '');
+  return s.trim() || 'شفشاون';
+}
+
 export const ListSubmissionsInputSchema = z.object({
   sessionToken: z.string(),
   status: JudgeSubmissionStatusEnum.optional(),
@@ -241,6 +249,7 @@ export class JudgeDeedService {
     // Check signed deed attachments if present
     const signedDeedIdRaw = payloadObject?.signedDeedId;
     const signedDeedId = typeof signedDeedIdRaw === 'string' && signedDeedIdRaw ? signedDeedIdRaw : null;
+    let resolvedCourtCity: string | null = null;
     if (signedDeedId) {
       const { data: signedAttachments } = await supabase
         .from('deed_attachments')
@@ -263,7 +272,60 @@ export class JudgeDeedService {
           }
         });
       }
+
+      try {
+        const { data: deedRow } = await supabase
+          .from('signed_deeds')
+          .select('id, notary_user_id, inclusion_registry, seal_metadata')
+          .eq('id', signedDeedId)
+          .maybeSingle();
+
+        if (deedRow) {
+          const incl = Array.isArray((deedRow as any).inclusion_registry) ? (deedRow as any).inclusion_registry[0] : (deedRow as any).inclusion_registry;
+          const seal = Array.isArray((deedRow as any).seal_metadata) ? (deedRow as any).seal_metadata[0] : (deedRow as any).seal_metadata;
+          const rawCourt = seal?.court || incl?.court || null;
+          if (rawCourt) {
+            resolvedCourtCity = extractCourtCity(rawCourt);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not extract court from signed_deeds:', e);
+      }
     }
+
+    const targetNotaryId = (data.notary_user_id || (payloadObject as any)?.notary_user_id || (payloadObject as any)?.notaryUserId) as string | undefined;
+    if (!resolvedCourtCity && targetNotaryId) {
+      try {
+        const { data: notaryProfile } = await supabase
+          .from('notary_profiles')
+          .select('primary_court, court_name, appellate_court, city')
+          .eq('user_id', targetNotaryId)
+          .maybeSingle();
+
+        const courtCandidate = (notaryProfile as any)?.primary_court || (notaryProfile as any)?.court_name || (notaryProfile as any)?.city;
+        if (courtCandidate) {
+          resolvedCourtCity = extractCourtCity(courtCandidate);
+        }
+      } catch (e) {
+        console.warn('Could not extract court from notary_profiles:', e);
+      }
+    }
+
+    if (!resolvedCourtCity) {
+      const payloadCourt =
+        (payloadObject as any)?.courtCity ||
+        (payloadObject as any)?.primary_court ||
+        (payloadObject as any)?.court_name ||
+        (payloadObject as any)?.court ||
+        (payloadObject as any)?.city ||
+        (payloadObject as any)?.notaryCity ||
+        (payloadObject as any)?.jurisdiction;
+      if (payloadCourt) {
+        resolvedCourtCity = extractCourtCity(String(payloadCourt));
+      }
+    }
+
+    const finalCourtCity = resolvedCourtCity || 'شفشاون';
 
     // Direct attachments for this judge submission
     const { data: directSubmissionAttachments } = await supabase
@@ -329,6 +391,52 @@ export class JudgeDeedService {
       }
     });
 
+    // 0. Canonical signed deed attachments priority (always fetch latest signed_pdf/judge_court_stamped_pdf)
+    if (signedDeedId) {
+      const { data: latestSignedAtt } = await supabase
+        .from('deed_attachments')
+        .select('file_url, file_name, mime_type, category')
+        .eq('record_type', 'signed_deed')
+        .eq('record_id', signedDeedId)
+        .in('category', ['judge_court_stamped_pdf', 'judge_signed_pdf', 'signed_pdf'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestSignedAtt?.file_url) {
+        previewUrl = String(latestSignedAtt.file_url).trim();
+        previewName = latestSignedAtt.file_name || 'الرسم_الموقع_المعتمد.pdf';
+        previewMimeType = latestSignedAtt.mime_type || 'application/pdf';
+      }
+    }
+
+    // 0.1 Canonical saved_rasms table inspection
+    if (!previewUrl && savedRasmId) {
+      const { data: rasmRow } = await supabase
+        .from('saved_rasms')
+        .select('pdf_preview_url, payload')
+        .eq('id', savedRasmId)
+        .maybeSingle();
+
+      const rasmPl = rasmRow?.payload && typeof rasmRow.payload === 'object' ? (rasmRow.payload as any) : {};
+      const canonicalRasmUrl =
+        rasmPl?.signed_pdf_url ||
+        rasmPl?.signedPdfUrl ||
+        rasmPl?.latest_signing_pdf_url ||
+        rasmPl?.latestSigningPdfUrl ||
+        rasmRow?.pdf_preview_url ||
+        rasmPl?.pdf_preview_url ||
+        rasmPl?.pdfPreviewUrl ||
+        rasmPl?.latestDraftPdfUrl ||
+        rasmPl?.primary_docx_url;
+
+      if (typeof canonicalRasmUrl === 'string' && canonicalRasmUrl.trim()) {
+        previewUrl = canonicalRasmUrl.trim();
+        previewName = 'الرسم_العدلي.pdf';
+        previewMimeType = 'application/pdf';
+      }
+    }
+
     // 1. Direct compiled PDF stream from payload pointers or saved_rasms.state
     const payloadCandidates = [
       { url: payloadObject?.previewUrl, name: payloadObject?.previewName },
@@ -341,13 +449,15 @@ export class JudgeDeedService {
       { url: savedRasmStateObj?.finalPdfUrl, name: 'المستند_النهائي.pdf' },
     ];
 
-    for (const cand of payloadCandidates) {
-      const u = typeof cand.url === 'string' ? cand.url.trim() : '';
-      if (u && (u.toLowerCase().endsWith('.pdf') || u.includes('.pdf') || u.startsWith('data:application/pdf') || u.startsWith('http') || u.startsWith('blob:'))) {
-        previewUrl = u;
-        previewName = typeof cand.name === 'string' ? cand.name : 'المستند القضائي المعتمد.pdf';
-        previewMimeType = 'application/pdf';
-        break;
+    if (!previewUrl) {
+      for (const cand of payloadCandidates) {
+        const u = typeof cand.url === 'string' ? cand.url.trim() : '';
+        if (u && (u.toLowerCase().endsWith('.pdf') || u.includes('.pdf') || u.startsWith('data:application/pdf') || u.startsWith('http') || u.startsWith('blob:'))) {
+          previewUrl = u;
+          previewName = typeof cand.name === 'string' ? cand.name : 'المستند القضائي المعتمد.pdf';
+          previewMimeType = 'application/pdf';
+          break;
+        }
       }
     }
 
@@ -386,6 +496,8 @@ export class JudgeDeedService {
       documentType: (data.document_type ?? '') as string,
       summary: (data.summary ?? '') as string,
       payload: payloadObject,
+      courtCity: finalCourtCity,
+      notaryCity: finalCourtCity,
       status: currentStatus,
       decision: (data.decision ?? null) as JudgeDecision | null,
       judgeNotes: (data.judge_notes ?? null) as string | null,

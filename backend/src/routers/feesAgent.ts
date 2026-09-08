@@ -7,6 +7,7 @@ import { uploadBufferToDocumentsBucket, uploadDocument, fileUploadSchema } from 
 import { patchSchemaV1, patchSha256, sha256Hex } from '../utils/auditDocPatch';
 import { appendPlainTextToDocx, generateDocxFromText } from '../services/smartDrafting';
 import { convertDocxToPdfViaLibreOffice, convertPlainTextToPdfViaHtml } from '../services/auditDocArtifacts';
+import { applyTopHeaderPaginationToPdf, applyTopHeaderPaginationToDocx } from '../services/pdfStamper';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as QRCode from 'qrcode';
 import fontkit from '@pdf-lib/fontkit';
@@ -2090,6 +2091,353 @@ export const feesAgentRouter = router({
   // DOCUMENT MANAGEMENT PROCEDURES
   // =========================================================================
   documents: router({
+    applyPagination: publicProcedure
+      .input(
+        z.object({
+          sessionToken: z.string().optional(),
+          signedDeedId: z.string().optional(),
+          rasmId: z.string().optional(),
+          position: z.enum(['TOP_HEADER', 'BOTTOM_FOOTER']).default('TOP_HEADER'),
+          options: z
+            .object({
+              fontSize: z.number().optional(),
+              topMargin: z.number().optional(),
+              rightMargin: z.number().optional(),
+              clearHeaderArea: z.boolean().optional(),
+            })
+            .optional(),
+        })
+      )
+      .output(
+        z.object({
+          success: z.boolean(),
+          signedDeedId: z.string().nullable().optional(),
+          rasmId: z.string().nullable().optional(),
+          pdfPreviewUrl: z.string().nullable().optional(),
+          signedPdfUrl: z.string().nullable().optional(),
+          docxUrl: z.string().nullable().optional(),
+          totalPages: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { signedDeedId, rasmId } = input;
+        if (!signedDeedId && !rasmId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Missing signedDeedId or rasmId' });
+        }
+
+        // --- CASE 1: SIGNED DEED (/signed-rasm) ---
+        if (signedDeedId) {
+          const { data: deed, error: deedError } = await supabase
+            .from('signed_deeds')
+            .select('*')
+            .eq('id', signedDeedId)
+            .single();
+
+          if (deedError || !deed) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Signed deed not found' });
+          }
+
+          const { data: attachments } = await supabase
+            .from('deed_attachments')
+            .select('*')
+            .eq('record_type', 'signed_deed')
+            .eq('record_id', signedDeedId)
+            .order('created_at', { ascending: false });
+
+          const attList = Array.isArray(attachments) ? attachments : [];
+          let candidatePdfUrl =
+            attList.find((a: any) => a.category === 'signed_pdf')?.file_url ||
+            attList.find((a: any) => a.file_name?.toLowerCase().endsWith('.pdf'))?.file_url ||
+            null;
+
+          if (!candidatePdfUrl && deed.saved_rasm_id) {
+            const { data: savedRasm } = await supabase
+              .from('saved_rasms')
+              .select('pdf_preview_url, payload')
+              .eq('id', deed.saved_rasm_id)
+              .maybeSingle();
+
+            candidatePdfUrl =
+              savedRasm?.pdf_preview_url ||
+              (savedRasm?.payload as any)?.pdf_preview_url ||
+              (savedRasm?.payload as any)?.latestDraftPdfUrl ||
+              null;
+          }
+
+          if (!candidatePdfUrl) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'لا يوجد ملف PDF للرسم الموقع لإدراج ترقيم الصفحات.',
+            });
+          }
+
+          let originalPdfBuffer: Buffer;
+          try {
+            const resp = await fetch(candidatePdfUrl, { cache: 'no-store' as any });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const ab = await resp.arrayBuffer();
+            originalPdfBuffer = Buffer.from(ab);
+          } catch (fetchErr: any) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: `تعذر تحميل ملف الـ PDF: ${fetchErr?.message || String(fetchErr)}`,
+            });
+          }
+
+          const stamped = await applyTopHeaderPaginationToPdf(originalPdfBuffer, {
+            fontSize: input.options?.fontSize ?? 11,
+            topMargin: input.options?.topMargin ?? 30,
+            rightMargin: input.options?.rightMargin ?? 38,
+            clearHeaderArea: input.options?.clearHeaderArea ?? false,
+          });
+
+          const stampedSha = sha256Hex(stamped.buffer);
+          const uploaded = await uploadBufferToDocumentsBucket({
+            path: `signed-deeds/${signedDeedId}/paginated_${Date.now()}_${stampedSha.slice(0, 10)}.pdf`,
+            buffer: stamped.buffer,
+            contentType: 'application/pdf',
+            upsert: true,
+          });
+
+          await supabase
+            .from('deed_attachments')
+            .delete()
+            .eq('record_type', 'signed_deed')
+            .eq('record_id', signedDeedId)
+            .eq('category', 'signed_pdf');
+
+          await supabase.from('deed_attachments').insert({
+            record_id: signedDeedId,
+            record_type: 'signed_deed',
+            category: 'signed_pdf',
+            file_name: `signed-paginated-${signedDeedId}.pdf`,
+            file_url: uploaded.url,
+            storage_path: `signed-deeds/${signedDeedId}/paginated_${stampedSha}.pdf`,
+            mime_type: 'application/pdf',
+            file_size: stamped.buffer.length,
+            metadata: {
+              sha256: stampedSha,
+              hasTopPagination: true,
+              totalPages: stamped.totalPages,
+              source: 'apply_top_pagination',
+            },
+          });
+
+          return {
+            success: true,
+            signedDeedId,
+            signedPdfUrl: uploaded.url,
+            pdfPreviewUrl: uploaded.url,
+            totalPages: stamped.totalPages,
+          };
+        }
+
+        // --- CASE 2: SAVED RASM (rasmId) ---
+        const { data: rasm, error: rasmError } = await supabase
+          .from('saved_rasms')
+          .select('*')
+          .eq('id', rasmId)
+          .single();
+
+        if (rasmError || !rasm) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Rasm not found' });
+        }
+
+        const { data: attachments } = await supabase
+          .from('deed_attachments')
+          .select('*')
+          .eq('record_type', 'saved_rasm')
+          .eq('record_id', rasmId);
+
+        const attList = Array.isArray(attachments) ? attachments : [];
+
+        let pdfCandidateUrl: string | null =
+          (rasm.payload as any)?.pdf_preview_url ||
+          rasm.pdf_preview_url ||
+          (rasm.payload as any)?.latestDraftPdfUrl ||
+          (rasm.payload as any)?.latestDocumentUrl ||
+          null;
+
+        if (!pdfCandidateUrl || !pdfCandidateUrl.toLowerCase().includes('.pdf')) {
+          const pdfAtt = attList.find(
+            (a: any) =>
+              a.category === 'audit_final_pdf' ||
+              (a.file_name && a.file_name.toLowerCase().endsWith('.pdf')) ||
+              (a.mime_type && a.mime_type.includes('pdf'))
+          );
+          if (pdfAtt?.file_url) {
+            pdfCandidateUrl = pdfAtt.file_url;
+          }
+        }
+
+        let docxCandidateUrl: string | null =
+          (rasm.payload as any)?.primary_docx_url ||
+          rasm.primary_docx_url ||
+          (rasm.payload as any)?.latestDraftDocxUrl ||
+          rasm.latest_draft_docx_url ||
+          null;
+
+        if (!docxCandidateUrl || !docxCandidateUrl.toLowerCase().includes('.docx')) {
+          const docxAtt = attList.find(
+            (a: any) =>
+              a.category === 'audit_final_docx' ||
+              a.category === 'document' ||
+              (a.file_name && a.file_name.toLowerCase().endsWith('.docx'))
+          );
+          if (docxAtt?.file_url) {
+            docxCandidateUrl = docxAtt.file_url;
+          }
+        }
+
+        let pdfBuffer: Buffer | null = null;
+        if (pdfCandidateUrl) {
+          try {
+            const resp = await fetch(pdfCandidateUrl, { cache: 'no-store' as any });
+            if (resp.ok) {
+              const ab = await resp.arrayBuffer();
+              pdfBuffer = Buffer.from(ab);
+            }
+          } catch (fetchErr) {
+            console.warn('[applyPagination] Failed to fetch existing PDF:', fetchErr);
+          }
+        }
+
+        let docxBuffer: Buffer | null = null;
+        if (docxCandidateUrl) {
+          try {
+            const resp = await fetch(docxCandidateUrl, { cache: 'no-store' as any });
+            if (resp.ok) {
+              const ab = await resp.arrayBuffer();
+              docxBuffer = Buffer.from(ab);
+            }
+          } catch (fetchDocxErr) {
+            console.warn('[applyPagination] Failed to fetch existing DOCX:', fetchDocxErr);
+          }
+        }
+
+        if (!pdfBuffer && docxBuffer) {
+          try {
+            const conv = await convertDocxToPdfViaLibreOffice({ docxBuffer });
+            if (conv?.pdfBuffer?.length) {
+              pdfBuffer = conv.pdfBuffer;
+            }
+          } catch (convErr) {
+            console.warn('[applyPagination] LibreOffice conversion fallback:', convErr);
+          }
+        }
+
+        if (!pdfBuffer) {
+          const draftText =
+            rasm.draft ||
+            (rasm.payload as any)?.draft ||
+            (rasm.payload as any)?.rasmHtml ||
+            'وثيقة عدلية رسمية';
+          try {
+            const gen = await convertPlainTextToPdfViaHtml({ text: draftText });
+            if (gen?.pdfBuffer?.length) {
+              pdfBuffer = gen.pdfBuffer;
+            }
+          } catch (genErr) {
+            console.warn('[applyPagination] Text to PDF fallback:', genErr);
+          }
+        }
+
+        if (!pdfBuffer || !pdfBuffer.length) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'تعذر تحميل أو توليد ملف الـ PDF لإدراج ترقيم الصفحات.',
+          });
+        }
+
+        const stampedPdf = await applyTopHeaderPaginationToPdf(pdfBuffer, {
+          fontSize: input.options?.fontSize ?? 11,
+          topMargin: input.options?.topMargin ?? 30,
+          rightMargin: input.options?.rightMargin ?? 38,
+          clearHeaderArea: input.options?.clearHeaderArea ?? false,
+        });
+
+        const pdfSha = sha256Hex(stampedPdf.buffer);
+        const uploadedPdf = await uploadBufferToDocumentsBucket({
+          path: `saved/${rasmId}/paginated_${Date.now()}_${pdfSha.slice(0, 10)}.pdf`,
+          buffer: stampedPdf.buffer,
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+        let uploadedDocxUrl: string | null = null;
+        if (docxBuffer) {
+          try {
+            const paginatedDocx = applyTopHeaderPaginationToDocx(docxBuffer);
+            const docxSha = sha256Hex(paginatedDocx);
+            const uploadedDocx = await uploadBufferToDocumentsBucket({
+              path: `saved/${rasmId}/paginated_${docxSha}.docx`,
+              buffer: paginatedDocx,
+              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              upsert: true,
+            });
+            uploadedDocxUrl = uploadedDocx.url;
+          } catch (docxPagErr) {
+            console.warn('[applyPagination] Warning updating docx pagination:', docxPagErr);
+          }
+        }
+
+        await supabase
+          .from('deed_attachments')
+          .delete()
+          .eq('record_type', 'saved_rasm')
+          .eq('record_id', rasmId)
+          .eq('category', 'audit_final_pdf');
+
+        await supabase.from('deed_attachments').insert({
+          record_id: rasmId,
+          record_type: 'saved_rasm',
+          category: 'audit_final_pdf',
+          file_name: `paginated-${rasmId}.pdf`,
+          file_url: uploadedPdf.url,
+          storage_path: `saved/${rasmId}/paginated_${pdfSha}.pdf`,
+          mime_type: 'application/pdf',
+          file_size: stampedPdf.buffer.length,
+          metadata: {
+            sha256: pdfSha,
+            hasTopPagination: true,
+            totalPages: stampedPdf.totalPages,
+            source: 'apply_top_pagination',
+          },
+        });
+
+        const nowIso = new Date().toISOString();
+        const existingPayload = (rasm.payload as Record<string, unknown>) || {};
+        const updatedPayload = {
+          ...existingPayload,
+          pdf_preview_url: uploadedPdf.url,
+          latestDraftPdfUrl: uploadedPdf.url,
+          latestDocumentUrl: uploadedPdf.url,
+          hasTopPagination: true,
+          totalPages: stampedPdf.totalPages,
+          ...(uploadedDocxUrl ? { primary_docx_url: uploadedDocxUrl, latestDraftDocxUrl: uploadedDocxUrl } : {}),
+        };
+
+        const updateData: any = {
+          pdf_preview_url: uploadedPdf.url,
+          payload: updatedPayload,
+          updated_at: nowIso,
+        };
+        if (uploadedDocxUrl) {
+          updateData.primary_docx_url = uploadedDocxUrl;
+          updateData.latest_draft_docx_url = uploadedDocxUrl;
+        }
+
+        await supabase.from('saved_rasms').update(updateData).eq('id', rasmId);
+
+        return {
+          success: true,
+          rasmId,
+          pdfPreviewUrl: uploadedPdf.url,
+          docxUrl: uploadedDocxUrl,
+          totalPages: stampedPdf.totalPages,
+        };
+      }),
+
     getOnlyOfficeConfig: publicProcedure
       .input(z.object({
         sessionToken: z.string(),
@@ -7428,6 +7776,11 @@ export const feesAgentRouter = router({
           sentToJudgeAt: nowIso,
           originalJudgeSubmissionId,
           originalApprovedJudgeUserId,
+          previewUrl: (signedPdfAttachmentForJudge as any)?.fileUrl || (savedPayload as any)?.previewUrl || null,
+          finalPdfUrl: (signedPdfAttachmentForJudge as any)?.fileUrl || (savedPayload as any)?.finalPdfUrl || null,
+          latestSigningPdfUrl: (signedPdfAttachmentForJudge as any)?.fileUrl || (savedPayload as any)?.latestSigningPdfUrl || null,
+          signedPdfUrl: (signedPdfAttachmentForJudge as any)?.fileUrl || null,
+          signed_pdf_url: (signedPdfAttachmentForJudge as any)?.fileUrl || null,
           attachment: signedPdfAttachmentForJudge || (savedPayload as any)?.attachment || null,
           attachments: [
             ...(signedPdfAttachmentForJudge ? [signedPdfAttachmentForJudge] : []),

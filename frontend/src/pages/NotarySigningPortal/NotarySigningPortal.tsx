@@ -14,8 +14,8 @@ export const NotarySigningPortal: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f4ead6_0%,#f8fbfd_34%,#dfeae4_100%)]" dir="rtl">
-      <div className="relative overflow-hidden border-b border-[#d8c5a0]/70 bg-[linear-gradient(135deg,#0d3129_0%,#12473d_48%,#1a6755_100%)] text-white shadow-[0_30px_80px_rgba(13,49,41,0.22)]">
+    <div className="min-h-screen bg-[#B30000]" dir="rtl">
+      <div className="relative overflow-hidden border-b border-red-800/50 bg-[linear-gradient(135deg,#8B0000_0%,#B30000_50%,#D32F2F_100%)] text-white shadow-2xl">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
         <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-[#d8b06c]/20 blur-3xl" />
         <div className="absolute bottom-0 right-10 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
