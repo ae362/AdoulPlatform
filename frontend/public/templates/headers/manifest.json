@@ -1,0 +1,29 @@
+{
+  "templates": [
+    {
+      "id": "DECOR ADOUL 33",
+      "name": "تموذج 1 (33)",
+      "path": "/templates/headers/DECOR ADOUL 33.docx"
+    },
+    {
+      "id": "DECOR ADOUL 4",
+      "name": "تموذج 2 (4)",
+      "path": "/templates/headers/DECOR ADOUL 4.docx"
+    },
+    {
+      "id": "DECOR ADOUL5",
+      "name": "تموذج 3 (5)",
+      "path": "/templates/headers/DECOR ADOUL5.docx"
+    },
+    {
+      "id": "DECOR QDOUL1",
+      "name": "تموذج 4 (1)",
+      "path": "/templates/headers/DECOR QDOUL1.docx"
+    },
+    {
+      "id": "DoCOR QDOUL6",
+      "name": "تموذج 5 (6)",
+      "path": "/templates/headers/DoCOR QDOUL6.docx"
+    }
+  ]
+}
