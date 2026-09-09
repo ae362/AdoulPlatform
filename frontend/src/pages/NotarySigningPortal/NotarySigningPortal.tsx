@@ -14,11 +14,11 @@ export const NotarySigningPortal: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#B30000]" dir="rtl">
-      <div className="relative overflow-hidden border-b border-red-800/50 bg-[linear-gradient(135deg,#8B0000_0%,#B30000_50%,#D32F2F_100%)] text-white shadow-2xl">
+    <div className="min-h-screen bg-[#0a192f]" dir="rtl">
+      <div className="relative overflow-hidden border-b border-blue-900/50 bg-[linear-gradient(135deg,#071426_0%,#0B254E_35%,#123E7E_70%,#1A56B0_100%)] text-white shadow-2xl">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-        <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-[#d8b06c]/20 blur-3xl" />
-        <div className="absolute bottom-0 right-10 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -left-12 top-8 h-36 w-36 rounded-full bg-sky-400/15 blur-3xl" />
+        <div className="absolute bottom-0 right-10 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
           <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">

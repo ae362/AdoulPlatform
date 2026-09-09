@@ -2131,10 +2131,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#B30000] font-sans text-slate-100" dir="rtl">
-      <div className="relative shrink-0 overflow-hidden border-b border-red-800/50 bg-[linear-gradient(135deg,#8B0000_0%,#B30000_50%,#D32F2F_100%)] text-white shadow-2xl z-20">
-        <div className="absolute -left-12 top-2 h-28 w-28 rounded-full bg-[#d7b06a]/20 blur-3xl" />
-        <div className="absolute bottom-0 right-12 h-36 w-36 rounded-full bg-white/10 blur-3xl" />
+    <div className="flex h-screen flex-col overflow-hidden bg-[#0a192f] font-sans text-slate-100" dir="rtl">
+      <div className="relative shrink-0 overflow-hidden border-b border-blue-900/50 bg-[linear-gradient(135deg,#071426_0%,#0B254E_35%,#123E7E_70%,#1A56B0_100%)] text-white shadow-2xl z-20">
+        <div className="absolute -left-12 top-2 h-28 w-28 rounded-full bg-sky-400/15 blur-3xl" />
+        <div className="absolute bottom-0 right-12 h-36 w-36 rounded-full bg-blue-400/10 blur-3xl" />
         <div className="relative flex min-h-24 flex-wrap items-center justify-between gap-6 px-6 py-5 lg:px-8">
           <div className="flex items-center gap-5">
           <button 
@@ -2150,7 +2150,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             </div>
             <h1 className="flex items-center gap-2 text-lg font-black tracking-tight lg:text-xl">
               توقيع الرسوم المضمّنة
-              <span className="rounded-full bg-[#12388A] px-2.5 py-1 text-[10px] font-bold uppercase">Encrypted Mode</span>
+              <span className="rounded-full bg-sky-500/20 border border-sky-400/30 px-2.5 py-1 text-[10px] font-bold uppercase text-sky-200">Encrypted Mode</span>
             </h1>
             <p className="text-xs font-bold text-white/65">غرفة تشغيل موحدة للمعاينة، التوقيع الثنائي، والحفظ المؤمّن</p>
           </div>
@@ -2219,7 +2219,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           )}
 
           <button
-            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#8b1e3f] via-[#b93357] to-[#d34a63] px-5 py-3 text-xs font-black text-white shadow-lg shadow-[#8b1e3f]/20 transition-all hover:from-[#9b2648] hover:via-[#c74063] hover:to-[#dc5871]"
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-5 py-3 text-xs font-black text-white shadow-lg shadow-blue-900/30 transition-all hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600 active:scale-95"
             onClick={handleSaveDeed}
           >
             <ShieldCheck className="w-4 h-4" />

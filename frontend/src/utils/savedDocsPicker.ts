@@ -168,8 +168,17 @@ export function pickNormalizedDocument(
 
   // 1. PRIMARY COMPILED PDF STREAM (from submission record or payload pointers)
   const candidatePdfUrls = [
+    { url: submissionPayload?.canonical_approved_pdf, name: 'المستند المعتمد.pdf' },
+    { url: payload?.canonical_approved_pdf, name: 'المستند المعتمد.pdf' },
+    { url: submissionPayload?.signed_pdf_url, name: 'المستند المعتمد.pdf' },
+    { url: payload?.signed_pdf_url, name: 'المستند المعتمد.pdf' },
     { url: submissionPayload?.pdf_preview_url, name: 'المستند المعتمد.pdf' },
     { url: payload?.pdf_preview_url, name: 'المستند المعتمد.pdf' },
+    { url: payload?.attachment?.pdfUrl, name: payload?.attachment?.name || 'المستند المعتمد.pdf' },
+    { url: payload?.attachment?.url && String(payload.attachment.url).includes('.pdf') ? payload.attachment.url : undefined, name: payload?.attachment?.name || 'المستند المعتمد.pdf' },
+    { url: payload?.attachment?.fileUrl && String(payload.attachment.fileUrl).includes('.pdf') ? payload.attachment.fileUrl : undefined, name: payload?.attachment?.name || 'المستند المعتمد.pdf' },
+    { url: payload?.judgeAttachment?.url && String(payload.judgeAttachment.url).includes('.pdf') ? payload.judgeAttachment.url : undefined, name: 'مستند القاضي.pdf' },
+    { url: payload?.manualRasmFile?.url && String(payload.manualRasmFile.url).includes('.pdf') ? payload.manualRasmFile.url : undefined, name: 'الرسم المرفوع.pdf' },
     { url: submissionPayload?.previewUrl || submissionPayload?.preview_url, name: submissionPayload?.previewName || submissionPayload?.preview_name || 'المستند المعتمد.pdf' },
     { url: submissionPayload?.finalPdfUrl || submissionPayload?.final_pdf_url, name: 'المستند النهائي المعتمد.pdf' },
     { url: payload?.previewUrl || payload?.preview_url, name: payload?.previewName || payload?.preview_name || 'المستند المعتمد.pdf' },
@@ -227,7 +236,7 @@ export function pickNormalizedDocument(
   ].filter(Boolean);
 
   for (const file of directFiles) {
-    const url = String(file.fileUrl || file.url || file.publicUrl || '').trim();
+    const url = String(file.pdfUrl || file.fileUrl || file.url || file.publicUrl || '').trim();
     const base64 = typeof file.base64 === 'string' ? file.base64.trim() : '';
     const name = String(file.fileName || file.name || file.filename || 'الرسم القضائي المرفوع');
     const mime = String(file.mimeType || file.type || file.mime_type || '').toLowerCase();

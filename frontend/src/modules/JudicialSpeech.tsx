@@ -206,6 +206,7 @@ export const JudicialSpeechModule: React.FC = () => {
     } | null>(null);
     const usbInterfaceRef = useRef<any>(null);
     const closingSessionRef = useRef<Promise<void> | null>(null);
+    const autoOpenedInclusionDeedIdRef = useRef<string | null>(null);
     
     // Fetch submissions list
     const { data: submissions, isLoading: isListLoading, error: listError, refetch: refetchList } = trpc.judge.listJudicialSpeechQueue.useQuery(
@@ -362,7 +363,10 @@ export const JudicialSpeechModule: React.FC = () => {
             hasFirstNotarySign: true,
             hasSecondNotarySign: true,
             registrationCorrect: true,
-            matchingTadmine: true,
+            matchingTadmine: Boolean(
+                (payload as any)?.inclusionReference?.descriptor ||
+                (payload as any)?.judgeCourtIdentifier?.id
+            ),
             registrySpaceLeft: 342,
             notaryHash: 'SHA256-ADL-' + sub.id.substring(0, 8).toUpperCase(),
             timeline: [
@@ -396,7 +400,11 @@ export const JudicialSpeechModule: React.FC = () => {
                 text: fullDeedData.summary || 'نموذج نص الرسم العدلي المستخرج من قاعدة البيانات...',
                 hasSecondNotarySign: true,
                 registrationCorrect: true,
-                matchingTadmine: true,
+                matchingTadmine: Boolean(
+                    (fullDeedData as any)?.payload?.inclusionReference?.descriptor ||
+                    (fullDeedData as any)?.payload?.judgeCourtIdentifier?.id ||
+                    judgeCourtId
+                ),
                 registrySpaceLeft: 342,
                 notaryHash: 'SHA256-ADL-' + fullDeedData.id.substring(0, 8).toUpperCase(),
                 judgeNotes: fullDeedData.judgeNotes,
@@ -419,6 +427,11 @@ export const JudicialSpeechModule: React.FC = () => {
             const supportAttachments = extractSupportAttachments((fullDeedData as any).payload || {});
             return {
                 ...base,
+                matchingTadmine: Boolean(
+                    (fullDeedData as any)?.payload?.inclusionReference?.descriptor ||
+                    (fullDeedData as any)?.payload?.judgeCourtIdentifier?.id ||
+                    judgeCourtId
+                ),
                 text: fullDeedData.summary || base.text,
                 judgeNotes: fullDeedData.judgeNotes ?? base.judgeNotes,
                 previewUrl: previewOverrideUrl ?? (fullDeedData as any).previewUrl ?? preview.url,
@@ -446,6 +459,8 @@ export const JudicialSpeechModule: React.FC = () => {
         setJudgeSignatureNotice(null);
         setJudgeEditedPdfBytes(null);
         setJudgePreviewPageMetrics(null);
+        clearJudgeDeviceSignatureCanvas();
+        clearJudgeSignatureCanvas();
     }, [selectedDeedId]);
 
     useEffect(() => {
@@ -470,19 +485,56 @@ export const JudicialSpeechModule: React.FC = () => {
             (selectedDeed as any)?.jurisdiction ||
             'شفشاون';
         setCourtCity(extractCourtCity(rawNotaryCity));
+        const savedInclusion = (fullDeedData as any)?.payload?.inclusionReference;
+        if (savedInclusion && savedInclusion.descriptor) {
+            setRegistryType(savedInclusion.registryType || null);
+            setRegistryLetter(savedInclusion.registryLetter || 'أ');
+            setGeneratedInclusion({
+                descriptor: savedInclusion.descriptor,
+                inclusionNumber: savedInclusion.inclusionNumber,
+                registerNumber: savedInclusion.registerNumber,
+                hijriDate: savedInclusion.hijriDate,
+                gregorianDate: savedInclusion.gregorianDate,
+            });
+        } else {
+            setRegistryType(null);
+            setGeneratedInclusion(null);
+        }
         setJudgeCourtId(
             typeof (fullDeedData as any)?.payload?.judgeCourtIdentifier?.id === 'string' &&
             (fullDeedData as any).payload.judgeCourtIdentifier.id.trim()
                 ? (fullDeedData as any).payload.judgeCourtIdentifier.id.trim()
                 : null
         );
-        const category = String(selectedDeed.category || '');
-        if (category.includes('أملاك')) setRegistryType('property');
-        else if (category.includes('زواج')) setRegistryType('marriage');
-        else if (category.includes('طلاق')) setRegistryType('divorce');
-        else if (category.includes('تركات')) setRegistryType('inheritance');
-        else setRegistryType('other');
     }, [selectedDeedId, selectedDeed, fullDeedData]);
+
+    const hasValidInclusion = useMemo(() => {
+        const payloadInclusion = (fullDeedData as any)?.payload?.inclusionReference;
+        if (payloadInclusion && payloadInclusion.descriptor && (payloadInclusion.inclusionNumber || payloadInclusion.registerNumber)) {
+            return true;
+        }
+        if (judgeCourtId && generatedInclusion && generatedInclusion.descriptor) {
+            return true;
+        }
+        return false;
+    }, [fullDeedData, judgeCourtId, generatedInclusion]);
+
+    // Automatically prompt the inclusion modal as STEP 1 when accessing a deed without inclusion
+    useEffect(() => {
+        if (!selectedDeedId || isDeedLoading) return;
+        const payloadInclusion = (fullDeedData as any)?.payload?.inclusionReference;
+        const hasExisting = Boolean(
+            payloadInclusion?.descriptor && (payloadInclusion?.inclusionNumber || payloadInclusion?.registerNumber)
+        );
+        if (!hasExisting && !judgeCourtId && autoOpenedInclusionDeedIdRef.current !== selectedDeedId) {
+            autoOpenedInclusionDeedIdRef.current = selectedDeedId;
+            const timer = setTimeout(() => {
+                setInclusionError(null);
+                setIsInclusionModalOpen(true);
+            }, 350);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedDeedId, isDeedLoading, fullDeedData, judgeCourtId]);
 
     const canonicalPdfUrl = useMemo(() => {
         return getJudicialSpeechDocument(fullDeedData, previewOverrideUrl);
@@ -1265,8 +1317,6 @@ export const JudicialSpeechModule: React.FC = () => {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.setTransform(canvas.width / Math.max(1, rect.width), 0, 0, canvas.height / Math.max(1, rect.height), 0, 0);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, rect.width, rect.height);
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2.2;
         ctx.lineCap = 'round';
@@ -1290,15 +1340,20 @@ export const JudicialSpeechModule: React.FC = () => {
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                const alpha = imageData.data[(y * width + x) * 4 + 3];
-                const r = imageData.data[(y * width + x) * 4];
-                const g = imageData.data[(y * width + x) * 4 + 1];
-                const b = imageData.data[(y * width + x) * 4 + 2];
-                if (alpha > 0 && !(r > 245 && g > 245 && b > 245)) {
+                const idx = (y * width + x) * 4;
+                const alpha = imageData.data[idx + 3];
+                const r = imageData.data[idx];
+                const g = imageData.data[idx + 1];
+                const b = imageData.data[idx + 2];
+                // Non-white ink pixels
+                if (alpha > 10 && !(r > 235 && g > 235 && b > 235)) {
                     top = Math.min(top, y);
                     left = Math.min(left, x);
                     right = Math.max(right, x);
                     bottom = Math.max(bottom, y);
+                } else if (alpha > 0) {
+                    // Turn any background or white/near-white pixel completely transparent
+                    imageData.data[idx + 3] = 0;
                 }
             }
         }
@@ -1309,14 +1364,22 @@ export const JudicialSpeechModule: React.FC = () => {
         const cropY = Math.max(0, top - padding);
         const cropW = Math.min(width - cropX, right - left + padding * 2);
         const cropH = Math.min(height - cropY, bottom - top + padding * 2);
+
+        // Put transparent image data to a scratch canvas
+        const scratchCanvas = document.createElement('canvas');
+        scratchCanvas.width = width;
+        scratchCanvas.height = height;
+        const scratchCtx = scratchCanvas.getContext('2d');
+        if (!scratchCtx) return canvas;
+        scratchCtx.putImageData(imageData, 0, 0);
+
         const out = document.createElement('canvas');
         out.width = cropW;
         out.height = cropH;
         const outCtx = out.getContext('2d');
         if (!outCtx) return canvas;
-        outCtx.fillStyle = '#ffffff';
-        outCtx.fillRect(0, 0, cropW, cropH);
-        outCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        // Keep completely transparent, do NOT fill with white
+        outCtx.drawImage(scratchCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
         return out;
     };
 
@@ -1415,6 +1478,7 @@ export const JudicialSpeechModule: React.FC = () => {
             const caps = capabilityRef.current;
             const p = new wgss.STU.Protocol();
             setStuStatus('CAPTURING');
+            clearJudgeDeviceSignatureCanvas();
             penDataRef.current = [];
             if (reportHandlerRef.current?.stopReporting) {
                 await reportHandlerRef.current.stopReporting().catch(() => {});
@@ -1676,10 +1740,15 @@ export const JudicialSpeechModule: React.FC = () => {
 
     const handleStampDeed = async () => {
         if (!selectedDeed || !selectedDeedId || selectedDeed.status !== 'READY') return;
+        if (!hasValidInclusion) {
+            setIsInclusionModalOpen(true);
+            setInclusionError('⚠️ تنبيه إلزامي: يجب اختيار نوع السجل وتوليد مراجع التضمين أولاً لتحديد وجهة الرسم قبل اعتماد الخطاب والتوقيع النهائي.');
+            return;
+        }
         
         setIsStamping(true);
         try {
-            const signedPdfBase64 = judgeSignature ? await buildJudgeSignedPdfBase64() : undefined;
+            const signedPdfBase64 = (judgeEditedPdfBytes || judgeSignature) ? await buildJudgeSignedPdfBase64() : undefined;
             const res = await decideMutation.mutateAsync({
                 sessionToken: sessionToken || '',
                 id: selectedDeedId,
@@ -1714,7 +1783,7 @@ export const JudicialSpeechModule: React.FC = () => {
 
     const handleGenerateInclusion = async () => {
         if (!selectedDeedId || !registryType || !registryLetter.trim()) {
-            setInclusionError('يرجى اختيار نوع السجل و حرف السجل أولاً.');
+            setInclusionError('يرجى اختيار نوع السجل وحرف السجل أولاً.');
             return;
         }
         setInclusionError(null);
@@ -1795,20 +1864,37 @@ export const JudicialSpeechModule: React.FC = () => {
 
     const handleSaveInclusionReference = async () => {
         if (!selectedDeedId || !registryType || !registryLetter.trim()) {
-            setInclusionError('يرجى اختيار نوع السجل و حرف السجل أولاً.');
+            setInclusionError('يرجى اختيار نوع السجل وحرف السجل أولاً لتحديد وجهة الرسم.');
             return;
-        }
-        if (!generatedInclusion) {
-            setInclusionError('يرجى توليد رقم التضمين أولاً.');
-            return;
-        }
-        if (typeof window !== 'undefined') {
-            const confirmed = window.confirm('هل تؤكد إدراج مرجع التضمين في هذا الرسم؟');
-            if (!confirmed) return;
         }
         setInclusionError(null);
         setInclusionSuccess(null);
         try {
+            let currentInclusion = generatedInclusion;
+            if (!currentInclusion) {
+                const res = await generateInclusionMutation.mutateAsync({
+                    sessionToken: sessionToken || '',
+                    id: selectedDeedId,
+                    registryType,
+                    registryLetter: registryLetter.trim(),
+                });
+                currentInclusion = res;
+                setGeneratedInclusion(res);
+            }
+
+            const registryLabel =
+                registryType === 'property' ? 'سجل الأملاك' :
+                registryType === 'marriage' ? 'سجل الزواج' :
+                registryType === 'divorce' ? 'سجل الطلاق' :
+                registryType === 'inheritance' ? 'سجل التركات' : 'باقي الوثائق';
+
+            if (typeof window !== 'undefined') {
+                const confirmed = window.confirm(
+                    `هل تؤكد إدراج مرجع التضمين وتوجيه الرسم إلى (${registryLabel} - حرف ${registryLetter} - عدد ${currentInclusion.inclusionNumber})؟`
+                );
+                if (!confirmed) return;
+            }
+
             const saved = await saveInclusionMutation.mutateAsync({
                 sessionToken: sessionToken || '',
                 id: selectedDeedId,
@@ -1830,12 +1916,11 @@ export const JudicialSpeechModule: React.FC = () => {
             setJudgeEditedPdfBytes(null);
             setJudgeCourtId(generated.generatedId || null);
             const fallbackEmbeddedUrl = (embedded as any)?.signedPdfUrl;
-            const targetStreamUrl = generated.stampedPdfUrl || fallbackEmbeddedUrl;
-            setPreviewOverrideUrl(
-                targetStreamUrl
-                    ? `${targetStreamUrl}${String(targetStreamUrl).includes('?') ? '&' : '?'}v=${Date.now()}`
-                    : null
-            );
+            if (fallbackEmbeddedUrl && !previewOverrideUrl) {
+                setPreviewOverrideUrl(
+                    `${fallbackEmbeddedUrl}${String(fallbackEmbeddedUrl).includes('?') ? '&' : '?'}v=${Date.now()}`
+                );
+            }
             setGeneratedInclusion({
                 descriptor: saved.inclusionReference.descriptor,
                 inclusionNumber: saved.inclusionReference.inclusionNumber,
@@ -1845,8 +1930,10 @@ export const JudicialSpeechModule: React.FC = () => {
             });
             await refetchSubmission();
             await refetchList();
-            setInclusionSuccess(`تم إدراج مراجع التضمين وتوليد المعرف القضائي بنجاح: ${generated.generatedId}`);
-            setIsInclusionModalOpen(false);
+            setInclusionSuccess(`تم إدراج مراجع التضمين وتوجيه الرسم إلى (${registryLabel}) بنجاح.`);
+            setTimeout(() => {
+                setIsInclusionModalOpen(false);
+            }, 1000);
         } catch (error: any) {
             setInclusionError(error?.message || 'تعذر إدراج مرجع التضمين.');
         }
@@ -2172,11 +2259,66 @@ export const JudicialSpeechModule: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* [2] Calligraphy Seal Preview */}
+                        {/* [الخطوة 1] مراجع التضمين وتحديد السجل */}
+                        <div className={`rounded-2xl p-4 shadow-sm border transition-all space-y-3 ${
+                            hasValidInclusion
+                                ? 'bg-white border-slate-200/80'
+                                : 'bg-gradient-to-br from-amber-50 to-orange-50/60 border-amber-300 ring-2 ring-amber-400/20 shadow-amber-100/50'
+                        }`}>
+                            <div className="flex items-center justify-between border-b border-slate-100/80 pb-2">
+                                <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 text-blue-900">
+                                    <CheckSquare className="w-3.5 h-3.5 text-blue-600" /> الخطوة 1: مراجع التضمين وتحديد السجل
+                                </span>
+                                {hasValidInclusion ? (
+                                    <span className="text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] font-black border border-emerald-200 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> مكتمل ومحدد
+                                    </span>
+                                ) : (
+                                    <span className="text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full text-[10px] font-black border border-amber-300 flex items-center gap-1 animate-pulse">
+                                        <AlertTriangle className="w-3 h-3 text-amber-600" /> إلزامي للبدء
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="space-y-2.5 pt-1">
+                                <div className="flex items-center justify-between text-[11px] bg-white px-3 py-2 rounded-xl border border-slate-200/80">
+                                    <span className="font-bold text-slate-500">المعرف القضائي:</span>
+                                    <span className="font-black text-[#1f3c88] font-mono">{judgeCourtId || '—'}</span>
+                                </div>
+                                {hasValidInclusion ? (
+                                    <div className="text-[11px] text-slate-800 bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 font-black flex items-center justify-between">
+                                        <span>سجل الوجهة المعتمد:</span>
+                                        <span className="text-emerald-800 font-black">{(fullDeedData as any)?.payload?.inclusionReference?.descriptor || generatedInclusion?.descriptor || 'مسجل'}</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-[10px] text-amber-950 bg-white/90 p-2.5 rounded-xl border border-amber-200/80 font-bold leading-relaxed">
+                                        ⚠️ هذه هي الخطوة الأولى الإلزامية لتحديد وجهة الرسم بالسجلات العدلية وإدراج شريط التضمين قبل وضع الخاتم والتوقيع.
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setInclusionError(null);
+                                        setIsInclusionModalOpen(true);
+                                    }}
+                                    disabled={!selectedDeedId}
+                                    className={`w-full py-3 px-3 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-2 shadow-sm ${
+                                        hasValidInclusion
+                                            ? 'border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-800'
+                                            : 'border-amber-400 bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200 text-sm'
+                                    }`}
+                                >
+                                    <CheckSquare className="w-4 h-4" />
+                                    <span>{hasValidInclusion ? 'تعديل أو مراجعة مراجع التضمين' : '⚡ إدراج مراجع التضمين وتحديد السجل (الخطوة 1)'}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* [الخطوة 2] Calligraphy Seal Preview */}
                         <div className="bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] rounded-2xl p-4 shadow-sm border border-purple-200/80 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Pen className="w-3.5 h-3.5 text-[#6A1B9A]" /> منطوق الخطاب الملكي
+                                    <Pen className="w-3.5 h-3.5 text-[#6A1B9A]" /> الخطوة 2: منطوق الخطاب الملكي
                                 </span>
                                 <span className="text-[9px] font-bold text-purple-600 bg-white/80 px-2 py-0.5 rounded-md border border-purple-100">
                                     المعاينة الحية
@@ -2212,11 +2354,11 @@ export const JudicialSpeechModule: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* [3] Official Court Stamp Controls */}
+                        {/* [الخطوة 3] Official Court Stamp Controls */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Stamp className="w-3.5 h-3.5 text-[#1f3c88]" /> خاتم المحكمة الابتدائية
+                                    <Stamp className="w-3.5 h-3.5 text-[#1f3c88]" /> الخطوة 3: خاتم المحكمة الابتدائية
                                 </span>
                                 {courtStampNotice && (
                                     <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
@@ -2234,30 +2376,12 @@ export const JudicialSpeechModule: React.FC = () => {
                             </div>
 
                             {/* Court stamp action buttons */}
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                                <button
-                                    type="button"
-                                    disabled={!selectedDeedId || !hasStep1Completed || isGeneratingCourtStamp}
-                                    onClick={handleGenerateJudgeCourtStamp}
-                                    className="py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all bg-[#1D4ED8] hover:bg-[#2563eb] text-white shadow-sm disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
-                                >
-                                    {isGeneratingCourtStamp ? (
-                                        <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            <span>جاري التوليد...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Stamp className="w-3.5 h-3.5" />
-                                            <span>توليد الخاتم</span>
-                                        </>
-                                    )}
-                                </button>
+                            <div className="pt-1">
                                 <button
                                     type="button"
                                     disabled={!selectedDeedId || revertCourtStampMutation.isPending}
                                     onClick={handleRevertJudgeCourtStamp}
-                                    className="py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     {revertCourtStampMutation.isPending ? (
                                         <>
@@ -2272,31 +2396,13 @@ export const JudicialSpeechModule: React.FC = () => {
                                     )}
                                 </button>
                             </div>
-
-                            {/* Inclusion Reference & Generated ID */}
-                            <div className="pt-2 space-y-2 border-t border-slate-100">
-                                <div className="flex items-center justify-between text-[11px] bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                                    <span className="font-bold text-slate-500">المعرف القضائي:</span>
-                                    <span className="font-black text-[#1f3c88] font-mono">{judgeCourtId || '—'}</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsInclusionModalOpen(true)}
-                                    disabled={!selectedDeedId}
-                                    className="w-full py-2 px-3 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/80 text-blue-800 text-xs font-black transition-all flex items-center justify-center gap-1.5"
-                                >
-                                    <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>مراجع التضمين والتوليد</span>
-                                </button>
-                            </div>
                         </div>
 
-                        {/* [3.5] Wacom STU-540 Signature Tablet Section */}
+                        {/* [الخطوة 4] Wacom STU-540 Signature Tablet Section */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Monitor className="w-3.5 h-3.5 text-purple-600" />
-                                    لوحة Wacom STU-540
+                                    <Monitor className="w-3.5 h-3.5 text-purple-600" /> الخطوة 4: لوحة Wacom STU-540
                                 </span>
                                 <div className="flex items-center gap-1.5">
                                     <div className={`w-2 h-2 rounded-full ${isWacomConnected ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`} />
@@ -2428,11 +2534,11 @@ export const JudicialSpeechModule: React.FC = () => {
                             )}
                         </div>
 
-                        {/* [4] Validation Checklist */}
+                        {/* [الخطوة 5] Validation Checklist */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-2.5">
                             <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> مصفوفة التحقق الرقمي
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> الخطوة 5: مصفوفة التحقق الرقمي
                                 </span>
                                 <span className="text-[9px] font-bold text-slate-400">
                                     {(500 - selectedDeed.registrySpaceLeft)} / 500 بالسجل
@@ -2441,7 +2547,7 @@ export const JudicialSpeechModule: React.FC = () => {
 
                             {[
                                 { label: 'توقيع العدلين ظاهر وموثق', ok: selectedDeed.hasFirstNotarySign && selectedDeed.hasSecondNotarySign },
-                                { label: 'تطابق مراجع التضمين والسجل', ok: selectedDeed.matchingTadmine || !!judgeCourtId },
+                                { label: 'تطابق مراجع التضمين وتحديد السجل', ok: hasValidInclusion },
                                 { label: 'صحة بيانات التسجيل والمحكمة', ok: selectedDeed.registrationCorrect },
                                 { label: 'سلامة البصمة الرقمية (Hash)', ok: !!selectedDeed.notaryHash },
                                 { label: 'سعة السجل (أقل من 500 رسم)', ok: selectedDeed.registrySpaceLeft > 0 }
@@ -2482,16 +2588,37 @@ export const JudicialSpeechModule: React.FC = () => {
                     </div>
 
                     {/* [5] Primary Action Button Section */}
-                    <div className="p-4 bg-white border-t border-slate-200 shadow-lg space-y-2">
+                    <div className="p-4 bg-white border-t border-slate-200 shadow-lg space-y-2.5">
+                        {!hasValidInclusion && selectedDeed.status === 'READY' && (
+                            <div className="bg-amber-50 border border-amber-300/90 rounded-2xl p-3 text-right space-y-2 shadow-sm">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-xs font-bold text-amber-950 leading-relaxed">
+                                        يجب تحديد سجل التضمين وتوليد مراجع الرسم لتحديد وجهة الوثيقة قبل اعتماد الخطاب والتوقيع النهائي.
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setInclusionError(null);
+                                        setIsInclusionModalOpen(true);
+                                    }}
+                                    className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 shadow"
+                                >
+                                    <CheckSquare className="w-3.5 h-3.5" />
+                                    <span>إدراج مراجع التضمين وتحديد السجل الآن</span>
+                                </button>
+                            </div>
+                        )}
                         <button
                             type="button"
-                            disabled={selectedDeed.status !== 'READY' || isStamping}
+                            disabled={selectedDeed.status !== 'READY' || isStamping || !hasValidInclusion}
                             onClick={handleStampDeed}
-                            style={{ backgroundColor: (selectedDeed.status === 'READY') ? '#B30000' : undefined }}
-                            className={`w-full py-4 px-6 rounded-2xl font-black text-base text-white shadow-xl transition-all flex items-center justify-center gap-3 border-2 border-amber-300/40 relative overflow-hidden group ${
-                                selectedDeed.status === 'READY'
-                                    ? 'hover:brightness-110 active:scale-[0.98]'
-                                    : 'bg-slate-400 border-transparent text-slate-100 cursor-not-allowed'
+                            style={{ backgroundColor: (selectedDeed.status === 'READY' && hasValidInclusion) ? '#B30000' : undefined }}
+                            className={`w-full py-4 px-6 rounded-2xl font-black text-base text-white shadow-xl transition-all flex items-center justify-center gap-3 border-2 relative overflow-hidden group ${
+                                selectedDeed.status === 'READY' && hasValidInclusion
+                                    ? 'hover:brightness-110 active:scale-[0.98] border-amber-300/40'
+                                    : 'bg-slate-300 border-transparent text-slate-500 cursor-not-allowed shadow-none'
                             }`}
                         >
                             {isStamping ? (
@@ -2501,7 +2628,7 @@ export const JudicialSpeechModule: React.FC = () => {
                                 </>
                             ) : (
                                 <>
-                                    <Stamp className="w-5 h-5 text-amber-300 group-hover:rotate-12 transition-transform" />
+                                    <Stamp className={`w-5 h-5 transition-transform ${hasValidInclusion ? 'text-amber-300 group-hover:rotate-12' : 'text-slate-400'}`} />
                                     <span>إصدار الخطاب والتوقيع النهائي</span>
                                 </>
                             )}
@@ -2623,7 +2750,30 @@ export const JudicialSpeechModule: React.FC = () => {
 
                         <div className="p-8 space-y-8 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)]">
                             <section className="space-y-4">
-                                <div className="text-sm font-black text-slate-700">اختر سجل التضمين</div>
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-black text-slate-800 flex items-center gap-2">
+                                        <span>اختر سجل التضمين</span>
+                                        <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                                            إلزامي لتحديد وجهة الرسم
+                                        </span>
+                                    </div>
+                                    {registryType ? (
+                                        <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span>الوجهة: {
+                                                registryType === 'property' ? 'سجل الأملاك' :
+                                                registryType === 'marriage' ? 'سجل الزواج' :
+                                                registryType === 'divorce' ? 'سجل الطلاق' :
+                                                registryType === 'inheritance' ? 'سجل التركات' : 'باقي الوثائق'
+                                            }</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-300 flex items-center gap-1 animate-pulse">
+                                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                            <span>يرجى اختيار أحد السجلات أدناه</span>
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {[
                                         { value: 'property', label: '🏠 سجل الأملاك' },
@@ -2635,11 +2785,14 @@ export const JudicialSpeechModule: React.FC = () => {
                                         <button
                                             key={option.value}
                                             type="button"
-                                            onClick={() => setRegistryType(option.value as any)}
+                                            onClick={() => {
+                                                setRegistryType(option.value as any);
+                                                setInclusionError(null);
+                                            }}
                                             className={`rounded-2xl border px-4 py-4 text-sm font-black transition-all ${
                                                 registryType === option.value
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+                                                    ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-md ring-2 ring-blue-500/20'
+                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                                             }`}
                                         >
                                             {option.label}
@@ -2668,10 +2821,10 @@ export const JudicialSpeechModule: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={handleGenerateInclusion}
-                                        disabled={generateInclusionMutation.isPending}
-                                        className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-white font-black hover:bg-blue-500 transition-colors disabled:opacity-60"
+                                        disabled={generateInclusionMutation.isPending || !registryType}
+                                        className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-white font-black hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {generateInclusionMutation.isPending ? 'جاري التوليد...' : 'توليد رقم التضمين'}
+                                        {generateInclusionMutation.isPending ? 'جاري التوليد...' : (!registryType ? 'اختر السجل أولاً' : 'توليد رقم التضمين')}
                                     </button>
                                 </div>
                             </section>
@@ -2718,10 +2871,16 @@ export const JudicialSpeechModule: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleSaveInclusionReference}
-                                    disabled={saveInclusionMutation.isPending || embedFooterMutation.isPending}
-                                    className="rounded-2xl bg-gradient-to-r from-violet-700 to-purple-600 px-6 py-3 text-white font-black hover:from-violet-600 hover:to-purple-500 disabled:opacity-60"
+                                    disabled={!registryType || saveInclusionMutation.isPending || embedFooterMutation.isPending}
+                                    className={`rounded-2xl px-6 py-3 font-black transition-all ${
+                                        !registryType
+                                            ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-violet-700 to-purple-600 hover:from-violet-600 hover:to-purple-500 text-white shadow-md'
+                                    }`}
                                 >
-                                    {saveInclusionMutation.isPending || embedFooterMutation.isPending ? 'جاري الحفظ...' : '🔗 توليد مراجع التضمين'}
+                                    {saveInclusionMutation.isPending || embedFooterMutation.isPending
+                                        ? 'جاري الحفظ والربط بالسجل...'
+                                        : (!registryType ? '⚠️ اختر السجل لتأكيد التضمين' : '🔗 تأكيد مراجع التضمين وحفظ الوجهة')}
                                 </button>
                             </div>
                         </div>

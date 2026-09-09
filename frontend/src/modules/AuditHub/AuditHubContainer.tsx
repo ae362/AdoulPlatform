@@ -88,7 +88,8 @@ export const AuditHubContainer: React.FC = () => {
   const { sessionToken, user, notaryProfile } = useAuth();
   const trpcUtils = trpc.useContext();
   const params = new URLSearchParams(location.search);
-  const rasmId = params.get('id');
+  const rasmId = params.get('id') || params.get('rasmId');
+  const shouldForceRefetch = params.get('refetch') === 'true' || Boolean(params.get('cb'));
 
   const [state, setState] = useState<FeesAgentState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -461,16 +462,48 @@ export const AuditHubContainer: React.FC = () => {
     }));
   };
 
+  useEffect(() => {
+    if (!rasmId) return;
+    // Always invalidate caches and reset local document state on rasmId change.
+    // This prevents stale attachments / forced viewer docs from a previous rasm
+    // from persisting when the user navigates to a different document.
+    trpcUtils.feesAgent.documents.getSavedRasm.invalidate();
+    (trpcUtils.feesAgent as any).getMyJudgeSubmission?.invalidate?.();
+    (trpcUtils.feesAgent as any).getLatestApprovedJudgeSubmissionByFileNumber?.invalidate?.();
+    setSelectedAttachmentTabDoc(null);
+    setForcedViewerDoc(null);
+  }, [rasmId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const rasmQuery = trpc.feesAgent.documents.getSavedRasm.useQuery(
     { sessionToken: sessionToken || '', id: rasmId || '' },
     { 
       enabled: !!sessionToken && !!rasmId,
-      retry: 0
+      staleTime: 0,             // Always fetch fresh — never serve cached PDF stream
+      refetchOnMount: 'always', // Force a network hit every time the component mounts
+      // Mirror the hook: auto-poll every 1s while PDF is being compiled server-side.
+      refetchInterval: (arg: any) => {
+        const payloadObj = arg?.state?.data?.payload || arg?.data?.payload || arg?.payload;
+        return payloadObj?.pdfCompilationReady === false ? 1000 : false;
+      },
     }
   );
 
   const payload = (rasmQuery.data as any)?.payload as any;
-  const judgeSubmissionId = payload?.judgeSubmissionId || payload?.step7JudgeSubmissionId || undefined;
+  const judgeSubmissionId =
+    params.get('judgeSubmissionId') ||
+    payload?.judgeSubmissionId ||
+    payload?.step7JudgeSubmissionId ||
+    undefined;
+
+  // pdfCompilationReady is injected by the backend into payload.
+  //   false → deed is judge-approved, PDF still being compiled
+  //   true  → PDF is ready (or deed is not judge-approved)
+  //   undefined → legacy record (treat as ready to avoid false gates)
+  const _pdfCompilationReadyRaw = (rasmQuery.data as any)?.pdfCompilationReady ?? payload?.pdfCompilationReady;
+  const isAwaitingPdf: boolean =
+    _pdfCompilationReadyRaw === false &&
+    !!rasmId &&
+    !rasmQuery.isLoading;
 
   const judgeSubmissionQuery = (trpc as any).feesAgent.getMyJudgeSubmission.useQuery(
     { sessionToken: sessionToken || '', submissionId: judgeSubmissionId || '' },
@@ -478,6 +511,7 @@ export const AuditHubContainer: React.FC = () => {
   );
 
   const fileNumberForJudgeLookup =
+    params.get('fileNumber') ||
     ((rasmQuery.data as any)?.fileNumber as string | null | undefined) ||
     payload?.meta?.fileNumber ||
     payload?.fileNumber ||
@@ -506,6 +540,26 @@ export const AuditHubContainer: React.FC = () => {
     null;
 
   const effectiveJudgePayload: any = effectiveJudgeSubmission?.payload || null;
+
+  const isJudgeSubmissionsLoading =
+    (Boolean(judgeSubmissionId) && judgeSubmissionQuery.isLoading) ||
+    (Boolean(fileNumberForJudgeLookup) && latestApprovedByFileNumberQuery.isLoading);
+
+  const isApprovedDeed =
+    _pdfCompilationReadyRaw === false ||
+    payload?.isJudgeApprovedDeed === true ||
+    (rasmQuery.data as any)?.isJudgeApprovedDeed === true ||
+    Boolean((rasmQuery.data as any)?.canonical_approved_pdf || payload?.canonical_approved_pdf || (rasmQuery.data as any)?.signed_pdf_url || payload?.signed_pdf_url) ||
+    Boolean(
+      Array.isArray((rasmQuery.data as any)?.attachments) &&
+      (rasmQuery.data as any).attachments.some((a: any) =>
+        ['judge_signed_pdf', 'judge_court_stamped_pdf', 'signed_pdf'].includes(String(a.category || '').toLowerCase())
+      )
+    ) ||
+    isApprovedJudgeStatus(effectiveJudgeSubmission?.status) ||
+    isApprovedJudgeStatus(payload?.judgeStatus) ||
+    isApprovedJudgeStatus((rasmQuery.data as any)?.judgeStatus) ||
+    Boolean(effectiveJudgeSubmission && isApprovedJudgeStatus(effectiveJudgeSubmission.decision));
 
   const judgeAttachmentDocs = useMemo(() => {
     if (!effectiveJudgePayload) return [] as any[];
@@ -656,8 +710,16 @@ export const AuditHubContainer: React.FC = () => {
     const rasmData = rasmQuery.data as any;
     const rasmPayload = (rasmData?.payload as any) || {};
 
-    // 0. Prioritize explicit primary / updated PDF from saved_rasms table / rasmQuery.data
+    // 0. Prioritize canonical approved / signed / primary PDF from saved_rasms table / rasmQuery.data
     const rasmPdfPreviewUrl =
+      rasmData?.canonical_approved_pdf ||
+      rasmData?.canonicalApprovedPdf ||
+      rasmPayload?.canonical_approved_pdf ||
+      rasmPayload?.canonicalApprovedPdf ||
+      rasmData?.signed_pdf_url ||
+      rasmData?.signedPdfUrl ||
+      rasmPayload?.signed_pdf_url ||
+      rasmPayload?.signedPdfUrl ||
       rasmData?.pdf_preview_url ||
       rasmData?.pdfPreviewUrl ||
       rasmPayload?.pdf_preview_url ||
@@ -792,7 +854,17 @@ export const AuditHubContainer: React.FC = () => {
     const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
     if (singleDoc) return singleDoc;
 
-    // 5. Fallback ONLY to HTML or text draft if no compiled binary exists
+    // 5. Fallback to HTML or text draft ONLY if deed is not judge-approved
+    const isApprovedSubmission =
+      isApprovedJudgeStatus(effectiveJudgeSubmission?.status) ||
+      (rasmQuery.data as any)?.payload?.pdfCompilationReady === false ||
+      (rasmQuery.data as any)?.payload?.isJudgeApprovedDeed === true;
+
+    if (isApprovedSubmission) {
+      // Strictly prohibit draft/HTML fallback for approved deeds — must wait for compiled PDF
+      return null;
+    }
+
     if (effectiveJudgePayload?.rasmHtml) {
       return {
         id: 'judge-smart-rasm',
@@ -1165,23 +1237,183 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     return String(raw || '').trim();
   }, [judgePrimaryDoc, rasmQuery.data, selectedVaultDoc, state]);
 
+  // Resolve the highest priority PDF stream URL
+  const activePdfUrl = useMemo(() => {
+    const fromUrl = params.get('pdfUrl');
+    if (fromUrl && fromUrl.trim()) {
+      return fromUrl.trim();
+    }
+
+    const rasmData = rasmQuery.data as any;
+    const rasmPayload = (rasmData?.payload as any) || {};
+    const ejSub = effectiveJudgeSubmission as any;
+    const ejPayload = (effectiveJudgePayload as any) || (ejSub?.payload as any) || {};
+
+    // 1. Direct PDF attributes on saved_rasms record or payload
+    const fromRasm =
+      rasmData?.canonical_approved_pdf ||
+      rasmData?.canonicalApprovedPdf ||
+      rasmData?.signed_pdf_url ||
+      rasmData?.signedPdfUrl ||
+      rasmData?.pdf_preview_url ||
+      rasmData?.pdfPreviewUrl ||
+      rasmPayload?.canonical_approved_pdf ||
+      rasmPayload?.canonicalApprovedPdf ||
+      rasmPayload?.signed_pdf_url ||
+      rasmPayload?.signedPdfUrl ||
+      rasmPayload?.pdf_preview_url ||
+      rasmPayload?.pdfPreviewUrl ||
+      rasmData?.finalPdfUrl ||
+      rasmData?.previewUrl ||
+      rasmPayload?.previewUrl ||
+      rasmPayload?.finalPdfUrl ||
+      rasmPayload?.attachment?.pdfUrl ||
+      (rasmPayload?.attachment?.url && String(rasmPayload.attachment.url).includes('.pdf') ? rasmPayload.attachment.url : null) ||
+      (rasmPayload?.attachment?.fileUrl && String(rasmPayload.attachment.fileUrl).includes('.pdf') ? rasmPayload.attachment.fileUrl : null) ||
+      (rasmPayload?.step7JudgeAttachment?.url && String(rasmPayload.step7JudgeAttachment.url).includes('.pdf') ? rasmPayload.step7JudgeAttachment.url : null) ||
+      (rasmPayload?.judgeAttachment?.url && String(rasmPayload.judgeAttachment.url).includes('.pdf') ? rasmPayload.judgeAttachment.url : null) ||
+      (rasmPayload?.manualRasmFile?.url && String(rasmPayload.manualRasmFile.url).includes('.pdf') ? rasmPayload.manualRasmFile.url : null);
+
+    if (fromRasm) {
+      const u = String(fromRasm).trim();
+      if (u) return u;
+    }
+
+    // 2. Direct PDF attributes on judge submission payload or root
+    const fromJudge =
+      ejPayload?.canonical_approved_pdf ||
+      ejPayload?.canonicalApprovedPdf ||
+      ejPayload?.signed_pdf_url ||
+      ejPayload?.signedPdfUrl ||
+      ejPayload?.pdf_preview_url ||
+      ejPayload?.pdfPreviewUrl ||
+      ejPayload?.previewUrl ||
+      ejPayload?.finalPdfUrl ||
+      ejPayload?.attachment?.pdfUrl ||
+      (ejPayload?.attachment?.url && String(ejPayload.attachment.url).includes('.pdf') ? ejPayload.attachment.url : null) ||
+      (ejPayload?.attachment?.fileUrl && String(ejPayload.attachment.fileUrl).includes('.pdf') ? ejPayload.attachment.fileUrl : null) ||
+      (ejPayload?.judgeAttachment?.url && String(ejPayload.judgeAttachment.url).includes('.pdf') ? ejPayload.judgeAttachment.url : null) ||
+      (ejPayload?.judgeAttachment?.fileUrl && String(ejPayload.judgeAttachment.fileUrl).includes('.pdf') ? ejPayload.judgeAttachment.fileUrl : null) ||
+      (ejPayload?.manualRasmFile?.url && String(ejPayload.manualRasmFile.url).includes('.pdf') ? ejPayload.manualRasmFile.url : null) ||
+      (ejPayload?.baseDoc?.url && String(ejPayload.baseDoc.url).includes('.pdf') ? ejPayload.baseDoc.url : null) ||
+      ejPayload?.judgeCourtStamp?.url ||
+      ejPayload?.judgeCourtStampedDoc?.url ||
+      ejPayload?.judgeSignedDoc?.url ||
+      ejSub?.signedPdfUrl ||
+      ejSub?.pdfPreviewUrl ||
+      ejSub?.previewUrl ||
+      ejSub?.finalPdfUrl;
+
+    if (fromJudge) {
+      const u = String(fromJudge).trim();
+      if (u) return u;
+    }
+
+    // 3. Check attachments on saved_rasm with strict priority ordering
+    const rasmAtts = Array.isArray(rasmData?.attachments) ? rasmData.attachments : [];
+    const attPriority: Record<string, number> = {
+      judge_signed_pdf: 5,
+      judge_court_stamped_pdf: 4,
+      signed_pdf: 3,
+      audit_final_pdf: 2,
+      judge_attachment: 1,
+    };
+    const pdfAtts = rasmAtts.filter((a: any) => {
+      const u = String(a.url || a.fileUrl || a.file_url || '').toLowerCase();
+      const m = String(a.mimeType || a.mime_type || a.type || '').toLowerCase();
+      const n = String(a.fileName || a.file_name || a.name || '').toLowerCase();
+      return n.endsWith('.pdf') || u.includes('.pdf') || m.includes('pdf');
+    });
+    if (pdfAtts.length > 0) {
+      const bestAtt = pdfAtts.reduce((prev: any, curr: any) => {
+        const pPrev = attPriority[String(prev.category || '').toLowerCase()] || 0;
+        const pCurr = attPriority[String(curr.category || '').toLowerCase()] || 0;
+        return pCurr > pPrev ? curr : prev;
+      });
+      const u = String(bestAtt?.url || bestAtt?.fileUrl || bestAtt?.file_url || '').trim();
+      if (u) return u;
+    }
+
+    // 4. Primary judge doc if PDF
+    if (judgePrimaryDoc?.url && isPdfLikeDoc(judgePrimaryDoc)) {
+      return String(judgePrimaryDoc.url).trim();
+    }
+
+    // 5. Any PDF in judgeAttachmentDocs
+    const foundJudgeAttPdf = (judgeAttachmentDocs || []).find((d: any) => isPdfLikeDoc(d));
+    if (foundJudgeAttPdf?.url) {
+      return String(foundJudgeAttPdf.url).trim();
+    }
+
+    return null;
+  }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, judgeAttachmentDocs, judgePrimaryDoc, rasmQuery.data]);
+
+  const isAwaitingPdfResolved =
+    Boolean(
+      _pdfCompilationReadyRaw === false ||
+      (isApprovedDeed && !activePdfUrl && (_pdfCompilationReadyRaw === false || isJudgeSubmissionsLoading))
+    ) &&
+    !!rasmId &&
+    !rasmQuery.isLoading;
+
+  // Direct Stream Derivation: on every render tick, derive canonical approved PDF from rasmQuery.data
+  const canonicalApprovedPdfDoc = useMemo(() => {
+    if (!activePdfUrl) return null;
+    return {
+      id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
+      category: 'audit_final_pdf',
+      fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+      name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+      fileUrl: activePdfUrl,
+      url: activePdfUrl,
+      mimeType: 'application/pdf',
+      type: 'application/pdf',
+      isJudgePrimary: true,
+    };
+  }, [activePdfUrl, rasmId, rasmQuery.data]);
+
   const forcedViewerDoc = useMemo(() => {
-    if (forcedViewerDocState) return forcedViewerDocState;
+    // Strict Renderer Routing: If approved deed is awaiting compiled PDF, strictly prohibit draft fallbacks
+    if (isAwaitingPdfResolved) return null;
+
+    if ((activeDocVersion as any) === 'edited') {
+      return forcedViewerDocState || selectedVaultDoc;
+    }
+
+    // Direct Stream Derivation: on every render tick, if canonical approved PDF exists, derive directly
+    if (canonicalApprovedPdfDoc) {
+      return canonicalApprovedPdfDoc;
+    }
+
+    if (forcedViewerDocState) {
+      if (isApprovedDeed && (forcedViewerDocState.isDraft || forcedViewerDocState.isSmartDraft)) {
+        return null;
+      }
+      return forcedViewerDocState;
+    }
+
     const base = (() => {
-      if ((activeDocVersion as any) === 'edited') return selectedVaultDoc;
-      if (selectedVaultDoc && isWordLikeDoc(selectedVaultDoc)) return selectedVaultDoc;
+      if (selectedVaultDoc && isWordLikeDoc(selectedVaultDoc)) {
+        if (isApprovedDeed && !activePdfUrl) return null;
+        return selectedVaultDoc;
+      }
       if (selectedVaultDoc && (selectedVaultDoc?.category === 'audit_final_pdf' || String(selectedVaultDoc?.id || '').startsWith('imported-'))) return selectedVaultDoc;
       if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) return judgePrimaryDoc;
+      if (isApprovedDeed) return null; // strictly block draft fallbacks for approved deeds
       return selectedVaultDoc;
     })();
 
-    if (!base) return base;
+    if (!base) return null;
+    if (isApprovedDeed && (base.isDraft || base.isSmartDraft || base.id === 'smart-rasm' || base.id === 'draft-doc')) {
+      return null;
+    }
+
     return {
       ...base,
       content: base.content || currentDraftText,
       rawContent: base.rawContent || currentDraftText,
     };
-  }, [forcedViewerDocState, activeDocVersion, currentDraftText, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc]);
+  }, [canonicalApprovedPdfDoc, forcedViewerDocState, isAwaitingPdfResolved, activeDocVersion, currentDraftText, isApprovedDeed, isPdfLikeDoc, isWordLikeDoc, judgePrimaryDoc, selectedVaultDoc, activePdfUrl]);
   const isEmbeddedOnlyOfficePreviewTab =
     activeTab === 'formal' || activeTab === 'legal' || activeTab === 'data';
   const isEmbeddedOnlyOfficeActive =
@@ -2033,6 +2265,18 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       // Edited artifacts should only take over automatically when (activeDocVersion as any) === 'edited'.
       if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) {
         setSelectedVaultDoc(judgePrimaryDoc);
+      } else if (activePdfUrl) {
+        setSelectedVaultDoc({
+          id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
+          category: 'audit_final_pdf',
+          fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+          name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+          fileUrl: activePdfUrl,
+          url: activePdfUrl,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        });
       } else if (judgeWordAttachmentDoc) {
         setSelectedVaultDocNormalized(judgeWordAttachmentDoc);
       } else if (judgePrimaryDoc) {
@@ -2047,26 +2291,37 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         setSelectedVaultDocNormalized(editedOverridePdf);
       } else if (editedOverrideDocx) {
         setSelectedVaultDocNormalized(editedOverrideDocx);
-      } else if (payload?.rasmHtml) {
-        setSelectedVaultDoc({
-          id: 'smart-rasm',
-          fileName: 'المحرر العدلي (نظام ذكي)',
-          rasmHtml: payload.rasmHtml,
-          isSmartDraft: true
-        });
-      } else if (deed) {
-        setSelectedVaultDocNormalized(deed);
-      } else if (Array.isArray(attachments) && attachments.length > 0) {
-        setSelectedVaultDocNormalized(attachments[0]);
-      } else if (rasmQuery.data && ((rasmQuery.data as any).draft || (s as any)?.draft)) {
-        const draftContent = (rasmQuery.data as any).draft || (s as any)?.draft;
-        if (draftContent) {
-          setSelectedVaultDoc({
-            id: 'draft-doc',
-            fileName: 'المحرر العدلي',
-            isDraft: true,
-            content: draftContent
-          });
+      } else {
+        // Guard: if the backend explicitly says the PDF is not yet compiled for a
+        // judge-approved deed, do NOT fall back to the raw HTML/draft renderer.
+        // The PdfCompilationGate will display a spinner until the poll resolves.
+        const awaitingCompilation =
+          (rasmQuery.data as any)?.payload?.pdfCompilationReady === false ||
+          isApprovedDeed ||
+          isJudgeSubmissionsLoading;
+        if (!awaitingCompilation) {
+          if (payload?.rasmHtml) {
+            setSelectedVaultDoc({
+              id: 'smart-rasm',
+              fileName: 'المحرر العدلي (نظام ذكي)',
+              rasmHtml: payload.rasmHtml,
+              isSmartDraft: true
+            });
+          } else if (deed) {
+            setSelectedVaultDocNormalized(deed);
+          } else if (Array.isArray(attachments) && attachments.length > 0) {
+            setSelectedVaultDocNormalized(attachments[0]);
+          } else if (rasmQuery.data && ((rasmQuery.data as any).draft || (s as any)?.draft)) {
+            const draftContent = (rasmQuery.data as any).draft || (s as any)?.draft;
+            if (draftContent) {
+              setSelectedVaultDoc({
+                id: 'draft-doc',
+                fileName: 'المحرر العدلي',
+                isDraft: true,
+                content: draftContent
+              });
+            }
+          }
         }
       }
     } catch (error) {
@@ -2076,7 +2331,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
   // Force re-selection if the judge-side primary preview appears later.
   useEffect(() => {
-    if (!judgePrimaryDoc) return;
+    if (!judgePrimaryDoc && !activePdfUrl) return;
 
     const currentUrl = String(
       selectedVaultDoc?.url ||
@@ -2101,7 +2356,8 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     ).toLowerCase();
     const judgePreviewIsPdf =
       String((judgePrimaryDoc as any)?.fileName || (judgePrimaryDoc as any)?.name || '').toLowerCase().endsWith('.pdf') ||
-      String((judgePrimaryDoc as any)?.mimeType || (judgePrimaryDoc as any)?.type || '').toLowerCase().includes('application/pdf');
+      String((judgePrimaryDoc as any)?.mimeType || (judgePrimaryDoc as any)?.type || '').toLowerCase().includes('application/pdf') ||
+      Boolean(activePdfUrl);
     const currentIsStatic =
       !currentUrl ||
       currentUrl.startsWith('html://') ||
@@ -2116,14 +2372,33 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       currentMime.includes('msword');
     const currentIsPdf =
       currentCategory === 'judge_attachment' ||
+      currentCategory === 'audit_final_pdf' ||
       currentFileName.endsWith('.pdf') ||
       currentMime.includes('application/pdf');
 
     if (currentIsStatic || (judgePreviewIsPdf && !currentIsPdf) || currentIsDocxLike) {
-      setSelectedVaultDoc(judgePrimaryDoc);
+      if (judgePrimaryDoc && isPdfLikeDoc(judgePrimaryDoc)) {
+        setSelectedVaultDoc(judgePrimaryDoc);
+      } else if (activePdfUrl) {
+        setSelectedVaultDoc({
+          id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
+          category: 'audit_final_pdf',
+          fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+          name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+          fileUrl: activePdfUrl,
+          url: activePdfUrl,
+          mimeType: 'application/pdf',
+          type: 'application/pdf',
+          isJudgePrimary: true,
+        });
+      }
     }
   }, [
+    activePdfUrl,
+    isPdfLikeDoc,
     judgePrimaryDoc,
+    rasmId,
+    rasmQuery.data,
     selectedVaultDoc?.id,
     selectedVaultDoc?.url,
     selectedVaultDoc?.fileUrl,
@@ -4019,55 +4294,108 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
                             {/* Viewer Canvas */}
                             <div className="flex-1 relative overflow-hidden bg-slate-100">
-                               <HighResViewer 
-                                   doc={forcedViewerDoc}
-                                   docSourceMeta={{
-                                     selectedDocSource: activeDocVersion,
-                                     baseDocUrl: baseDocUrlForDebug,
-                                     editedDocUrl: editedDocUrlForDebug,
-                                     versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
-                                     rasmId,
-                                     submissionId: judgeSubmissionId || null,
-                                     reason:
-                                       (activeDocVersion as any) === 'edited'
-                                         ? 'activeDocVersion=edited'
-                                         : (forcedViewerDoc as any)?.category
-                                           ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
-                                           : 'no-selectedVaultDoc',
-                                   }}
-                                   zoom={viewerZoom}
-                                   isDragging={isDragging}
-                                   onMouseDown={handleViewerMouseDown}
-                                   onMouseMove={handleViewerMouseMove}
-                                   onMouseUp={handleViewerMouseUp}
-                                   onWheel={handleViewerWheel}
-                                   containerRef={viewerContainerRef}
-                                   isDarkMode={isDarkMode}
-                                   onUpdateDraft={updateDraftContent}
-                                   inlineEditMode={isAuditHubEditMode}
-                                   activeViewMode={activeViewMode}
-                                   onlyOfficeConfig={onlyOfficeConfig}
-                                   onlyOfficeDsUrl={onlyOfficeDsUrl}
-                                   onSaveAndCloseOnlyOffice={handleSaveAndCloseOnlyOffice}
-                                   isSavingOnlyOffice={isSavingEdits}
-                                   onCloseOnlyOffice={() => setActiveViewMode('preview')}
-                                   updateZoom={updateZoom}
-                                   renderNonce={viewerDocRenderNonce}
-                                   pdfTextEditor={{
-                                     active: pdfFormEditorOpen && isSelectedPdf,
-                                     tool: pdfTextTool,
-                                     pageIndex: pdfTextPageIndex,
-                                     pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
-                                     edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
-                                     textInput: pdfTextInput,
-                                     fontSize: pdfTextFontSize,
-                                     onAddRect: addPdfRedactionRect,
-                                     onAddText: addPdfOverlayText,
-                                   }}
-                                   onRegisterPlainTextGetter={(fn: () => string) => {
-                                     editedPlainTextGetterRef.current = fn;
-                                   }}
-                               />
+                               {isAwaitingPdfResolved ? (
+                                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 p-8">
+                                   <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xl flex flex-col items-center max-w-md text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
+                                     <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 relative">
+                                       <Loader2 className="w-8 h-8 animate-spin" />
+                                       <span className="absolute text-sm">⚖️</span>
+                                     </div>
+                                     <div className="space-y-2">
+                                       <h3 className="text-lg font-black text-slate-900 font-amiri">
+                                         جاري استكمال وتجهيز المحرر القضائي المعتمد...
+                                       </h3>
+                                       <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                                         تم اعتماد المعاملة من طرف قاضي التوثيق بنجاح. يجري الآن توليد وتضمين النسخة الرقمية المعتمدة عالية الدقة.
+                                       </p>
+                                     </div>
+                                     <div className="flex flex-col items-center gap-2">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[11px] font-bold">
+                                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                                          <span>تحديث تلقائي آني قيد المتابعة</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            rasmQuery.refetch();
+                                            judgeSubmissionQuery.refetch();
+                                            latestApprovedByFileNumberQuery.refetch();
+                                          }}
+                                          className="mt-1 px-4 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5" />
+                                          <span>تحديث يدوي للبيانات</span>
+                                        </button>
+                                      </div>
+                                   </div>
+                                 </div>
+                               ) : forcedViewerDoc || activePdfUrl ? (
+                                 <HighResViewer 
+                                     doc={
+                                       forcedViewerDoc || {
+                                         id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
+                                         category: 'audit_final_pdf',
+                                         fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+                                         name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+                                         fileUrl: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
+                                         url: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
+                                         mimeType: 'application/pdf',
+                                         type: 'application/pdf',
+                                         isJudgePrimary: true,
+                                       }
+                                     }
+                                     docSourceMeta={{
+                                       selectedDocSource: activeDocVersion,
+                                       baseDocUrl: baseDocUrlForDebug,
+                                       editedDocUrl: editedDocUrlForDebug,
+                                       versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
+                                       rasmId,
+                                       submissionId: judgeSubmissionId || null,
+                                       reason:
+                                         (activeDocVersion as any) === 'edited'
+                                           ? 'activeDocVersion=edited'
+                                           : (forcedViewerDoc as any)?.category
+                                             ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
+                                             : 'no-selectedVaultDoc',
+                                     }}
+                                     zoom={viewerZoom}
+                                     isDragging={isDragging}
+                                     onMouseDown={handleViewerMouseDown}
+                                     onMouseMove={handleViewerMouseMove}
+                                     onMouseUp={handleViewerMouseUp}
+                                     onWheel={handleViewerWheel}
+                                     containerRef={viewerContainerRef}
+                                     isDarkMode={isDarkMode}
+                                     onUpdateDraft={updateDraftContent}
+                                     inlineEditMode={isAuditHubEditMode}
+                                     activeViewMode={activeViewMode}
+                                     onlyOfficeConfig={onlyOfficeConfig}
+                                     onlyOfficeDsUrl={onlyOfficeDsUrl}
+                                     onSaveAndCloseOnlyOffice={handleSaveAndCloseOnlyOffice}
+                                     isSavingOnlyOffice={isSavingEdits}
+                                     onCloseOnlyOffice={() => setActiveViewMode('preview')}
+                                     updateZoom={updateZoom}
+                                     renderNonce={viewerDocRenderNonce}
+                                     pdfTextEditor={{
+                                       active: pdfFormEditorOpen && isSelectedPdf,
+                                       tool: pdfTextTool,
+                                       pageIndex: pdfTextPageIndex,
+                                       pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
+                                       edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
+                                       textInput: pdfTextInput,
+                                       fontSize: pdfTextFontSize,
+                                       onAddRect: addPdfRedactionRect,
+                                       onAddText: addPdfOverlayText,
+                                     }}
+                                     onRegisterPlainTextGetter={(fn: () => string) => {
+                                       editedPlainTextGetterRef.current = fn;
+                                     }}
+                                 />
+                               ) : (
+                                 <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                   <p className="font-bold text-sm">جاري تحضير نسخ المعاينة المعتمدة...</p>
+                                 </div>
+                               )}
                             </div>
                         </div>
                     </div>

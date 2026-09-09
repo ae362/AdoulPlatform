@@ -88,6 +88,8 @@ export function useJudicialDocumentStream(
     let isCancelled = false;
 
     const executeDocumentStream = async () => {
+      cleanupActiveBlobUrl();
+      setBlobUrl(null);
       setIsLoading(true);
       setError(null);
 

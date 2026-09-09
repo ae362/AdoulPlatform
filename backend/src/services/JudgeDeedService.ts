@@ -393,20 +393,32 @@ export class JudgeDeedService {
 
     // 0. Canonical signed deed attachments priority (always fetch latest signed_pdf/judge_court_stamped_pdf)
     if (signedDeedId) {
-      const { data: latestSignedAtt } = await supabase
+      const { data: attList } = await supabase
         .from('deed_attachments')
-        .select('file_url, file_name, mime_type, category')
+        .select('file_url, file_name, mime_type, category, created_at')
         .eq('record_type', 'signed_deed')
         .eq('record_id', signedDeedId)
-        .in('category', ['judge_court_stamped_pdf', 'judge_signed_pdf', 'signed_pdf'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in('category', ['judge_signed_pdf', 'judge_court_stamped_pdf', 'signed_pdf'])
+        .order('created_at', { ascending: false });
 
-      if (latestSignedAtt?.file_url) {
-        previewUrl = String(latestSignedAtt.file_url).trim();
-        previewName = latestSignedAtt.file_name || 'الرسم_الموقع_المعتمد.pdf';
-        previewMimeType = latestSignedAtt.mime_type || 'application/pdf';
+      if (attList && attList.length > 0) {
+        const priority: Record<string, number> = {
+          judge_signed_pdf: 3,
+          judge_court_stamped_pdf: 2,
+          signed_pdf: 1,
+        };
+        const best = attList.reduce((prev, curr) => {
+          const pPrev = priority[prev.category] || 0;
+          const pCurr = priority[curr.category] || 0;
+          if (pCurr !== pPrev) return pCurr > pPrev ? curr : prev;
+          return new Date(curr.created_at || 0) > new Date(prev.created_at || 0) ? curr : prev;
+        });
+
+        if (best?.file_url) {
+          previewUrl = String(best.file_url).trim();
+          previewName = best.file_name || 'الرسم_الموقع_المعتمد.pdf';
+          previewMimeType = best.mime_type || 'application/pdf';
+        }
       }
     }
 
@@ -529,7 +541,7 @@ export class JudgeDeedService {
     // 1. Fetch current submission
     const { data: existing, error: fetchError } = await supabase
       .from('judge_submissions')
-      .select('id, status, decision, payload, file_number, judge_user_id')
+      .select('id, status, decision, payload, file_number, judge_user_id, notary_user_id')
       .eq('id', input.id)
       .single();
 
@@ -541,6 +553,18 @@ export class JudgeDeedService {
 
     // 2. Validate state machine transition guard
     assertValidTransition(currentStatus, input.decision);
+
+    const existingPayload =
+      existing && typeof (existing as any).payload === 'object'
+        ? ((existing as any).payload as Record<string, unknown>)
+        : null;
+    const isJudicialSpeechFlow = String(existingPayload?.source || '').trim() === 'signed_rasms_send_to_judge';
+    if (isJudicialSpeechFlow && input.decision === 'accepted' && !existingPayload?.inclusionReference) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'لا يمكن اعتماد وإصدار الخطاب النهائي دون إدراج وتوليد مراجع التضمين بالسجل العدلي أولاً.',
+      });
+    }
 
     const now = new Date().toISOString();
     const nextStatus: JudgeSubmissionStatus = input.decision;
@@ -574,6 +598,7 @@ export class JudgeDeedService {
         : null;
     const signedDeedIdRaw = submissionPayload?.signedDeedId;
     const signedDeedId = typeof signedDeedIdRaw === 'string' && signedDeedIdRaw ? signedDeedIdRaw : null;
+    let activePayload: Record<string, unknown> = { ...(submissionPayload || {}) };
     let signedPdfUrl: string | null = null;
 
     if (signedDeedId) {
@@ -601,23 +626,23 @@ export class JudgeDeedService {
             storage_path: uploaded.path,
           };
 
-          const existingAttachments = Array.isArray(submissionPayload?.attachments)
-            ? [...(submissionPayload?.attachments as any[])]
+          const existingAttachments = Array.isArray(activePayload?.attachments)
+            ? [...(activePayload.attachments as any[])]
             : [];
           const filteredAttachments = existingAttachments.filter((raw: any) => {
             const category = String(raw?.category || '').toLowerCase();
             return category !== 'judge_signed_pdf';
           });
 
-          const payloadNext = {
-            ...(submissionPayload || {}),
+          activePayload = {
+            ...activePayload,
             judgeSignedDoc: signedAttachment,
             attachments: [signedAttachment, ...filteredAttachments],
           };
 
           await supabase
             .from('judge_submissions')
-            .update({ payload: payloadNext })
+            .update({ payload: activePayload })
             .eq('id', input.id);
 
           await supabase
@@ -679,6 +704,184 @@ export class JudgeDeedService {
           },
         });
       } catch {}
+    }
+
+    // Resolve approved PDF stream URL if not populated from signedPdfBase64
+    if (!signedPdfUrl) {
+      signedPdfUrl =
+        String(
+          (activePayload?.judgeSignedDoc as any)?.url ||
+          activePayload?.canonical_approved_pdf ||
+          activePayload?.canonicalApprovedPdf ||
+          activePayload?.signed_pdf_url ||
+          activePayload?.signedPdfUrl ||
+          (activePayload?.judgeCourtStamp as any)?.url ||
+          (activePayload?.judgeCourtStampedDoc as any)?.url ||
+          activePayload?.previewUrl ||
+          activePayload?.finalPdfUrl ||
+          (activePayload?.attachment as any)?.url ||
+          (activePayload?.attachment as any)?.fileUrl ||
+          (activePayload?.attachment as any)?.pdfUrl ||
+          (activePayload?.judgeAttachment as any)?.url ||
+          (activePayload?.manualRasmFile as any)?.url ||
+          (activePayload?.baseDoc as any)?.url ||
+          ''
+        ).trim() || null;
+    }
+
+    if (!signedPdfUrl) {
+      // Check deed_attachments for judge_submission
+      try {
+        const { data: directAtts } = await supabase
+          .from('deed_attachments')
+          .select('file_url, category, mime_type, file_name')
+          .eq('record_type', 'judge_submission')
+          .eq('record_id', input.id);
+
+        const found = (directAtts || []).find((a: any) => {
+          const u = String(a.file_url || '').toLowerCase();
+          const m = String(a.mime_type || '').toLowerCase();
+          const n = String(a.file_name || '').toLowerCase();
+          return u.startsWith('http') && (m.includes('pdf') || u.includes('.pdf') || n.endsWith('.pdf'));
+        });
+        if (found?.file_url) {
+          signedPdfUrl = String(found.file_url).trim();
+        }
+      } catch {}
+    }
+
+    // If decision is accepted, synchronize approved PDF to judge_submissions, saved_rasms, and deed_attachments
+    if (input.decision === 'accepted' || input.decision === 'accepted_with_notes') {
+      try {
+        let savedRasmId = String(activePayload?.savedRasmId || activePayload?.saved_rasm_id || '').trim() || null;
+
+        // If savedRasmId not in payload, locate from signed_deeds or file_number + notary_user_id
+        if (!savedRasmId && signedDeedId) {
+          try {
+            const { data: sdRow } = await supabase
+              .from('signed_deeds')
+              .select('saved_rasm_id')
+              .eq('id', signedDeedId)
+              .maybeSingle();
+            if (sdRow?.saved_rasm_id) {
+              savedRasmId = String(sdRow.saved_rasm_id);
+            }
+          } catch {}
+        }
+
+        if (!savedRasmId && existing.file_number) {
+          try {
+            const notaryId = existing.notary_user_id || activePayload?.notary_user_id || activePayload?.notaryUserId;
+            let q = supabase
+              .from('saved_rasms')
+              .select('id')
+              .eq('file_number', existing.file_number);
+            if (notaryId) {
+              q = q.eq('notary_user_id', notaryId);
+            }
+            const { data: foundRasm } = await q.order('created_at', { ascending: false }).limit(1).maybeSingle();
+            if (foundRasm?.id) {
+              savedRasmId = String(foundRasm.id);
+            }
+          } catch {}
+        }
+
+        if (signedPdfUrl) {
+          // 1. Update judge_submissions payload with canonical PDF pointers
+          try {
+            await supabase
+              .from('judge_submissions')
+              .update({
+                payload: {
+                  ...activePayload,
+                  canonical_approved_pdf: signedPdfUrl,
+                  signed_pdf_url: signedPdfUrl,
+                  pdf_preview_url: signedPdfUrl,
+                  previewUrl: signedPdfUrl,
+                  pdfCompilationReady: true,
+                  savedRasmId: savedRasmId || activePayload?.savedRasmId,
+                },
+              })
+              .eq('id', input.id);
+          } catch (subPlErr) {
+            console.warn('[JudgeDeedService.decideSubmission] Update judge_submissions payload error:', subPlErr);
+          }
+
+          // 2. If associated saved_rasm exists, synchronously update its payload
+          if (savedRasmId) {
+            try {
+              const { data: savedRasmRow } = await supabase
+                .from('saved_rasms')
+                .select('payload')
+                .eq('id', savedRasmId)
+                .maybeSingle();
+
+              const existingSavedPayload = (savedRasmRow?.payload as Record<string, unknown>) || {};
+              await supabase
+                .from('saved_rasms')
+                .update({
+                  payload: {
+                    ...existingSavedPayload,
+                    canonical_approved_pdf: signedPdfUrl,
+                    signed_pdf_url: signedPdfUrl,
+                    pdf_preview_url: signedPdfUrl,
+                    previewUrl: signedPdfUrl,
+                    judgeStatus: input.decision,
+                    isJudgeApprovedDeed: true,
+                    pdfCompilationReady: true,
+                    judgeSubmissionId: input.id,
+                    signedDeedId: signedDeedId || (existingSavedPayload as any)?.signedDeedId,
+                  },
+                })
+                .eq('id', savedRasmId);
+            } catch (rasmPlErr) {
+              console.warn('[JudgeDeedService.decideSubmission] Update saved_rasms payload error:', rasmPlErr);
+            }
+
+            // 3. Ensure deed_attachments has the approved PDF under judge_signed_pdf, audit_final_pdf, and judge_attachment
+            try {
+              const targetCategories = ['judge_signed_pdf', 'audit_final_pdf', 'judge_attachment'];
+              for (const cat of targetCategories) {
+                const { data: existingAtt } = await supabase
+                  .from('deed_attachments')
+                  .select('id')
+                  .eq('record_type', 'saved_rasm')
+                  .eq('record_id', savedRasmId)
+                  .eq('category', cat)
+                  .maybeSingle();
+
+                if (existingAtt) {
+                  await supabase
+                    .from('deed_attachments')
+                    .update({
+                      file_url: signedPdfUrl,
+                      mime_type: 'application/pdf',
+                    })
+                    .eq('id', existingAtt.id);
+                } else {
+                  await supabase.from('deed_attachments').insert({
+                    record_id: savedRasmId,
+                    record_type: 'saved_rasm',
+                    category: cat,
+                    file_name: 'المحرر القضائي المعتمد.pdf',
+                    file_url: signedPdfUrl,
+                    mime_type: 'application/pdf',
+                    file_size: null,
+                    metadata: {
+                      source: 'JudgeDeedService.decideSubmission',
+                      judgeSubmissionId: input.id,
+                    },
+                  });
+                }
+              }
+            } catch (attSyncErr) {
+              console.warn('[JudgeDeedService.decideSubmission] Sync saved_rasm deed_attachments error:', attSyncErr);
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[JudgeDeedService.decideSubmission] Best-effort persistence sync error:', syncErr);
+      }
     }
 
     return {

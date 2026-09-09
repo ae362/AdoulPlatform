@@ -187,6 +187,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   const updateSubmissionStageMutation = trpc.feesAgent.documents.updateSubmissionStage.useMutation();
   const generateRasmPdfMutation = trpc.feesAgent.documents.generateRasmPdf.useMutation();
   const createMarriageRecordMutation = trpc.marriageRecords.create.useMutation();
+  const createSavedRasmMutation = (trpc as any).feesAgent.createSavedRasmFromJudgeSubmission.useMutation();
   const [showJudgeNotesHelper, setShowJudgeNotesHelper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const optionalAttachmentsInputRef = useRef<HTMLInputElement | null>(null);
@@ -303,6 +304,12 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
 
   const judgeStatus = (judgeStatusQuery.data as any)?.status;
   const judgeNotes = (judgeStatusQuery.data as any)?.judgeNotes;
+  const isJudgePdfReady = Boolean(
+    (judgeStatusQuery.data as any)?.signedPdfUrl ||
+    (judgeStatusQuery.data as any)?.pdfPreviewUrl ||
+    (judgeStatusQuery.data as any)?.previewUrl ||
+    (judgeStatusQuery.data as any)?.finalPdfUrl
+  );
 
   const judgeStatusLabel =
     judgeStatus === 'accepted'
@@ -682,21 +689,44 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     setIsAuditHubLoading(true);
     try {
       let recordId = savedRasmId;
-      // Always save or update the rasm before moving to the standalone Audit Hub
-      const res = await saveFinalRasmMutation.mutateAsync({
-        sessionToken: sessionToken || '',
-        fileNumber: state.meta.fileNumber,
-        documentType: state.documentType,
-        payload: {
-          ...sanitizePayloadForSave(state),
-          judgeSubmissionId, // Ensure submission ID is in payload
-        },
-      });
-      recordId = (res as any)?.id;
-      setSavedRasmId(recordId);
+      const fileNo = encodeURIComponent(state.meta.fileNumber || '');
+
+      // If this deed is already approved by the judge, use createSavedRasmFromJudgeSubmission
+      // to ensure the saved_rasm directly links the compiled, stamped, vector PDF.
+      let approvedPdfUrl: string | null = null;
+      if (judgeSubmissionId && (judgeStatus === 'accepted' || judgeStatus === 'accepted_with_notes')) {
+        try {
+          const res = await createSavedRasmMutation.mutateAsync({
+            sessionToken: sessionToken || '',
+            judgeSubmissionId,
+          });
+          recordId = res?.id || recordId;
+          approvedPdfUrl = (res as any)?.signedPdfUrl || (res as any)?.canonical_approved_pdf || null;
+          setSavedRasmId(recordId);
+        } catch (subErr) {
+          console.warn('[Step7_FinalReview] createSavedRasmFromJudgeSubmission fallback:', subErr);
+        }
+      }
+
+      if (!recordId) {
+        // Fallback save if not already saved or if no judge submission exists
+        const res = await saveFinalRasmMutation.mutateAsync({
+          sessionToken: sessionToken || '',
+          fileNumber: state.meta.fileNumber,
+          documentType: state.documentType,
+          payload: {
+            ...sanitizePayloadForSave(state),
+            judgeSubmissionId, // Ensure submission ID is in payload
+          },
+        });
+        recordId = (res as any)?.id;
+        setSavedRasmId(recordId);
+      }
       
-      // Navigate to the new standalone page using absolute path for reliability
-      navigate(`/dashboard?module=auditHub&id=${recordId}`);
+      // Navigate to the standalone Audit Hub with guaranteed non-stale flags and direct submission/PDF pointers
+      const pdfQuery = approvedPdfUrl ? `&pdfUrl=${encodeURIComponent(approvedPdfUrl)}` : '';
+      const subQuery = judgeSubmissionId ? `&judgeSubmissionId=${encodeURIComponent(judgeSubmissionId)}` : '';
+      navigate(`/dashboard?module=auditHub&id=${recordId}&fileNumber=${fileNo}${subQuery}${pdfQuery}&refetch=true&cb=${Date.now()}`);
     } catch (err: any) {
       alert('تعذر الحفظ للإنتقال لمنصة التضمين: ' + err.message);
     } finally {
@@ -889,6 +919,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
         selectedJudgeUserId: targetJudgeId ? targetJudgeId : undefined,
         payload: {
           ...buildJudgePayload(),
+          savedRasmId: savedRasmId || state.savedRasmId,
           judgePartyNames: judgePartyNames || manualJudgePartyNames,
           attachment: mainDeedAttachment,
           attachments: additionalAttachments,
@@ -1226,6 +1257,17 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     });
   }, [startMode]);
 
+  // Ensure draft is auto-generated on mount if empty or clean up legacy signature blocks
+  useEffect(() => {
+    if (!state.draft) {
+      const generated = generateDocumentDraft(state);
+      setState(prev => ({ ...prev, draft: generated.replace(/\s+/g, ' ').trim() }));
+    } else if (state.draft.includes('توقيع الزوج:') || state.draft.includes('خطاب قاضي التوثيق:')) {
+      const generated = generateDocumentDraft(state);
+      setState(prev => ({ ...prev, draft: generated.replace(/\s+/g, ' ').trim() }));
+    }
+  }, []);
+
   // Render directly without nested component definitions to prevent remounts and input focus loss
   return (
       <div className="space-y-8 animate-fadeIn">
@@ -1349,132 +1391,83 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
               </h3>
             </div>
           <div className="p-8 text-center space-y-6">
-            {!selectedTemplateId && !showTemplateSelector && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div 
+            <div className="text-right">
+              {showJudgeNotesHelper && judgeNotes && (
+                <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-4 text-right border-r-4 border-r-red-500 shadow-sm">
+                  <div className="font-black text-red-600">ملاحظات القاضي</div>
+                  <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-red-900 font-bold">{judgeNotes}</div>
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={handleInsertJudgeNotes}
+                      className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white hover:bg-red-800"
+                    >
+                      إدراج الملاحظات داخل الرسم
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(judgeNotes);
+                        } catch {}
+                      }}
+                      className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-900 hover:bg-red-50"
+                    >
+                      نسخ الملاحظات
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowJudgeNotesHelper(false)}
+                      className="rounded-lg border border-purple-200 bg-white px-3 py-2 text-xs font-bold text-purple-900 hover:bg-purple-100"
+                    >
+                      إخفاء
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <textarea
+                ref={draftEditorRef}
+                dir="rtl"
+                className="w-full h-96 p-6 border rounded-xl font-amiri text-lg leading-loose bg-gray-50 focus:bg-white transition-colors text-justify"
+                value={state.draft || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setState(prev => ({ ...prev, draft: val.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ') }));
+                }}
+              />
+              <div className="mt-4 flex justify-between items-center">
+                <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <span>⚖️</span>
+                  <span>تنبيه مهني راقٍ: الصياغة المقترحة ذات طابع مساعد، وتبقى خاضعة لمراجعتكم وتقديركم الكامل.</span>
+                </div>
+                <button
                   onClick={() => {
-                    const draft = generateDocumentDraft(state);
-                    setState(prev => ({ ...prev, draft }));
+                    const content = `
+                      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                      <head><meta charset='utf-8'><title>Document</title></head>
+                      <body style="font-family: 'Amiri', 'Times New Roman', serif; text-align: justify; direction: rtl;">
+                        <p>${state.draft || ''}</p>
+                      </body>
+                      </html>
+                    `;
+                    const blob = new Blob(['\ufeff', content], {
+                      type: 'application/msword'
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `rasm_${state.meta.fileNumber || 'draft'}.doc`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                   }}
-                  className="p-6 border-2 border-dashed border-indigo-300 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer flex flex-col items-center justify-center gap-3"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
                 >
-                  <div className="text-4xl">🤖</div>
-                  <h4 className="font-bold text-indigo-900 text-lg">توليد الصياغة تلقائيًا</h4>
-                  <p className="text-sm text-indigo-700">اعتمادًا على البيانات المدخلة</p>
-                </div>
-
-                <div 
-                  onClick={() => setShowTemplateSelector(true)}
-                  className="p-6 border-2 border-dashed border-indigo-300 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer flex flex-col items-center justify-center gap-3"
-                >
-                  <div className="text-4xl">📝</div>
-                  <h4 className="font-bold text-indigo-900 text-lg">اختيار نموذج معتمد</h4>
-                  <p className="text-sm text-indigo-700">اختيار نموذج معتمد وتعبئته</p>
-                </div>
+                  <span>💾</span> تحميل بصيغة Word
+                </button>
               </div>
-            )}
-
-            {showTemplateSelector && (
-              <TemplateSelector
-                onSelect={(templateId) => {
-                  setSelectedTemplateId(templateId);
-                  setShowTemplateSelector(false);
-                }}
-                onCancel={() => setShowTemplateSelector(false)}
-              />
-            )}
-
-            {selectedTemplateId && (
-              <TemplateForm
-                templateId={selectedTemplateId}
-                onBack={() => setSelectedTemplateId(null)}
-                onSuccess={(draft) => {
-                  setState(prev => ({ ...prev, draft: draft.replace(/\s+/g, ' ').trim() }));
-                  setSelectedTemplateId(null);
-                }}
-                context={{ state, user }}
-              />
-            )}
-            
-            {state.draft && (
-              <div className="mt-6 text-right">
-                {showJudgeNotesHelper && judgeNotes && (
-                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-4 text-right border-r-4 border-r-red-500 shadow-sm">
-                    <div className="font-black text-red-600">ملاحظات القاضي</div>
-                    <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-red-900 font-bold">{judgeNotes}</div>
-                    <div className="mt-3 flex flex-wrap justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={handleInsertJudgeNotes}
-                        className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white hover:bg-red-800"
-                      >
-                        إدراج الملاحظات داخل الرسم
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(judgeNotes);
-                          } catch {}
-                        }}
-                        className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-900 hover:bg-red-50"
-                      >
-                        نسخ الملاحظات
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowJudgeNotesHelper(false)}
-                        className="rounded-lg border border-purple-200 bg-white px-3 py-2 text-xs font-bold text-purple-900 hover:bg-purple-100"
-                      >
-                        إخفاء
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <textarea
-                  ref={draftEditorRef}
-                  dir="rtl"
-                  className="w-full h-96 p-6 border rounded-xl font-amiri text-lg leading-loose bg-gray-50 focus:bg-white transition-colors text-justify"
-                  value={state.draft}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setState(prev => ({ ...prev, draft: val.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ') }));
-                  }}
-                />
-                <div className="mt-4 flex justify-between items-center">
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                    <span>⚖️</span>
-                    <span>تنبيه مهني راقٍ: الصياغة المقترحة ذات طابع مساعد، وتبقى خاضعة لمراجعتكم وتقديركم الكامل.</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const content = `
-                        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                        <head><meta charset='utf-8'><title>Document</title></head>
-                        <body style="font-family: 'Amiri', 'Times New Roman', serif; text-align: justify; direction: rtl;">
-                          <p>${state.draft}</p>
-                        </body>
-                        </html>
-                      `;
-                      const blob = new Blob(['\ufeff', content], {
-                        type: 'application/msword'
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `rasm_${state.meta.fileNumber || 'draft'}.doc`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
-                  >
-                    <span>💾</span> تحميل بصيغة Word
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
         )}
@@ -1810,14 +1803,14 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={!(judgeStatus === 'accepted' || judgeStatus === 'accepted_with_notes')}
+                                    disabled={!(judgeStatus === 'accepted' || judgeStatus === 'accepted_with_notes') || !isJudgePdfReady}
                                     onClick={async () => {
                                       await markStage('inclusion');
                                       setWorkflowStep('inclusion');
                                     }}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-full text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-full text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition"
                                   >
-                                    الانتقال إلى التضمين
+                                    {isJudgePdfReady ? 'الانتقال إلى التضمين' : 'جاري تجهيز الوثيقة القضائية...'}
                                   </button>
                                   <button
                                     type="button"

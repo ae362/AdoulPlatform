@@ -117,17 +117,64 @@ export default function JudicialDeedsAuditPlatform() {
   const [decision, setDecision] = useState<'accepted' | 'accepted_with_notes' | 'substantive_notes'>('accepted_with_notes');
   const [notes, setNotes] = useState('');
   const [dualViewOpen, setDualViewOpen] = useState(false);
-  
-  // Submission data query
+
+  // viewerNonce: increments whenever the active deed `id` changes, forcing a full
+  // iframe unmount so the browser never serves a cached PDF from the previous deed.
+  const [viewerNonce, setViewerNonce] = useState(0);
+  useEffect(() => {
+    if (!id) return;
+    setViewerNonce((n) => n + 1);
+    // Also invalidate the submission cache for the previous deed so fresh data loads immediately.
+    setSelectedDocUrl(null);
+    setSelectedDocTitle(null);
+    setSelectedDocType(null);
+    setSelectedDocRawContent(null);
+    setNotes('');
+    setDecision('accepted_with_notes');
+    setZoom(1);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    // Invalidate the submission cache so fresh deed data loads immediately without stale cache
+    utils.judge.getSubmission.invalidate();
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   const submissionQuery = trpc.judge.getSubmission.useQuery(
     { sessionToken: sessionToken || '', id: id || '' },
-    { enabled: !!sessionToken && !!id, staleTime: 30_000 }
+    {
+      enabled: !!sessionToken && !!id,
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchInterval: (query: any) => {
+        const sub = query?.state?.data as any;
+        const p = sub?.payload || {};
+        const hasPdf = Boolean(
+          sub?.pdf_preview_url ||
+          sub?.previewUrl ||
+          sub?.canonical_approved_pdf ||
+          sub?.signed_pdf_url ||
+          p?.previewUrl ||
+          p?.pdf_preview_url ||
+          p?.canonical_approved_pdf ||
+          p?.signed_pdf_url ||
+          p?.attachment?.pdfUrl ||
+          (p?.attachment?.url && (String(p.attachment.url).includes('.pdf') || String(p.attachment.url).startsWith('http')))
+        );
+        // If deed is pending and has no PDF yet, poll every 1.5s until conversion/upload finishes
+        return !hasPdf && sub?.status === 'pending' ? 1500 : false;
+      },
+    }
   );
 
   const decideMutation = trpc.judge.decideSubmission.useMutation({
     onSuccess: () => {
-      utils.judge.getSubmission.invalidate({ sessionToken: sessionToken || '', id: id || '' });
+      utils.judge.getSubmission.invalidate();
       utils.judge.listSubmissions.invalidate();
+      // Invalidate AuditHub document and submission caches so notary portals flush instantly
+      (utils as any).feesAgent?.documents?.getSavedRasm?.invalidate?.();
+      (utils as any).feesAgent?.getJudgeSubmissionStatus?.invalidate?.();
+      (utils as any).feesAgent?.getMyJudgeSubmission?.invalidate?.();
+      (utils as any).feesAgent?.getLatestApprovedJudgeSubmissionByFileNumber?.invalidate?.();
     }
   });
 
@@ -473,17 +520,23 @@ export default function JudicialDeedsAuditPlatform() {
         notes,
       });
 
-      if (decision === 'accepted' && createSavedRasmMutation) {
-         try {
-            const rasmId = await createSavedRasmMutation.mutateAsync({
-              sessionToken,
-              submissionId: id,
-            });
-            logViewerEvent('SAVED_RASM_CREATED', { submissionId: id, rasmId });
-         } catch {
-            // Best effort
-         }
+      if ((decision === 'accepted' || decision === 'accepted_with_notes') && createSavedRasmMutation) {
+        try {
+          const rasmRes = await createSavedRasmMutation.mutateAsync({
+            sessionToken,
+            judgeSubmissionId: id,
+          });
+          const createdRasmId = rasmRes?.id || rasmRes;
+          logViewerEvent('SAVED_RASM_CREATED', { submissionId: id, rasmId: createdRasmId });
+        } catch (createErr) {
+          console.warn('[JudicialDeedsAuditPlatform] createSavedRasm error:', createErr);
+        }
       }
+
+      // Flush document caches so notary side reflects approved document immediately
+      utils.judge.getSubmission.invalidate();
+      (utils as any).feesAgent?.documents?.getSavedRasm?.invalidate?.();
+      (utils as any).feesAgent?.getJudgeSubmissionStatus?.invalidate?.();
 
       navigate('/judge/deeds');
     } catch (err: any) {
@@ -812,7 +865,7 @@ export default function JudicialDeedsAuditPlatform() {
                     onReset={documentStream.refetch}
                   >
                      <div className="w-full min-h-[1123px] relative pointer-events-auto bg-white">
-                        {documentStream.isLoading ? (
+                        {submissionQuery.isLoading || documentStream.isLoading ? (
                            <div className="flex flex-col items-center justify-center h-[1123px] bg-slate-50">
                               <Loader2 className="w-12 h-12 text-[#023120] animate-spin mb-4" />
                               <h4 className="text-xl font-black font-amiri text-slate-800">جاري تحميل وتجهيز المستند الرقمي...</h4>
@@ -822,6 +875,7 @@ export default function JudicialDeedsAuditPlatform() {
                            <div className="flex flex-col items-center justify-center p-8 bg-slate-900/5 min-h-[1123px] w-full">
                               <div className="relative group max-w-full flex flex-col items-center">
                                  <img
+                                   key={`judge-img-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
                                    src={documentStream.blobUrl || activeStreamUrl || ''}
                                    alt={selectedDocTitle || 'مرفق المستند القضائي'}
                                    className="max-w-full max-h-[950px] object-contain rounded-xl shadow-2xl border border-slate-200/80 bg-white"
@@ -842,17 +896,20 @@ export default function JudicialDeedsAuditPlatform() {
                            </div>
                         ) : activeFileType === 'PDF' && (documentStream.blobUrl || activeStreamUrl) ? (
                            <iframe
+                             key={`judge-pdf-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
                              src={getJudgeLikePdfViewerUrl(documentStream.blobUrl || activeStreamUrl || '')}
                              className="w-full h-[1123px] border-none"
                              title={selectedDocTitle || primaryDoc?.title || 'Judicial Deed Document'}
                            />
                         ) : activeFileType === 'DOCX' && (documentStream.blobUrl || activeStreamUrl) ? (
                            <WordPreview
+                             key={`judge-word-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
                              url={documentStream.blobUrl || activeStreamUrl || ''}
                              submissionId={id}
                            />
                         ) : (
                            <RasmHtmlPreview
+                             key={`judge-html-${id || ''}-${viewerNonce}`}
                              htmlContent={
                                selectedDocRawContent ||
                                documentStream.rawContent ||

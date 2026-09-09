@@ -347,15 +347,15 @@ function getPriorityJudgeCourtIdentifier(opts: {
 }
 
 function extractJudgePreviewAttachment(payload: Record<string, unknown>) {
-  const explicitStamped = payload?.judgeCourtStampedDoc && typeof payload.judgeCourtStampedDoc === 'object'
-    ? [payload.judgeCourtStampedDoc]
-    : [];
   const explicitSigned = payload?.judgeSignedDoc && typeof payload.judgeSignedDoc === 'object'
     ? [payload.judgeSignedDoc]
     : [];
+  const explicitStamped = payload?.judgeCourtStampedDoc && typeof payload.judgeCourtStampedDoc === 'object'
+    ? [payload.judgeCourtStampedDoc]
+    : [];
   const candidateAttachments = [
-    ...explicitStamped,
     ...explicitSigned,
+    ...explicitStamped,
     ...(Array.isArray(payload?.attachments) ? (payload.attachments as any[]) : []),
     payload?.attachment,
   ].filter(Boolean);
@@ -387,7 +387,7 @@ async function resolveJudgeSourcePdfBuffer(opts: {
   signedDeedId: string;
   payload: Record<string, unknown>;
 }) {
-  for (const category of ['judge_court_stamped_pdf', 'judge_signed_pdf', 'signed_pdf']) {
+  for (const category of ['judge_signed_pdf', 'judge_court_stamped_pdf', 'signed_pdf']) {
     const attachmentRes = await supabase
       .from('deed_attachments')
       .select('file_url, storage_path')
@@ -1248,8 +1248,8 @@ export const judgeRouter = router({
           .order('created_at', { ascending: false });
         if (!attachmentsRes.error) {
           const priority: Record<string, number> = {
-            judge_court_stamped_pdf: 3,
-            judge_signed_pdf: 2,
+            judge_signed_pdf: 3,
+            judge_court_stamped_pdf: 2,
             signed_pdf: 1,
           };
           for (const row of attachmentsRes.data ?? []) {
@@ -2128,123 +2128,11 @@ export const judgeRouter = router({
         judgeName: String(user.full_name || '').trim() || null,
       };
 
-      const hasExistingStamp =
-        !!(payload.judgeCourtStamp && typeof payload.judgeCourtStamp === 'object') ||
-        !!(payload.judgeCourtStampedDoc && typeof payload.judgeCourtStampedDoc === 'object');
-
-      let stampedPdfUrl: string | null = null;
-      let newHash: string | null = null;
-      let nextPayload: Record<string, unknown>;
-
-      if (!hasExistingStamp) {
-        nextPayload = {
-          ...payload,
-          courtCity,
-          judgeCourtIdentifier: baseIdentifier,
-        };
-      } else {
-        const sourcePdf = await resolveJudgeSourcePdfBuffer({ signedDeedId, payload });
-        const pdfDoc = await PDFDocument.load(sourcePdf.buffer);
-        const pages = pdfDoc.getPages();
-        const targetPage = pages[pages.length - 1];
-        const pageWidth = targetPage.getWidth();
-        const pageHeight = targetPage.getHeight();
-        const stampWidth = Math.min(320, pageWidth * 0.42);
-        const stampX = Math.max(10, pageWidth - stampWidth - 20);
-        const stampY = Math.max(60, pageHeight * 0.14);
-
-        targetPage.drawText(generatedId, {
-          x: stampX + 46,
-          y: Math.max(18, stampY - 18),
-          size: 12,
-        });
-
-        const stampedBytes = await pdfDoc.save();
-        const stampedBuffer = Buffer.from(stampedBytes);
-        const stampedSha = sha256Hex(stampedBuffer);
-        const uploaded = await uploadBufferToDocumentsBucket({
-          path: `judge-submissions/${input.id}/court-stamp-${stampedSha}.pdf`,
-          buffer: stampedBuffer,
-          contentType: 'application/pdf',
-          upsert: true,
-        });
-
-        stampedPdfUrl = uploaded.url;
-        newHash = stampedSha;
-
-        const stampedAttachment = {
-          name: `judge-court-stamped-${submission.file_number || input.id}.pdf`,
-          fileName: `judge-court-stamped-${submission.file_number || input.id}.pdf`,
-          url: uploaded.url,
-          mimeType: 'application/pdf',
-          category: 'judge_court_stamped_pdf',
-          file_url: uploaded.url,
-          storagePath: uploaded.path,
-          storage_path: uploaded.path,
-        };
-
-        const existingAttachments = Array.isArray(payload.attachments) ? [...(payload.attachments as any[])] : [];
-        const filteredAttachments = existingAttachments.filter((raw: any) => String(raw?.category || '').toLowerCase() !== 'judge_court_stamped_pdf');
-
-        nextPayload = {
-          ...payload,
-          courtCity,
-          judgeCourtIdentifier: {
-            ...baseIdentifier,
-            url: uploaded.url,
-            storagePath: uploaded.path,
-            sha256: stampedSha,
-          },
-          judgeCourtStampedDoc: stampedAttachment,
-          attachments: [stampedAttachment, ...filteredAttachments],
-        };
-
-        const attExisting = await supabase
-          .from('deed_attachments')
-          .select('id')
-          .eq('record_type', 'signed_deed')
-          .eq('record_id', signedDeedId)
-          .eq('category', 'judge_court_stamped_pdf')
-          .maybeSingle();
-
-        const attachmentPatch = {
-          file_name: stampedAttachment.fileName,
-          file_url: uploaded.url,
-          storage_path: uploaded.path,
-          mime_type: 'application/pdf',
-          file_size: stampedBuffer.length,
-          metadata: {
-            judgeCourtIdentifier: {
-              id: generatedId,
-              cityCode: buildJudgeCityPrefix(courtCity),
-              createdAt: new Date().toISOString(),
-              judgeSubmissionId: input.id,
-              sha256: stampedSha,
-            },
-          },
-        };
-
-        if (attExisting.error) {
-          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: attExisting.error.message });
-        }
-
-        if (attExisting.data?.id) {
-          const upd = await supabase.from('deed_attachments').update(attachmentPatch).eq('id', attExisting.data.id);
-          if (upd.error) {
-            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: upd.error.message });
-          }
-        } else {
-          const ins = await supabase.from('deed_attachments').insert({
-            record_id: signedDeedId,
-            record_type: 'signed_deed',
-            category: 'judge_court_stamped_pdf',
-            ...attachmentPatch,
-          });
-          if (ins.error) {
-            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: ins.error.message });
-          }
-        }
-      }
+      const nextPayload: Record<string, unknown> = {
+        ...payload,
+        courtCity,
+        judgeCourtIdentifier: baseIdentifier,
+      };
 
       const subUpd = await supabase
         .from('judge_submissions')
@@ -2264,12 +2152,11 @@ export const judgeRouter = router({
           device: null,
           ip: null,
           previous_hash: null,
-          new_hash: newHash,
+          new_hash: null,
           metadata: {
             judgeSubmissionId: input.id,
             generatedId,
             courtCity,
-            url: stampedPdfUrl,
           },
         });
       } catch {
@@ -2278,7 +2165,7 @@ export const judgeRouter = router({
 
       return {
         success: true,
-        stampedPdfUrl,
+        stampedPdfUrl: null,
         generatedId,
       };
     }),

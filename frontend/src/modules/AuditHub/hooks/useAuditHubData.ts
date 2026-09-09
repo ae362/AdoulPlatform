@@ -6,19 +6,50 @@ export interface UseAuditHubDataParams {
   rasmId?: string | null;
   activeTab?: string;
   setSelectedAttachmentTabDoc?: React.Dispatch<React.SetStateAction<any>>;
+  setSelectedVaultDoc?: React.Dispatch<React.SetStateAction<any>>;
+  setForcedViewerDoc?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export const useAuditHubData = ({
   sessionToken,
   rasmId,
   activeTab,
-  setSelectedAttachmentTabDoc
-}: UseAuditHubDataParams) => {
+  setSelectedAttachmentTabDoc,
+  setSelectedVaultDoc,
+  setForcedViewerDoc,
+}: UseAuditHubDataParams = {}) => {
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const targetId = rasmId || searchParams.get('id') || searchParams.get('rasmId') || '';
+  const shouldForceRefetch = searchParams.get('refetch') === 'true' || Boolean(searchParams.get('cb'));
+
+  const utils = trpc.useUtils ? trpc.useUtils() : (trpc as any).useContext();
+
+  useEffect(() => {
+    // Unconditional State Teardown: reset doc selection when ID or refetch flag changes
+    if (setSelectedAttachmentTabDoc) setSelectedAttachmentTabDoc(null);
+    if (setSelectedVaultDoc) setSelectedVaultDoc(null);
+    if (setForcedViewerDoc) setForcedViewerDoc(null);
+
+    if (!targetId) return;
+    // Always invalidate on document ID change — do not gate behind shouldForceRefetch.
+    // This guarantees fresh data when the user switches documents or returns from the Judge portal.
+    utils.feesAgent.documents.getSavedRasm.invalidate();
+    (utils.feesAgent as any).getMyJudgeSubmission?.invalidate?.();
+    (utils.feesAgent as any).getLatestApprovedJudgeSubmissionByFileNumber?.invalidate?.();
+  }, [targetId, shouldForceRefetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const rasmQuery = trpc.feesAgent.documents.getSavedRasm.useQuery(
-    { sessionToken: sessionToken || '', id: rasmId || '' },
+    { sessionToken: sessionToken || '', id: targetId },
     { 
-      enabled: !!sessionToken && !!rasmId,
-      retry: 0
+      enabled: Boolean(targetId),
+      staleTime: 0,             // Always fetch fresh — never serve cached PDF stream
+      refetchOnMount: 'always', // Force a network hit every time the component mounts
+      // Auto-poll every 1s when the backend says the PDF is not yet compiled.
+      // Stops automatically once pdfCompilationReady flips to true.
+      refetchInterval: (arg: any) => {
+        const payloadObj = arg?.state?.data?.payload || arg?.data?.payload || arg?.payload;
+        return payloadObj?.pdfCompilationReady === false ? 1000 : false;
+      },
     }
   );
 
@@ -210,8 +241,16 @@ export const useAuditHubData = ({
     const rasmData = rasmQuery.data as any;
     const rasmPayload = (rasmData?.payload as any) || {};
 
-    // 0. Prioritize explicit primary / updated PDF from saved_rasms table / rasmQuery.data
+    // 0. Prioritize canonical approved / signed / primary PDF from saved_rasms table / rasmQuery.data
     const rasmPdfPreviewUrl =
+      rasmData?.canonical_approved_pdf ||
+      rasmData?.canonicalApprovedPdf ||
+      rasmPayload?.canonical_approved_pdf ||
+      rasmPayload?.canonicalApprovedPdf ||
+      rasmData?.signed_pdf_url ||
+      rasmData?.signedPdfUrl ||
+      rasmPayload?.signed_pdf_url ||
+      rasmPayload?.signedPdfUrl ||
       rasmData?.pdf_preview_url ||
       rasmData?.pdfPreviewUrl ||
       rasmPayload?.pdf_preview_url ||
@@ -340,7 +379,17 @@ export const useAuditHubData = ({
     const singleDoc = normalizeToDoc(effectiveJudgePayload?.attachment, 'judge_attachment');
     if (singleDoc) return singleDoc;
 
-    // 5. Fallback ONLY to HTML or text draft if no compiled binary exists
+    // 5. Fallback to HTML or text draft ONLY if deed is not judge-approved
+    const isApprovedSubmission =
+      isApprovedJudgeStatus(effectiveJudgeSubmission?.status) ||
+      (rasmQuery.data as any)?.payload?.pdfCompilationReady === false ||
+      (rasmQuery.data as any)?.payload?.isJudgeApprovedDeed === true;
+
+    if (isApprovedSubmission) {
+      // Strictly prohibit draft/HTML fallback for approved deeds — must wait for compiled PDF
+      return null;
+    }
+
     if (effectiveJudgePayload?.rasmHtml) {
       return {
         id: 'judge-smart-rasm',
@@ -446,6 +495,14 @@ export const useAuditHubData = ({
     const rasmPayload = (rasmData?.payload as any) || {};
 
     const pdfUrl =
+      rasmData?.canonical_approved_pdf ||
+      rasmData?.canonicalApprovedPdf ||
+      rasmPayload?.canonical_approved_pdf ||
+      rasmPayload?.canonicalApprovedPdf ||
+      rasmData?.signed_pdf_url ||
+      rasmData?.signedPdfUrl ||
+      rasmPayload?.signed_pdf_url ||
+      rasmPayload?.signedPdfUrl ||
       rasmData?.pdf_preview_url ||
       rasmData?.pdfPreviewUrl ||
       rasmPayload?.pdf_preview_url ||
@@ -494,11 +551,44 @@ export const useAuditHubData = ({
       };
     }
 
+    const isApprovedSubmission =
+      isApprovedJudgeStatus(effectiveJudgeSubmission?.status) ||
+      (rasmQuery.data as any)?.payload?.pdfCompilationReady === false ||
+      (rasmQuery.data as any)?.payload?.isJudgeApprovedDeed === true;
+
+    if (isApprovedSubmission && !pdfUrl) {
+      return null;
+    }
+
     return judgePrimaryDoc || judgeWordAttachmentDoc || judgeAttachmentDoc || null;
-  }, [judgeAttachmentDoc, judgePrimaryDoc, judgeWordAttachmentDoc, rasmQuery.data]);
+  }, [judgeAttachmentDoc, judgePrimaryDoc, judgeWordAttachmentDoc, rasmQuery.data, effectiveJudgeSubmission]);
+
+  // Derive PDF compilation status from the backend-injected flag or effective status.
+  const pdfCompilationReady = (rasmQuery.data as any)?.payload?.pdfCompilationReady;
+  const isApprovedDeed =
+    pdfCompilationReady === false ||
+    (rasmQuery.data as any)?.payload?.isJudgeApprovedDeed === true ||
+    isApprovedJudgeStatus(effectiveJudgeSubmission?.status);
+
+  const hasCanonicalPdfUrl = Boolean(
+    (rasmQuery.data as any)?.canonical_approved_pdf ||
+    (rasmQuery.data as any)?.signed_pdf_url ||
+    (rasmQuery.data as any)?.pdf_preview_url ||
+    (rasmQuery.data as any)?.previewUrl ||
+    ((rasmQuery.data as any)?.payload as any)?.canonical_approved_pdf ||
+    ((rasmQuery.data as any)?.payload as any)?.signed_pdf_url ||
+    effectiveJudgeSubmission?.previewUrl ||
+    judgeAttachmentDocs.some(isPdfLikeDoc)
+  );
+
+  const isAwaitingPdf: boolean =
+    (pdfCompilationReady === false || (isApprovedDeed && !hasCanonicalPdfUrl)) &&
+    Boolean(targetId) &&
+    !rasmQuery.isLoading;
 
   return {
     rasmQuery,
+    docData: rasmQuery.data,
     payload,
     judgeSubmissionId,
     judgeSubmissionQuery,
@@ -513,6 +603,10 @@ export const useAuditHubData = ({
     judgeWordAttachmentDoc,
     judgePrimaryDoc,
     baseSelectedDoc,
-    attachmentTabDocs
+    attachmentTabDocs,
+    // PDF compilation race-condition state
+    pdfCompilationReady: pdfCompilationReady ?? true,
+    isApprovedDeed,
+    isAwaitingPdf,
   };
 };

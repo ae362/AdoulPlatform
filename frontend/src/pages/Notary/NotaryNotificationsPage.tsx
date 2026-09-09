@@ -194,7 +194,7 @@ const NotaryNotificationsPage: React.FC = () => {
     } catch {}
   };
 
-  const notifications = useMemo(() => {
+  const notifications: NotificationRow[] = useMemo(() => {
     // 1. Citizen Requests
     const citizenRequests = ((copyRequestsQuery.data ?? []) as any[]).map((row) => {
       const details = (row.record_details as any) || {};
@@ -305,10 +305,11 @@ const NotaryNotificationsPage: React.FC = () => {
           isSeen: isDecisionSeen(syntheticId),
           isPermission: false,
           savedRasmId: String((payload as any)?.savedRasmId ?? (payload as any)?.saved_rasm_id ?? ''),
+          rawId: String(item.id),
         } satisfies NotificationRow;
       });
 
-    return [...citizenRequests, ...messageNotifications, ...requestNotifications, ...judgeSubmissionNotifications]
+    return ([...citizenRequests, ...messageNotifications, ...requestNotifications, ...judgeSubmissionNotifications] as NotificationRow[])
       .filter((item) => !dismissedSet.has(item.id) && !dismissedSet.has(item.rawId || ''))
       .sort((a, b) => String(b.decidedAt ?? b.createdAt ?? '').localeCompare(String(a.decidedAt ?? a.createdAt ?? '')));
   }, [copyRequestsQuery.data, isDecisionSeen, judgeSubmissionsQuery.data, notificationsQuery.data, threadsQuery.data?.threads, dismissedSet]);
@@ -415,7 +416,9 @@ const NotaryNotificationsPage: React.FC = () => {
 
     if (item.source === 'judge_submission') {
       if (item.savedRasmId) {
-        navigate(`/dashboard?module=auditHub&id=${item.savedRasmId}`);
+        const fileNo = encodeURIComponent(item.requestNumber || '');
+        const judgeSubParam = item.rawId ? `&judgeSubmissionId=${encodeURIComponent(item.rawId)}` : '';
+        navigate(`/dashboard?module=auditHub&id=${item.savedRasmId}&fileNumber=${fileNo}${judgeSubParam}&refetch=true&cb=${Date.now()}`);
         return;
       }
       navigate('/dashboard?module=fees');

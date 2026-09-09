@@ -74,15 +74,6 @@ export const HighResViewer = ({
       ? forcedBasePdfUrlRaw
       : '';
 
-  const isDraft = doc?.isDraft;
-  const mimeType = (doc?.type || doc?.mimeType || doc?.mime_type || '').toString().toLowerCase();
-  const isPDF =
-    !!forcedBasePdfUrl ||
-    doc?.fileName?.toLowerCase().endsWith('.pdf') ||
-    doc?.name?.toLowerCase().endsWith('.pdf') ||
-    mimeType.includes('application/pdf') ||
-    mimeType.includes('pdf');
-
   const docUrl: string = (
     doc?.url ||
     doc?.fileUrl ||
@@ -106,6 +97,21 @@ export const HighResViewer = ({
     if (forcedBasePdfUrl) return forcedBasePdfUrl;
     return '';
   })();
+
+  const isDraft = doc?.isDraft;
+  const mimeType = (doc?.type || doc?.mimeType || doc?.mime_type || '').toString().toLowerCase();
+  const isPDF =
+    !!forcedBasePdfUrl ||
+    Boolean(doc?.isPdf) ||
+    Boolean(doc?.isPDF) ||
+    doc?.fileName?.toLowerCase().endsWith('.pdf') ||
+    doc?.name?.toLowerCase().endsWith('.pdf') ||
+    mimeType.includes('application/pdf') ||
+    mimeType.includes('pdf') ||
+    /\.pdf(?:$|[?#])/i.test(docUrl) ||
+    /\.pdf(?:$|[?#])/i.test(docRemoteUrl) ||
+    /\.pdf(?:$|[?#])/i.test(effectiveDocUrl) ||
+    String(effectiveDocUrl).startsWith('data:application/pdf');
 
   // For some hosts (e.g. object storage), direct <iframe src="https://...pdf"> can render blank/black
   // due to CORP/CSP or viewer restrictions. Fetching to a blob URL makes the PDF same-origin to the app.
@@ -672,12 +678,17 @@ export const HighResViewer = ({
                                   : undefined
                               }
                             >
-                              <iframe
-                                key={doc?.url || doc?.fileUrl || 'active-pdf-viewer'}
-                                src={getJudgeLikePdfViewerUrl(doc?.url || doc?.fileUrl || pdfBlobUrl || effectiveDocUrl, zoom)}
-                                className="absolute inset-0 w-full h-full border-0"
-                                title="PDF Viewer"
-                              />
+                              {(() => {
+                                const activePdfUrl = String(doc?.url || doc?.fileUrl || pdfBlobUrl || effectiveDocUrl || '');
+                                return (
+                                  <iframe
+                                    key={`pdf-iframe-${doc?.id || ''}-${activePdfUrl}`}
+                                    src={getJudgeLikePdfViewerUrl(activePdfUrl, zoom)}
+                                    className="absolute inset-0 w-full h-full border-0"
+                                    title="PDF Viewer"
+                                  />
+                                );
+                              })()}
 
                               {pdfEditorActive && (
                                 <div

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { trpc } from '../trpc';
 
 /**
@@ -98,16 +98,27 @@ export function useJudicialSpeechData({
   selectedDeedId,
   previewOverrideUrl,
 }: UseJudicialSpeechDataOptions) {
+  const utils = trpc.useUtils ? trpc.useUtils() : (trpc as any).useContext();
+
+  // Watch active deed selection: invalidate queries immediately on deed switch
+  useEffect(() => {
+    if (selectedDeedId) {
+      (utils.judge as any)?.getSubmission?.invalidate?.({ id: selectedDeedId });
+      (utils.judge as any)?.listSubmissions?.invalidate?.();
+      (utils.judge as any)?.listJudicialSpeechQueue?.invalidate?.();
+    }
+  }, [selectedDeedId, utils]);
+
   // Pending submissions list
   const listQuery = trpc.judge.listSubmissions.useQuery(
     { sessionToken: sessionToken || '' },
-    { enabled: !!sessionToken, staleTime: 20_000, refetchOnMount: false, refetchOnWindowFocus: false }
+    { enabled: !!sessionToken, staleTime: 0, refetchOnMount: true, refetchOnWindowFocus: true }
   );
 
   // Selected submission details
   const detailQuery = trpc.judge.getSubmission.useQuery(
     { sessionToken: sessionToken || '', id: selectedDeedId || '' },
-    { enabled: !!sessionToken && !!selectedDeedId, staleTime: 20_000, refetchOnMount: false, refetchOnWindowFocus: false }
+    { enabled: !!sessionToken && !!selectedDeedId, staleTime: 0, refetchOnMount: true, refetchOnWindowFocus: true }
   );
 
   const activePdfUrl = useMemo(() => {

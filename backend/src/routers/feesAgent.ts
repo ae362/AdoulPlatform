@@ -4443,6 +4443,15 @@ export const feesAgentRouter = router({
         documentType: z.string().nullable(),
         createdAt: z.string(),
         draft: z.string().nullable(),
+        canonical_approved_pdf: z.string().nullable().optional(),
+        canonicalApprovedPdf: z.string().nullable().optional(),
+        signed_pdf_url: z.string().nullable().optional(),
+        signedPdfUrl: z.string().nullable().optional(),
+        pdf_preview_url: z.string().nullable().optional(),
+        pdfPreviewUrl: z.string().nullable().optional(),
+        previewUrl: z.string().nullable().optional(),
+        isJudgeApprovedDeed: z.boolean().optional(),
+        pdfCompilationReady: z.boolean().optional(),
         payload: z.record(z.unknown()),
         latestDraftVersionId: z.string().nullable(),
         latestDraftDocxUrl: z.string().nullable(),
@@ -4564,6 +4573,27 @@ export const feesAgentRouter = router({
             }
           }
 
+          // Also collect candidate signedDeedIds from payload and signed_deeds table
+          const candidateSignedDeedIds = new Set<string>();
+          const directSignedDeedId = String(payloadObj?.signedDeedId || payloadObj?.signed_deed_id || '').trim();
+          if (directSignedDeedId) {
+            candidateSignedDeedIds.add(directSignedDeedId);
+          }
+
+          try {
+            const { data: matchedSignedDeeds } = await supabase
+              .from('signed_deeds')
+              .select('id, file_number')
+              .or(`saved_rasm_id.eq.${row.id}${row.file_number ? `,file_number.eq.${row.file_number}` : ''}`)
+              .limit(5);
+
+            if (matchedSignedDeeds && Array.isArray(matchedSignedDeeds)) {
+              matchedSignedDeeds.forEach((sd: any) => {
+                if (sd?.id) candidateSignedDeedIds.add(String(sd.id));
+              });
+            }
+          } catch {}
+
           for (const subId of candidateSubmissionIds) {
             const { data: judgeAtts } = await supabase
               .from('deed_attachments')
@@ -4587,7 +4617,14 @@ export const feesAgentRouter = router({
 
             if (subRow?.payload && typeof subRow.payload === 'object') {
               const subPayload = subRow.payload as Record<string, unknown>;
+              const subSignedDeedId = String(subPayload?.signedDeedId || subPayload?.signed_deed_id || '').trim();
+              if (subSignedDeedId) {
+                candidateSignedDeedIds.add(subSignedDeedId);
+              }
+
               const extraFiles = [
+                subPayload?.judgeSignedDoc,
+                subPayload?.judgeCourtStampedDoc,
                 subPayload?.attachment,
                 subPayload?.judgeAttachment,
                 subPayload?.manualRasmFile,
@@ -4627,6 +4664,29 @@ export const feesAgentRouter = router({
                   });
                 }
               });
+            }
+          }
+
+          // Fetch official signed deeds attachments (judge_signed_pdf, judge_court_stamped_pdf, signed_pdf)
+          if (candidateSignedDeedIds.size > 0) {
+            try {
+              const { data: sdAtts } = await supabase
+                .from('deed_attachments')
+                .select('id, category, file_name, file_url, mime_type, file_size, metadata, created_at')
+                .eq('record_type', 'signed_deed')
+                .in('record_id', Array.from(candidateSignedDeedIds))
+                .in('category', ['judge_signed_pdf', 'judge_court_stamped_pdf', 'signed_pdf'])
+                .order('created_at', { ascending: false });
+
+              if (sdAtts && Array.isArray(sdAtts) && sdAtts.length > 0) {
+                for (const sdAtt of sdAtts) {
+                  if (sdAtt.file_url && !finalAttachments.some((existing: any) => existing.file_url === sdAtt.file_url)) {
+                    finalAttachments.push(sdAtt);
+                  }
+                }
+              }
+            } catch (sdAttErr) {
+              console.warn('[getSavedRasm] Fetch signed_deed attachments error:', sdAttErr);
             }
           }
 
@@ -4796,17 +4856,79 @@ export const feesAgentRouter = router({
           }
         }
 
-        // --- SORT PRIORITY: prefer edited artifacts (PDF/DOCX) over judge_attachment ---
+        // --- PDF COMPILATION GUARD ---
+        // Race condition: the judge-approval step triggers async PDF stamping/upload.
+        // If the notary navigates to AuditHub immediately after approval (< 2s), the PDF
+        // URL may not yet be written. We poll deed_attachments up to 4×500ms so the first
+        // response already contains the real compiled PDF — no client-side re-fetch needed.
+        {
+          const payloadCheck = (row.payload as any ?? {});
+          const pendingSubId = String(
+            payloadCheck?.step7JudgeSubmissionId || payloadCheck?.judgeSubmissionId || ''
+          ).trim();
+          const hasPdfInAttachments = (atts: any[]): boolean =>
+            (atts ?? []).some((a: any) => {
+              const url = String(a?.file_url || '').trim();
+              const cat = String(a?.category || '').toLowerCase();
+              const mime = String(a?.mime_type || '').toLowerCase();
+              return (
+                url.startsWith('http') &&
+                (mime.includes('pdf') || url.includes('.pdf') || cat === 'judge_attachment')
+              );
+            });
+          if (pendingSubId && !hasPdfInAttachments(finalAttachments)) {
+            try {
+              // Quick status check — only poll if this submission is actually judge-approved
+              const { data: subStatus } = await supabase
+                .from('judge_submissions')
+                .select('status')
+                .eq('id', pendingSubId)
+                .maybeSingle();
+              const approvedStatuses = ['accepted', 'accepted_with_notes', 'substantive_notes'];
+              const isSubmissionApproved =
+                subStatus?.status &&
+                approvedStatuses.includes(String(subStatus.status));
+              if (isSubmissionApproved) {
+                // Poll up to 4×500ms (2 s total) for the PDF to land in storage
+                for (let attempt = 0; attempt < 4; attempt++) {
+                  await new Promise<void>((r) => setTimeout(r, 500));
+                  const { data: freshAtts } = await supabase
+                    .from('deed_attachments')
+                    .select('id, category, file_name, file_url, mime_type, file_size, metadata, created_at')
+                    .eq('record_type', 'saved_rasm')
+                    .eq('record_id', row.id)
+                    .order('created_at', { ascending: false });
+                  if (freshAtts && hasPdfInAttachments(freshAtts)) {
+                    // Merge the newly-uploaded PDF into finalAttachments and break early
+                    for (const fa of freshAtts) {
+                      if (!(finalAttachments ?? []).some((e: any) => e.file_url === fa.file_url)) {
+                        finalAttachments.push(fa);
+                      }
+                    }
+                    break;
+                  }
+                }
+              }
+            } catch {
+              // Non-fatal — proceed with whatever attachments we have.
+            }
+          }
+        }
+
+        // --- SORT PRIORITY: prefer judge_signed_pdf, judge_court_stamped_pdf, and edited artifacts over draft/generic ---
         const combined = [...auditVirtualAttachments, ...(finalAttachments ?? [])];
         const categoryWeight = (cat: string) => {
           const c = String(cat || '').toLowerCase();
+          if (c === 'judge_signed_pdf') return -2;
+          if (c === 'judge_court_stamped_pdf') return -1;
           if (c.includes('audit_final_docx') || c.includes('audit_draft_docx')) return 0;
           if (c.includes('audit_final_pdf') || c.includes('audit_draft_pdf')) return 1;
+          if (c === 'judge_attachment') return 1;
+          if (c === 'signed_pdf') return 1.5;
           if (c.includes('primary_attachment')) return 2;
           if (c === 'document') return 3;
           if (c.includes('docx') || c.includes('word')) return 4;
           if (c.includes('pdf')) return 5;
-          if (c === 'judge_attachment') return 50;
           return 10;
         };
 
@@ -4826,16 +4948,109 @@ export const feesAgentRouter = router({
           String((normalizedPayload as any)?.step7JudgeSubmissionId || (normalizedPayload as any)?.judgeSubmissionId || '').trim() || null;
 
         if (liveJudgeSubmissionId) {
-          const submissionRes = await supabase
-            .from('judge_submissions')
-            .select('id, status, decision, judge_notes, updated_at, decided_at')
-            .eq('id', liveJudgeSubmissionId)
-            .maybeSingle();
-
-          if (!submissionRes.error && submissionRes.data) {
-            normalizedPayload = mergeLiveJudgeSubmissionSnapshot(normalizedPayload, submissionRes.data as any);
+          try {
+            const timeout2s = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
+            const submissionFetch = supabase
+              .from('judge_submissions')
+              .select('id, status, decision, judge_notes, updated_at, decided_at')
+              .eq('id', liveJudgeSubmissionId)
+              .maybeSingle();
+            const submissionRes = await Promise.race([submissionFetch, timeout2s]);
+            if (submissionRes && !('error' in submissionRes && submissionRes.error) && 'data' in submissionRes && submissionRes.data) {
+              normalizedPayload = mergeLiveJudgeSubmissionSnapshot(normalizedPayload, submissionRes.data as any);
+            }
+          } catch {
+            // Non-fatal: proceed with normalizedPayload as-is if judge lookup fails or times out.
           }
         }
+
+        const candidateApprovedPdf = (sortedAttachments ?? []).find((a: any) => {
+          const cat = String(a?.category || '').toLowerCase();
+          const url = String(a?.file_url || '').trim();
+          const mime = String(a?.mime_type || '').toLowerCase();
+          return (
+            url.startsWith('http') &&
+            (cat === 'judge_signed_pdf' ||
+             cat === 'judge_court_stamped_pdf' ||
+             cat === 'signed_pdf' ||
+             cat === 'audit_final_pdf' ||
+             cat === 'judge_attachment' ||
+             mime.includes('pdf') ||
+             url.includes('.pdf'))
+          );
+        });
+
+        const canonicalPdf =
+          (row as any).canonical_approved_pdf ||
+          (normalizedPayload as any).canonical_approved_pdf ||
+          (normalizedPayload as any).signed_pdf_url ||
+          (row as any).signed_pdf_url ||
+          (row as any).pdf_preview_url ||
+          (normalizedPayload as any).pdf_preview_url ||
+          (normalizedPayload as any).previewUrl ||
+          candidateApprovedPdf?.file_url ||
+          null;
+
+        const hasApprovedPdf =
+          Boolean(canonicalPdf) ||
+          (sortedAttachments ?? []).some((a: any) => {
+            const url = String(a?.file_url || '').trim();
+            const cat = String(a?.category || '').toLowerCase();
+            const mime = String(a?.mime_type || '').toLowerCase();
+            return (
+              url.startsWith('http') &&
+              (mime.includes('pdf') || url.includes('.pdf') || cat === 'judge_signed_pdf' || cat === 'judge_court_stamped_pdf' || cat === 'signed_pdf' || cat === 'judge_attachment' || cat === 'audit_final_pdf')
+            );
+          });
+
+        const approvedStatuses = ['accepted', 'accepted_with_notes', 'substantive_notes'];
+        const isApprovedStatus = (s: any) => approvedStatuses.includes(String(s || '').toLowerCase().trim());
+        const isJudgeApprovedDeed =
+          isApprovedStatus(normalizedPayload?.judgeStatus) ||
+          isApprovedStatus(normalizedPayload?.step7JudgeStatus) ||
+          isApprovedStatus((row as any)?.status) ||
+          isApprovedStatus(normalizedPayload?.status) ||
+          Boolean((sortedAttachments ?? []).some((a: any) => a.category === 'judge_signed_pdf' || a.category === 'judge_court_stamped_pdf'));
+
+        (normalizedPayload as any).pdfCompilationReady = !isJudgeApprovedDeed || hasApprovedPdf;
+        (normalizedPayload as any).isJudgeApprovedDeed = isJudgeApprovedDeed;
+        if (canonicalPdf) {
+          (normalizedPayload as any).canonical_approved_pdf = canonicalPdf;
+          (normalizedPayload as any).signed_pdf_url = canonicalPdf;
+          (normalizedPayload as any).pdf_preview_url = canonicalPdf;
+          (normalizedPayload as any).previewUrl = canonicalPdf;
+        }
+
+        // Self-heal saved_rasms payload if canonical PDF was resolved from signed deeds
+        if (canonicalPdf && (row.payload as any)?.canonical_approved_pdf !== canonicalPdf) {
+          supabase
+            .from('saved_rasms')
+            .update({
+              payload: {
+                ...(row.payload && typeof row.payload === 'object' ? (row.payload as any) : {}),
+                canonical_approved_pdf: canonicalPdf,
+                signed_pdf_url: canonicalPdf,
+                pdf_preview_url: canonicalPdf,
+                previewUrl: canonicalPdf,
+                pdfCompilationReady: true,
+                isJudgeApprovedDeed,
+              },
+            })
+            .eq('id', row.id)
+            .then(() => {}, () => {});
+        }
+
+        // Stamp a unique revision parameter onto every HTTP PDF/DOCX attachment URL
+        // so browsers bypass their disk/memory cache and always fetch the live stream.
+        const revTs = Date.now();
+        const stampUrl = (url: string): string => {
+          if (!url) return url;
+          const u = String(url).trim();
+          // Only stamp absolute HTTP URLs; leave data: / blob: / storage-path strings untouched.
+          if (!u.startsWith('http://') && !u.startsWith('https://')) return u;
+          const sep = u.includes('?') ? '&' : '?';
+          return `${u}${sep}_rev=${revTs}`;
+        };
 
         return {
           id: row.id,
@@ -4843,6 +5058,13 @@ export const feesAgentRouter = router({
           documentType: (row.document_type ?? null),
           createdAt: row.created_at,
           draft: (row.draft ?? null),
+          canonical_approved_pdf: canonicalPdf,
+          canonicalApprovedPdf: canonicalPdf,
+          signed_pdf_url: canonicalPdf,
+          signedPdfUrl: canonicalPdf,
+          pdf_preview_url: canonicalPdf,
+          pdfPreviewUrl: canonicalPdf,
+          previewUrl: canonicalPdf,
           payload: normalizedPayload,
           latestDraftVersionId: (row.latest_draft_version_id ? String(row.latest_draft_version_id) : null) as any,
           latestDraftDocxUrl: (row.latest_draft_docx_url ? String(row.latest_draft_docx_url) : null) as any,
@@ -4852,7 +5074,7 @@ export const feesAgentRouter = router({
             id: a.id,
             category: a.category,
             fileName: a.file_name,
-            fileUrl: a.file_url,
+            fileUrl: stampUrl(a.file_url),
             mimeType: (a.mime_type ?? null),
             fileSize: (a.file_size ?? null),
             metadata: (a.metadata as any ?? null),
@@ -4947,7 +5169,6 @@ export const feesAgentRouter = router({
         sessionToken: z.string(),
         judgeSubmissionId: z.string().uuid(),
       }))
-      .output(z.object({ id: z.string() }))
       .mutation(async ({ input }) => {
         const { data: session, error: sessionError } = await supabase
           .from('user_sessions')
@@ -4980,45 +5201,213 @@ export const feesAgentRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Submission not found' });
         }
 
-        // 2. Create the saved_rasm
-        const { data: created, error: createError } = await supabase
-          .from('saved_rasms')
-          .insert({
-            notary_user_id: submission.notary_user_id,
-            notary_name: submission.notary_name,
-            file_number: submission.file_number,
-            document_type: submission.document_type,
-            draft: submission.summary || '',
-            payload: {
-              ...(submission.payload as any || {}),
-              judgeSubmissionId: submission.id,
-              originalApprovedJudgeUserId: submission.judge_user_id ?? null,
-              originJudgeUserId: submission.judge_user_id ?? null,
-            },
-          })
-          .select('id')
-          .single();
+        const subPayload = (submission.payload as any) || {};
+        let resolvedApprovedPdfUrl: string | null =
+          String(
+            subPayload.canonical_approved_pdf ||
+            subPayload.canonicalApprovedPdf ||
+            subPayload.signed_pdf_url ||
+            subPayload.signedPdfUrl ||
+            subPayload.pdf_preview_url ||
+            subPayload.pdfPreviewUrl ||
+            subPayload.judgeCourtStamp?.url ||
+            subPayload.judgeCourtStampedDoc?.url ||
+            subPayload.judgeSignedDoc?.url ||
+            subPayload.previewUrl ||
+            subPayload.finalPdfUrl ||
+            subPayload.attachment?.url ||
+            subPayload.attachment?.fileUrl ||
+            subPayload.attachment?.pdfUrl ||
+            subPayload.judgeAttachment?.url ||
+            subPayload.manualRasmFile?.url ||
+            subPayload.baseDoc?.url ||
+            ''
+          ).trim() || null;
 
-        if (createError || !created) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: createError?.message ?? 'Failed to create saved_rasm',
+        if (!resolvedApprovedPdfUrl) {
+          const { data: directAtts } = await supabase
+            .from('deed_attachments')
+            .select('file_url, category, mime_type, file_name')
+            .eq('record_type', 'judge_submission')
+            .eq('record_id', submission.id);
+
+          const found = (directAtts || []).find((a: any) => {
+            const u = String(a.file_url || '').toLowerCase();
+            const c = String(a.category || '').toLowerCase();
+            const m = String(a.mime_type || '').toLowerCase();
+            const n = String(a.file_name || '').toLowerCase();
+            return u.startsWith('http') && (m.includes('pdf') || u.includes('.pdf') || n.endsWith('.pdf') || c.includes('judge'));
           });
+          if (found?.file_url) {
+            resolvedApprovedPdfUrl = String(found.file_url).trim();
+          }
         }
 
-        // 3. Ensure the saved_rasm has both judge PDF + base DOCX attachments (best-effort).
-        try {
-          await ensureSavedRasmHasJudgeAttachments({
-            recordId: created.id,
-            notaryUserId: submission.notary_user_id,
-            payload: sanitizePersistedPayload({
-              ...(submission.payload as any || {}),
-              judgeSubmissionId: submission.id,
-            }),
+        if (!resolvedApprovedPdfUrl && subPayload.signedDeedId) {
+          const { data: deedAtts } = await supabase
+            .from('deed_attachments')
+            .select('file_url, category, mime_type')
+            .eq('record_type', 'signed_deed')
+            .eq('record_id', subPayload.signedDeedId);
+
+          const found = (deedAtts || []).find((a: any) => {
+            const u = String(a.file_url || '').toLowerCase();
+            const c = String(a.category || '').toLowerCase();
+            const m = String(a.mime_type || '').toLowerCase();
+            return u.startsWith('http') && (m.includes('pdf') || u.includes('.pdf') || c.includes('signed') || c.includes('judge'));
           });
+          if (found?.file_url) {
+            resolvedApprovedPdfUrl = String(found.file_url).trim();
+          }
+        }
+
+        // 2. Check if a saved_rasm already exists for this submission / file number
+        let targetRasmId: string | null = (subPayload.savedRasmId || subPayload.saved_rasm_id) as string || null;
+        let existingRasm: any = null;
+
+        if (targetRasmId) {
+          const { data } = await supabase
+            .from('saved_rasms')
+            .select('id, payload')
+            .eq('id', targetRasmId)
+            .maybeSingle();
+          existingRasm = data;
+        }
+
+        if (!existingRasm && submission.file_number) {
+          const { data } = await supabase
+            .from('saved_rasms')
+            .select('id, payload')
+            .eq('notary_user_id', submission.notary_user_id)
+            .eq('file_number', submission.file_number)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          existingRasm = data;
+        }
+
+        const mergedPayload = {
+          ...(existingRasm?.payload && typeof existingRasm.payload === 'object' ? existingRasm.payload : {}),
+          ...(subPayload || {}),
+          judgeSubmissionId: submission.id,
+          originalApprovedJudgeUserId: submission.judge_user_id ?? null,
+          originJudgeUserId: submission.judge_user_id ?? null,
+          judgeStatus: submission.status,
+          isJudgeApprovedDeed: true,
+          pdfCompilationReady: Boolean(resolvedApprovedPdfUrl),
+          canonical_approved_pdf: resolvedApprovedPdfUrl || subPayload.canonical_approved_pdf || null,
+          signed_pdf_url: resolvedApprovedPdfUrl || subPayload.signed_pdf_url || null,
+          pdf_preview_url: resolvedApprovedPdfUrl || subPayload.pdf_preview_url || null,
+          previewUrl: resolvedApprovedPdfUrl || subPayload.previewUrl || null,
+        };
+
+        if (existingRasm) {
+          targetRasmId = existingRasm.id;
+          await supabase
+            .from('saved_rasms')
+            .update({
+              payload: mergedPayload,
+              canonical_approved_pdf: resolvedApprovedPdfUrl || null,
+              signed_pdf_url: resolvedApprovedPdfUrl || null,
+              pdf_preview_url: resolvedApprovedPdfUrl || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingRasm.id);
+        } else {
+          const { data: created, error: createError } = await supabase
+            .from('saved_rasms')
+            .insert({
+              notary_user_id: submission.notary_user_id,
+              notary_name: submission.notary_name,
+              file_number: submission.file_number,
+              document_type: submission.document_type,
+              draft: submission.summary || '',
+              payload: mergedPayload,
+              canonical_approved_pdf: resolvedApprovedPdfUrl || null,
+              signed_pdf_url: resolvedApprovedPdfUrl || null,
+              pdf_preview_url: resolvedApprovedPdfUrl || null,
+            })
+            .select('id')
+            .single();
+
+          if (createError || !created) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: createError?.message ?? 'Failed to create saved_rasm',
+            });
+          }
+          targetRasmId = created.id;
+        }
+
+        // Keep submission payload in sync with target rasm ID
+        try {
+          await supabase
+            .from('judge_submissions')
+            .update({
+              payload: {
+                ...subPayload,
+                savedRasmId: targetRasmId,
+                saved_rasm_id: targetRasmId,
+              },
+            })
+            .eq('id', submission.id);
         } catch {}
 
-        return { id: created.id };
+        // 3. Immediately link approved PDF into deed_attachments
+        if (resolvedApprovedPdfUrl && targetRasmId) {
+          try {
+            const targetCategories = ['audit_final_pdf', 'judge_attachment'];
+            for (const cat of targetCategories) {
+              const { data: existingAtt } = await supabase
+                .from('deed_attachments')
+                .select('id')
+                .eq('record_id', targetRasmId)
+                .eq('record_type', 'saved_rasm')
+                .eq('category', cat)
+                .maybeSingle();
+
+              if (existingAtt) {
+                await supabase
+                  .from('deed_attachments')
+                  .update({
+                    file_url: resolvedApprovedPdfUrl,
+                    mime_type: 'application/pdf',
+                  })
+                  .eq('id', existingAtt.id);
+              } else {
+                await supabase.from('deed_attachments').insert({
+                  record_id: targetRasmId,
+                  record_type: 'saved_rasm',
+                  category: cat,
+                  file_name: 'المحرر القضائي المعتمد.pdf',
+                  file_url: resolvedApprovedPdfUrl,
+                  mime_type: 'application/pdf',
+                  file_size: null,
+                  metadata: {
+                    source: 'createSavedRasmFromJudgeSubmission',
+                    judgeSubmissionId: submission.id,
+                  },
+                });
+              }
+            }
+          } catch {}
+        }
+
+        // 4. Ensure the saved_rasm has both judge PDF + base DOCX attachments (best-effort).
+        if (targetRasmId) {
+          try {
+            await ensureSavedRasmHasJudgeAttachments({
+              recordId: targetRasmId,
+              notaryUserId: submission.notary_user_id,
+              payload: sanitizePersistedPayload({
+                ...(submission.payload as any || {}),
+                judgeSubmissionId: submission.id,
+              }),
+            });
+          } catch {}
+        }
+
+        return { id: targetRasmId, signedPdfUrl: resolvedApprovedPdfUrl };
       }),
 
     resolveSigningDocument: publicProcedure
@@ -6204,141 +6593,232 @@ export const feesAgentRouter = router({
           });
         }
 
+        const payloadAny = rawBasePayload && typeof rawBasePayload === 'object' ? { ...rawBasePayload } : {};
+        const payloadAttachments = Array.isArray(payloadAny.attachments) ? [...payloadAny.attachments] : [];
+
+        const decodeDataUrl = (dataUrl: string): Buffer | null => {
+          const s = String(dataUrl || '');
+          const comma = s.indexOf(',');
+          if (comma === -1) return null;
+          const meta = s.slice(0, comma);
+          const data = s.slice(comma + 1);
+          const isBase64 = /;base64/i.test(meta);
+          if (!isBase64) return Buffer.from(decodeURIComponent(data), 'utf8');
+          return Buffer.from(data, 'base64');
+        };
+
+        const readAttachmentBytes = async (att: any): Promise<Buffer | null> => {
+          if (att?.base64) return Buffer.from(String(att.base64), 'base64');
+          const url = String(att?.url || att?.fileUrl || att?.file_url || att?.fileURL || '').trim();
+          if (!url) return null;
+          if (url.startsWith('data:')) return decodeDataUrl(url);
+          if (/^https?:/i.test(url)) {
+            const resp = await fetch(url, { cache: 'no-store' as any });
+            if (!resp.ok) return null;
+            const ab = await resp.arrayBuffer();
+            return Buffer.from(ab);
+          }
+          return null;
+        };
+
+        // 1. Process Main Deed Document
+        const primaryDeed = payloadAny.attachment || payloadAny.judgeAttachment || payloadAny.manualRasmFile;
+        let isDocx = false;
+        let isPdf = false;
+        let nameRaw = 'judge-attachment';
+        if (primaryDeed) {
+          nameRaw = String(primaryDeed?.name || primaryDeed?.fileName || 'judge-attachment');
+          const typeRaw = String(primaryDeed?.type || primaryDeed?.mimeType || '').toLowerCase();
+          const nameLower = nameRaw.toLowerCase();
+          isDocx =
+            nameLower.endsWith('.docx') ||
+            nameLower.endsWith('.doc') ||
+            typeRaw.includes('wordprocessingml') ||
+            typeRaw.includes('msword') ||
+            typeRaw.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+            typeRaw.includes('application/msword') ||
+            typeRaw.includes('word') ||
+            typeRaw.includes('officedocument');
+          isPdf = nameLower.endsWith('.pdf') || typeRaw.includes('pdf');
+        }
+
+        const processPrimaryDeed = async () => {
+          if (!primaryDeed) return;
+          const docBytes = await readAttachmentBytes(primaryDeed);
+          if (!docBytes) return;
+
+          const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
+          const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf)$/i, '').trim() || 'judge-attachment';
+
+          let uploadedPdfUrl: string | null = null;
+          let pdfFileSize = 0;
+
+          if (isDocx) {
+            // Upload original DOCX (for later editing)
+            const uploadedDocx = await uploadBufferToDocumentsBucket({
+              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.docx`,
+              buffer: docBytes,
+              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              upsert: true,
+            });
+
+            // Convert to PDF for preview
+            const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docBytes });
+            const uploadedPdf = await uploadBufferToDocumentsBucket({
+              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
+              buffer: pdfRes.pdfBuffer,
+              contentType: 'application/pdf',
+              upsert: true,
+            });
+
+            uploadedPdfUrl = uploadedPdf.url;
+            pdfFileSize = pdfRes.pdfBuffer.length;
+
+            payloadAny.attachment = {
+              ...primaryDeed,
+              name: `${baseNoExt}.docx`,
+              fileName: `${baseNoExt}.docx`,
+              url: uploadedDocx.url,
+              fileUrl: uploadedDocx.url,
+              pdfUrl: uploadedPdf.url,
+              base64: undefined,
+            };
+            payloadAny.previewUrl = uploadedPdf.url;
+            payloadAny.previewName = `${baseNoExt}.pdf`;
+            payloadAny.canonical_approved_pdf = uploadedPdf.url;
+            payloadAny.signed_pdf_url = uploadedPdf.url;
+            payloadAny.pdf_preview_url = uploadedPdf.url;
+
+            await supabase.from('deed_attachments').insert([
+              {
+                record_type: 'judge_submission',
+                record_id: created.id,
+                category: 'judge_attachment',
+                file_name: `${baseNoExt}.pdf`,
+                file_url: uploadedPdf.url,
+                mime_type: 'application/pdf',
+                file_size: pdfRes.pdfBuffer.length,
+              },
+              {
+                record_type: 'judge_submission',
+                record_id: created.id,
+                category: 'judge_attachment_docx',
+                file_name: `${baseNoExt}.docx`,
+                file_url: uploadedDocx.url,
+                mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                file_size: docBytes.length,
+              }
+            ]);
+          } else if (isPdf) {
+            const uploadedPdf = await uploadBufferToDocumentsBucket({
+              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
+              buffer: docBytes,
+              contentType: 'application/pdf',
+              upsert: true,
+            });
+
+            uploadedPdfUrl = uploadedPdf.url;
+            pdfFileSize = docBytes.length;
+
+            payloadAny.attachment = {
+              ...primaryDeed,
+              name: `${baseNoExt}.pdf`,
+              fileName: `${baseNoExt}.pdf`,
+              url: uploadedPdf.url,
+              fileUrl: uploadedPdf.url,
+              base64: undefined,
+            };
+            payloadAny.previewUrl = uploadedPdf.url;
+            payloadAny.previewName = `${baseNoExt}.pdf`;
+            payloadAny.canonical_approved_pdf = uploadedPdf.url;
+            payloadAny.signed_pdf_url = uploadedPdf.url;
+            payloadAny.pdf_preview_url = uploadedPdf.url;
+
+            await supabase.from('deed_attachments').insert({
+              record_type: 'judge_submission',
+              record_id: created.id,
+              category: 'judge_attachment',
+              file_name: `${baseNoExt}.pdf`,
+              file_url: uploadedPdf.url,
+              mime_type: 'application/pdf',
+              file_size: docBytes.length,
+            });
+          }
+
+          if (uploadedPdfUrl) {
+            let targetRasmId = payloadAny.savedRasmId || rawBasePayload?.savedRasmId;
+            if (!targetRasmId && input.fileNumber) {
+              const { data: foundRasm } = await supabase
+                .from('saved_rasms')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('file_number', String(input.fileNumber).trim())
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (foundRasm?.id) {
+                targetRasmId = foundRasm.id;
+                payloadAny.savedRasmId = targetRasmId;
+              }
+            }
+
+            if (targetRasmId) {
+              await supabase
+                .from('saved_rasms')
+                .update({
+                  canonical_approved_pdf: uploadedPdfUrl,
+                  signed_pdf_url: uploadedPdfUrl,
+                  pdf_preview_url: uploadedPdfUrl,
+                  previewUrl: uploadedPdfUrl,
+                  pdfCompilationReady: true,
+                })
+                .eq('id', targetRasmId);
+
+              await supabase.from('deed_attachments').insert([
+                {
+                  record_type: 'saved_rasm',
+                  record_id: targetRasmId,
+                  category: 'judge_attachment',
+                  file_name: `${baseNoExt}.pdf`,
+                  file_url: uploadedPdfUrl,
+                  mime_type: 'application/pdf',
+                  file_size: pdfFileSize,
+                },
+                {
+                  record_type: 'saved_rasm',
+                  record_id: targetRasmId,
+                  category: 'audit_final_pdf',
+                  file_name: `${baseNoExt}.pdf`,
+                  file_url: uploadedPdfUrl,
+                  mime_type: 'application/pdf',
+                  file_size: pdfFileSize,
+                }
+              ]);
+            }
+          }
+        };
+
+        // If primaryDeed is directly a PDF, upload synchronously before returning (<120ms)
+        // so Judge and AuditHub immediately receive the compiled PDF without page refresh or waiting loops!
+        if (primaryDeed && isPdf) {
+          try {
+            await processPrimaryDeed();
+            await supabase
+              .from('judge_submissions')
+              .update({ payload: sanitizePersistedPayload(payloadAny) })
+              .eq('id', created.id);
+          } catch (syncPdfErr) {
+            // eslint-disable-next-line no-console
+            console.error('[submitToJudge-SyncPdf] Synchronous primary PDF upload failed, fallback to background:', syncPdfErr);
+          }
+        }
+
         // --- BACKGROUND PROCESSING START ---
-        // Fire-and-forget background processing for DOCX conversion and PDF generation.
-        // We do NOT 'await' this block to ensure the frontend receives the submissionId immediately (~11s -> <500ms).
+        // Fire-and-forget background processing for DOCX conversion and additional attachments.
         (async () => {
           try {
-            const payloadAny = rawBasePayload && typeof rawBasePayload === 'object' ? { ...rawBasePayload } : {};
-            const payloadAttachments = Array.isArray(payloadAny.attachments) ? [...payloadAny.attachments] : [];
-
-            const decodeDataUrl = (dataUrl: string): Buffer | null => {
-              const s = String(dataUrl || '');
-              const comma = s.indexOf(',');
-              if (comma === -1) return null;
-              const meta = s.slice(0, comma);
-              const data = s.slice(comma + 1);
-              const isBase64 = /;base64/i.test(meta);
-              if (!isBase64) return Buffer.from(decodeURIComponent(data), 'utf8');
-              return Buffer.from(data, 'base64');
-            };
-
-            const readAttachmentBytes = async (att: any): Promise<Buffer | null> => {
-              if (att?.base64) return Buffer.from(String(att.base64), 'base64');
-              const url = String(att?.url || att?.fileUrl || att?.file_url || att?.fileURL || '').trim();
-              if (!url) return null;
-              if (url.startsWith('data:')) return decodeDataUrl(url);
-              if (/^https?:/i.test(url)) {
-                const resp = await fetch(url, { cache: 'no-store' as any });
-                if (!resp.ok) return null;
-                const ab = await resp.arrayBuffer();
-                return Buffer.from(ab);
-              }
-              return null;
-            };
-
-            // 1. Process Main Deed Document
-            const primaryDeed = payloadAny.attachment || payloadAny.judgeAttachment || payloadAny.manualRasmFile;
-            if (primaryDeed) {
-              const nameRaw = String(primaryDeed?.name || primaryDeed?.fileName || 'judge-attachment');
-              const typeRaw = String(primaryDeed?.type || primaryDeed?.mimeType || '').toLowerCase();
-              const nameLower = nameRaw.toLowerCase();
-              const isDocx =
-                nameLower.endsWith('.docx') ||
-                nameLower.endsWith('.doc') ||
-                typeRaw.includes('wordprocessingml') ||
-                typeRaw.includes('msword') ||
-                typeRaw.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
-                typeRaw.includes('application/msword') ||
-                typeRaw.includes('word') ||
-                typeRaw.includes('officedocument');
-              const isPdf = nameLower.endsWith('.pdf') || typeRaw.includes('pdf');
-
-              const docBytes = await readAttachmentBytes(primaryDeed);
-              if (docBytes) {
-                const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
-                const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf)$/i, '').trim() || 'judge-attachment';
-
-                if (isDocx) {
-                  // Upload original DOCX (for later editing)
-                  const uploadedDocx = await uploadBufferToDocumentsBucket({
-                    path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.docx`,
-                    buffer: docBytes,
-                    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    upsert: true,
-                  });
-
-                  // Convert to PDF for preview
-                  const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docBytes });
-                  const uploadedPdf = await uploadBufferToDocumentsBucket({
-                    path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
-                    buffer: pdfRes.pdfBuffer,
-                    contentType: 'application/pdf',
-                    upsert: true,
-                  });
-
-                  payloadAny.attachment = {
-                    ...primaryDeed,
-                    name: `${baseNoExt}.docx`,
-                    fileName: `${baseNoExt}.docx`,
-                    url: uploadedDocx.url,
-                    fileUrl: uploadedDocx.url,
-                    pdfUrl: uploadedPdf.url,
-                    base64: undefined,
-                  };
-                  payloadAny.previewUrl = uploadedPdf.url;
-                  payloadAny.previewName = `${baseNoExt}.pdf`;
-
-                  await supabase.from('deed_attachments').insert([
-                    {
-                      record_type: 'judge_submission',
-                      record_id: created.id,
-                      category: 'judge_attachment',
-                      file_name: `${baseNoExt}.pdf`,
-                      file_url: uploadedPdf.url,
-                      mime_type: 'application/pdf',
-                      file_size: pdfRes.pdfBuffer.length,
-                    },
-                    {
-                      record_type: 'judge_submission',
-                      record_id: created.id,
-                      category: 'judge_attachment_docx',
-                      file_name: `${baseNoExt}.docx`,
-                      file_url: uploadedDocx.url,
-                      mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                      file_size: docBytes.length,
-                    }
-                  ]);
-                } else if (isPdf) {
-                  const uploadedPdf = await uploadBufferToDocumentsBucket({
-                    path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
-                    buffer: docBytes,
-                    contentType: 'application/pdf',
-                    upsert: true,
-                  });
-
-                  payloadAny.attachment = {
-                    ...primaryDeed,
-                    name: `${baseNoExt}.pdf`,
-                    fileName: `${baseNoExt}.pdf`,
-                    url: uploadedPdf.url,
-                    fileUrl: uploadedPdf.url,
-                    base64: undefined,
-                  };
-                  payloadAny.previewUrl = uploadedPdf.url;
-                  payloadAny.previewName = `${baseNoExt}.pdf`;
-
-                  await supabase.from('deed_attachments').insert({
-                    record_type: 'judge_submission',
-                    record_id: created.id,
-                    category: 'judge_attachment',
-                    file_name: `${baseNoExt}.pdf`,
-                    file_url: uploadedPdf.url,
-                    mime_type: 'application/pdf',
-                    file_size: docBytes.length,
-                  });
-                }
-              }
+            if (primaryDeed && isDocx) {
+              await processPrimaryDeed();
             }
 
             // 2. Process All Additional Attachments in parallel
@@ -6415,6 +6895,8 @@ export const feesAgentRouter = router({
         judgeNotes: z.string().nullable(),
         updatedAt: z.string(),
         decidedAt: z.string().nullable(),
+        signedPdfUrl: z.string().nullable().optional(),
+        pdfPreviewUrl: z.string().nullable().optional(),
       }))
       .query(async ({ input }) => {
         const { data: session, error: sessionError } = await supabase
@@ -6443,7 +6925,7 @@ export const feesAgentRouter = router({
 
         const { data, error } = await supabase
           .from('judge_submissions')
-          .select('id, notary_user_id, status, decision, judge_notes, updated_at, decided_at')
+          .select('id, notary_user_id, status, decision, judge_notes, updated_at, decided_at, payload')
           .eq('id', input.submissionId)
           .single();
 
@@ -6459,6 +6941,23 @@ export const feesAgentRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
         }
 
+        const pl = (data.payload && typeof data.payload === 'object') ? (data.payload as Record<string, unknown>) : {};
+        const pdfUrl =
+          String(
+            pl.signed_pdf_url ||
+            pl.signedPdfUrl ||
+            pl.pdf_preview_url ||
+            pl.pdfPreviewUrl ||
+            pl.canonical_approved_pdf ||
+            pl.canonicalApprovedPdf ||
+            (pl.judgeCourtStamp as any)?.url ||
+            (pl.judgeCourtStampedDoc as any)?.url ||
+            (pl.judgeSignedDoc as any)?.url ||
+            pl.previewUrl ||
+            pl.finalPdfUrl ||
+            ''
+          ).trim() || null;
+
         return {
           id: data.id,
           status: data.status,
@@ -6466,6 +6965,8 @@ export const feesAgentRouter = router({
           judgeNotes: (data.judge_notes ?? null),
           updatedAt: data.updated_at,
           decidedAt: (data.decided_at ?? null),
+          signedPdfUrl: pdfUrl,
+          pdfPreviewUrl: pdfUrl,
         };
       }),
 
@@ -10373,8 +10874,8 @@ export const feesAgentRouter = router({
 
         const latestPreviewById: Record<string, string | null> = {};
         const attachmentPriority: Record<string, number> = {
-          judge_court_stamped_pdf: 3,
-          judge_signed_pdf: 2,
+          judge_signed_pdf: 3,
+          judge_court_stamped_pdf: 2,
           signed_pdf: 1,
         };
         const attachmentChoiceById: Record<string, { priority: number; url: string } | undefined> = {};
