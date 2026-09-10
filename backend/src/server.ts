@@ -9,6 +9,7 @@ import { registerRemoteHearingWebsocket } from './ws/remoteHearingSignaling';
 import { registerStuReleaseRoute } from './routes/stuRelease';
 import { registerOnlyOfficeRoutes } from './routes/onlyoffice';
 import { CacheService } from './services/cacheService';
+import { TrpcContext } from './routers/trpc';
 
 // Best-effort OnlyOffice service auto-check on startup
 try {
@@ -66,9 +67,41 @@ registerOnlyOfficeRoutes(fastify).catch((err) => {
   fastify.log.error({ err }, 'Failed to register OnlyOffice routes');
 });
 
+const createContext = async (opts: { req: any; res: any }): Promise<TrpcContext> => {
+  const req = opts.req;
+  let sessionToken: string | null = null;
+  const authHeader = req.headers?.authorization;
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    sessionToken = authHeader.slice(7).trim();
+  } else if (req.headers?.['x-session-token']) {
+    sessionToken = String(req.headers['x-session-token']).trim();
+  } else if (req.query && typeof req.query === 'object' && (req.query as any).sessionToken) {
+    sessionToken = String((req.query as any).sessionToken).trim();
+  }
+
+  let user = null;
+  let notaryProfile = null;
+
+  if (sessionToken) {
+    const verified = await CacheService.verifySessionWithCache(sessionToken);
+    if (verified) {
+      user = verified.user;
+      notaryProfile = verified.notaryProfile ?? null;
+    }
+  }
+
+  return {
+    req,
+    res: opts.res,
+    sessionToken,
+    user,
+    notaryProfile,
+  };
+};
+
 const trpcOptions = {
   router: appRouter,
-  createContext: () => ({}),
+  createContext,
   allowBatching: true,
 };
 

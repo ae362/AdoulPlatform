@@ -665,21 +665,25 @@ export const authRouter = router({
     }),
 
   /**
-   * Get all appellate courts (محاكم الاستئناف)
+   * Get all appellate courts (محاكم الاستئناف) - Cached for 24h
    */
   getAppellateCourts: publicProcedure
-    .query(() => {
-      return getAppellateCourts();
+    .query(async () => {
+      return CacheService.remember('ref:courts:appellate', 86400, async () => {
+        return getAppellateCourts();
+      });
     }),
 
   /**
-   * Get primary courts for a specific appellate court
-   * Returns only courts mapped to the selected محكمة الاستئناف
+   * Get primary courts for a specific appellate court - Cached for 24h
    */
   getPrimaryCourts: publicProcedure
     .input(z.object({ appellateCourt: z.string() }))
-    .query(({ input }) => {
-      return getCourtMappingJson(input.appellateCourt);
+    .query(async ({ input }) => {
+      const cacheKey = `ref:courts:primary:${encodeURIComponent(input.appellateCourt)}`;
+      return CacheService.remember(cacheKey, 86400, async () => {
+        return getCourtMappingJson(input.appellateCourt);
+      });
     }),
 
   /**

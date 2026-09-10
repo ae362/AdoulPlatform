@@ -17,6 +17,7 @@
     "diagnose:login": "node scripts/diagnose-login.js",
     "diagnose:all": "node scripts/diagnose-all.js",
     "test:cache": "node scripts/test-cache.js",
+    "test:auth": "node scripts/test-trpc-auth.js",
     "migrate:supabase": "node scripts/migrate-supabase.js",
     "fix:rls": "node scripts/fix-rls-permissions.js",
     "create-test-user": "node scripts/create-test-user.js",

@@ -286,5 +286,82 @@ export class CacheService {
     const key = `${this.SESSION_PREFIX}${token}`;
     await this.del(key);
   }
+
+  /**
+   * Universal Session Verification Helper with Cache
+   * Checks cache first (< 1ms), falls back to Supabase DB, and primes cache.
+   */
+  static async verifySessionWithCache(
+    token: string,
+    supabaseClient?: any
+  ): Promise<{ user: any; notaryProfile?: any; session?: any } | null> {
+    if (!token || typeof token !== 'string') return null;
+
+    // 1. Fast Path: Cache lookup
+    try {
+      const cached = await this.getCachedSession(token);
+      if (cached && cached.user) {
+        if (!cached.expires_at || new Date(cached.expires_at) >= new Date()) {
+          return {
+            user: cached.user,
+            notaryProfile: cached.notaryProfile ?? null,
+            session: { user_id: cached.user.id, expires_at: cached.expires_at },
+          };
+        } else {
+          await this.invalidateSession(token);
+        }
+      }
+    } catch {
+      // Fall through to database
+    }
+
+    // 2. Slow Path: Supabase DB Query
+    try {
+      const sb = supabaseClient || (await import('./supabase')).supabase;
+      if (!sb) return null;
+
+      const { data: session, error: sessionError } = await sb
+        .from('user_sessions')
+        .select('user_id, expires_at')
+        .eq('session_token', token)
+        .single();
+
+      if (sessionError || !session || (session.expires_at && new Date(session.expires_at) < new Date())) {
+        return null;
+      }
+
+      const { data: user, error: userError } = await sb
+        .from('users')
+        .select('id, email, role, full_name, is_active')
+        .eq('id', session.user_id)
+        .single();
+
+      if (userError || !user || !user.is_active) {
+        return null;
+      }
+
+      let notaryProfile = null;
+      if (user.role === 'notary') {
+        const { data: prof } = await sb
+          .from('notary_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        notaryProfile = prof;
+      }
+
+      // 3. Cache the verified session (15 min sliding TTL)
+      const payload = { user, notaryProfile, expires_at: session.expires_at };
+      await this.cacheSession(token, payload, this.DEFAULT_SESSION_TTL);
+
+      return {
+        user,
+        notaryProfile,
+        session,
+      };
+    } catch {
+      return null;
+    }
+  }
 }
 
