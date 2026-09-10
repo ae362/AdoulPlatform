@@ -9,7 +9,10 @@ export type UserRole =
   | 'society_member'
   | 'creator'
   | 'notary'
-  | 'president_office';
+  | 'president_office'
+  | 'judge'
+  | 'regional_judge'
+  | 'supreme_judge';
 
 export interface User {
   id: string;
@@ -31,6 +34,8 @@ export interface NotaryProfile {
   phone: string | null;
   office_address: string | null;
   profile_picture_url?: string | null;
+  description?: string | null;
+  jurisdiction?: string | null;
 }
 
 interface AuthContextType {

@@ -154,6 +154,7 @@ export const notariesRouter = router({
         insurance_no: z.string().optional(),
         primary_court: z.string().optional(),
         appointment_number: z.string().optional(),
+        start_date: z.string().optional(),
         appellate_court: z.string().optional(),
       })
     )
@@ -204,6 +205,7 @@ export const notariesRouter = router({
         insurance_no: z.string().optional(),
         dob: z.string().optional(),
         office_location: z.string().optional(),
+        start_date: z.string().optional(),
         region: z.string(),
         primary_court: z.string(),
         appointment_number: z.string().optional(),

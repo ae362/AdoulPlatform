@@ -351,7 +351,7 @@ export const NationalStatisticalManagement: React.FC = () => {
                   accent: 'text-amber-700',
                   bg: 'bg-amber-600'
                 },
-              ].map((section) => (
+              ].map((section: any) => (
                 <div 
                   key={section.id} 
                   onClick={() => setReportView(section.id as any)}

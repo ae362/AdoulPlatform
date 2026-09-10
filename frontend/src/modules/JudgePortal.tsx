@@ -35,6 +35,7 @@ const JUDGE_NAV: Array<{
   { 
     path: '/judge/admin-management', 
     label: 'التدبير الإداري', 
+    icon: '📁',
     subItems: [
       { path: '/judge/work-certificates', label: 'شواهد العمل والوضعية المهنية', icon: '📃' },
     ]
@@ -638,7 +639,7 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({ '/judge/permissions': true });
   const judgeProfileQuery = (trpc.judge as any).getMyProfile.useQuery(
     { sessionToken: sessionToken || '' },
-    { enabled: !!sessionToken && (user?.role === 'authentication_judge' || user?.role === 'regional_judge' || user?.role === 'supreme_judge'), retry: false }
+    { enabled: !!sessionToken && ((user?.role as string) === 'authentication_judge' || (user?.role as string) === 'regional_judge' || (user?.role as string) === 'supreme_judge'), retry: false }
   );
 
   const toggleMenu = (path: string) => {
@@ -1516,9 +1517,9 @@ function DeedProcessing() {
               type="button"
               className="rounded-xl bg-[#0b1b3a] px-4 py-2 text-sm font-bold text-white hover:bg-[#091633]"
               onClick={handleSendDecision}
-              disabled={!canSend || decideMutation.isLoading}
+              disabled={!canSend || decideMutation.isPending}
             >
-              {decideMutation.isLoading ? 'جاري الإرسال…' : 'إرسال للعدل'}
+              {decideMutation.isPending ? 'جاري الإرسال…' : 'إرسال للعدل'}
             </button>
             <button
               type="button"
@@ -2474,7 +2475,7 @@ export function JudgePortal() {
 
   if (!user) return <Navigate to="/login" replace />;
   
-  const isAnyJudge = user.role === 'authentication_judge' || user.role === 'regional_judge' || user.role === 'supreme_judge';
+  const isAnyJudge = (user.role as string) === 'authentication_judge' || (user.role as string) === 'regional_judge' || (user.role as string) === 'supreme_judge';
   if (!isAnyJudge) return <Navigate to="/unauthorized" replace />;
 
   return (

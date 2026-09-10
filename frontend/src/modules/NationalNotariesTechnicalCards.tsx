@@ -192,6 +192,7 @@ export const NationalNotariesTechnicalCards: React.FC = () => {
       tax_id: '',
       dob: '',
       appointment_number: '',
+      start_date: '',
       office_location: '',
       region: region || '',
       primary_court: selectedPrimaryCourt || '',

@@ -115,7 +115,7 @@ export function JudgeOfficialIndexation() {
       from: identityParams.from || undefined,
       to: identityParams.to || undefined,
     },
-    { enabled: enabled && mode === 'identity', keepPreviousData: true, retry: false }
+    { enabled: enabled && mode === 'identity', placeholderData: (prev: any) => prev, retry: false }
   );
 
   const registryQuery = trpc.search.byRegistry.useQuery(
@@ -125,7 +125,7 @@ export function JudgeOfficialIndexation() {
       registryCount: undefined,
       registryPage: registryParams.page ? Number(registryParams.page) : undefined,
     },
-    { enabled: enabled && mode === 'registry', keepPreviousData: true, retry: false }
+    { enabled: enabled && mode === 'registry', placeholderData: (prev: any) => prev, retry: false }
   );
 
   const isSearching = enabled && (mode === 'identity' ? identityQuery.isFetching : registryQuery.isFetching);

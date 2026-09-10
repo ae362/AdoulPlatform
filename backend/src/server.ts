@@ -13,7 +13,37 @@ import securityHeaders from './plugins/securityHeaders';
 import rateLimiter from './plugins/rateLimiter';
 
 // 5MB attachments are base64-encoded (~33% bigger) and wrapped in JSON, so we need a higher limit.
-const fastify = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
+const fastify = Fastify({
+  bodyLimit: 15 * 1024 * 1024,
+  logger: {
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'test' ? 'silent' : 'info'),
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'password',
+        '*.password',
+        'token',
+        '*.token',
+        'secret',
+        '*.secret',
+        'cin',
+        '*.cin',
+        'husband_cin',
+        '*.husband_cin',
+        'wife_cin',
+        '*.wife_cin',
+        'idNumber',
+        '*.idNumber',
+        'phone',
+        '*.phone',
+        'body.password',
+        'body.token',
+      ],
+      censor: '[REDACTED]',
+    },
+  },
+});
 
 // Register Enterprise Security Headers
 fastify.register(securityHeaders);
@@ -80,13 +110,21 @@ fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function
   done(null, body);
 });
 
-// Health check route to verify backend is up on this port and report cache engine status
+// Health check route with deep diagnostics (cache, memory, uptime, process lifecycle)
 fastify.get('/health', async () => {
+  const memory = process.memoryUsage();
   return {
     status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
-    port: process.env.PORT || 4000,
+    port: Number(process.env.PORT) || 4000,
     cache: CacheService.getStatus(),
+    memory: {
+      rssMb: Math.round(memory.rss / (1024 * 1024)),
+      heapUsedMb: Math.round(memory.heapUsed / (1024 * 1024)),
+      heapTotalMb: Math.round(memory.heapTotal / (1024 * 1024)),
+    },
   };
 });
 

@@ -21,7 +21,7 @@ export function ContractTemplatesModule() {
 
   const runSuggest = async () => {
     const res = await aiSuggest.mutateAsync({ topic: 'adliyyah-template' });
-    if (res?.length) setValue('content', res.map((r) => r.preview || r.snippet || '').join('\n'));
+    if (res?.length) setValue('content', res.map((r) => (r as any).preview || r.snippet || '').join('\n'));
   };
 
   const filteredData = data?.filter(row => 

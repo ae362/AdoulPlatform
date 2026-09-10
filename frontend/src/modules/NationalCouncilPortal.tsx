@@ -529,10 +529,10 @@ function AdoulRegistry() {
                         </button>
                          <button 
                            onClick={handleSave} 
-                           disabled={updateMutation.isLoading}
+                           disabled={updateMutation.isPending}
                            className="px-8 py-2 rounded-lg bg-[#E6BE8A] text-red-950 hover:bg-[#d4ac7a] font-bold flex items-center gap-2 shadow-sm hover:shadow-md transition-all disabled:opacity-50"
                         >
-                            {updateMutation.isLoading ? (
+                            {updateMutation.isPending ? (
                                <>
                                  <span className="animate-spin">⌛</span> جاري الحفظ...
                                </>

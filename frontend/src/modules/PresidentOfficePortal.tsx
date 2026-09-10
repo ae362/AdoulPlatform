@@ -621,11 +621,12 @@ function NotaryActivitySection({ globalYear, globalPeriod }: any) {
   React.useEffect(() => { setYear(globalYear); setPeriod(globalPeriod); }, [globalYear, globalPeriod]);
 
   const { data: summary } = trpc.statistics.summary.useQuery({ year, period });
-  const { data: regionalData } = trpc.statistics.regionalSummary.useQuery({
+  const { data: regionalDataRaw } = trpc.statistics.regionalSummary.useQuery({
     sessionToken: localStorage.getItem('token') || '',
     reportYear: year,
     reportPeriod: period
   });
+  const regionalData = regionalDataRaw as any;
 
   return (
     <div className="mt-12 p-10 bg-white border border-slate-200 rounded-[3rem] shadow-sm relative overflow-hidden" id="notary-activity-print">
@@ -686,11 +687,12 @@ function NationalStatisticsView() {
   const [selectedYear, setSelectedYear] = React.useState(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = React.useState('full_year');
 
-  const { data: regionalData } = trpc.statistics.regionalSummary.useQuery({
+  const { data: regionalDataRaw } = trpc.statistics.regionalSummary.useQuery({
     sessionToken: localStorage.getItem('token') || '',
     reportYear: selectedYear,
     reportPeriod: selectedPeriod
   });
+  const regionalData = regionalDataRaw as any;
 
   const handlePrint = () => {
     window.print();

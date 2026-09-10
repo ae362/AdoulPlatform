@@ -42,7 +42,7 @@ export function JudgeIndividualReceptionPermissions() {
     return cert.includes('تلقي') || cert.includes('فردي') || cert.includes('individual_reception');
   });
 
-  const { mutate: recordDecision, isLoading: isMutationLoading } = trpc.notifications.recordDecision.useMutation({
+  const { mutate: recordDecision, isPending: isMutationLoading } = trpc.notifications.recordDecision.useMutation({
     onSuccess: () => {
       setSelectedRequest(null);
       setDecisionNotes('');

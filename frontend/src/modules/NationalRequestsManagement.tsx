@@ -586,7 +586,7 @@ export const NationalRequestsManagement = () => {
                       }}
                       className="block w-full text-sm text-slate-600 file:mr-4 file:py-3 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#1d2569] file:text-white hover:file:bg-blue-950"
                     />
-                    {uploadMutation.isLoading ? <div className="mt-4 text-sm font-bold text-slate-500">جاري رفع الملفات...</div> : null}
+                    {uploadMutation.isPending ? <div className="mt-4 text-sm font-bold text-slate-500">جاري رفع الملفات...</div> : null}
                  </div>
 
                  <div className="mt-6 space-y-2">
@@ -657,10 +657,10 @@ export const NationalRequestsManagement = () => {
                   <button onClick={handleBack} className="px-8 py-4 rounded-xl border font-bold text-slate-500">رجوع للتعديل</button>
                   <button 
                     onClick={handleSubmit} 
-                    disabled={createMutation.isLoading || !formData.professionalSignature} 
+                    disabled={createMutation.isPending || !formData.professionalSignature} 
                     className="flex-1 bg-[#1d2569] text-white py-4 rounded-xl font-black shadow-xl shadow-blue-950/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                   >
-                    {createMutation.isLoading ? 'جاري معالجة الطلب...' : 'تأكيد المعالجة وإيداع الطلب الآن 🚀'}
+                    {createMutation.isPending ? 'جاري معالجة الطلب...' : 'تأكيد المعالجة وإيداع الطلب الآن 🚀'}
                   </button>
                 </div>
               </div>
@@ -813,10 +813,10 @@ export const NationalRequestsManagement = () => {
                               actorRole: user?.role || undefined,
                             });
                           }}
-                          disabled={appendWorkflowMutation.isLoading}
+                          disabled={appendWorkflowMutation.isPending}
                           className="mt-3 w-full rounded-xl bg-[#1d2569] py-3 text-white font-black disabled:opacity-50"
                         >
-                          {appendWorkflowMutation.isLoading ? '...' : 'حفظ المرحلة'}
+                          {appendWorkflowMutation.isPending ? '...' : 'حفظ المرحلة'}
                         </button>
                       </div>
 
@@ -863,10 +863,10 @@ export const NationalRequestsManagement = () => {
                               reasoning: responseReasoning.trim() || 'تمت الموافقة على الطلب بعد المراجعة.',
                             });
                           }}
-                          disabled={recordDecisionMutation.isLoading}
+                          disabled={recordDecisionMutation.isPending}
                           className="mt-3 w-full rounded-xl bg-emerald-600 py-3 text-white font-black disabled:opacity-50"
                         >
-                          {recordDecisionMutation.isLoading ? '...' : 'إرسال القرار والرد الرسمي للعدل'}
+                          {recordDecisionMutation.isPending ? '...' : 'إرسال القرار والرد الرسمي للعدل'}
                         </button>
 
                         <button

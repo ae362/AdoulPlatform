@@ -445,7 +445,7 @@ function NotarySearch() {
                       </div>
                     )}
 
-                    {notary.electronic && (
+                    {(notary as any).electronic && (
                       <div className="pt-2 text-xs italic text-gray-500">
                         Electronic notarisation offered
                       </div>
@@ -514,7 +514,7 @@ function NotaryManagement() {
               جديد
             </button>
             <button className="btn-primary" type="submit">
-              {create.isLoading || update.isLoading ? '...جارٍ الحفظ' : 'حفظ'}
+              {create.isPending || update.isPending ? '...جارٍ الحفظ' : 'حفظ'}
             </button>
           </div>
         </form>

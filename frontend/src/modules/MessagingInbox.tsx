@@ -82,7 +82,7 @@ export interface CopyRequestDossier {
     inheritanceDocName?: string;
     thirdPartyDocType?: string;
     thirdPartyJustification?: string;
-    proofs?: Array<{ id: string; title: string; details: string; docFile?: string }>;
+    proofs?: Array<{ id: string; title: string; details: string; docFile?: string; docUrl?: string; url?: string }>;
   };
   deeds: Array<{
     id: string;
@@ -106,7 +106,7 @@ export interface CopyRequestDossier {
     format: string;
     size: string;
     quality: 'high' | 'medium' | 'low';
-    url: string;
+    url?: string;
   }>;
   purpose: {
     reason: string;
@@ -136,6 +136,15 @@ export interface CopyRequestDossier {
   unableReason?: string;
   unableGuidance?: string;
   deliveryOption?: string;
+  smartNarrowing?: any;
+  parties?: any[];
+  timelineEvents?: any[];
+  parentNames?: string;
+  propertyLocation?: string;
+  oldDeedPhoto?: string;
+  exactYear?: string | number;
+  startYear?: string | number;
+  endYear?: string | number;
 }
 
 function formatTime(iso: string) {
@@ -250,7 +259,7 @@ export function MessagingInbox({ mode }: { mode: MessagingMode }) {
   const createThreadMutation = trpc.messaging.createOrGetThread.useMutation();
   const sendMessageMutation = trpc.messaging.sendMessage.useMutation();
   const sendEmailMutation = trpc.messaging.sendEmail.useMutation();
-const updateCopyRequestMutation = trpc.copyRequests.updateStatus.useMutation();
+const updateCopyRequestMutation = (trpc.copyRequests as any).updateStatus ? (trpc.copyRequests as any).updateStatus.useMutation() : (trpc.copyRequests.update as any).useMutation();
   const threads = threadsQuery.data ?? [];
   const filteredThreads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -275,11 +284,14 @@ const updateCopyRequestMutation = trpc.copyRequests.updateStatus.useMutation();
       refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
       retry: false,
-      onSuccess: () => {
-        void threadsQuery.refetch();
-      },
     }
   );
+
+  useEffect(() => {
+    if (messagesQuery.data) {
+      void threadsQuery.refetch();
+    }
+  }, [messagesQuery.data]);
 
   const selectedThread = useMemo(() => threads.find((t) => t.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
   const threadMessagesList = messagesQuery.data?.messages ?? [];
@@ -559,26 +571,6 @@ function DocxRenderer({ fileUrl, fileName, details }: { fileUrl?: string; fileNa
   );
 }
 
-function dataURItoBlobSync(dataURI: string, fallbackMime: string = 'application/octet-stream'): Blob {
-  try {
-    const parts = dataURI.split(',');
-    const header = parts[0] || '';
-    const raw = parts[1] || parts[0];
-    const mimeMatch = header.match(/:(.*?);/);
-    const mime = mimeMatch ? mimeMatch[1] : fallbackMime;
-    const cleanBase64 = raw.replace(/[\s\r\n]+/g, '');
-    const byteString = atob(cleanBase64);
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-    return new Blob([ab], { type: mime });
-  } catch (e) {
-    console.warn('Sync base64 conversion fallback:', e);
-    return new Blob([dataURI], { type: fallbackMime });
-  }
-}
 
 // Global download debug state for visible feedback
 let downloadClickCount = 0;

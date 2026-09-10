@@ -37,7 +37,7 @@ const FilesMiscModule = lazy(() => import('./modules/FilesMisc').then((m: any) =
 const ContractTemplatesModule = lazy(() => import('./modules/ContractTemplates').then((m: any) => ({ default: m.ContractTemplatesModule || m.default })));
 const RegistrationStampModule = lazy(() => import('./modules/RegistrationStamp').then((m: any) => ({ default: m.RegistrationStampModule || m.default })));
 const SocietyMembersLogin = lazy(() => import('./modules/SocietyMembersLogin').then((m: any) => ({ default: m.SocietyMembersLogin || m.default })));
-const MessagingInbox = lazy(() => import('./modules/MessagingInbox').then((m: any) => ({ default: m.MessagingInbox || m.default })));
+const MessagingInbox: React.ComponentType<any> = lazy(() => import('./modules/MessagingInbox').then((m: any) => ({ default: m.MessagingInbox || m.default })));
 const WorkCertificatesModule = lazy(() => import('./modules/WorkCertificates').then((m: any) => ({ default: m.WorkCertificatesModule || m.default })));
 const MarriagesModule = lazy(() => import('./modules/Marriages').then((m: any) => ({ default: m.MarriagesModule || m.default })));
 const SubscriptionsModule = lazy(() => import('./modules/Subscriptions').then((m: any) => ({ default: m.SubscriptionsModule || m.default })));
@@ -979,7 +979,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#5a0c0b] via-[#800020] to-[#5a0c0b] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"></div>
         </header>
 
-        <div className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || active === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}>
+        <div className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || (active as string) === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}>
           <Suspense fallback={<RouteLoader />}>{renderModule()}</Suspense>
         </div>
       </main>

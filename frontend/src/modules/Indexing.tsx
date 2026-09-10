@@ -41,7 +41,7 @@ function mapSubmissionToFeesAgentState(sub: {
   const iso = now.toISOString().split('T')[0];
   const base: Partial<FeesAgentState> = {
     step: 7,
-    documentType: sub.documentType || '',
+    documentType: (sub.documentType as any) || '',
     sellers: [],
     buyers: [],
     witnesses: [],
@@ -108,7 +108,7 @@ export function FinalIndexing() {
       dateFrom: searchMode === 'registry' ? registry.from : identity.from,
       dateTo: searchMode === 'registry' ? registry.to : identity.to,
     },
-    { enabled: enabled && !!sessionToken, keepPreviousData: true }
+    { enabled: enabled && !!sessionToken, placeholderData: (prev: any) => prev }
   );
 
   const generatePdfMutation = trpc.feesAgent.documents.generateRasmPdf.useMutation();
@@ -126,8 +126,8 @@ export function FinalIndexing() {
       });
 
       const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${res.pdf}`;
-      link.download = res.filename;
+      link.href = `data:application/pdf;base64,${(res as any).pdf}`;
+      link.download = (res as any).filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -353,7 +353,7 @@ export function OngoingIndexing() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filtered = useMemo(() => {
-    let data = submissionsQuery.data ?? [];
+    let data = (submissionsQuery.data ?? []) as any[];
     
     // 1. Filter by Stage
     if (filter !== 'all') {
@@ -418,7 +418,7 @@ export function OngoingIndexing() {
       const fiscalNature =
         (s.payload as any)?.step7FiscalNature ||
         (s.payload as any)?.fiscalNature ||
-        (draft.finance?.registeredWithTax === 'yes' ? 'subject' : 'exempt');
+        (((draft.finance?.registeredWithTax as string) === 'yes' || draft.finance?.registeredWithTax === 'نعم') ? 'subject' : 'exempt');
 
       draft = {
         ...draft,
@@ -648,7 +648,7 @@ export function OngoingIndexing() {
 
                 <button
                   type="button"
-                  disabled={!canMarkDone || updateStageMutation.isLoading}
+                  disabled={!canMarkDone || updateStageMutation.isPending}
                   onClick={() => markDone(s)}
                   className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
                 >

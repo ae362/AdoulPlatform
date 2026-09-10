@@ -50,10 +50,10 @@ export function ContractsModule() {
           <textarea className="input h-40" placeholder="نص العقد" {...register('body')} />
           <textarea className="input" placeholder="ملاحظات الذكاء الاصطناعي" {...register('ai_notes')} />
           <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" type="button" onClick={runAIDraft} disabled={aiDraft.isLoading}>
+            <button className="btn-primary" type="button" onClick={runAIDraft} disabled={aiDraft.isPending}>
               توليد عقد بالذكاء الاصطناعي
             </button>
-            <button className="btn-secondary" type="button" onClick={runLegal} disabled={legalReview.isLoading}>
+            <button className="btn-secondary" type="button" onClick={runLegal} disabled={legalReview.isPending}>
               فحص قانونية العقد
             </button>
             <button className="btn-secondary" type="button" onClick={() => reset()}>

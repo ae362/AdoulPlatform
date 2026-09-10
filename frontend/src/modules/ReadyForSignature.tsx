@@ -653,6 +653,20 @@ export const ReadyForSignature: React.FC = () => {
         { enabled: !!sessionToken && !!selectedDeed && (selectedDeed.inclusionBook === 'أدـاري' || selectedDeed.inclusionBook === 'س'), retry: 0 }
     );
 
+    const updateSubmissionStage = trpc.feesAgent.documents.updateSubmissionStage.useMutation();
+    const handleSaveDeed = async (id: string, stage: string) => {
+        try {
+            await updateSubmissionStage.mutateAsync({
+                sessionToken: sessionToken || '',
+                submissionId: id,
+                notaryStage: stage === 'SENT_TO_JUDGE' ? 'sending' : (stage as any)
+            });
+            await rasmDetailQuery.refetch();
+        } catch (err) {
+            console.error('[handleSaveDeed] Error:', err);
+        }
+    };
+
     useEffect(() => {
         if (import.meta.env.DEV && selectedDeed) {
             if (rasmDetailQuery.isLoading) {
@@ -660,7 +674,7 @@ export const ReadyForSignature: React.FC = () => {
             } else if (rasmDetailQuery.error) {
                 console.error('[rasmDetailQuery] Error for id:', selectedDeed.id, 'error:', (rasmDetailQuery.error as any).message);
             } else if (rasmDetailQuery.data) {
-                console.log('[rasmDetailQuery] Success, attachments:', rasmDetailQuery.data.attachments?.length);
+                console.log('[rasmDetailQuery] Success, attachments:', (rasmDetailQuery.data as any).attachments?.length);
             }
         }
     }, [rasmDetailQuery.isLoading, rasmDetailQuery.error, rasmDetailQuery.data, selectedDeed]);
@@ -1676,7 +1690,7 @@ export const ReadyForSignature: React.FC = () => {
         const isSavedRasm = deed.inclusionBook === 'أدـاري' || deed.inclusionBook === 'س' || (deed.fullData as any)?.isSavedRasm;
         // Use fullData from selection if available (instant), otherwise fallback to the query for freshest detail
         // Note: rasmDetailQuery is scoped to the parent component but accessible here
-        const detail = isSavedRasm ? (rasmDetailQuery?.data?.id === deed.id ? rasmDetailQuery.data : deed?.fullData) : null;
+        const detail = isSavedRasm ? ((rasmDetailQuery?.data as any)?.id === deed.id ? rasmDetailQuery.data : deed?.fullData) : null;
         
         // Log any database query errors for debugging
         useEffect(() => {
@@ -2036,6 +2050,8 @@ export const ReadyForSignature: React.FC = () => {
                 </div>
             );
         }
+
+        const data = ((deed.fullData || {}) as any);
 
         return (
             <div className="flex flex-col gap-10 w-full items-center justify-center animate-in fade-in slide-in-from-bottom-5 duration-700 pb-20">

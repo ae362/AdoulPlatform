@@ -30,7 +30,6 @@ export function CopyRequestsModule() {
   const [searchTo, setSearchTo] = useState('');
 
   const ocr = trpc.ocr.parseText.useMutation();
-  const semantic = trpc.ai.semanticSearch.useMutation();
   const [ocrPreview, setOcrPreview] = useState('');
   const [semanticResults, setSemanticResults] = useState<{ id: string; score: number; snippet: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -92,8 +91,8 @@ export function CopyRequestsModule() {
       const base64 = await toBase64(file);
       const ocrResult = await ocr.mutateAsync({ base64 });
       setOcrPreview(ocrResult.rawText);
-      const sem = await semantic.mutateAsync({ query: ocrResult.rawText });
-      setSemanticResults(sem);
+      const sem = await utils.ai.semanticSearch.fetch({ query: ocrResult.rawText });
+      setSemanticResults(sem as any);
     } finally {
       e.target.value = '';
     }
@@ -208,7 +207,7 @@ export function CopyRequestsModule() {
       <div className="rounded-xl bg-white p-4 shadow">
         <h4 className="mb-2 text-base font-semibold">Search by scanned image (OCR + AI)</h4>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-secondary" type="button" onClick={triggerImageSearch} disabled={ocr.isLoading}>
+          <button className="btn-secondary" type="button" onClick={triggerImageSearch} disabled={ocr.isPending}>
             Upload image for OCR
           </button>
           <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={onFileSelected} />

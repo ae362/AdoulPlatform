@@ -293,9 +293,9 @@ import {
                           }
                         }}
                       />
-                      {state.marriageDetails?.conversionCertificate?.image && (
+                      {(state.marriageDetails?.conversionCertificate as any)?.image && (
                         <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                          <span className="truncate font-medium">📎 تم إرفاق: {(state.marriageDetails.conversionCertificate.image as any)?.name || 'شهادة اعتناق الإسلام'}</span>
+                          <span className="truncate font-medium">📎 تم إرفاق: {((state.marriageDetails?.conversionCertificate as any)?.image as any)?.name || 'شهادة اعتناق الإسلام'}</span>
                           <button
                             type="button"
                             onClick={() => setState(prev => ({

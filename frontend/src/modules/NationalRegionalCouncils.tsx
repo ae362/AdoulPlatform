@@ -390,7 +390,7 @@ export const NationalRegionalCouncils = () => {
             
             // Count real notaries in this region
             const count = notaries 
-                ? notaries.filter(n => n.appellate_court === court.appellateCourt || (n.court_name && n.court_name.includes(cityName))).length 
+                ? notaries.filter((n: any) => n.appellate_court === court.appellateCourt || n.region === court.appellateCourt || (n.court_name && n.court_name.includes(cityName))).length 
                 : 0;
 
             // Deterministic mock status based on index

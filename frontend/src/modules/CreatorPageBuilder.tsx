@@ -407,7 +407,7 @@ export function CreatorPageBuilder() {
               doc={state.doc}
               selectedId={state.selectedId}
               onSelect={(id) => dispatch({ type: 'SELECT', id })}
-              onRename={(id, name) => dispatch({ type: 'SET_NODE', id, patch: { name } as any })}
+              onRename={(id, name) => dispatch({ type: 'SET_NODE_PROPS', id, patch: { label: name } })}
               onDelete={(id) => dispatch({ type: 'DELETE_NODE', id })}
             />
           )}

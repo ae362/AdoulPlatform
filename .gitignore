@@ -12,9 +12,7 @@
 /frontend/dist-build/
 /backend/dist
 /frontend/public
-/backend/scripts
 /backend/junk/
-/backend/migrations/
 /backend/google-vision-credentials.json
 # Environment Variables & Secrets
 .env
@@ -48,4 +46,6 @@ FeesAgent old.tsx
 *.html
 .dependency-cruiser.js
 *.tsbuildinfo
+.graphify/
+.agents/.graphify/
 

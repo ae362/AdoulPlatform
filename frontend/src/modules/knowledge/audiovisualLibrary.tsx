@@ -58,7 +58,7 @@ function formatCompactCount(count: number) {
 }
 
 function viewLabelForType(type: MediaType) {
-  return type === '???????' ? 'استماع' : 'مشاهدة';
+  return type === 'بودكاست' ? 'استماع' : 'مشاهدة';
 }
 
 const SEED: MediaItem[] = [

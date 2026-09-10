@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, Loader2, Check, X } from 'lucide-react';
 import { trpc } from '../../trpc';
 
 export const NotaryDashboard: React.FC = () => {
@@ -23,6 +23,7 @@ export const NotaryDashboard: React.FC = () => {
   
   // Partner management state
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
+  const [editingPartnerName, setEditingPartnerName] = useState('');
   const [newPartner, setNewPartner] = useState({ partner_name: '', contact_info: '', position_order: 1 });
   const [showAddPartner, setShowAddPartner] = useState(false);
 
@@ -244,6 +245,32 @@ export const NotaryDashboard: React.FC = () => {
       alert('تم حذف الشريك بنجاح');
     } catch (error: any) {
       alert('فشل في حذف الشريك: ' + (error.message || 'خطأ غير معروف'));
+    }
+  };
+
+  const handleStartEditPartner = (partner: any) => {
+    setEditingPartnerId(partner.id);
+    setEditingPartnerName(partner.partner_name);
+  };
+
+  const handleCancelEditPartner = () => {
+    setEditingPartnerId(null);
+    setEditingPartnerName('');
+  };
+
+  const handleSavePartnerName = async (partner: any) => {
+    if (!sessionToken || !editingPartnerName.trim()) return;
+    try {
+      await updatePartnerMutation.mutateAsync({
+        sessionToken,
+        partnerId: partner.id,
+        partner_name: editingPartnerName.trim(),
+      });
+      setEditingPartnerId(null);
+      setEditingPartnerName('');
+      refetchPartners();
+    } catch (error: any) {
+      alert('فشل في تعديل اسم الشريك: ' + (error.message || 'خطأ غير معروف'));
     }
   };
 

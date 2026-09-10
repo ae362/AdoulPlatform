@@ -342,6 +342,7 @@ function AgeManagement() {
 }
 
 function TrainingCenter() {
+  const navigate = useNavigate();
   const [selectedPrimaryCourt, setSelectedPrimaryCourt] = useState<string | null>(null);
 
   return (
@@ -1189,7 +1190,7 @@ function FinancialManagement() {
                                                 <button
                                                   onClick={() => handleDeletePayment(invoice.id, adoul.full_name)}
                                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-400 text-white rounded-lg text-xs font-bold transition-all shadow-sm hover:from-blue-600 hover:to-blue-500"
-                                                  disabled={deletePaymentMutation.isLoading}
+                                                  disabled={deletePaymentMutation.isPending}
                                                 >
                                                   <span className="text-sm">🗑️</span>
                                                   حذف
@@ -1458,10 +1459,10 @@ function FinancialManagement() {
                  </button>
                  <button
                    onClick={handleBulkPayment}
-                   disabled={!bulkPaymentAmount || Number(bulkPaymentAmount) <= 0 || bulkPaymentMutation.isLoading || (showNotarySelection && selectedNotariesForBulk.size === 0)}
+                   disabled={!bulkPaymentAmount || Number(bulkPaymentAmount) <= 0 || bulkPaymentMutation.isPending || (showNotarySelection && selectedNotariesForBulk.size === 0)}
                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg font-bold hover:from-green-700 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                  >
-                   {bulkPaymentMutation.isLoading ? 'جارٍ المعالجة...' : 'إنشاء الفواتير'}
+                   {bulkPaymentMutation.isPending ? 'جارٍ المعالجة...' : 'إنشاء الفواتير'}
                  </button>
                </div>
              </div>

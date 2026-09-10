@@ -450,7 +450,7 @@ export const JudgeFinalArchiving: React.FC = () => {
         signedDeedId: entry.id,
       });
       setCopiedValue(
-        result.alreadySent
+        (result as any)?.alreadySent
           ? `تم التحقق: ${entry.fileNumber} مُرسل سابقاً إلى الرسوم المخاطب عليها`
           : `تم إرسال ${entry.fileNumber} إلى الرسوم المخاطب عليها`
       );

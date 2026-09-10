@@ -481,7 +481,7 @@ const inheritanceFeeTypes = ['اراثة', 'بيان فريضة', 'احصاء م
     resolver: zodResolver(marriageRecordSchema),
     defaultValues: defaultMarriageValues as Partial<MarriageRecord>,
   });
-  const [existingDocuments, setExistingDocuments] = useState<MarriageDocument[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<LocalDocumentSelection[]>([]);
   const [pendingDocuments, setPendingDocuments] = useState<PendingMarriageDocument[]>([]);
   const documentsInputRef = useRef<HTMLInputElement | null>(null);
   const pendingDocumentsStore = useRef<PendingMarriageDocument[]>([]);
@@ -546,7 +546,7 @@ const inheritanceFeeTypes = ['اراثة', 'بيان فريضة', 'احصاء م
   }, [templateFields, watchedRecord]);
 
   const defaultInteractivePageHtmls = useMemo(
-    () => DEFAULT_INTERACTIVE_DOCUMENT_PAGES.map((template) => renderInteractiveTemplate(template, placeholderValues)),
+    () => DEFAULT_INTERACTIVE_DOCUMENT_PAGES.map((template) => renderInteractiveTemplate(template, placeholderValues as any)),
     [placeholderValues],
   );
 
@@ -618,14 +618,15 @@ const inheritanceFeeTypes = ['اراثة', 'بيان فريضة', 'احصاء م
 
   const buildPdfPayload = useCallback(
     (formData: MarriageRecord) => {
+      const data = formData as any;
       const safeNumber = (value?: number | null) =>
         typeof value === 'number' && !Number.isNaN(value) ? value : undefined;
 
       const resolvedFileNumber =
         templateFields.file_number?.trim()
           ? templateFields.file_number.trim()
-          : formData.registry_number != null
-            ? formData.registry_number.toString()
+          : data.registry_number != null
+            ? data.registry_number.toString()
             : undefined;
 
       return {
@@ -635,10 +636,10 @@ const inheritanceFeeTypes = ['اراثة', 'بيان فريضة', 'احصاء م
         court_appeal: templateFields.court_appeal,
         court_first_instance: templateFields.court_first_instance,
         court_family_section: templateFields.court_family_section,
-        request_date_gregorian: formData.inclusion_date,
-        request_date_hijri: formData.inclusion_hijri,
-        inclusion_date: formData.inclusion_date,
-        inclusion_hijri: formData.inclusion_hijri,
+        request_date_gregorian: data.inclusion_date,
+        request_date_hijri: data.inclusion_hijri,
+        inclusion_date: data.inclusion_date,
+        inclusion_hijri: data.inclusion_hijri,
         meeting_time: templateFields.meeting_time,
         meeting_day: templateFields.meeting_day,
         hijri_day: templateFields.hijri_day,
@@ -649,39 +650,39 @@ const inheritanceFeeTypes = ['اراثة', 'بيان فريضة', 'احصاء م
         gregorian_year: templateFields.gregorian_year,
         witness1_name: templateFields.witness1_name,
         witness2_name: templateFields.witness2_name,
-        registry_book_type: formData.registry_book_type,
-        registry_number: safeNumber(formData.registry_number),
-        registry_page: safeNumber(formData.registry_page),
-        registry_count: safeNumber(formData.registry_count),
-        registry_letter: formData.registry_letter,
-        husband_name: formData.husband_name,
-        husband_cin: formData.husband_cin,
-        husband_birth_date: formData.husband_birth_date,
-        husband_birth_place: formData.husband_birth_place,
-        husband_birth_cert_num: formData.husband_birth_cert_num,
-        husband_birth_year: formData.husband_birth_year,
-        husband_nationality: formData.husband_nationality,
-        husband_marital_status: formData.husband_marital_status,
-        husband_residence: formData.husband_residence,
-        husband_occupation: formData.husband_occupation,
-        wife_name: formData.wife_name,
-        wife_cin: formData.wife_cin,
-        wife_birth_date: formData.wife_birth_date,
-        wife_birth_place: formData.wife_birth_place,
-        wife_birth_cert_num: formData.wife_birth_cert_num,
-        wife_birth_year: formData.wife_birth_year,
-        wife_nationality: formData.wife_nationality,
-        wife_marital_status: formData.wife_marital_status,
-        wife_residence: formData.wife_residence,
-        wife_occupation: formData.wife_occupation,
-        wife_father_name: formData.wife_father_name,
-        wife_father_birth_date: formData.wife_father_birth_date,
-        wife_father_cin: formData.wife_father_cin,
-        marriage_authorization_no: formData.marriage_authorization_no,
-        engagement_cert_num: formData.engagement_cert_num,
-        engagement_cert_date: formData.engagement_cert_date,
-        dowry_amount: safeNumber(formData.dowry_amount),
-        contracted_by: formData.contracted_by,
+        registry_book_type: data.registry_book_type,
+        registry_number: safeNumber(data.registry_number),
+        registry_page: safeNumber(data.registry_page),
+        registry_count: safeNumber(data.registry_count),
+        registry_letter: data.registry_letter,
+        husband_name: data.husband_name,
+        husband_cin: data.husband_cin,
+        husband_birth_date: data.husband_birth_date,
+        husband_birth_place: data.husband_birth_place,
+        husband_birth_cert_num: data.husband_birth_cert_num,
+        husband_birth_year: data.husband_birth_year,
+        husband_nationality: data.husband_nationality,
+        husband_marital_status: data.husband_marital_status,
+        husband_residence: data.husband_residence,
+        husband_occupation: data.husband_occupation,
+        wife_name: data.wife_name,
+        wife_cin: data.wife_cin,
+        wife_birth_date: data.wife_birth_date,
+        wife_birth_place: data.wife_birth_place,
+        wife_birth_cert_num: data.wife_birth_cert_num,
+        wife_birth_year: data.wife_birth_year,
+        wife_nationality: data.wife_nationality,
+        wife_marital_status: data.wife_marital_status,
+        wife_residence: data.wife_residence,
+        wife_occupation: data.wife_occupation,
+        wife_father_name: data.wife_father_name,
+        wife_father_birth_date: data.wife_father_birth_date,
+        wife_father_cin: data.wife_father_cin,
+        marriage_authorization_no: data.marriage_authorization_no,
+        engagement_cert_num: data.engagement_cert_num,
+        engagement_cert_date: data.engagement_cert_date,
+        dowry_amount: safeNumber(data.dowry_amount),
+        contracted_by: data.contracted_by,
         interactive_document_pages: interactiveDocumentPages,
       };
     },

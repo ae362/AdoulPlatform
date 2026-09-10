@@ -106,7 +106,7 @@ export function MarriagesModule() {
         setDocuments(updatedDocs);
 
         const fieldCount = Object.keys(result.extractedData).length;
-        alert(`✓ تم استخراج ${fieldCount} حقل من المستندات باستخدام ${result.provider || 'LLaVA Vision'}`);
+        alert(`✓ تم استخراج ${fieldCount} حقل من المستندات باستخدام ${(result as any).provider || 'LLaVA Vision'}`);
       } else {
         alert('⚠ لم يتم استخراج بيانات واضحة - يرجى المراجعة اليدوية');
       }

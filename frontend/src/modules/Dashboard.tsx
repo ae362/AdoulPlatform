@@ -20,16 +20,22 @@ const cards = [
 
 export function Dashboard() {
   const { t } = useTranslation();
+  const utils = trpc.useUtils();
   const { data: stats } = trpc.statistics.summary.useQuery();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ id: string; score: number; snippet: string }[]>([]);
-  const semanticSearch = trpc.ai.semanticSearch.useMutation();
+  const [isSearching, setIsSearching] = useState(false);
 
   const onSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const res = await semanticSearch.mutateAsync({ query });
-    setResults(res);
+    try {
+      setIsSearching(true);
+      const res = await utils.ai.semanticSearch.fetch({ query });
+      setResults(res as any);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -71,7 +77,7 @@ export function Dashboard() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button className="btn-primary md:w-40" type="submit" disabled={semanticSearch.isLoading}>
+          <button className="btn-primary md:w-40" type="submit" disabled={isSearching}>
             {t('search')}
           </button>
         </form>
