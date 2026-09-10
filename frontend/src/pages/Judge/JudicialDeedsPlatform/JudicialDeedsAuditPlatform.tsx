@@ -5,7 +5,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle2,
   AlertCircle, Paperclip, Shield, Archive, Lock, Pencil, Highlighter, Eraser, RotateCcw, RotateCw, Trash2, Loader2, Image as ImageIcon,
-  Columns
   Columns, Scale, ChevronRight
 } from 'lucide-react';
 import { saveAs } from 'file-saver';
