@@ -322,7 +322,7 @@ export function pickNormalizedDocument(
  * Deduplicate attachments list so redundant DOCX/PDF dual entries for the same deed
  * or primary deed files are merged / suppressed from appearing as duplicate cards in the sidebar.
  */
-export function deduplicateAttachments<T extends { fileName?: string; name?: string; url?: string; fileUrl?: string; category?: string; type?: string; isPrimary?: boolean }>(
+export function deduplicateAttachments<T extends { fileName?: string; name?: string; url?: string; fileUrl?: string; category?: string; rawCategory?: string; type?: string; isPrimary?: boolean }>(
   attachments: T[],
   primaryDoc?: { url?: string | null; streamUrl?: string | null; fileName?: string | null; name?: string | null; title?: string | null } | null
 ): T[] {
@@ -330,7 +330,8 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
   const primaryName = String(primaryDoc?.title || primaryDoc?.fileName || primaryDoc?.name || '').trim().toLowerCase().replace(/\.(pdf|docx?|dotx?)$/i, '');
 
   const isPrimaryDeedCategory = (cat: string) => {
-    const c = cat.toLowerCase();
+    const c = (cat || '').toLowerCase().trim();
+    if (!c) return false;
     return (
       c === 'judge_attachment' ||
       c === 'judge_attachment_docx' ||
@@ -339,8 +340,21 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
       c === 'audit_draft_pdf' ||
       c === 'audit_draft_docx' ||
       c === 'primary_attachment' ||
+      c === 'primary_docx' ||
+      c === 'document' ||
       c === 'manualrasmfile' ||
-      c === 'الرسم الأساسي المعتمد'
+      c === 'الرسم الأساسي المعتمد' ||
+      c === 'وثيقة موجهة للقاضي' ||
+      c === 'مسودة التوثيق' ||
+      c === 'مسودة الرسم' ||
+      c === 'مستند القاضي' ||
+      c === 'الرسم المرفوع' ||
+      c === 'المستند المعتمد' ||
+      c === 'المستند الأصلي' ||
+      c.includes('judge_attachment') ||
+      c.includes('audit_final') ||
+      c.includes('audit_draft') ||
+      c.includes('primary_docx')
     );
   };
 
@@ -353,13 +367,14 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
     const name = String(att.fileName || att.name || '').trim().toLowerCase();
     const baseName = name.replace(/\.(pdf|docx?|dotx?|png|jpe?g)$/i, '');
     const cat = String(att.category || '').toLowerCase();
+    const rawCat = String(att.rawCategory || '').toLowerCase();
 
     // If matches primary document by url, skip
     if (primaryUrl && url && (url === primaryUrl || url.split('?')[0] === primaryUrl.split('?')[0])) {
       continue;
     }
     // If categorized as primary deed attachment, skip (already represented by primary deed card)
-    if (isPrimaryDeedCategory(cat)) {
+    if (isPrimaryDeedCategory(cat) || isPrimaryDeedCategory(rawCat)) {
       continue;
     }
     // If filename matches primary deed name, skip duplicate

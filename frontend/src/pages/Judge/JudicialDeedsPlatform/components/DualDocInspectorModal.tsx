@@ -454,7 +454,7 @@ export const DualDocInspectorModal: React.FC<DualDocInspectorModalProps> = ({
                     </div>
 
                     {/* Quick pan helper badge */}
-                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 font-mono flex items-center gap-1.5 pointer-events-none">
+                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 font-amiri font-bold flex items-center gap-1.5 pointer-events-none">
                       <Move className="w-3 h-3 text-amber-400" />
                       <span>اسحب للتحريك | انقر للتكبير</span>
                     </div>

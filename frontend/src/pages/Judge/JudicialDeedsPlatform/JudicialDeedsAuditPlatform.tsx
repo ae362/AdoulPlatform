@@ -6,6 +6,7 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle2,
   AlertCircle, Paperclip, Shield, Archive, Lock, Pencil, Highlighter, Eraser, RotateCcw, RotateCw, Trash2, Loader2, Image as ImageIcon,
   Columns
+  Columns, Scale, ChevronRight
 } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { RasmHtmlPreview } from '../../../components/SmartDrafting/RasmHtmlPreview';
@@ -342,6 +343,23 @@ export default function JudicialDeedsAuditPlatform() {
       const url = String(att.fileUrl || '').trim();
       if (!url) return;
       if (seenUrls.has(url)) return;
+
+      const rawCat = String(att.category || '').trim().toLowerCase();
+      // Internal primary deed files (PDF & DOCX companion generation assets) are NEVER external attachments
+      if (
+        rawCat === 'judge_attachment' ||
+        rawCat === 'judge_attachment_docx' ||
+        rawCat === 'audit_final_pdf' ||
+        rawCat === 'audit_final_docx' ||
+        rawCat === 'audit_draft_pdf' ||
+        rawCat === 'audit_draft_docx' ||
+        rawCat === 'primary_docx' ||
+        rawCat === 'document' ||
+        rawCat === 'manualrasmfile'
+      ) {
+        return;
+      }
+
       seenUrls.add(url);
 
       const fType = detectFileType(att.fileName, url, att.mimeType || '');
@@ -350,6 +368,7 @@ export default function JudicialDeedsAuditPlatform() {
         name: att.fileName || `مرفق رقم ${idx + 1}`,
         url,
         type: fType,
+        rawCategory: att.category,
         category: formatCategoryLabel(att.category, (att.metadata as any)?.field),
         isPrimary: false,
         size: att.fileSize,
@@ -368,6 +387,22 @@ export default function JudicialDeedsAuditPlatform() {
       }
       if (!url) return;
       if (seenUrls.has(url)) return;
+
+      const rawCat = String(att.category || '').trim().toLowerCase();
+      if (
+        rawCat === 'judge_attachment' ||
+        rawCat === 'judge_attachment_docx' ||
+        rawCat === 'audit_final_pdf' ||
+        rawCat === 'audit_final_docx' ||
+        rawCat === 'audit_draft_pdf' ||
+        rawCat === 'audit_draft_docx' ||
+        rawCat === 'primary_docx' ||
+        rawCat === 'document' ||
+        rawCat === 'manualrasmfile'
+      ) {
+        return;
+      }
+
       seenUrls.add(url);
 
       const fType = detectFileType(name, url, mime);
@@ -376,6 +411,7 @@ export default function JudicialDeedsAuditPlatform() {
         name,
         url,
         type: fType,
+        rawCategory: att.category,
         category: formatCategoryLabel(att.category, att.field),
         isPrimary: false,
         size: att.size || att.fileSize,
@@ -393,6 +429,25 @@ export default function JudicialDeedsAuditPlatform() {
 
     singlePayloadCandidates.forEach(({ obj, label }, idx) => {
       if (!obj) return;
+      const rawCat = String(obj.category || label || '').trim().toLowerCase();
+      if (
+        rawCat === 'judge_attachment' ||
+        rawCat === 'judge_attachment_docx' ||
+        rawCat === 'audit_final_pdf' ||
+        rawCat === 'audit_final_docx' ||
+        rawCat === 'audit_draft_pdf' ||
+        rawCat === 'audit_draft_docx' ||
+        rawCat === 'primary_docx' ||
+        rawCat === 'document' ||
+        rawCat === 'manualrasmfile' ||
+        rawCat === 'مستند القاضي' ||
+        rawCat === 'المستند المعتمد' ||
+        rawCat === 'المستند الأصلي' ||
+        rawCat === 'الرسم المرفوع'
+      ) {
+        return;
+      }
+
       const name = String(obj.name || obj.fileName || obj.filename || label);
       const mime = String(obj.type || obj.mimeType || obj.mime_type || '');
       let url = String(obj.url || obj.fileUrl || obj.file_url || obj.publicUrl || '').trim();
@@ -410,6 +465,7 @@ export default function JudicialDeedsAuditPlatform() {
         name,
         url,
         type: fType,
+        rawCategory: obj.category || label,
         category: formatCategoryLabel(obj.category || label, obj.field),
         isPrimary: false,
         size: obj.size || obj.fileSize,
@@ -449,6 +505,7 @@ export default function JudicialDeedsAuditPlatform() {
             name,
             url,
             type: fType,
+            rawCategory: obj.category,
             category: formatCategoryLabel(obj.category, p),
             isPrimary: false,
             size: obj.size || obj.fileSize,
@@ -555,7 +612,10 @@ export default function JudicialDeedsAuditPlatform() {
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-2">
               <span className="text-xl font-bold font-maghribi tracking-wide text-[#E6BE8A]">المنظومة القضائية الرقمية</span>
-              <span className="text-[10px] text-white/50 border border-white/20 px-2 py-0.5 rounded font-mono">AUTHENTICATED REVIEWER</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#03442c] border border-[#E6BE8A]/30 rounded-md text-[#E6BE8A] text-xs font-amiri font-bold shadow-xs">
+                <Scale className="w-3.5 h-3.5 text-[#E6BE8A]" />
+                <span>قاضي التوثيق المكلف</span>
+              </div>
            </div>
            <div className="h-4 w-px bg-white/20"></div>
            <div className="flex items-center gap-2 text-xs font-amiri text-slate-300">
@@ -568,9 +628,9 @@ export default function JudicialDeedsAuditPlatform() {
         </div>
 
         <div className="flex items-center gap-3">
-           <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-emerald-500/30 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span className="text-[11px] font-mono text-emerald-400">SECURE JUDICIAL NODE - ACTIVE</span>
+           <div className="flex items-center gap-2 px-3 py-1 bg-[#012216] border border-emerald-500/40 rounded-lg text-emerald-300 text-xs font-amiri font-bold shadow-xs">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"></div>
+              <span>جلسة تدقيق قضائي معتمدة</span>
            </div>
 
            {/* Dual View Modal Trigger */}
@@ -585,11 +645,13 @@ export default function JudicialDeedsAuditPlatform() {
            </button>
 
            <button 
+             type="button"
              onClick={handleCompleteReview}
-             className="px-4 py-1.5 bg-[#03442c] hover:bg-[#04593a] text-[#E6BE8A] text-xs font-bold rounded-lg transition-all flex items-center gap-2 border border-[#E6BE8A]/40 shadow-xs cursor-pointer"
+             className="px-3.5 py-1.5 bg-[#03442c] hover:bg-[#04593a] text-[#E6BE8A] text-xs font-bold font-amiri rounded-lg transition-all flex items-center gap-1.5 border border-[#E6BE8A]/40 shadow-xs cursor-pointer"
+             title="العودة إلى سجل المحاضر والرسوم القضائية"
            >
-              <Download size={14} />
-              <span>تصدير ملف المراجعة الكامل (PDF)</span>
+              <ChevronRight size={15} />
+              <span>العودة لسجل الرسوم</span>
            </button>
         </div>
       </header>
@@ -869,7 +931,7 @@ export default function JudicialDeedsAuditPlatform() {
                            <div className="flex flex-col items-center justify-center h-[1123px] bg-slate-50">
                               <Loader2 className="w-12 h-12 text-[#023120] animate-spin mb-4" />
                               <h4 className="text-xl font-black font-amiri text-slate-800">جاري تحميل وتجهيز المستند الرقمي...</h4>
-                              <p className="text-xs font-bold text-slate-400 mt-2">Connecting to authenticated stream pipeline</p>
+                              <p className="text-xs font-bold font-amiri text-slate-400 mt-2">التحقق من التوقيع الرقمي وفك التشفير المعتمد</p>
                            </div>
                         ) : activeFileType === 'IMAGE' && (documentStream.blobUrl || activeStreamUrl) ? (
                            <div className="flex flex-col items-center justify-center p-8 bg-slate-900/5 min-h-[1123px] w-full">
@@ -895,6 +957,13 @@ export default function JudicialDeedsAuditPlatform() {
                               </div>
                            </div>
                         ) : activeFileType === 'PDF' && (documentStream.blobUrl || activeStreamUrl) ? (
+                        ) : activeFileType === 'DOCX' && (documentStream.blobUrl || activeStreamUrl) ? (
+                           <WordPreview
+                             key={`judge-word-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
+                             url={documentStream.blobUrl || activeStreamUrl || ''}
+                             submissionId={id}
+                           />
+                        ) : activeFileType === 'PDF' && (documentStream.blobUrl || (activeStreamUrl && !activeStreamUrl.toLowerCase().includes('.docx'))) ? (
                            <iframe
                              key={`judge-pdf-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
                              src={getJudgeLikePdfViewerUrl(documentStream.blobUrl || activeStreamUrl || '')}

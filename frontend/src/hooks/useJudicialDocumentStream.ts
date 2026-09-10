@@ -23,6 +23,8 @@ export function useJudicialDocumentStream(
 ): UseJudicialDocumentStreamResult {
   const { sessionToken } = useAuth();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [loadedType, setLoadedType] = useState<string | null>(null);
   const [rawContent, setRawContent] = useState<string | null>(initialRawContent || null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
@@ -67,6 +69,8 @@ export function useJudicialDocumentStream(
           : (rawInput.length > 0 ? rawInput : null);
 
       setBlobUrl(null);
+      setLoadedUrl(rawInput);
+      setLoadedType(normalizedType);
       setRawContent(resolvedContent);
       setIsLoading(false);
       setError(null);
@@ -78,6 +82,8 @@ export function useJudicialDocumentStream(
     if (!rawInput) {
       cleanupActiveBlobUrl();
       setBlobUrl(null);
+      setLoadedUrl(null);
+      setLoadedType(null);
       setRawContent(initialRawContent || null);
       setIsLoading(false);
       setError(null);
@@ -90,6 +96,8 @@ export function useJudicialDocumentStream(
     const executeDocumentStream = async () => {
       cleanupActiveBlobUrl();
       setBlobUrl(null);
+      setLoadedUrl(null);
+      setLoadedType(null);
       setIsLoading(true);
       setError(null);
 
@@ -128,6 +136,8 @@ export function useJudicialDocumentStream(
           if (!isCancelled) {
             cleanupActiveBlobUrl();
             setBlobUrl(null);
+            setLoadedUrl(rawInput);
+            setLoadedType(normalizedType);
             setRawContent(text);
             setIsLoading(false);
             logViewerEvent('DOC_FETCH_SUCCESS', { fileType, submissionId });
@@ -145,6 +155,8 @@ export function useJudicialDocumentStream(
         activeBlobUrlRef.current = newBlobUrl;
 
         setBlobUrl(newBlobUrl);
+        setLoadedUrl(rawInput);
+        setLoadedType(normalizedType);
         setRawContent(null);
         setIsLoading(false);
         logViewerEvent('DOC_FETCH_SUCCESS', { fileType, submissionId });
@@ -163,6 +175,8 @@ export function useJudicialDocumentStream(
         if (!isCancelled) {
           cleanupActiveBlobUrl();
           setBlobUrl(null);
+          setLoadedUrl(null);
+          setLoadedType(null);
           setRawContent(null);
           setError(normalizedError);
           setIsLoading(false);
@@ -179,10 +193,22 @@ export function useJudicialDocumentStream(
     };
   }, [attachmentUrl, fileType, submissionId, sessionToken, fetchTrigger, initialRawContent, cleanupActiveBlobUrl]);
 
+  const rawInput = (attachmentUrl || '').trim();
+  const normalizedType = (fileType || '').toLowerCase();
+  const isInlineHtml =
+    (initialRawContent && initialRawContent.trim().length > 0) ||
+    rawInput.startsWith('<') ||
+    rawInput.startsWith('html://') ||
+    rawInput.startsWith('draft://') ||
+    (normalizedType.includes('html') && !rawInput.startsWith('http://') && !rawInput.startsWith('https://') && !rawInput.startsWith('/'));
+
+  const isMatch = loadedUrl === rawInput && loadedType === normalizedType;
+  const isCurrentlyLoading = isLoading || (Boolean(rawInput) && !isInlineHtml && !isMatch);
+
   return {
-    blobUrl,
-    rawContent,
-    isLoading,
+    blobUrl: isMatch ? blobUrl : null,
+    rawContent: (isMatch || isInlineHtml) ? rawContent : null,
+    isLoading: isCurrentlyLoading,
     error,
     refetch,
   };
