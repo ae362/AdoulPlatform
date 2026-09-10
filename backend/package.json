@@ -16,6 +16,7 @@
     "diagnose:users": "node scripts/diagnose-users.js",
     "diagnose:login": "node scripts/diagnose-login.js",
     "diagnose:all": "node scripts/diagnose-all.js",
+    "test:cache": "node scripts/test-cache.js",
     "migrate:supabase": "node scripts/migrate-supabase.js",
     "fix:rls": "node scripts/fix-rls-permissions.js",
     "create-test-user": "node scripts/create-test-user.js",
@@ -39,6 +40,7 @@
     "dotenv": "^17.2.3",
     "fastify": "^4.28.1",
     "html-pdf-node": "^1.0.8",
+    "ioredis": "^6.0.0",
     "nodemailer": "^6.10.1",
     "ollama": "^0.6.3",
     "openai": "^6.9.1",
@@ -54,6 +56,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/ioredis": "^4.28.10",
     "@types/node": "^22.5.4",
     "@types/nodemailer": "^6.4.21",
     "@types/pg": "^8.16.0",

@@ -8,6 +8,7 @@ import { appRouter } from './router';
 import { registerRemoteHearingWebsocket } from './ws/remoteHearingSignaling';
 import { registerStuReleaseRoute } from './routes/stuRelease';
 import { registerOnlyOfficeRoutes } from './routes/onlyoffice';
+import { CacheService } from './services/cacheService';
 
 // Best-effort OnlyOffice service auto-check on startup
 try {
@@ -40,9 +41,19 @@ fastify.register(cors, {
   credentials: true,
 });
 
-// Health check route to verify backend is up on this port
+// Health check route to verify backend is up on this port and report cache engine status
 fastify.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString(), port: process.env.PORT || 4000 };
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 4000,
+    cache: CacheService.getStatus(),
+  };
+});
+
+// Initialize enterprise cache provider (Redis with seamless In-Memory fallback)
+CacheService.init().catch((err) => {
+  fastify.log.warn({ err }, 'CacheService background initialization warning');
 });
 
 // Local hardware bridge: best-effort forced release of STU sessions on unload.

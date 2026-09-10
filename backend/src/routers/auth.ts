@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { publicProcedure, router } from './trpc';
 import { supabase } from '../services/supabase';
 import { PasswordService } from '../services/password';
+import { CacheService } from '../services/cacheService';
 import { TRPCError } from '@trpc/server';
 
 // User role enum
@@ -339,6 +340,21 @@ export const authRouter = router({
           notaryProfile = profile;
         }
 
+        const sessionPayload = {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            full_name: user.full_name,
+            is_active: user.is_active,
+          },
+          notaryProfile,
+          expires_at: expiresAt.toISOString(),
+        };
+
+        // Cache session immediately for instant subsequent lookups
+        CacheService.cacheSession(sessionToken, sessionPayload, expiryDays * 86400).catch(() => {});
+
         return {
           success: true,
           sessionToken,
@@ -378,6 +394,9 @@ export const authRouter = router({
         .delete()
         .eq('session_token', sessionToken);
 
+      // Invalidate cached session
+      CacheService.invalidateSession(sessionToken).catch(() => {});
+
       // Log logout
       if (session) {
         await supabase.from('auth_audit_log').insert({
@@ -398,6 +417,26 @@ export const authRouter = router({
     .query(async ({ input }) => {
       const { sessionToken } = input;
 
+      // 1. Fast Path: High-speed Cache Lookup (< 1ms)
+      try {
+        const cached = await CacheService.getCachedSession(sessionToken);
+        if (cached && cached.user) {
+          // If cached session has an expiration timestamp, verify validity
+          if (!cached.expires_at || new Date(cached.expires_at) >= new Date()) {
+            return {
+              user: cached.user,
+              notaryProfile: cached.notaryProfile ?? null,
+            };
+          } else {
+            // Expired in cache, invalidate
+            await CacheService.invalidateSession(sessionToken).catch(() => {});
+          }
+        }
+      } catch {
+        // Fall through to database query
+      }
+
+      // 2. Slow Path: Remote Supabase DB Query
       // Find session
       const { data: session, error: sessionError } = await supabase
         .from('user_sessions')
@@ -418,6 +457,8 @@ export const authRouter = router({
           .from('user_sessions')
           .delete()
           .eq('session_token', sessionToken);
+
+        CacheService.invalidateSession(sessionToken).catch(() => {});
 
         throw new TRPCError({
           code: 'UNAUTHORIZED',
@@ -449,6 +490,17 @@ export const authRouter = router({
           .single();
         notaryProfile = profile;
       }
+
+      // 3. Populate Cache for subsequent requests (15-min sliding window)
+      CacheService.cacheSession(
+        sessionToken,
+        {
+          user,
+          notaryProfile,
+          expires_at: session.expires_at,
+        },
+        900
+      ).catch(() => {});
 
       return {
         user,
@@ -494,6 +546,9 @@ export const authRouter = router({
           message: 'فشل في تمديد الجلسة',
         });
       }
+
+      // Invalidate cache so next read updates to new expiry
+      CacheService.invalidateSession(sessionToken).catch(() => {});
 
       return {
         success: true,
