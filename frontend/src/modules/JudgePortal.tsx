@@ -651,21 +651,21 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-100 text-slate-900 overflow-hidden" dir="rtl">
       {/* Sidebar */}
-      <aside className="w-80 bg-gradient-to-b from-[#023120] via-[#023120] to-[#011a11] text-white shadow-xl z-20 border-l-4 border-[#E6BE8A] flex flex-col h-full flex-shrink-0 transition-all duration-300 relative overflow-hidden font-kufi">
-        <div className="p-6 bg-black/20 border-b border-[#E6BE8A]/30 relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#E6BE8A] to-[#c5a065] rounded-2xl flex items-center justify-center text-[#023120] font-bold shadow-lg transform rotate-3">
+      <aside className="w-72 bg-gradient-to-b from-[#023120] via-[#023120] to-[#011a11] text-white shadow-xl z-20 border-l-4 border-[#E6BE8A] flex flex-col h-full flex-shrink-0 transition-all duration-300 relative overflow-hidden font-kufi">
+        <div className="p-4 bg-black/20 border-b border-[#E6BE8A]/30 relative z-10">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#E6BE8A] to-[#c5a065] rounded-xl flex items-center justify-center text-[#023120] font-bold text-xl shadow-lg transform rotate-3">
               ⚖️
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white leading-tight font-maghribi">بوابة قاضي التوثيق</h1>
-              <p className="text-[10px] text-[#E6BE8A] opacity-90 font-medium">المملكة المغربية</p>
+              <h1 className="text-base font-bold text-white leading-tight font-maghribi">بوابة قاضي التوثيق</h1>
+              <p className="text-[9px] text-[#E6BE8A] opacity-90 font-medium">المملكة المغربية</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-2 overflow-y-auto py-8 px-4 custom-scrollbar relative z-10">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto py-4 px-2.5 custom-scrollbar relative z-10">
           {JUDGE_NAV.map((item) => {
              const hasSubItems = item.subItems && item.subItems.length > 0;
              const isExpanded = expandedMenus[item.path];
@@ -676,72 +676,72 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
                  {hasSubItems ? (
                    <button
                      onClick={() => toggleMenu(item.path)}
-                     className={`w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-right text-sm font-bold transition-all duration-300 group relative overflow-hidden ${
+                     className={`w-full flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-right text-xs font-bold transition-all duration-300 group relative overflow-hidden ${
                        isActive
-                         ? 'bg-gradient-to-r from-[#E6BE8A] to-[#d4af37] text-[#023120] shadow-lg shadow-amber-900/40'
+                         ? 'bg-gradient-to-r from-[#E6BE8A] to-[#d4af37] text-[#023120] shadow-md shadow-amber-900/30'
                          : 'text-emerald-50 hover:text-white hover:bg-white/10'
                      }`}
                    >
-                     <span className={`text-xl transition-all duration-300 ${isActive ? 'scale-125' : 'group-hover:scale-125'}`}>{item.icon}</span>
-                     <span className="flex w-full items-center justify-between gap-3">
-                       <span className="relative z-10">{item.label}</span>
-                       <span className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                     <span className={`text-lg transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>{item.icon}</span>
+                     <span className="flex w-full items-center justify-between gap-2 min-w-0">
+                       <span className="relative z-10 truncate">{item.label}</span>
+                       <span className={`transition-transform duration-300 text-[10px] ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                      </span>
                    </button>
                  ) : (
                    <Link
                      to={item.path}
-                     className={`flex items-center gap-4 rounded-2xl px-5 py-4 text-right text-sm font-bold transition-all duration-300 group relative overflow-hidden ${
+                     className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-right text-xs font-bold transition-all duration-300 group relative overflow-hidden ${
                        isActive
-                         ? 'bg-gradient-to-r from-[#E6BE8A] to-[#d4af37] text-[#023120] shadow-lg shadow-amber-900/40 transform translate-x-[-4px]'
+                         ? 'bg-gradient-to-r from-[#E6BE8A] to-[#d4af37] text-[#023120] shadow-md shadow-amber-900/30 transform translate-x-[-2px]'
                          : 'text-emerald-50 hover:text-white hover:bg-white/10'
                      }`}
                    >
-                     <span className={`text-xl transition-all duration-300 ${isActive ? 'scale-125' : 'group-hover:scale-125'}`}>{item.icon}</span>
-                     <span className="flex w-full items-center justify-between gap-3">
-                       <span className="relative z-10">{item.label}</span>
+                     <span className={`text-lg transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>{item.icon}</span>
+                     <span className="flex w-full items-center justify-between gap-2 min-w-0">
+                       <span className="relative z-10 truncate">{item.label}</span>
                        {item.path === '/judge/messages' && unreadTotal > 0 ? (
-                         <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-black text-white shadow-sm ring-2 ring-white/20">
+                         <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm ring-1 ring-white/20">
                            {unreadTotal}
                          </span>
                        ) : null}
                        {item.path === '/judge/notifications' && (judgeRequestsTotal + judgePermissionsTotal + judgeAdlCopyPermissionsTotal) > 0 ? (
-                         <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-black text-white animate-pulse shadow-sm ring-2 ring-white/20">
+                         <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white animate-pulse shadow-sm ring-1 ring-white/20">
                            {judgeRequestsTotal + judgePermissionsTotal + judgeAdlCopyPermissionsTotal}
                          </span>
                        ) : null}
                      </span>
                      
                      {!isActive && (
-                       <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/0 to-white/0 group-hover:from-white/5 group-hover:to-white/10 rounded-2xl transition-all"></div>
+                       <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/0 to-white/0 group-hover:from-white/5 group-hover:to-white/10 rounded-xl transition-all"></div>
                      )}
                    </Link>
                  )}
 
                  {/* Render Sub Items */}
                  {hasSubItems && isExpanded && (
-                   <div className="mr-6 space-y-1 animate-fadeIn">
+                   <div className="mr-5 space-y-1 animate-fadeIn">
                      {item.subItems?.map((sub) => {
                        const isSubActive = location.pathname === sub.path;
                        return (
                          <Link
                            key={sub.path}
                            to={sub.path}
-                           className={`flex items-center gap-3 rounded-xl px-4 py-3 text-right text-xs font-bold transition-all duration-200 ${
+                           className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-right text-xs font-bold transition-all duration-200 ${
                              isSubActive
                                ? 'bg-white/20 text-white shadow-inner'
                                : 'text-emerald-100/60 hover:text-white hover:bg-white/5'
                            }`}
                          >
                            <span>{sub.icon}</span>
-                           <span>{sub.label}</span>
+                           <span className="truncate">{sub.label}</span>
                            {sub.path === '/judge/marriage-permissions' && judgePermissionsTotal > 0 && (
-                             <span className="mr-auto rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black text-white">
+                             <span className="mr-auto rounded-full bg-blue-500 px-1.5 py-0.5 text-[8px] font-black text-white">
                                {judgePermissionsTotal}
                              </span>
                            )}
                            {sub.path === '/judge/adl-copy-permissions' && judgeAdlCopyPermissionsTotal > 0 && (
-                             <span className="mr-auto rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black text-white">
+                             <span className="mr-auto rounded-full bg-blue-500 px-1.5 py-0.5 text-[8px] font-black text-white">
                                {judgeAdlCopyPermissionsTotal}
                              </span>
                            )}
@@ -756,9 +756,9 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
         </nav>
         
         {/* User Profile & Logout */}
-        <div className="p-4 bg-black/10 border-t border-[#E6BE8A]/20 mt-auto relative z-10">
-           <div className="flex items-center gap-3 mb-4 px-2">
-             <div className="w-10 h-10 rounded-full border border-[#E6BE8A]/30 overflow-hidden bg-gradient-to-br from-[#E6BE8A] to-[#c5a065] flex items-center justify-center text-sm font-bold text-[#023120] shadow-inner">
+        <div className="p-3 bg-black/10 border-t border-[#E6BE8A]/20 mt-auto relative z-10">
+           <div className="flex items-center gap-2.5 mb-2 px-1">
+             <div className="w-8 h-8 rounded-full border border-[#E6BE8A]/30 overflow-hidden bg-gradient-to-br from-[#E6BE8A] to-[#c5a065] flex items-center justify-center text-xs font-bold text-[#023120] shadow-inner">
                {currentProfilePhoto ? (
                   <img src={currentProfilePhoto} alt="Judge" className="h-full w-full object-cover" />
                ) : (
@@ -766,8 +766,8 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
                )}
              </div>
              <div className="flex-1 overflow-hidden">
-               <p className="text-sm font-bold text-white truncate">{user?.full_name || 'قاضي التوثيق'}</p>
-               <p className="text-xs text-[#E6BE8A] truncate opacity-80">{currentCourtName}</p>
+               <p className="text-xs font-bold text-white truncate">{user?.full_name || 'قاضي التوثيق'}</p>
+               <p className="text-[10px] text-[#E6BE8A] truncate opacity-80">{currentCourtName}</p>
              </div>
            </div>
            
@@ -776,7 +776,7 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
                 await logout();
                 navigate('/login');
             }}
-            className="w-full flex items-center justify-center gap-2 bg-[#E6BE8A] hover:bg-[#d4af37] text-[#023120] py-3 rounded-xl text-sm font-black shadow-lg transition-all hover:shadow-amber-900/50 active:scale-95"
+            className="w-full flex items-center justify-center gap-1.5 bg-[#E6BE8A] hover:bg-[#d4af37] text-[#023120] py-2 rounded-lg text-xs font-black shadow-md transition-all hover:shadow-amber-900/50 active:scale-95"
            >
              <span>🚪</span> تسجيل الخروج
            </button>
@@ -792,20 +792,20 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
           {/* Subtle light pattern overlay */}
           <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/pinstripe.png')] pointer-events-none"></div>
           
-          <div className="flex items-center justify-between px-8 py-6 relative z-10">
-            <div className="flex items-center gap-6">
-              <div className="p-1.5 bg-white/80 rounded-2xl shadow-sm border border-white backdrop-blur-sm">
+          <div className="flex items-center justify-between px-6 py-2.5 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="p-1 bg-white/80 rounded-xl shadow-sm border border-white backdrop-blur-sm">
                 <img
                   src="/logos/morocco-coat.jpg"
                   alt="شعار المملكة المغربية"
-                  className="h-16 w-auto object-contain drop-shadow-sm"
+                  className="h-11 sm:h-12 w-auto object-contain drop-shadow-sm"
                 />
               </div>
               <div className="text-right leading-tight font-maghribi select-none">
-                <div className="text-2xl font-[800] text-slate-800 tracking-tight font-maghribi">
+                <div className="text-lg sm:text-xl font-[800] text-slate-800 tracking-tight font-maghribi">
                   <span>المملكة المغربية</span>
                 </div>
-                <div className="text-2xl font-[800] text-slate-600 font-maghribi">
+                <div className="text-lg sm:text-xl font-[800] text-slate-600 font-maghribi">
                   <span>المجلس الأعلى للسلطة القضائية</span>
                 </div>
               </div>
@@ -815,8 +815,8 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
               <div className="pointer-events-auto">
                   <div className="relative group">
-                    <div className="absolute -inset-1.5 bg-gradient-to-tr from-[#E6BE8A] via-amber-400 to-[#E6BE8A] rounded-full blur-md opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
-                    <div className="relative h-24 w-24 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-white/50 backdrop-blur-md transition-transform duration-500 group-hover:scale-105">
+                    <div className="absolute -inset-1 bg-gradient-to-tr from-[#E6BE8A] via-amber-400 to-[#E6BE8A] rounded-full blur-md opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
+                    <div className="relative h-14 w-14 rounded-full border-2 border-white shadow-xl overflow-hidden bg-white/50 backdrop-blur-md transition-transform duration-500 group-hover:scale-105">
                         {currentProfilePhoto ? (
                           <img 
                             src={currentProfilePhoto} 
@@ -824,26 +824,26 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
                             className="w-full h-full object-cover" 
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-100 text-3xl">⚖️</div>
+                          <div className="w-full h-full flex items-center justify-center bg-slate-100 text-xl">⚖️</div>
                         )}
                         {/* Active Status Badge */}
-                        <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                        <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
                     </div>
                   </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2.5">
                 {/* Messages */}
                 <button
                   onClick={() => navigate('/judge/messages')}
-                  className="relative p-2.5 bg-white/80 rounded-2xl shadow-sm border border-white hover:bg-white transition-all group backdrop-blur-sm"
+                  className="relative p-2 bg-white/80 rounded-xl shadow-sm border border-white hover:bg-white transition-all group backdrop-blur-sm"
                   title="الرسائل القضائية"
                 >
-                  <span className="text-xl group-hover:scale-110 transition-transform">📬</span>
+                  <span className="text-lg group-hover:scale-110 transition-transform">📬</span>
                   {unreadTotal > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 border-2 border-white text-[10px] font-black text-white animate-pulse">
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 border border-white text-[9px] font-black text-white animate-pulse">
                       {unreadTotal}
                     </span>
                   )}
@@ -852,65 +852,65 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
                 {/* Notifications (Bell) */}
                 <button
                   onClick={() => navigate('/judge/notifications')}
-                  className="relative p-2.5 bg-white/80 rounded-2xl shadow-sm border border-white hover:bg-white transition-all group backdrop-blur-sm"
+                  className="relative p-2 bg-white/80 rounded-xl shadow-sm border border-white hover:bg-white transition-all group backdrop-blur-sm"
                   title="إشعارات الأذونات والطلبات"
                 >
-                  <span className="text-xl group-hover:scale-110 transition-transform">🔔</span>
+                  <span className="text-lg group-hover:scale-110 transition-transform">🔔</span>
                   {(judgeRequestsTotal + judgePermissionsTotal + judgeAdlCopyPermissionsTotal) > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 border-2 border-white text-[10px] font-black text-white animate-pulse">
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 border border-white text-[9px] font-black text-white animate-pulse">
                       {judgeRequestsTotal + judgePermissionsTotal + judgeAdlCopyPermissionsTotal}
                     </span>
                   )}
                 </button>
               </div>
 
-              <div className="flex flex-col items-end gap-2 pr-6 border-r border-slate-300/50">
-                <div className="bg-white/90 px-5 py-2 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm">
+              <div className="flex flex-col items-end gap-1 pr-4 border-r border-slate-300/50">
+                <div className="bg-white/90 px-3.5 py-1 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm text-xs">
                    <div className="text-slate-700 font-bold">
                      <DateWidget />
                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                     <span>اللغة الاختيارية</span>
                   </span>
-                  <div className="scale-90 origin-right">
+                  <div className="scale-75 origin-right">
                     <LanguageSwitcher />
                   </div>
                 </div>
               </div>
               
-              <div className="p-2.5 bg-white/80 rounded-3xl shadow-sm border border-white group backdrop-blur-sm">
+              <div className="p-1.5 bg-white/80 rounded-2xl shadow-sm border border-white group backdrop-blur-sm">
                 <img
                   src="/logos/adoul-logo.jpg"
                   alt="شعار الهيئة الوطنية للعدول"
-                  className="h-20 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="h-12 sm:h-14 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
             </div>
           </div>
 
           {/* Banner with Scroll/Maroon Theme */}
-          <div className="flex h-32 items-center justify-center relative px-12 -mt-10 mb-2 no-print select-none">
+          <div className="flex h-20 items-center justify-center relative px-8 -mt-5 mb-1 no-print select-none">
             <OrnateScrollBanner className="group" theme="green">
-               <span className="text-center text-4xl font-black font-maghribi tracking-normal drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] px-24 group-hover:scale-[1.01] transition-transform duration-700">
+               <span className="text-center text-xl sm:text-2xl font-black font-maghribi tracking-normal drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] px-10 group-hover:scale-[1.01] transition-transform duration-700">
                   <span className="text-white drop-shadow-[0_0_20px_rgba(230,190,138,0.4)]">
                     منصة القاضي الرقمية للتوثيق العدلي
                   </span>
                </span>
-               <div className="absolute left-10 hidden 2xl:flex items-center gap-2 bg-black/40 px-5 py-2 rounded-xl border border-amber-400/20 backdrop-blur-md shadow-2xl translate-x-12 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse ring-4 ring-green-500/20"></span>
-                  <span className="text-xs font-black uppercase text-[#E6BE8A] tracking-widest text-nowrap">
+               <div className="absolute left-8 hidden 2xl:flex items-center gap-2 bg-black/40 px-4 py-1.5 rounded-lg border border-amber-400/20 backdrop-blur-md shadow-xl translate-x-6 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ring-2 ring-green-500/20"></span>
+                  <span className="text-[11px] font-black uppercase text-[#E6BE8A] tracking-wider text-nowrap">
                     النظام القضائي الأمني
                   </span>
                </div>
             </OrnateScrollBanner>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#023120] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#023120] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"></div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className={`flex-1 overflow-y-auto ${location.pathname.includes('/judge/judicial-speech') || location.pathname.includes('/judge/deeds/') ? 'p-0' : 'p-4 lg:p-5'}`}>
              {children}
         </div>
       </main>

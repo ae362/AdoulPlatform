@@ -50,6 +50,18 @@ body {
   font-family: 'DroidArabicKufi', 'Roboto', 'Noto Sans Arabic', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+@media screen and (min-width: 1024px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media screen and (min-width: 1536px) {
+  html {
+    font-size: 14.5px;
+  }
+}
+
 @layer components {
   .input {
     @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-red-900 focus:outline-none;

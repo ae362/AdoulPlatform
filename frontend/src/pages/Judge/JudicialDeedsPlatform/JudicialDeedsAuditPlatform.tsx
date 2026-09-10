@@ -549,7 +549,7 @@ export default function JudicialDeedsAuditPlatform() {
   };
 
   return (
-    <div dir="rtl" className="h-screen w-screen flex flex-col bg-slate-900 overflow-hidden font-cairo select-none">
+    <div dir="rtl" className="h-full w-full min-h-0 min-w-0 flex-1 flex flex-col bg-slate-900 overflow-hidden font-cairo select-none">
       {/* 1. TOP SECURE SYSTEM BAR */}
       <header className="h-16 bg-[#023120] text-white px-6 flex items-center justify-between border-b border-[#E6BE8A]/30 z-30 shrink-0 shadow-md">
         <div className="flex items-center gap-4">

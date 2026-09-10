@@ -1941,22 +1941,22 @@ export const JudicialSpeechModule: React.FC = () => {
 
     if (!selectedDeedId) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8 space-y-8 font-['Cairo',_sans-serif]" dir="rtl">
+            <div className="min-h-full bg-slate-50 p-4 lg:p-6 space-y-4 font-['Cairo',_sans-serif]" dir="rtl">
                 {/* Header */}
-                <header className="relative overflow-hidden bg-gradient-to-r from-[#002366] to-[#4B0082] rounded-[2.5rem] p-12 text-white shadow-2xl">
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                        <div className="flex items-center gap-6">
-                            <div className="p-5 bg-white/15 rounded-3xl backdrop-blur-xl border border-white/20">
-                                <Scale className="w-12 h-12 text-white" />
+                <header className="relative overflow-hidden bg-gradient-to-r from-[#002366] to-[#4B0082] rounded-2xl p-6 text-white shadow-xl">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/15 rounded-2xl backdrop-blur-xl border border-white/20">
+                                <Scale className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-4xl font-black tracking-tight">رواق الخطاب القضائي</h1>
-                                <p className="text-blue-100 text-lg mt-2 opacity-90 font-medium">المنصة السيادية لاعتماد المخطوبات والتوثيق الرقمي النهائي</p>
+                                <h1 className="text-2xl font-black tracking-tight">رواق الخطاب القضائي</h1>
+                                <p className="text-blue-100 text-sm mt-1 opacity-90 font-medium">المنصة السيادية لاعتماد المخطوبات والتوثيق الرقمي النهائي</p>
                             </div>
                         </div>
-                        <div className="bg-white/10 px-6 py-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                            <div className="text-xs font-bold text-blue-200 uppercase tracking-widest mb-1">حالة السجل الوطني</div>
-                            <div className="text-2xl font-mono font-bold tracking-tighter">78% CAPACITY</div>
+                        <div className="bg-white/10 px-4 py-2.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                            <div className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mb-0.5">حالة السجل الوطني</div>
+                            <div className="text-xl font-mono font-bold tracking-tighter">78% CAPACITY</div>
                         </div>
                     </div>
                 </header>
@@ -2130,78 +2130,78 @@ export const JudicialSpeechModule: React.FC = () => {
 
     if (isDeedLoading) {
         return (
-            <div className="h-screen bg-slate-50 flex flex-col items-center justify-center font-['Cairo',_sans-serif]" dir="rtl">
-                 <div className="w-16 h-16 border-4 border-[#1f3c88]/20 border-t-[#1f3c88] rounded-full animate-spin mb-4"></div>
-                 <p className="text-slate-500 font-black">جاري سحب المحفوظات والتحقق من التوقيعات الرقمية...</p>
-                 <span className="text-xs text-slate-400 mt-2 font-mono uppercase tracking-widest">Accessing Sovereign Vault Case #{selectedDeedId.substring(0,8)}</span>
+            <div className="h-full min-h-[350px] bg-slate-50 flex flex-col items-center justify-center font-['Cairo',_sans-serif]" dir="rtl">
+                 <div className="w-12 h-12 border-4 border-[#1f3c88]/20 border-t-[#1f3c88] rounded-full animate-spin mb-3"></div>
+                 <p className="text-slate-500 font-bold text-sm">جاري سحب المحفوظات والتحقق من التوقيعات الرقمية...</p>
+                 <span className="text-[10px] text-slate-400 mt-1 font-mono uppercase tracking-widest">Accessing Sovereign Vault Case #{selectedDeedId.substring(0,8)}</span>
             </div>
         );
     }
 
     return (
         <>
-        <div className="h-screen bg-[#F8FAFC] flex flex-col font-['Cairo',_sans-serif]" dir="rtl">
+        <div className="h-full min-h-0 flex-1 bg-[#F8FAFC] flex flex-col font-['Cairo',_sans-serif] overflow-hidden" dir="rtl">
             {/* Sovereign 3-Panel Workspace Header */}
-            <div className="h-20 bg-gradient-to-l from-[#1f3c88] to-[#4B0082] shadow-xl flex items-center justify-between px-8 text-white z-50">
-                <div className="flex items-center gap-6">
+            <div className="h-14 bg-gradient-to-l from-[#1f3c88] to-[#4B0082] shadow-md flex items-center justify-between px-5 text-white z-50 shrink-0">
+                <div className="flex items-center gap-4">
                     <button 
                         onClick={() => setSelectedDeedId(null)}
-                        className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
                     >
-                        <ChevronRight className="w-6 h-6" />
+                        <ChevronRight className="w-5 h-5" />
                     </button>
                     <div>
-                        <div className="flex items-center gap-3">
-                            <Scale className="w-5 h-5 text-blue-300" />
-                            <h2 className="text-xl font-black">رواق الخطاب القضائي</h2>
-                            <span className="bg-[#6A1B9A] border border-white/20 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">PHASE 2: JUDICIAL VALIDATION</span>
+                        <div className="flex items-center gap-2">
+                            <Scale className="w-4 h-4 text-blue-300" />
+                            <h2 className="text-base font-black">رواق الخطاب القضائي</h2>
+                            <span className="bg-[#6A1B9A] border border-white/20 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">PHASE 2: JUDICIAL VALIDATION</span>
                         </div>
-                        <p className="text-blue-100/60 text-xs font-bold leading-none mt-1 uppercase tracking-tighter">
+                        <p className="text-blue-100/60 text-[10px] font-bold leading-none mt-0.5 uppercase tracking-tighter">
                             National Registry ID: {selectedDeed.id} | Status: {selectedDeed.status}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="hidden md:flex flex-col items-end mr-4">
-                        <div className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Hash Status</div>
-                        <div className="text-xs font-mono text-emerald-400">{selectedDeed.notaryHash || 'PENDING'}</div>
+                <div className="flex items-center gap-4">
+                    <div className="hidden md:flex flex-col items-end mr-2">
+                        <div className="text-[9px] text-blue-200 font-bold uppercase tracking-widest">Hash Status</div>
+                        <div className="text-[11px] font-mono text-emerald-400">{selectedDeed.notaryHash || 'PENDING'}</div>
                     </div>
-                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/5">
-                        <Lock className="w-4 h-4 text-orange-400" />
-                        <span className="text-[11px] font-bold uppercase tracking-tighter">Secure Link AES-256</span>
+                    <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md border border-white/5">
+                        <Lock className="w-3.5 h-3.5 text-orange-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">Secure Link AES-256</span>
                     </div>
-                    <div className="h-8 w-[1px] bg-white/20"></div>
+                    <div className="h-6 w-[1px] bg-white/20"></div>
                     <div className="flex flex-col items-end">
-                        <div className="text-[9px] text-blue-200 font-bold uppercase tabular-nums">{hijriDate} | 15 FEB 2026</div>
-                        <div className="text-sm font-black text-white">{user?.full_name || 'ذ. محمد المسير'} (قاضي التوثيق)</div>
+                        <div className="text-[8px] text-blue-200 font-bold uppercase tabular-nums">{hijriDate} | 15 FEB 2026</div>
+                        <div className="text-xs font-black text-white">{user?.full_name || 'ذ. محمد المسير'} (قاضي التوثيق)</div>
                     </div>
                 </div>
             </div>
 
             {/* Main 2-Column Master Workspace */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden min-h-0">
                 
                 {/* 1️⃣ RIGHT SIDEBAR: Controls, Verification & Actions (30% width) */}
-                <div className="w-[30%] min-w-[380px] max-w-[460px] h-full border-l border-slate-200 bg-white flex flex-col shadow-lg z-20 overflow-hidden">
+                <div className="w-[30%] min-w-[320px] max-w-[400px] h-full border-l border-slate-200 bg-white flex flex-col shadow-lg z-20 overflow-hidden shrink-0">
                     {/* Header */}
-                    <div className="p-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="p-2 bg-[#1f3c88] rounded-xl text-blue-300">
-                                <Scale className="w-4 h-4" />
+                    <div className="p-3 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-[#1f3c88] rounded-lg text-blue-300">
+                                <Scale className="w-3.5 h-3.5" />
                             </div>
                             <div>
-                                <h3 className="font-black text-sm text-white">لوحة الاعتماد القضائي</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Judicial Endorsement Board</p>
+                                <h3 className="font-black text-xs text-white">لوحة الاعتماد القضائي</h3>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Judicial Endorsement Board</p>
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800/40">
+                        <span className="text-[9px] font-black text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/40">
                             مباشر ومحمي
                         </span>
                     </div>
 
                     {/* Scrollable Body */}
-                    <div className="flex-1 p-5 space-y-5 overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
+                    <div className="flex-1 p-3.5 space-y-3.5 overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
                         
                         {/* [1] Judicial Status Bar */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
@@ -2588,12 +2588,12 @@ export const JudicialSpeechModule: React.FC = () => {
                     </div>
 
                     {/* [5] Primary Action Button Section */}
-                    <div className="p-4 bg-white border-t border-slate-200 shadow-lg space-y-2.5">
+                    <div className="p-3 bg-white border-t border-slate-200 shadow-lg space-y-2 shrink-0">
                         {!hasValidInclusion && selectedDeed.status === 'READY' && (
-                            <div className="bg-amber-50 border border-amber-300/90 rounded-2xl p-3 text-right space-y-2 shadow-sm">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-xs font-bold text-amber-950 leading-relaxed">
+                            <div className="bg-amber-50 border border-amber-300/90 rounded-xl p-2 text-right space-y-1.5 shadow-sm">
+                                <div className="flex items-start gap-1.5">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="text-[11px] font-bold text-amber-950 leading-snug">
                                         يجب تحديد سجل التضمين وتوليد مراجع الرسم لتحديد وجهة الوثيقة قبل اعتماد الخطاب والتوقيع النهائي.
                                     </div>
                                 </div>
@@ -2603,7 +2603,7 @@ export const JudicialSpeechModule: React.FC = () => {
                                         setInclusionError(null);
                                         setIsInclusionModalOpen(true);
                                     }}
-                                    className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 shadow"
+                                    className="w-full py-1.5 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 shadow"
                                 >
                                     <CheckSquare className="w-3.5 h-3.5" />
                                     <span>إدراج مراجع التضمين وتحديد السجل الآن</span>
@@ -2615,7 +2615,7 @@ export const JudicialSpeechModule: React.FC = () => {
                             disabled={selectedDeed.status !== 'READY' || isStamping || !hasValidInclusion}
                             onClick={handleStampDeed}
                             style={{ backgroundColor: (selectedDeed.status === 'READY' && hasValidInclusion) ? '#B30000' : undefined }}
-                            className={`w-full py-4 px-6 rounded-2xl font-black text-base text-white shadow-xl transition-all flex items-center justify-center gap-3 border-2 relative overflow-hidden group ${
+                            className={`w-full py-2.5 px-4 rounded-xl font-black text-sm text-white shadow-md transition-all flex items-center justify-center gap-2 border relative overflow-hidden group ${
                                 selectedDeed.status === 'READY' && hasValidInclusion
                                     ? 'hover:brightness-110 active:scale-[0.98] border-amber-300/40'
                                     : 'bg-slate-300 border-transparent text-slate-500 cursor-not-allowed shadow-none'
@@ -2623,12 +2623,12 @@ export const JudicialSpeechModule: React.FC = () => {
                         >
                             {isStamping ? (
                                 <>
-                                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     <span>جاري إصدار الخطاب والتوقيع النهائي...</span>
                                 </>
                             ) : (
                                 <>
-                                    <Stamp className={`w-5 h-5 transition-transform ${hasValidInclusion ? 'text-amber-300 group-hover:rotate-12' : 'text-slate-400'}`} />
+                                    <Stamp className={`w-4 h-4 transition-transform ${hasValidInclusion ? 'text-amber-300 group-hover:rotate-12' : 'text-slate-400'}`} />
                                     <span>إصدار الخطاب والتوقيع النهائي</span>
                                 </>
                             )}

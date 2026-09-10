@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.tsx';
 import { trpc } from '../trpc';
+import { resolvePageTitle, formatDocumentTitle, updateFaviconBadge } from '../utils/pageTitle';
 
 type Toast = {
   id: string;
@@ -47,6 +48,7 @@ type MessagingNotificationsValue = {
   adminCounts: {
     workCertificate: number;
   };
+  setCustomPageTitle: (title: string | null) => void;
 };
 
 const MessagingNotificationsContext = createContext<MessagingNotificationsValue>({ 
@@ -84,7 +86,8 @@ const MessagingNotificationsContext = createContext<MessagingNotificationsValue>
   },
   adminCounts: {
     workCertificate: 0,
-  }
+  },
+  setCustomPageTitle: () => {},
 });
 
 function stripHtml(input?: string | null) {
@@ -150,6 +153,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
   const { user, sessionToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [customPageTitle, setCustomPageTitle] = useState<string | null>(null);
 
   const isAnyJudge = user?.role === 'authentication_judge' || (user?.role as string) === 'regional_judge' || (user?.role as string) === 'supreme_judge';
   const isMessagingRole = user?.role === 'notary' || isAnyJudge || user?.role === 'regional_adoul_council';
@@ -722,10 +726,15 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const base = document.title.replace(/^\(\d+\)\s*/, '');
-    document.title = totalNotifications > 0 ? `(${totalNotifications}) ${base}` : base;
-  }, [totalNotifications, user]);
+    const { pageTitle, portalBrand } = resolvePageTitle(
+      location.pathname,
+      location.search,
+      user?.role,
+      customPageTitle
+    );
+    document.title = formatDocumentTitle(pageTitle, portalBrand, totalNotifications);
+    updateFaviconBadge(totalNotifications);
+  }, [totalNotifications, user, location.pathname, location.search, customPageTitle]);
 
   useEffect(() => {
     if (!user || !isNotary) return;
@@ -1046,6 +1055,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     totalNotifications,
     permissionsCounts,
     adminCounts,
+    setCustomPageTitle,
   }), [
     unreadTotal,
     decisionsTotal,
@@ -1074,6 +1084,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     totalNotifications,
     permissionsCounts,
     adminCounts,
+    setCustomPageTitle,
   ]);
 
   return (
