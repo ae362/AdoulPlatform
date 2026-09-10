@@ -8,6 +8,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { parseBuilderDocument } from '../pageBuilder/migrate';
 import { Resizable } from 're-resizable';
 import { useAuth } from '../contexts/AuthContext';
+import { PrivacyPolicyModal } from './legal/PrivacyPolicyModal';
+import { TermsOfServiceModal } from './legal/TermsOfServiceModal';
+import { CookieConsentBanner } from './legal/CookieConsentBanner';
 
 type CmsValue = { value: string; type?: string; description?: string };
 export type CmsContentMap = Record<string, CmsValue>;
@@ -787,6 +790,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   const handleLoginClick = () => navigate(sessionToken ? '/dashboard' : '/login');
 
@@ -823,9 +828,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         id: 'admin',
         label: 'الإدارة و التنظيم',
         items: [
-          { label: 'معلومات عن الهيكل الإداري للمهنة', href: '/pages/structure' },
-          { label: 'الاتصال و التفاعل مع الهيئة الوطنية للعدول', href: '/pages/contact-national' },
-          { label: 'الربط و التنسيق مع المجالس الجهوية للعدول', href: '/pages/regional-councils' },
+          { label: 'معلومات عن الهيكل الإداري للمهنة', href: '#about' },
+          { label: 'الاتصال و التفاعل مع الهيئة الوطنية للعدول', href: '#contact' },
+          { label: 'الربط و التنسيق مع المجالس الجهوية للعدول', href: '#roles' },
         ],
       },
       {
@@ -833,16 +838,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         label: 'تلقي الشهادات العدلية و تحريرها',
         highlighted: true,
         items: [
-          { label: 'منصة الشهادات العدلية', href: '/pages/certificates', hasAuth: true },
-          { label: 'منصة الإيداع الإلكتروني', href: '/pages/e-deposit' },
+          { label: 'منصة الشهادات العدلية', href: '#features', hasAuth: true },
+          { label: 'منصة الإيداع الإلكتروني', href: '#features' },
         ],
       },
       {
         id: 'electronic-services',
         label: 'خدمات الكترونية',
         items: [
-          { label: 'طلبات استخراج نسخ العقود/الشهادات العدلية', href: '/public/copy-extraction' },
-          { label: 'طلبات البحث عن العقود/الشهادات العدلية', href: '/public/search-deeds' },
+          { label: 'طلبات استخراج نسخ العقود/الشهادات العدلية', href: '/public-copy-extraction' },
+          { label: 'طلبات البحث عن العقود/الشهادات العدلية', href: '/public-search-deeds' },
         ],
       },
       {
@@ -2018,13 +2023,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 © 2025 الهيئة الوطنية للعدول - المملكة المغربية. جميع الحقوق محفوظة.
               </p>
               <div className="flex gap-6 text-gray-400 text-sm">
-                <a href="#" className="hover:text-white transition-colors">سياسة الخصوصية</a>
-                <a href="#" className="hover:text-white transition-colors">شروط الاستخدام</a>
+                <button
+                  type="button"
+                  onClick={() => setIsPrivacyModalOpen(true)}
+                  className="hover:text-white transition-colors cursor-pointer"
+                >
+                  سياسة الخصوصية
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTermsModalOpen(true)}
+                  className="hover:text-white transition-colors cursor-pointer"
+                >
+                  شروط الاستخدام
+                </button>
               </div>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Legal & Compliance Modals */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
+      <TermsOfServiceModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+      />
+
+      {/* Sovereign CNDP Cookie Consent Banner */}
+      <CookieConsentBanner
+        onOpenPrivacyPolicy={() => setIsPrivacyModalOpen(true)}
+      />
     </div>
   );
 };

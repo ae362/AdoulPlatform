@@ -143,6 +143,7 @@ const JudgeEndorsedDeeds = lazy(() =>
 const VerificationPage = lazy(() =>
   import('./pages/SecureArchive/VerificationPage').then((m) => ({ default: m.VerificationPage })),
 );
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 type ModuleKey =
   | 'dashboard'
@@ -1275,8 +1276,8 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              {/* Default redirect */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* 404 Not Found fallback */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
             </Suspense>
             </MessagingNotificationsProvider>

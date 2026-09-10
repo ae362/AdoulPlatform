@@ -20,6 +20,7 @@
     "test:env": "npm run build && node scripts/test-env-validation.js",
     "test:pii": "npm run build && node scripts/test-pii-redaction.js",
     "test:health": "npm run build && node scripts/test-lifecycle-health.js",
+    "check:secrets": "node scripts/audit-client-bundle.js",
     "migrate": "node scripts/migrate.js",
     "test:cache": "node scripts/test-cache.js",
     "test:security": "node scripts/test-phase1-security.js",
