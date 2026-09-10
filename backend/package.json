@@ -18,6 +18,7 @@
     "test:cache": "node scripts/test-cache.js",
     "test:security": "node scripts/test-phase1-security.js",
     "test:auth": "node scripts/test-trpc-auth.js",
+    "test:session": "node scripts/test-session-cookies.js",
     "migrate:supabase": "node scripts/migrate-supabase.js",
     "fix:rls": "node scripts/fix-rls-permissions.js",
     "create-test-user": "node scripts/create-test-user.js",
@@ -28,6 +29,7 @@
     "scan:all-tables": "node scan-all-tables.js"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.4.0",
     "@fastify/cors": "^9.0.1",
     "@fastify/websocket": "^8.3.1",
     "@google-cloud/vision": "^5.3.4",

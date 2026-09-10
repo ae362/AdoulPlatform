@@ -1,6 +1,7 @@
 import './env';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import cookie from '@fastify/cookie';
 import { fastifyRequestHandler } from '@trpc/server/adapters/fastify';
 import { appRouter } from './router';
 import { registerRemoteHearingWebsocket } from './ws/remoteHearingSignaling';
@@ -17,16 +18,7 @@ const fastify = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
 // Register Enterprise Security Headers
 fastify.register(securityHeaders);
 
-// Register Distributed Rate Limiter
-fastify.register(rateLimiter);
-
-// tRPC v11 Fastify adapter expects raw body as string to handle its own parsing/transformation
-fastify.removeContentTypeParser('application/json');
-fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (_, body, done) {
-  done(null, body);
-});
-
-// Configure Enterprise CORS with Strict Whitelist Enforcement
+// Configure Enterprise CORS with Strict Whitelist Enforcement (Registered before hooks to ensure CORS on all replies)
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
   .split(',')
   .map((o) => o.trim())
@@ -73,6 +65,21 @@ fastify.register(cors, {
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
 
+// Register Enterprise Cookie Parser with Secret Signing Support
+fastify.register(cookie, {
+  secret: process.env.COOKIE_SECRET || process.env.JWT_SECRET || 'adoul-sovereign-cookie-secret-2026',
+  parseOptions: {},
+});
+
+// Register Distributed Rate Limiter
+fastify.register(rateLimiter);
+
+// tRPC v11 Fastify adapter expects raw body as string to handle its own parsing/transformation
+fastify.removeContentTypeParser('application/json');
+fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (_, body, done) {
+  done(null, body);
+});
+
 // Health check route to verify backend is up on this port and report cache engine status
 fastify.get('/health', async () => {
   return {
@@ -98,7 +105,7 @@ registerOnlyOfficeRoutes(fastify).catch((err) => {
   fastify.log.error({ err }, 'Failed to register OnlyOffice routes');
 });
 
-const createContext = async (opts: { req: any; res: any }): Promise<TrpcContext> => {
+export const createContext = async (opts: { req: any; res: any }): Promise<TrpcContext> => {
   const req = opts.req;
   let sessionToken: string | null = null;
   const authHeader = req.headers?.authorization;
@@ -106,6 +113,8 @@ const createContext = async (opts: { req: any; res: any }): Promise<TrpcContext>
     sessionToken = authHeader.slice(7).trim();
   } else if (req.headers?.['x-session-token']) {
     sessionToken = String(req.headers['x-session-token']).trim();
+  } else if (req.cookies && req.cookies.session_token) {
+    sessionToken = String(req.cookies.session_token).trim();
   } else if (req.query && typeof req.query === 'object' && (req.query as any).sessionToken) {
     sessionToken = String((req.query as any).sessionToken).trim();
   }
@@ -186,11 +195,15 @@ const shutdown = async (signal: string) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
+export { fastify, appRouter };
+
 const port = Number(process.env.PORT) || 4000;
-fastify
-  .listen({ port, host: '0.0.0.0' })
-  .catch((err) => {
-    fastify.log.error(err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  fastify
+    .listen({ port, host: '0.0.0.0' })
+    .catch((err) => {
+      fastify.log.error(err);
+      process.exit(1);
+    });
+}
 

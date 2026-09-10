@@ -310,8 +310,33 @@ export class CacheService {
   }
 
   /**
+   * Asynchronously extend session expiry in DB and Cache (sliding window)
+   */
+  static async extendSessionExpiry(token: string, additionalDays = 7, supabaseClient?: any): Promise<void> {
+    try {
+      const newExpiresAt = new Date(Date.now() + additionalDays * 86400000).toISOString();
+      const sb = supabaseClient || (await import('./supabase')).supabase;
+      if (sb) {
+        await sb
+          .from('user_sessions')
+          .update({ expires_at: newExpiresAt })
+          .eq('session_token', token);
+      }
+
+      // Update cached session payload if present
+      const cached = await this.getCachedSession(token);
+      if (cached) {
+        (cached as any).expires_at = newExpiresAt;
+        await this.cacheSession(token, cached, this.DEFAULT_SESSION_TTL);
+      }
+    } catch {
+      // Non-blocking best-effort
+    }
+  }
+
+  /**
    * Universal Session Verification Helper with Cache
-   * Checks cache first (< 1ms), falls back to Supabase DB, and primes cache.
+   * Checks cache first (< 1ms), falls back to Supabase DB, primes cache, and extends sliding TTL.
    */
   static async verifySessionWithCache(
     token: string,
@@ -321,9 +346,17 @@ export class CacheService {
 
     // 1. Fast Path: Cache lookup
     try {
-      const cached = await this.getCachedSession(token);
+      const cached: any = await this.getCachedSession(token);
       if (cached && cached.user) {
         if (!cached.expires_at || new Date(cached.expires_at) >= new Date()) {
+          // Sliding window: if within 48 hours of expiration, asynchronously extend by 7 days
+          if (cached.expires_at) {
+            const msRemaining = new Date(cached.expires_at).getTime() - Date.now();
+            if (msRemaining > 0 && msRemaining < 48 * 3600 * 1000) {
+              this.extendSessionExpiry(token, 7, supabaseClient).catch(() => {});
+            }
+          }
+
           return {
             user: cached.user,
             notaryProfile: cached.notaryProfile ?? null,
@@ -370,6 +403,14 @@ export class CacheService {
           .eq('user_id', user.id)
           .single();
         notaryProfile = prof;
+      }
+
+      // Sliding window extension if approaching expiry
+      if (session.expires_at) {
+        const msRemaining = new Date(session.expires_at).getTime() - Date.now();
+        if (msRemaining > 0 && msRemaining < 48 * 3600 * 1000) {
+          this.extendSessionExpiry(token, 7, sb).catch(() => {});
+        }
       }
 
       // 3. Cache the verified session (15 min sliding TTL)

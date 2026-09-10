@@ -60,6 +60,14 @@ const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: `${getBackendHttpOrigin()}/trpc`,
+      headers() {
+        try {
+          const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        } catch {
+          return {};
+        }
+      },
       fetch: async (url, options) => {
         return fetch(url, {
           ...options,

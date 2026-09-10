@@ -224,7 +224,7 @@ export const authRouter = router({
    */
   login: publicProcedure
     .input(loginSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const { email, password, rememberMe } = input;
 
@@ -355,6 +355,21 @@ export const authRouter = router({
         // Cache session immediately for instant subsequent lookups
         CacheService.cacheSession(sessionToken, sessionPayload, expiryDays * 86400).catch(() => {});
 
+        // Set Enterprise httpOnly secure session cookie
+        if (ctx?.res && typeof (ctx.res as any).setCookie === 'function') {
+          try {
+            (ctx.res as any).setCookie('session_token', sessionToken, {
+              path: '/',
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: expiryDays * 86400,
+            });
+          } catch (cookieErr) {
+            console.warn('[Auth] Could not attach httpOnly session cookie:', cookieErr);
+          }
+        }
+
         return {
           success: true,
           sessionToken,
@@ -377,9 +392,27 @@ export const authRouter = router({
    * Logout user
    */
   logout: publicProcedure
-    .input(z.object({ sessionToken: z.string() }))
-    .mutation(async ({ input }) => {
-      const { sessionToken } = input;
+    .input(z.object({ sessionToken: z.string().optional() }).optional())
+    .mutation(async ({ input, ctx }) => {
+      const sessionToken = input?.sessionToken || ctx?.sessionToken;
+
+      // Clear Enterprise httpOnly session cookie
+      if (ctx?.res && typeof (ctx.res as any).clearCookie === 'function') {
+        try {
+          (ctx.res as any).clearCookie('session_token', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+          });
+        } catch {
+          // ignore cookie clear errors
+        }
+      }
+
+      if (!sessionToken) {
+        return { success: true };
+      }
 
       // Get session to log user
       const { data: session } = await supabase
@@ -413,9 +446,15 @@ export const authRouter = router({
    * Get current session info
    */
   getSession: publicProcedure
-    .input(z.object({ sessionToken: z.string() }))
-    .query(async ({ input }) => {
-      const { sessionToken } = input;
+    .input(z.object({ sessionToken: z.string().optional() }).optional())
+    .query(async ({ input, ctx }) => {
+      const sessionToken = input?.sessionToken || ctx?.sessionToken;
+      if (!sessionToken) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'جلسة غير صالحة أو مفقودة',
+        });
+      }
 
       // 1. Fast Path: High-speed Cache Lookup (< 1ms)
       try {

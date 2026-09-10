@@ -78,6 +78,8 @@ export const Login: React.FC = () => {
       const message = String(err?.message || '');
       if (message.toLowerCase().includes('login failed')) {
         setError('تعذّر تسجيل الدخول. تحقّق من البريد الإلكتروني وكلمة المرور.');
+      } else if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('networkerror')) {
+        setError('تعذّر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت أو إعادة المحاولة لاحقاً.');
       } else {
         setError(message || 'حدث خطأ أثناء تسجيل الدخول.');
       }

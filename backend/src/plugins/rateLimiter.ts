@@ -93,10 +93,41 @@ const rateLimiterPlugin: FastifyPluginAsync<RateLimitOptions> = async (fastify: 
 
       if (count > limit) {
         reply.header('Retry-After', ttl);
+
+        // Guarantee CORS headers on rate-limited early replies
+        const origin = request.headers.origin;
+        if (origin) {
+          reply.header('Access-Control-Allow-Origin', origin);
+          reply.header('Access-Control-Allow-Credentials', 'true');
+        }
+
+        const isBatch = request.url.includes('batch=');
+        const userFriendlyMessage =
+          tier === 'auth'
+            ? `عدد محاولات تسجيل الدخول تجاوز الحد المسموح. يرجى الانتظار ${ttl} ثانية قبل المحاولة مجدداً.`
+            : `Too many requests from this address. Please retry in ${ttl} second(s).`;
+
+        if (isBatch) {
+          // Return tRPC batch response format so browser tRPC client unwraps the error cleanly
+          return reply.status(429).send([
+            {
+              error: {
+                message: userFriendlyMessage,
+                code: -32029,
+                data: {
+                  code: 'TOO_MANY_REQUESTS',
+                  httpStatus: 429,
+                  retryAfter: ttl,
+                },
+              },
+            },
+          ]);
+        }
+
         return reply.status(429).send({
           statusCode: 429,
           error: 'Too Many Requests',
-          message: `Too many requests from this address. Please retry in ${ttl} second(s).`,
+          message: userFriendlyMessage,
           retryAfter: ttl,
         });
       }
