@@ -1,8 +1,6 @@
 import './env';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { exec } from 'child_process';
-import path from 'path';
 import { fastifyRequestHandler } from '@trpc/server/adapters/fastify';
 import { appRouter } from './router';
 import { registerRemoteHearingWebsocket } from './ws/remoteHearingSignaling';
@@ -12,16 +10,6 @@ import { CacheService } from './services/cacheService';
 import { TrpcContext } from './routers/trpc';
 import securityHeaders from './plugins/securityHeaders';
 import rateLimiter from './plugins/rateLimiter';
-
-// Best-effort OnlyOffice service auto-check on startup
-try {
-  const checkScriptPath = path.resolve(__dirname, '../scripts/ensure-onlyoffice.js');
-  exec(`node "${checkScriptPath}"`, (_err, stdout) => {
-    if (stdout) console.log(stdout.trim());
-  });
-} catch {
-  // Non-blocking best-effort
-}
 
 // 5MB attachments are base64-encoded (~33% bigger) and wrapped in JSON, so we need a higher limit.
 const fastify = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
