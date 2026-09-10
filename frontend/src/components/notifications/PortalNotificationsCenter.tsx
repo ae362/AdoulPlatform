@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 export type PortalNotificationItem = {
   id: string;
+  sourceId?: string;
   title: string;
   subtitle?: string;
   statusLabel: string;

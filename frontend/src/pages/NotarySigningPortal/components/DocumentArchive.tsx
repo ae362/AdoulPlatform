@@ -80,7 +80,7 @@ export const DocumentArchive: React.FC<DocumentArchiveProps> = ({
 
   // Transform rasms to Document format
   const documents: Document[] = useMemo(() => {
-    return rasms.map((rasm, index) => ({
+    return (rasms as any[]).map((rasm: any, index: number) => ({
       id: rasm.id,
       sequentialNumber: String(index + 1).padStart(3, '0'),
       recordNumber: rasm.fileNumber || `REC-${rasm.id.slice(0, 8)}`,

@@ -445,16 +445,16 @@ function StatusDashboardTab({ sessionToken, year, onNavigate }: { sessionToken: 
                     <div className="flex gap-3">
                         <button 
                             className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50" 
-                            disabled={payAllMutation.isLoading}
+                            disabled={payAllMutation.isPending}
                             onClick={() => {
                                 payAllMutation.mutate({ sessionToken, year });
                             }}
                         >
-                            {payAllMutation.isLoading ? 'جاري الأداء...' : 'تأكيد الأداء'}
+                            {payAllMutation.isPending ? 'جاري الأداء...' : 'تأكيد الأداء'}
                         </button>
                         <button 
                             className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition" 
-                            disabled={payAllMutation.isLoading}
+                            disabled={payAllMutation.isPending}
                             onClick={() => setShowPaymentModal(false)}
                         >
                             إلغاء
@@ -686,7 +686,7 @@ function FilteredSubscriptionList({ items, isLoading, title, emptyMessage }: { i
                     <div className="flex gap-3">
                         <button 
                             className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50" 
-                            disabled={markPaidMutation.isLoading}
+                            disabled={markPaidMutation.isPending}
                             onClick={() => {
                                 if (!sessionToken || !paymentItem) return;
                                 markPaidMutation.mutate({
@@ -699,11 +699,11 @@ function FilteredSubscriptionList({ items, isLoading, title, emptyMessage }: { i
                                 });
                             }}
                         >
-                            {markPaidMutation.isLoading ? 'جاري الأداء...' : 'متابعة الدفع'}
+                            {markPaidMutation.isPending ? 'جاري الأداء...' : 'متابعة الدفع'}
                         </button>
                         <button 
                             className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition" 
-                            disabled={markPaidMutation.isLoading}
+                            disabled={markPaidMutation.isPending}
                             onClick={() => setPaymentItem(null)}
                         >
                             إلغاء

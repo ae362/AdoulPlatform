@@ -39,7 +39,7 @@ const purposesWithIcons = [
   { label: 'سبب آخر', icon: '❓' },
 ];
 
-const primaryCourts = Array.from(new Set(COURT_MAPPINGS.flatMap(({ primaryCourts }) => primaryCourts))).sort((first, second) =>
+const primaryCourts: string[] = Array.from(new Set<string>(COURT_MAPPINGS.flatMap(({ primaryCourts }) => primaryCourts))).sort((first: string, second: string) =>
   first.localeCompare(second, 'ar')
 );
 
@@ -470,10 +470,10 @@ const interestProofs = [
     }
   }, [form.court, courtNotaryMatches, notariesInitialized]);
 
-  const filteredCourts = useMemo(() => {
+  const filteredCourts = useMemo<string[]>(() => {
     if (!courtSearchTerm.trim()) return primaryCourts;
     const term = courtSearchTerm.trim().toLowerCase();
-    return primaryCourts.filter((c) => c.toLowerCase().includes(term));
+    return primaryCourts.filter((c: string) => c.toLowerCase().includes(term));
   }, [courtSearchTerm]);
 
   const handleCourtChange = (court: string) => {
@@ -903,7 +903,7 @@ const interestProofs = [
                             ? 'اختر المحكمة الابتدائية'
                             : `نتائج البحث (${filteredCourts.length} محكمة)`}
                         </option>
-                        {filteredCourts.map((court) => (
+                        {filteredCourts.map((court: string) => (
                           <option key={court} value={court}>
                             {court}
                           </option>

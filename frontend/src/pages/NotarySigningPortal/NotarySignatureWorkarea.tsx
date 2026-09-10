@@ -213,15 +213,17 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   }, [tabletSigningViewMode]);
 
-  const { data: rasm, isLoading } = trpc.feesAgent.documents.getSavedRasm.useQuery(
+  const { data: rasmData, isLoading } = trpc.feesAgent.documents.getSavedRasm.useQuery(
     { sessionToken: sessionToken || '', id: id || '' },
     { enabled: !!sessionToken && !!id, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true }
   );
+  const rasm = rasmData as any;
 
-  const signingDocQuery = trpc.feesAgent.documents.resolveSigningDocument.useQuery(
+  const rawSigningDocQuery = trpc.feesAgent.documents.resolveSigningDocument.useQuery(
     { sessionToken: sessionToken || '', id: id || '', mode: 'pdf' },
     { enabled: !!sessionToken && !!id && !hasSeededNavigationPdf, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true }
   );
+  const signingDocQuery = { ...rawSigningDocQuery, data: rawSigningDocQuery.data as any };
   const finalizeForSigningMutation = trpc.feesAgent.documents.finalizeForSigning.useMutation();
 
   const appendCacheBuster = (rawUrl: string, key: string, value: string) => {
@@ -490,7 +492,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     if (!versionIdToFinalize || !sessionToken) return;
     if (mainPdfAttachment?.fileUrl) return;
     if (autoFinalizedVersionRef.current === versionIdToFinalize) return;
-    if (finalizeForSigningMutation.isLoading) return;
+    if (finalizeForSigningMutation.isPending) return;
 
     autoFinalizedVersionRef.current = versionIdToFinalize;
     setIsPreparingSigningPdf(true);
@@ -501,7 +503,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         versionId: versionIdToFinalize,
       },
       {
-        onSuccess: async (res) => {
+        onSuccess: async (res: any) => {
           const finalUrl = appendCacheBuster(res.finalPdfUrl, 'sig', res.versionId);
           setOriginalPdfUrl(finalUrl);
           setCurrentPdfUrl(finalUrl);
@@ -1765,7 +1767,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           });
 
           const modifiedBytes = await pdfDoc.save();
-          const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+          const blob = new Blob([modifiedBytes as any], { type: 'application/pdf' });
           const newUrl = URL.createObjectURL(blob);
 
           setCurrentPdfUrl(newUrl);
@@ -1919,7 +1921,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
         // Save as new modified file
         const modifiedBytes = await pdfDoc.save();
-        const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+        const blob = new Blob([modifiedBytes as any], { type: 'application/pdf' });
         const newUrl = URL.createObjectURL(blob);
         
         setCurrentPdfUrl(newUrl);
@@ -2015,7 +2017,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         editedPdfBytes.byteOffset,
         editedPdfBytes.byteOffset + editedPdfBytes.byteLength
       );
-      signedPdfBase64 = arrayBufferToBase64(sliced);
+      signedPdfBase64 = arrayBufferToBase64(sliced as ArrayBuffer);
     }
 
     // (2) If it's a PDF URL, try to fetch and validate.
@@ -2064,7 +2066,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       pageObj.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
 
       const bytes = await pdfDoc.save();
-      signedPdfBase64 = arrayBufferToBase64(bytes.buffer);
+      signedPdfBase64 = arrayBufferToBase64(bytes.buffer as ArrayBuffer);
     }
 
     return signedPdfBase64;

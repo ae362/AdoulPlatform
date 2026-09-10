@@ -80,6 +80,7 @@ export class CopilotService {
   private apiKey: string;
   private apiEndpoint: string;
   private model: string;
+  private messageHistory: CopilotMessage[] = [];
 
   constructor(apiKey?: string, endpoint?: string, model?: string) {
     this.apiKey = apiKey || import.meta.env.VITE_OPENAI_API_KEY || '';

@@ -1135,7 +1135,7 @@ const GenericPermissionProcessor: React.FC<GenericPermissionProcessorProps> = ({
                                      reasoning: selectedRequest.decision_reasoning,
                                      date: selectedRequest.decided_at,
                                      regNumber: selectedRequest.decision_serial_number,
-                                     judgeName: user?.fullName || 'القاضي المكلف بالتوثيق'
+                                     judgeName: (user as any)?.fullName || user?.full_name || 'القاضي المكلف بالتوثيق'
                                    }}
                                 />
                             </div>

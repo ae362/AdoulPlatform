@@ -13,10 +13,11 @@ export const SecureFooter: React.FC<SecureFooterProps> = ({ documentId }) => {
   const [isLocked, setIsLocked] = useState(false);
 
   // Fetch document data if documentId is provided
-  const { data: document } = trpc.feesAgent.documents.getSavedRasm.useQuery(
+  const { data: rawDoc } = trpc.feesAgent.documents.getSavedRasm.useQuery(
     { sessionToken: sessionToken || '', id: documentId || '' },
     { enabled: !!sessionToken && !!documentId }
   );
+  const document = rawDoc as any;
 
   const payload = document?.payload || {};
 

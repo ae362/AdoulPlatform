@@ -35,10 +35,11 @@ export const DetailSidePanel: React.FC<DetailSidePanelProps> = ({ documentId, on
   const [activeTab, setActiveTab] = useState<TabType>('inclusion');
 
   // Fetch the specific saved rasm document
-  const { data: document, isLoading, error } = trpc.feesAgent.documents.getSavedRasm.useQuery(
+  const { data: rawDoc, isLoading, error } = trpc.feesAgent.documents.getSavedRasm.useQuery(
     { sessionToken: sessionToken || '', id: documentId },
     { enabled: !!sessionToken && !!documentId }
   );
+  const document = rawDoc as any;
 
   const payload = document?.payload || {};
   const fileNumber = document?.fileNumber || 'غير محدد';

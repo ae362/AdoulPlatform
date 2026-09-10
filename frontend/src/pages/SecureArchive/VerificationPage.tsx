@@ -16,7 +16,21 @@ function shortHash(value: string | null | undefined) {
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
 }
 
-export const VerificationPage: React.FC = () => {
+interface VerificationTokenResult {
+  valid: boolean;
+  reason: string | null;
+  signedDeedId: string | null;
+  expiresAt: string | null;
+  category?: string | null;
+  fileNumber: string | null;
+  documentType: string | null;
+  court: string | null;
+  preJudgeSha256: string | null;
+  postJudgeSha256: string | null;
+  artifactUrl: string | null;
+}
+
+export function VerificationPage() {
   const params = useParams();
   const token = (params.token || '').trim();
 
@@ -36,7 +50,7 @@ export const VerificationPage: React.FC = () => {
     }
   );
 
-  const data = verifyQuery.data;
+  const data = verifyQuery.data as VerificationTokenResult | undefined;
 
   return (
     <div className="min-h-screen bg-slate-50">

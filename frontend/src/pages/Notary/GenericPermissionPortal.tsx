@@ -430,11 +430,11 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                      return [selectedRequestView.attachments];
                    }
                  })()}
-                 notaryData={{
-                   fullName: selectedRequestView.notary_name || notaryProfile?.fullName || user?.fullName,
-                   professionalNumber: selectedRequestView.notary_professional_number || notaryProfile?.professionalNumber,
-                   jurisdiction: selectedRequestView.jurisdiction || notaryProfile?.jurisdiction,
-                 }} 
+                  notaryData={{
+                    fullName: selectedRequestView.notary_name || (notaryProfile as any)?.fullName || (notaryProfile as any)?.full_name || user?.full_name,
+                    professionalNumber: selectedRequestView.notary_professional_number || (notaryProfile as any)?.professionalNumber || (notaryProfile as any)?.professional_number,
+                    jurisdiction: selectedRequestView.jurisdiction || (notaryProfile as any)?.jurisdiction || (notaryProfile as any)?.primary_court,
+                  }} 
               />
             </div>
             <div className="mt-6 flex justify-end gap-2">

@@ -488,15 +488,15 @@ const NotaryPortal: React.FC = () => {
                     <div>
                       <p className="text-xs text-gray-600">تاريخ وساعة القرار</p>
                       <p className="font-semibold text-sm">
-                        {req.decided_at 
-                          ? new Date(req.decided_at).toLocaleString('ar-MA', {
+                        {(req as any).decided_at 
+                          ? new Date((req as any).decided_at).toLocaleString('ar-MA', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit'
                             })
-                          : req.decisionDate || 'غير محدد'}
+                          : (req as any).decisionDate || 'غير محدد'}
                       </p>
                     </div>
                     <div>

@@ -69,6 +69,28 @@ class MemoryStore {
     return this.store.size;
   }
 
+  incr(key: string, ttlSeconds: number): { count: number; ttl: number } {
+    const now = Date.now();
+    const entry = this.store.get(key);
+    if (!entry || (entry.expiresAt && entry.expiresAt <= now)) {
+      const expiresAt = now + ttlSeconds * 1000;
+      this.store.set(key, { value: 1, expiresAt });
+      return { count: 1, ttl: ttlSeconds };
+    }
+
+    const nextVal = (Number(entry.value) || 0) + 1;
+    entry.value = nextVal;
+    const remainingSeconds = entry.expiresAt ? Math.max(1, Math.ceil((entry.expiresAt - now) / 1000)) : ttlSeconds;
+    return { count: nextVal, ttl: remainingSeconds };
+  }
+
+  stopCleanup(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
   flush(): void {
     this.store.clear();
   }
@@ -361,6 +383,52 @@ export class CacheService {
       };
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Atomic increment with TTL (ideal for rate limiting counters).
+   * Returns current count and remaining TTL in seconds.
+   */
+  static async incrWithExpiry(key: string, ttlSeconds: number): Promise<{ count: number; ttl: number }> {
+    if (!this.isInitialized) await this.init();
+
+    if (this.isRedisConnected && this.redis) {
+      try {
+        const pipeline = this.redis.pipeline();
+        pipeline.incr(key);
+        pipeline.ttl(key);
+        const results = await pipeline.exec();
+        if (results && results[0] && !results[0][0]) {
+          const count = Number(results[0][1]) || 1;
+          let ttl = Number(results[1]?.[1]) || -1;
+          if (ttl === -1 || count === 1) {
+            await this.redis.expire(key, ttlSeconds);
+            ttl = ttlSeconds;
+          }
+          return { count, ttl: ttl > 0 ? ttl : ttlSeconds };
+        }
+      } catch (err) {
+        return this.memoryStore.incr(key, ttlSeconds);
+      }
+    }
+
+    return this.memoryStore.incr(key, ttlSeconds);
+  }
+
+  /**
+   * Graceful disconnection for server shutdown
+   */
+  static async disconnect(): Promise<void> {
+    this.memoryStore.stopCleanup();
+    if (this.redis) {
+      try {
+        await this.redis.quit();
+      } catch {
+        // Quietly ignore errors on shutdown
+      }
+      this.redis = null;
+      this.isRedisConnected = false;
     }
   }
 }

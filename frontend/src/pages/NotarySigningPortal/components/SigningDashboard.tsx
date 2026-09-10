@@ -18,10 +18,11 @@ export const SigningDashboard: React.FC = () => {
   const { sessionToken } = useAuth();
   const navigate = useNavigate();
 
-  const { data: rasms = [], isLoading } = trpc.feesAgent.documents.listSavedRasms.useQuery(
+  const { data: rawRasms = [], isLoading } = trpc.feesAgent.documents.listSavedRasms.useQuery(
     { sessionToken: sessionToken || '' },
     { enabled: !!sessionToken }
   );
+  const rasms = rawRasms as any[];
 
   const stats = useMemo(() => {
     const ready = rasms.filter(r => r.status === 'READY_FOR_SIGNATURE' || !r.status || r.status === 'DRAFT' || r.status === 'PENDING').length;

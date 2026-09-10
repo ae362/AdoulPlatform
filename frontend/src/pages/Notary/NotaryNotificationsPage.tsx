@@ -226,7 +226,8 @@ const NotaryNotificationsPage: React.FC = () => {
     });
 
     // 2. Messaging Threads with incoming unread
-    const messageNotifications = ((threadsQuery.data?.threads ?? []) as any[])
+    const rawThreads = Array.isArray(threadsQuery.data) ? threadsQuery.data : (threadsQuery.data as any)?.threads ?? [];
+    const messageNotifications = (rawThreads as any[])
       .filter((t) => (t?.unreadCount ?? 0) > 0 || t?.lastMessage?.body)
       .map((t) => {
         const syntheticId = `thread:${String(t.id)}`;
@@ -312,7 +313,7 @@ const NotaryNotificationsPage: React.FC = () => {
     return ([...citizenRequests, ...messageNotifications, ...requestNotifications, ...judgeSubmissionNotifications] as NotificationRow[])
       .filter((item) => !dismissedSet.has(item.id) && !dismissedSet.has(item.rawId || ''))
       .sort((a, b) => String(b.decidedAt ?? b.createdAt ?? '').localeCompare(String(a.decidedAt ?? a.createdAt ?? '')));
-  }, [copyRequestsQuery.data, isDecisionSeen, judgeSubmissionsQuery.data, notificationsQuery.data, threadsQuery.data?.threads, dismissedSet]);
+  }, [copyRequestsQuery.data, isDecisionSeen, judgeSubmissionsQuery.data, notificationsQuery.data, threadsQuery.data, dismissedSet]);
 
   const unseenCount = useMemo(() => notifications.filter((item) => !item.isSeen).length, [notifications]);
   const seenCount = useMemo(() => notifications.filter((item) => item.isSeen).length, [notifications]);

@@ -10,6 +10,8 @@ import { registerStuReleaseRoute } from './routes/stuRelease';
 import { registerOnlyOfficeRoutes } from './routes/onlyoffice';
 import { CacheService } from './services/cacheService';
 import { TrpcContext } from './routers/trpc';
+import securityHeaders from './plugins/securityHeaders';
+import rateLimiter from './plugins/rateLimiter';
 
 // Best-effort OnlyOffice service auto-check on startup
 try {
@@ -24,22 +26,63 @@ try {
 // 5MB attachments are base64-encoded (~33% bigger) and wrapped in JSON, so we need a higher limit.
 const fastify = Fastify({ logger: true, bodyLimit: 15 * 1024 * 1024 });
 
+// Register Enterprise Security Headers
+fastify.register(securityHeaders);
+
+// Register Distributed Rate Limiter
+fastify.register(rateLimiter);
+
 // tRPC v11 Fastify adapter expects raw body as string to handle its own parsing/transformation
 fastify.removeContentTypeParser('application/json');
 fastify.addContentTypeParser('application/json', { parseAs: 'string' }, function (_, body, done) {
   done(null, body);
 });
 
+// Configure Enterprise CORS with Strict Whitelist Enforcement
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 fastify.register(cors, {
   origin: (origin, callback) => {
-    // Allow localhost (any port) and your production domain
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Also allow all origins for development
+    // 1. Allow non-browser requests (mobile apps, server-to-server, curl, local scripts)
+    if (!origin) {
+      return callback(null, true);
     }
+
+    // 2. Allow localhost and 127.0.0.1 in non-production environments
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
+
+    // 3. Strict match against explicit whitelist
+    if (allowedOrigins.length > 0) {
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Origin '${origin}' not allowed by CORS policy`), false);
+    }
+
+    // 4. Default fallback: allow in dev, reject in strict production
+    if (isDev) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Cross-Origin Request Blocked by Security Policy'), false);
   },
   credentials: true,
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-session-token',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Range',
+  ],
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
 
 // Health check route to verify backend is up on this port and report cache engine status
@@ -126,6 +169,35 @@ try {
   fastify.log.error({ err }, 'Failed to register websocket handlers');
 }
 
+// Graceful Process Termination Handlers
+const shutdown = async (signal: string) => {
+  fastify.log.info(`Received ${signal}. Initiating graceful shutdown...`);
+
+  // Force termination fallback if graceful shutdown hangs
+  const forceTimer = setTimeout(() => {
+    fastify.log.error('Graceful shutdown timed out (10s). Forcing process exit.');
+    process.exit(1);
+  }, 10000);
+  forceTimer.unref();
+
+  try {
+    await fastify.close();
+    fastify.log.info('Fastify server stopped accepting new connections.');
+
+    await CacheService.disconnect();
+    fastify.log.info('CacheService (Redis & Memory cleanup) stopped cleanly.');
+
+    clearTimeout(forceTimer);
+    process.exit(0);
+  } catch (err) {
+    fastify.log.error({ err }, 'Error during graceful shutdown');
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 const port = Number(process.env.PORT) || 4000;
 fastify
   .listen({ port, host: '0.0.0.0' })
@@ -133,3 +205,4 @@ fastify
     fastify.log.error(err);
     process.exit(1);
   });
+

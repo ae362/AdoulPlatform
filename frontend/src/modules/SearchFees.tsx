@@ -12,13 +12,13 @@ export function SearchFeesModule() {
   const [identityEnabled, setIdentityEnabled] = useState(false);
   const identityQuery = trpc.search.byIdentity.useQuery(
     {
-      recordType: identityParams.recordType || undefined,
+      recordType: (identityParams.recordType as any) || undefined,
       cin: identityParams.cin || undefined,
       name: identityParams.name || undefined,
       from: identityParams.from || undefined,
       to: identityParams.to || undefined,
     },
-    { enabled: identityEnabled, keepPreviousData: true },
+    { enabled: identityEnabled, placeholderData: (prev) => prev },
   );
 
   const [registryParams, setRegistryParams] = useState({
@@ -35,21 +35,21 @@ export function SearchFeesModule() {
       registryCount: registryParams.count ? Number(registryParams.count) : undefined,
       registryPage: registryParams.page ? Number(registryParams.page) : undefined,
     },
-    { enabled: registryEnabled, keepPreviousData: true },
+    { enabled: registryEnabled, placeholderData: (prev) => prev },
   );
 
   const [docRef, setDocRef] = useState('');
   const [docEnabled, setDocEnabled] = useState(false);
   const docQuery = trpc.search.byDocumentRef.useQuery(
     { ref: docRef },
-    { enabled: docEnabled, keepPreviousData: true },
+    { enabled: docEnabled, placeholderData: (prev) => prev },
   );
 
   const [coords, setCoords] = useState('');
   const [coordsEnabled, setCoordsEnabled] = useState(false);
   const coordsQuery = trpc.search.byCoordinates.useQuery(
     { text: coords },
-    { enabled: coordsEnabled, keepPreviousData: true },
+    { enabled: coordsEnabled, placeholderData: (prev) => prev },
   );
 
   const submitIdentity = (e: React.FormEvent) => {

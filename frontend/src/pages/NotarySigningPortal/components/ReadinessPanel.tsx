@@ -98,7 +98,7 @@ export const ReadinessPanel: React.FC<ReadinessPanelProps> = ({ onSelectCategory
 
       let totalSigned = 0, totalPending = 0, totalArchived = 0;
 
-      allRasms.forEach((rasm) => {
+      (allRasms as any[]).forEach((rasm: any) => {
         const category = rasm.documentType || 'other';
         const status = rasm.status || 'DRAFT';
 

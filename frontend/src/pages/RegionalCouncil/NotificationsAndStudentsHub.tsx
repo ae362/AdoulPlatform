@@ -33,8 +33,10 @@ const StudentsManagement: React.FC = () => {
   const urlSection = searchParams.get('section');
   const urlAction = searchParams.get('action');
 
-  const [activeSection, setActiveSection] = useState<'all' | 'ADM' | 'REG' | 'PRO' | 'ELEC' | 'pending' | 'issued' | 'archived' | 'overview'>(() => {
-    if (urlSection && ['all', 'ADM', 'REG', 'PRO', 'ELEC', 'pending', 'issued', 'archived', 'overview'].includes(urlSection)) {
+  type ActiveSection = 'all' | 'ADM' | 'REG' | 'PRO' | 'ELEC' | 'pending' | 'issued' | 'archived' | 'overview' | 'requests' | 'reports';
+
+  const [activeSection, setActiveSection] = useState<ActiveSection>(() => {
+    if (urlSection && ['all', 'ADM', 'REG', 'PRO', 'ELEC', 'pending', 'issued', 'archived', 'overview', 'requests', 'reports'].includes(urlSection)) {
       return urlSection as any;
     }
     return (urlRequestId || urlSearch) ? 'all' : 'overview';
@@ -237,13 +239,13 @@ const StudentsManagement: React.FC = () => {
       },
       {
         label: 'قيد الدراسة',
-        value: dashboardStats.totalUnderReview || 0,
+        value: (dashboardStats as any)?.totalUnderReview || 0,
         icon: '🔍',
         color: 'bg-orange-50 text-orange-700 border-orange-100',
       },
       {
         label: 'محفوظة',
-        value: dashboardStats.totalArchived || 0,
+        value: (dashboardStats as any)?.totalArchived || 0,
         icon: '📁',
         color: 'bg-gray-50 text-gray-700 border-gray-100',
       },
@@ -847,8 +849,8 @@ const StudentsManagement: React.FC = () => {
                   { label: 'الطلبات الواردة', value: dashboardStats.totalIncoming, color: 'bg-slate-900', icon: '📥' },
                   { label: 'طلبات تمت الموافق عليها', value: dashboardStats.totalApproved, color: 'bg-emerald-600', icon: '✅' },
                   { label: 'طلبات تم رفضها', value: dashboardStats.totalRejected, color: 'bg-rose-600', icon: '❌' },
-                  { label: 'طلبات قيد الدراسة والمراجعة', value: dashboardStats.totalUnderReview || 0, color: 'bg-amber-500', icon: '🔍' },
-                  { label: 'طلبات مؤرشفة/محفوظة', value: dashboardStats.totalArchived || 0, color: 'bg-slate-400', icon: '📁' },
+                  { label: 'طلبات قيد الدراسة والمراجعة', value: (dashboardStats as any)?.totalUnderReview || 0, color: 'bg-amber-500', icon: '🔍' },
+                  { label: 'طلبات مؤرشفة/محفوظة', value: (dashboardStats as any)?.totalArchived || 0, color: 'bg-slate-400', icon: '📁' },
                 ].map((item, idx) => {
                   const percentage = dashboardStats.totalIncoming > 0 ? (item.value / dashboardStats.totalIncoming) * 100 : 0;
                   return (
@@ -1190,10 +1192,10 @@ const StudentsManagement: React.FC = () => {
                        authorityType: 'regional_council',
                      });
                    }}
-                  disabled={recordDecisionMutation.isLoading}
+                  disabled={recordDecisionMutation.isPending}
                   className="px-14 py-5 bg-slate-950 text-[#E6BE8A] rounded-[1.5rem] font-black text-xs shadow-2xl shadow-slate-900/40 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                  >
-                   {recordDecisionMutation.isLoading ? 'جاري الحفظ...' : 'تثبيت القرار في النظام ✍️'}
+                   {recordDecisionMutation.isPending ? 'جاري الحفظ...' : 'تثبيت القرار في النظام ✍️'}
                  </button>
               </div>
            </div>

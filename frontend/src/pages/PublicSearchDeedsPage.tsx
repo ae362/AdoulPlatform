@@ -57,9 +57,121 @@ const periodPresets = [
 ];
 
 // Unique sorted list of primary courts from shared source of truth
-const primaryCourtsList = Array.from(
-  new Set(COURT_MAPPINGS.flatMap(({ primaryCourts }) => primaryCourts))
-).sort((a, b) => a.localeCompare(b, 'ar'));
+const primaryCourtsList: string[] = Array.from(
+  new Set<string>(COURT_MAPPINGS.flatMap(({ primaryCourts }) => primaryCourts))
+).sort((a: string, b: string) => a.localeCompare(b, 'ar'));
+
+const initialSmartNarrowingState = {
+  // Marriage
+  marriageYearAccuracy: 'exact',
+  marriageYear1: 2015,
+  marriageYear2: 2018,
+  marriageEvent: '',
+  marriageEventDetail: '',
+  hasCivilStatusDoc2004: '',
+  civilStatusDocFile: '',
+  civilStatusDocNumber: '',
+  civilStatusDocYear: '',
+  civilStatusCommune: '',
+  firstChildBirthPeriod: '',
+  firstChildBirthYear: '',
+  
+  // Divorce
+  divorceAuthorityType: '' as '' | 'court_ruling' | 'adoul_witnessing',
+  divorceCourtName: '',
+  divorceRulingYear: '',
+  divorceCaseNumber: '',
+  divorceRulingNumber: '',
+  divorcePartiesNames: '',
+  divorceAdoulYear: '',
+  divorceAdoulName: '',
+  divorceAdoulCourt: '',
+  divorceAdoulRef: '',
+
+  // Property
+  propertyPeriod: '',
+  propertyTransactionType: 'بيع وشراء',
+  propertyHistoryEvent: '',
+  propertyHistoryEventDetail: '',
+  propertyNeighborhood: '',
+  propertyMunicipality: '',
+  hasPriorDeedDoc: '',
+  priorDeedDocFile: '',
+  priorDeedDocRef: '',
+};
+
+const initialFormState = {
+  // Step 1: Requester Identity
+  firstName: '',
+  lastName: '',
+  idType: 'بطاقة التعريف الوطنية',
+  idNumber: '',
+  phone: '',
+  email: '',
+  address: '',
+
+  // Step 2: Legal Capacity
+  capacity: 'party',
+
+  // Step 3: Proofs & Evidence
+  agentDocFile: '',
+  agentBookType: 'المختلفة / باقي الوثائق',
+  agentBookNumber: '',
+  agentBookLetter: '',
+  agentBookPage: '',
+  agentBookCount: '',
+  agentBookDate: '',
+  agentBookCourt: '',
+
+  heirDocFile: '',
+  heirBookNumber: '',
+  heirBookLetter: '',
+  heirBookPage: '',
+  heirBookCount: '',
+  heirBookDate: '',
+  heirBookCourt: '',
+
+  interestType: 'مقال دعوى قضائية',
+  caseNumber: '',
+  fileReference: '',
+  submissionDate: '',
+  caseCourt: '',
+  complaintRef: '',
+  complaintDate: '',
+  complaintAuthority: '',
+  rulingType: '',
+  rulingNumber: '',
+  rulingDate: '',
+  rulingCourt: '',
+  proofDocFile: '',
+
+  // Step 4: Deed Information & Parties
+  deedCategory: 'العقود والتوثيق',
+  deedType: 'رسوم الزواج',
+  parties: [{ role: 'الطرف الأول', firstName: '', lastName: '' }],
+  knowsNotary: 'no' as 'yes' | 'no',
+  firstNotaryName: '',
+  secondNotaryName: '',
+
+  // Step 5: Court & Years Scope
+  court: '',
+  courtSearchTerm: '',
+  yearKnowledge: 'exact' as 'exact' | 'period' | 'unknown',
+  startYear: 2010,
+  endYear: 2020,
+  exactYear: 2015,
+  selectedPeriodLabel: '',
+  
+  // Additional Details
+  propertyLocation: '',
+  parentNames: '',
+  spouseName: '',
+  oldDeedPhoto: '',
+  additionalNotes: '',
+
+  // Smart Narrowing Engine States
+  smartNarrowing: initialSmartNarrowingState,
+};
 
 export function PublicSearchDeedsPage() {
   const navigate = useNavigate();
@@ -74,113 +186,7 @@ export function PublicSearchDeedsPage() {
   const [requestId, setRequestId] = useState(() => `RECH-2026-${String(Math.floor(100000 + Math.random() * 900000))}`);
 
   // Form State
-  const [form, setForm] = useState({
-    // Step 1: Requester Identity
-    firstName: '',
-    lastName: '',
-    idType: 'بطاقة التعريف الوطنية',
-    idNumber: '',
-    phone: '',
-    email: '',
-
-    // Step 2: Legal Capacity
-    capacity: 'party',
-
-    // Step 3: Proofs & Evidence
-    agentDocFile: '',
-    agentBookType: 'المختلفة / باقي الوثائق',
-    agentBookNumber: '',
-    agentBookLetter: '',
-    agentBookPage: '',
-    agentBookCount: '',
-    agentBookDate: '',
-    agentBookCourt: '',
-
-    heirDocFile: '',
-    heirBookNumber: '',
-    heirBookLetter: '',
-    heirBookPage: '',
-    heirBookCount: '',
-    heirBookDate: '',
-    heirBookCourt: '',
-
-    interestType: 'مقال دعوى قضائية',
-    caseNumber: '',
-    fileReference: '',
-    submissionDate: '',
-    caseCourt: '',
-    complaintRef: '',
-    complaintDate: '',
-    complaintAuthority: '',
-    rulingType: '',
-    rulingNumber: '',
-    rulingDate: '',
-    rulingCourt: '',
-    proofDocFile: '',
-
-    // Step 4: Deed Information & Parties
-    deedType: 'رسوم الزواج',
-    parties: [{ role: 'الطرف الأول', firstName: '', lastName: '' }],
-    knowsNotary: 'no' as 'yes' | 'no',
-    firstNotaryName: '',
-    secondNotaryName: '',
-
-    // Step 5: Court & Years Scope
-    court: '',
-    courtSearchTerm: '',
-    yearKnowledge: 'exact' as 'exact' | 'period' | 'unknown',
-    startYear: 2010,
-    endYear: 2020,
-    exactYear: 2015,
-    selectedPeriodLabel: '',
-    
-    // Additional Details
-    propertyLocation: '',
-    parentNames: '',
-    spouseName: '',
-    oldDeedPhoto: '',
-    additionalNotes: '',
-
-    // Smart Narrowing Engine States
-    smartNarrowing: {
-      // Marriage
-      marriageYearAccuracy: 'exact',
-      marriageYear1: 2015,
-      marriageYear2: 2018,
-      marriageEvent: '',
-      marriageEventDetail: '',
-      hasCivilStatusDoc2004: '',
-      civilStatusDocFile: '',
-      civilStatusDocNumber: '',
-      civilStatusDocYear: '',
-      civilStatusCommune: '',
-      firstChildBirthPeriod: '',
-      firstChildBirthYear: '',
-      
-      // Divorce
-      divorceAuthorityType: '' as '' | 'court_ruling' | 'adoul_witnessing',
-      divorceCourtName: '',
-      divorceRulingYear: '',
-      divorceCaseNumber: '',
-      divorceRulingNumber: '',
-      divorcePartiesNames: '',
-      divorceAdoulYear: '',
-      divorceAdoulName: '',
-      divorceAdoulCourt: '',
-      divorceAdoulRef: '',
-
-      // Property
-      propertyPeriod: '',
-      propertyTransactionType: 'بيع وشراء',
-      propertyHistoryEvent: '',
-      propertyHistoryEventDetail: '',
-      propertyNeighborhood: '',
-      propertyMunicipality: '',
-      hasPriorDeedDoc: '',
-      priorDeedDocFile: '',
-      priorDeedDocRef: '',
-    },
-  });
+  const [form, setForm] = useState(initialFormState);
 
   // Dynamic Timeline of Added Notes & Events
   const [timelineEvents, setTimelineEvents] = useState<Array<{
@@ -424,9 +430,9 @@ export function PublicSearchDeedsPage() {
     }));
   };
 
-  const filteredCourts = useMemo(() => {
+  const filteredCourts = useMemo<string[]>(() => {
     if (!form.courtSearchTerm.trim()) return primaryCourtsList;
-    return primaryCourtsList.filter((c) => c.includes(form.courtSearchTerm.trim()));
+    return primaryCourtsList.filter((c: string) => c.includes(form.courtSearchTerm.trim()));
   }, [form.courtSearchTerm]);
 
   const searchSpanYears = useMemo(() => {
@@ -675,60 +681,7 @@ export function PublicSearchDeedsPage() {
     setAcceptedTerms(false);
     setIsSearching(false);
     setRequestId(`RECH-2026-${String(Math.floor(100000 + Math.random() * 900000))}`);
-    setForm({
-      firstName: '',
-      lastName: '',
-      idType: 'بطاقة التعريف الوطنية',
-      idNumber: '',
-      phone: '',
-      email: '',
-      capacity: 'party',
-      agentDocFile: '',
-      agentBookType: 'المختلفة / باقي الوثائق',
-      agentBookNumber: '',
-      agentBookLetter: '',
-      agentBookPage: '',
-      agentBookCount: '',
-      agentBookDate: '',
-      agentBookCourt: '',
-      heirDocFile: '',
-      heirBookNumber: '',
-      heirBookLetter: '',
-      heirBookPage: '',
-      heirBookCount: '',
-      heirBookDate: '',
-      heirBookCourt: '',
-      interestType: 'مقال دعوى قضائية',
-      caseNumber: '',
-      fileReference: '',
-      submissionDate: '',
-      caseCourt: '',
-      complaintRef: '',
-      complaintDate: '',
-      complaintAuthority: '',
-      rulingType: '',
-      rulingNumber: '',
-      rulingDate: '',
-      rulingCourt: '',
-      proofDocFile: '',
-      deedType: 'رسوم الزواج',
-      parties: [{ role: 'الطرف الأول', firstName: '', lastName: '' }],
-      knowsNotary: 'no' as 'yes' | 'no',
-      firstNotaryName: '',
-      secondNotaryName: '',
-      court: '',
-      courtSearchTerm: '',
-      yearKnowledge: 'exact' as 'exact' | 'period' | 'unknown',
-      startYear: 2010,
-      endYear: 2020,
-      exactYear: 2015,
-      selectedPeriodLabel: '',
-      propertyLocation: '',
-      parentNames: '',
-      spouseName: '',
-      oldDeedPhoto: '',
-      additionalNotes: '',
-    });
+    setForm(initialFormState);
     setAgentProofs([
       {
         id: '1',
@@ -1732,7 +1685,7 @@ export function PublicSearchDeedsPage() {
                   className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-bold focus:ring-2 focus:ring-[#7A0D1A]/20 focus:border-[#7A0D1A] outline-none"
                 >
                   <option value="">-- اختر المحكمة الابتدائية المختصة --</option>
-                  {filteredCourts.map((court) => (
+                  {filteredCourts.map((court: string) => (
                     <option key={court} value={court}>
                       {court}
                     </option>

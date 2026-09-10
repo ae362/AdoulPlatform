@@ -471,6 +471,18 @@ const NotaryPortalWorkflow: React.FC = () => {
   const handleAdlCopySubmit = async (data: any) => {
     setIsSubmittingAdlCopy(true);
     try {
+      const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => {
+             const base64String = (reader.result as string).split(',')[1];
+             resolve(base64String);
+          };
+          reader.onerror = (error) => reject(error);
+        });
+      };
+
       const uploadedAttachments: { name: string; url: string; type: string }[] = [];
 
       // 1. Handle main ID card file if exists
@@ -497,18 +509,6 @@ const NotaryPortalWorkflow: React.FC = () => {
           console.error('Error uploading ID card:', err);
         }
       }
-      
-      const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-             const base64String = (reader.result as string).split(',')[1];
-             resolve(base64String);
-          };
-          reader.onerror = (error) => reject(error);
-        });
-      };
 
       if (data.attachments && Array.isArray(data.attachments)) {
         for (const att of data.attachments) {
@@ -611,7 +611,7 @@ ${data.generatedDraft || 'لم يتم توليد نص العقد'}
 `;
 
       createNotificationMutation.mutate({
-        fullName: notaryProfile?.full_name || formData.fullName || 'العدل',
+        fullName: (notaryProfile as any)?.full_name || formData.fullName || 'العدل',
         professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber || '0000',
         officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber || '0000',
         appointmentDecreeNumber: notaryProfile?.appointment_decree_number || formData.appointmentDecreeNumber,
@@ -643,7 +643,7 @@ ${data.generatedDraft || 'لم يتم توليد نص العقد'}
       )));
       
       const formattedNotes = `
-� مخطط هيكلي: طلب شهادة عمل للعدل
+📋 مخطط هيكلي: طلب شهادة عمل للعدل
 ----------------------------------
 1️⃣ طبقة الاستقبال (Intake):
 رقم الطلب الفريد: ${data.fileNumber}
@@ -673,7 +673,7 @@ ${JSON.stringify(cleanData)}
       createNotificationMutation.mutate({
         fullName: data.fullName,
         professionalNumber: data.professionalNumber,
-        officeNumber: notaryProfile?.office_number || formData.officeNumber || '0000',
+        officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber || '0000',
         appointmentDecreeNumber: data.appointmentDecreeNumber,
         appointmentDate: data.appointmentDate,
         jurisdiction: data.court,
@@ -732,7 +732,7 @@ ${data.generatedText}
 `;
 
       createNotificationMutation.mutate({
-        fullName: notaryProfile?.full_name || formData.fullName || 'العدل',
+        fullName: (notaryProfile as any)?.full_name || formData.fullName || 'العدل',
         professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber || '0000',
         officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber || '0000',
         appointmentDecreeNumber: notaryProfile?.appointment_decree_number || formData.appointmentDecreeNumber,
@@ -790,7 +790,7 @@ ${data.generatedText}
 
     // Call the mutation to save to database
     createNotificationMutation.mutate({
-      fullName: notaryProfile?.full_name_ar || notaryProfile?.full_name || formData.fullName || 'عدل غير معرف',
+      fullName: (notaryProfile as any)?.full_name_ar || (notaryProfile as any)?.full_name || formData.fullName || 'عدل غير معرف',
       professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber || '0000',
       appointmentDecreeNumber: notaryProfile?.appointment_decree_number || formData.appointmentDecreeNumber,
       appointmentDate: (notaryProfile as any)?.appointment_date || formData.appointmentDate,
@@ -832,10 +832,9 @@ ${data.generatedText}
              <MarriageDocumentView 
                data={marriagePreviewData} 
                notaryData={{
-                 fullName: notaryProfile?.full_name || formData.fullName,
+                 fullName: (notaryProfile as any)?.full_name || formData.fullName,
                  jurisdiction: (notaryProfile as any)?.jurisdiction || (notaryProfile as any)?.primary_court || formData.jurisdiction,
                  professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
-                 appellateCourt: (notaryProfile as any)?.appellate_court || notaryProfile?.appellate_court
                }}
              />
           </div>
@@ -843,10 +842,10 @@ ${data.generatedText}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 no-print pb-20">
             <button
               onClick={handleFinalSend}
-              disabled={createNotificationMutation.isLoading}
+              disabled={createNotificationMutation.isPending}
               className="flex-[2] bg-red-950 text-[#E6BE8A] px-8 py-5 rounded-2xl font-bold text-xl hover:bg-red-900 transition-all shadow-xl shadow-red-950/20 flex items-center justify-center gap-3 active:scale-[0.98]"
             >
-              {createNotificationMutation.isLoading ? (
+              {createNotificationMutation.isPending ? (
                 <>
                   <span className="animate-spin text-2xl">🌀</span>
                   جاري إرسال الطلب...
@@ -890,10 +889,9 @@ ${data.generatedText}
              <WorkCertificateDocumentView 
                 data={data}
                 notaryData={{
-                  fullName: notaryProfile?.full_name || formData.fullName,
+                  fullName: (notaryProfile as any)?.full_name || formData.fullName,
                   jurisdiction: (notaryProfile as any)?.jurisdiction || (notaryProfile as any)?.primary_court || formData.jurisdiction,
                   professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
-                  appellateCourt: (notaryProfile as any)?.appellate_court || notaryProfile?.appellate_court
                 }}
              />
              <div className="bg-blue-50 border border-blue-200 p-6 rounded-3xl mt-6">
@@ -909,10 +907,10 @@ ${data.generatedText}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 no-print pb-20 justify-center max-w-2xl mx-auto">
             <button
               onClick={handleFinalSend}
-              disabled={createNotificationMutation.isLoading}
+              disabled={createNotificationMutation.isPending}
               className="flex-[2] bg-blue-900 text-white px-8 py-5 rounded-2xl font-bold text-xl hover:bg-black transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 active:scale-[0.98]"
             >
-              {createNotificationMutation.isLoading ? 'جاري الإرسال...' : 'تأكيد الطلب وإيداعه'}
+              {createNotificationMutation.isPending ? 'جاري الإرسال...' : 'تأكيد الطلب وإيداعه'}
             </button>
             <button
               onClick={() => setShowPreview(false)}
@@ -943,10 +941,9 @@ ${data.generatedText}
              <AdlCopyDocumentView 
                 data={data}
                 notaryData={{
-                  fullName: notaryProfile?.full_name || formData.fullName,
+                  fullName: (notaryProfile as any)?.full_name || formData.fullName,
                   jurisdiction: (notaryProfile as any)?.jurisdiction || (notaryProfile as any)?.primary_court || formData.jurisdiction,
                   professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
-                  appellateCourt: (notaryProfile as any)?.appellate_court || notaryProfile?.appellate_court
                 }}
              />
           </div>
@@ -954,10 +951,10 @@ ${data.generatedText}
           <div className="flex flex-col sm:flex-row gap-4 pt-4 no-print pb-20 justify-center max-w-2xl mx-auto">
             <button
               onClick={handleFinalSend}
-              disabled={createNotificationMutation.isLoading}
+              disabled={createNotificationMutation.isPending}
               className="flex-[2] bg-red-950 text-[#E6BE8A] px-8 py-5 rounded-2xl font-bold text-xl hover:bg-black transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98]"
             >
-              {createNotificationMutation.isLoading ? 'جاري الإرسال...' : 'تأكيد وإرسال للمحكمة'}
+              {createNotificationMutation.isPending ? 'جاري الإرسال...' : 'تأكيد وإرسال للمحكمة'}
             </button>
             <button
               onClick={() => setShowPreview(false)}
@@ -1007,10 +1004,9 @@ ${data.generatedText}
              <MarriageDocumentView 
                 data={marriagePreviewData}
                 notaryData={{
-                  fullName: notaryProfile?.full_name || formData.fullName,
+                  fullName: (notaryProfile as any)?.full_name || formData.fullName,
                   jurisdiction: (notaryProfile as any)?.jurisdiction || (notaryProfile as any)?.primary_court || formData.jurisdiction,
                   professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
-                  appellateCourt: (notaryProfile as any)?.appellate_court || notaryProfile?.appellate_court
                 }}
              />
              <div className="bg-red-50 border border-red-200 p-6 rounded-3xl mt-6">
@@ -1230,10 +1226,10 @@ ${data.generatedText}
       <div className="flex flex-col sm:flex-row gap-4 pt-10 no-print">
         <button
           onClick={handleFinalSend}
-          disabled={createNotificationMutation.isLoading}
+          disabled={createNotificationMutation.isPending}
           className="flex-[2] bg-red-950 text-[#E6BE8A] px-8 py-5 rounded-2xl font-bold text-xl hover:bg-red-900 transition-all shadow-xl shadow-red-950/20 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98]"
         >
-          {createNotificationMutation.isLoading ? (
+          {createNotificationMutation.isPending ? (
             <>
               <span className="animate-spin text-2xl">🌀</span>
               جاري معالجة الطلب...
@@ -1786,7 +1782,7 @@ ${data.generatedText}
                 <div className="p-6">
                   <WorkCertificateForm 
                     notaryData={{
-                      fullName: (notaryProfile as any)?.full_name_ar || notaryProfile?.full_name || formData.fullName,
+                      fullName: (notaryProfile as any)?.full_name_ar || (notaryProfile as any)?.full_name || formData.fullName,
                       fullNameLat: (notaryProfile as any)?.full_name_lat || user?.full_name,
                       professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
                       officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber,
@@ -1805,7 +1801,7 @@ ${data.generatedText}
                 <div className="p-6">
                   <AdlCopyPermissionForm 
                     notaryData={{
-                      fullName: (notaryProfile as any)?.full_name_ar || notaryProfile?.full_name || formData.fullName,
+                      fullName: (notaryProfile as any)?.full_name_ar || (notaryProfile as any)?.full_name || formData.fullName,
                       professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
                       officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber,
                       jurisdiction: (notaryProfile as any)?.jurisdiction || formData.jurisdiction,
@@ -1821,7 +1817,7 @@ ${data.generatedText}
                 <div className="p-6">
                   <IndividualReceptionPermissionForm 
                     notaryData={{
-                      fullName: (notaryProfile as any)?.full_name_ar || notaryProfile?.full_name || formData.fullName,
+                      fullName: (notaryProfile as any)?.full_name_ar || (notaryProfile as any)?.full_name || formData.fullName,
                       professionalNumber: (notaryProfile as any)?.professional_number || formData.professionalNumber,
                       officeNumber: (notaryProfile as any)?.office_number || formData.officeNumber,
                       jurisdiction: (notaryProfile as any)?.jurisdiction || formData.jurisdiction,
@@ -2717,7 +2713,7 @@ ${data.generatedText}
                       </div>
                       <div className="space-y-1">
                         <p className="text-2xl font-black text-slate-900">{selectedRequestView.notary_name}</p>
-                        <p className="text-slate-600 font-bold">الرقم المهني: <span className="text-red-950 font-black">{selectedRequestView.notary_professional_number && selectedRequestView.notary_professional_number !== '0000' ? selectedRequestView.notary_professional_number : (notaryProfile?.professional_number || '---')}</span></p>
+                        <p className="text-slate-600 font-bold">الرقم المهني: <span className="text-red-950 font-black">{selectedRequestView.notary_professional_number && selectedRequestView.notary_professional_number !== '0000' ? selectedRequestView.notary_professional_number : ((notaryProfile as any)?.professional_number || '---')}</span></p>
                         <p className="text-slate-500 font-medium">بدائرة نفوذ {selectedRequestView.jurisdiction && selectedRequestView.jurisdiction !== 'Unknown' ? selectedRequestView.jurisdiction : (notaryProfile?.primary_court || '---')}</p>
                       </div>
                     </div>

@@ -1573,10 +1573,10 @@ function FinancialManagement() {
                  </button>
                  <button
                    onClick={handleCreateSingleInvoice}
-                   disabled={!singleInvoiceAmount || Number(singleInvoiceAmount) <= 0 || bulkPaymentMutation.isLoading}
+                   disabled={!singleInvoiceAmount || Number(singleInvoiceAmount) <= 0 || bulkPaymentMutation.isPending}
                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg font-bold hover:from-blue-700 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                  >
-                   {bulkPaymentMutation.isLoading ? 'جارٍ المعالجة...' : 'إنشاء الفاتورة'}
+                   {bulkPaymentMutation.isPending ? 'جارٍ المعالجة...' : 'إنشاء الفاتورة'}
                  </button>
                </div>
              </div>

@@ -8,10 +8,10 @@ export function StatisticsModule() {
   const [filter, setFilter] = useState<{ from?: string; to?: string } | undefined>(undefined);
 
   const { data: marriageDivorce } = trpc.statistics.marriageDivorce.useQuery(filter, {
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
   const { data: fees } = trpc.statistics.fees.useQuery(filter, {
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   const applyFilter = (e: React.FormEvent) => {

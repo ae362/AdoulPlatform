@@ -7,7 +7,7 @@
  * 3. Import and test the service
  */
 
-import { getCopilotService } from '@/services/copilotService';
+import { getCopilotService } from '../services/copilotService';
 
 /**
  * Test 1: Check if API is configured

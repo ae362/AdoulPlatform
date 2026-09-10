@@ -413,8 +413,10 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                           </div>
                           
                           <button 
-                            onClick={() => setIsZoomed(true)}
-                            onClick={() => setIsDualInspectorOpen(true)}
+                            onClick={() => {
+                              setIsZoomed(true);
+                              setIsDualInspectorOpen(true);
+                            }}
                             className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-xl flex items-center gap-3 active:scale-95"
                           >
                              <Search size={16} />
@@ -475,8 +477,10 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                              <div className="flex-1 bg-slate-200/40 overflow-y-auto p-12 flex justify-center custom-scrollbar">
                                 <div 
                                   className="w-full max-w-[850px] bg-white shadow-[0_30px_70px_rgba(0,0,0,0.15)] relative transition-all duration-700 hover:shadow-[0_45px_100px_rgba(0,0,0,0.2)] rounded-sm cursor-zoom-in group/doc grow-0 h-fit"
-                                  onClick={() => setIsZoomed(true)}
-                                  onClick={() => setIsDualInspectorOpen(true)}
+                                  onClick={() => {
+                                    setIsZoomed(true);
+                                    setIsDualInspectorOpen(true);
+                                  }}
                                 >
                                    <div className="p-1 pointer-events-none scale-[0.98] origin-top">
                                       <MarriageDocumentView data={selectedRequest.data || {}} notaryData={selectedRequest as any} />
@@ -542,8 +546,10 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
                                            title="Viewer" 
                                          />
                                          <div 
-                                           onClick={() => setIsZoomed(true)}
-                                           onClick={() => setIsDualInspectorOpen(true)}
+                                           onClick={() => {
+                                             setIsZoomed(true);
+                                             setIsDualInspectorOpen(true);
+                                           }}
                                            className="absolute top-6 right-6 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl opacity-0 group-hover/viewer:opacity-100 transition-all cursor-pointer hover:scale-110 active:scale-95 z-20"
                                          >
                                             <Search size={20} />

@@ -339,7 +339,7 @@ export function WorkCertificatesModule() {
         </div>
 
         <button 
-          onClick={() => setStep(4)}
+          onClick={goToJudicialPortal}
           className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-xl hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-3"
         >
           <span>✨</span> إنشاء طلب إذن بصيغة قانونية
@@ -356,7 +356,6 @@ export function WorkCertificatesModule() {
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
-      {step === 4 && renderStep4()}
     </div>
   );
 }

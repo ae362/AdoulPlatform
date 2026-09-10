@@ -60,7 +60,7 @@ export default function StampSystemDemoPage() {
         if (!context) return;
         context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
         context.clearRect(0, 0, viewport.width, viewport.height);
-        await pdfPage.render({ canvasContext: context, viewport }).promise;
+        await (pdfPage.render as any)({ canvasContext: context, viewport }).promise;
         setPageBox({ width: Math.round(viewport.width), height: Math.round(viewport.height) });
         setPlacement((prev) => ({ ...prev, page: safePage }));
       } finally {
@@ -84,7 +84,7 @@ export default function StampSystemDemoPage() {
   const handleExport = async () => {
     if (!pdfBytes) return;
     const stampedBytes = await exportStampedPdf(pdfBytes, [{ placement, svgMarkup: stampSvg }]);
-    const blob = new Blob([stampedBytes], { type: 'application/pdf' });
+    const blob = new Blob([stampedBytes as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
