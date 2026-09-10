@@ -123,4 +123,36 @@ describe('deduplicateAttachments', () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('cin-card');
   });
+
+  it('filters companion DOCX sharing base path with primary PDF while preserving external user DOCX', () => {
+    const primaryDoc = {
+      streamUrl: 'https://supabase.co/storage/v1/object/public/documents/judge-submissions/123/deed-123.pdf',
+      title: 'المستند المعتمد.pdf',
+      docxUrl: 'https://supabase.co/storage/v1/object/public/documents/judge-submissions/123/deed-123.docx',
+    };
+
+    const attachments = [
+      {
+        id: 'companion-doc',
+        name: 'docx..._.....docx',
+        fileName: 'docx..._.....docx',
+        url: 'https://supabase.co/storage/v1/object/public/documents/judge-submissions/123/deed-123.docx',
+        category: 'وثيقة التوثيق المرفقة',
+        type: 'DOCX',
+      },
+      {
+        id: 'external-party-docx',
+        name: 'زواج عمدة اشكابر.docx',
+        fileName: 'زواج عمدة اشكابر.docx',
+        url: 'https://supabase.co/storage/v1/object/public/documents/attachments/party_marriage.docx',
+        category: 'وثيقة إضافية',
+        type: 'DOCX',
+      },
+    ];
+
+    const result = deduplicateAttachments(attachments, primaryDoc);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('external-party-docx');
+    expect(result[0].name).toBe('زواج عمدة اشكابر.docx');
+  });
 });

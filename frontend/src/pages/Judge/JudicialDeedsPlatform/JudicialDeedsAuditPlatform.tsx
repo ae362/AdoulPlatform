@@ -162,6 +162,9 @@ export default function JudicialDeedsAuditPlatform() {
         );
         // If deed is pending and has no PDF yet, poll every 1.5s until conversion/upload finishes
         return !hasPdf && sub?.status === 'pending' ? 1500 : false;
+        // If deed is pending or in_review and has no compiled PDF yet, poll every 1.2s until conversion/upload finishes
+        const isUndecided = sub?.status === 'pending' || sub?.status === 'in_review';
+        return !hasPdf && isUndecided ? 1200 : false;
       },
     }
   );
@@ -212,12 +215,12 @@ export default function JudicialDeedsAuditPlatform() {
     return primaryDoc?.fileType || (payload.rasmHtml || payload.draft || submission?.summary ? 'HTML' : 'PDF');
   }, [selectedDocType, selectedDocUrl, selectedDocTitle, primaryDoc, payload, submission]);
 
-  // Unified Document Stream Hook
+  // Unified Document Stream Hook - only supply raw HTML string when viewing HTML mode without external binary URL
   const documentStream = useJudicialDocumentStream(
     activeStreamUrl,
     activeFileType,
     id,
-    selectedDocRawContent || (primaryDoc?.rawContent || (primaryDoc?.metadata?.rawContent as string)) || null
+    selectedDocRawContent || (activeFileType === 'HTML' && !selectedDocUrl ? (primaryDoc?.rawContent || (primaryDoc?.metadata?.rawContent as string)) : null)
   );
 
   // Scale-Aware Annotation Hook
@@ -417,14 +420,8 @@ export default function JudicialDeedsAuditPlatform() {
       });
     });
 
-    // 4. Individual single files in payload
-    const singlePayloadCandidates = [
-      { obj: payload?.attachment, label: 'وثيقة التوثيق المرفقة' },
-      { obj: payload?.judgeAttachment, label: 'مستند القاضي' },
-      { obj: payload?.manualRasmFile, label: 'الرسم المرفوع' },
-      { obj: payload?.judgeAcceptedDoc, label: 'المستند المعتمد' },
-      { obj: payload?.baseDoc, label: 'المستند الأصلي' },
-    ];
+    // 4. Individual single files in payload (exclude primary deed objects)
+    const singlePayloadCandidates: Array<{ obj: any; label: string }> = [];
 
     singlePayloadCandidates.forEach(({ obj, label }, idx) => {
       if (!obj) return;
@@ -442,7 +439,9 @@ export default function JudicialDeedsAuditPlatform() {
         rawCat === 'مستند القاضي' ||
         rawCat === 'المستند المعتمد' ||
         rawCat === 'المستند الأصلي' ||
-        rawCat === 'الرسم المرفوع'
+        rawCat === 'الرسم المرفوع' ||
+        rawCat === 'وثيقة التوثيق المرفقة' ||
+        rawCat.includes('judge_attachment')
       ) {
         return;
       }
@@ -478,6 +477,19 @@ export default function JudicialDeedsAuditPlatform() {
       if (typeof v !== 'object') return;
       if (seenPayloadObjs.has(v as object)) return;
       seenPayloadObjs.add(v as object);
+
+      // Do not scan primary deed roots into external attachments repository
+      if (
+        p === 'attachment' ||
+        p === 'judgeAttachment' ||
+        p === 'manualRasmFile' ||
+        p === 'baseDoc' ||
+        p === 'judgeAcceptedDoc' ||
+        p === 'savedRasm' ||
+        p === 'saved_rasms'
+      ) {
+        return;
+      }
 
       const obj = v as Record<string, any>;
       const hasUrl = typeof obj.url === 'string' && obj.url.trim().length > 0;
@@ -955,7 +967,6 @@ export default function JudicialDeedsAuditPlatform() {
                                  </div>
                               </div>
                            </div>
-                        ) : activeFileType === 'PDF' && (documentStream.blobUrl || activeStreamUrl) ? (
                         ) : activeFileType === 'DOCX' && (documentStream.blobUrl || activeStreamUrl) ? (
                            <WordPreview
                              key={`judge-word-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
@@ -968,12 +979,6 @@ export default function JudicialDeedsAuditPlatform() {
                              src={getJudgeLikePdfViewerUrl(documentStream.blobUrl || activeStreamUrl || '')}
                              className="w-full h-[1123px] border-none"
                              title={selectedDocTitle || primaryDoc?.title || 'Judicial Deed Document'}
-                           />
-                        ) : activeFileType === 'DOCX' && (documentStream.blobUrl || activeStreamUrl) ? (
-                           <WordPreview
-                             key={`judge-word-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
-                             url={documentStream.blobUrl || activeStreamUrl || ''}
-                             submissionId={id}
                            />
                         ) : (
                            <RasmHtmlPreview

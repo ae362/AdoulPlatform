@@ -1,38 +1,42 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, resolveSessionUser } from './trpc';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { TRPCError } from '@trpc/server';
+import { CacheService } from '../services/cacheService';
 
 export const cmsRouter = router({
   getContent: publicProcedure
     .input(z.object({ section: z.string().optional() }))
     .query(async ({ input }) => {
-      let query = supabase.from('cms_content').select('*');
-      
-      if (input.section) {
-        query = query.eq('section', input.section);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('CMS Fetch Error:', error);
-        return {};
-      }
-      
-      // Convert array to object map for easier consumption
-      const contentMap: Record<string, any> = {};
-      if (data) {
-        data.forEach((row: any) => {
-          contentMap[row.key] = {
-            value: row.value,
-            type: row.type,
-            description: row.description
-          };
-        });
-      }
-      
-      return contentMap;
+      const cacheKey = `ref:cms:content:${input.section || 'all'}`;
+      return CacheService.remember(cacheKey, 3600, async () => {
+        let query = supabase.from('cms_content').select('*');
+        
+        if (input.section) {
+          query = query.eq('section', input.section);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('CMS Fetch Error:', error);
+          return {};
+        }
+        
+        // Convert array to object map for easier consumption
+        const contentMap: Record<string, any> = {};
+        if (data) {
+          data.forEach((row: any) => {
+            contentMap[row.key] = {
+              value: row.value,
+              type: row.type,
+              description: row.description
+            };
+          });
+        }
+        
+        return contentMap;
+      });
     }),
 
   updateContent: publicProcedure
@@ -47,28 +51,8 @@ export const cmsRouter = router({
       }))
     }))
     .mutation(async ({ input }) => {
-      const { data: session, error: sessionError } = await supabase
-        .from('user_sessions')
-        .select('user_id')
-        .eq('session_token', input.sessionToken)
-        .single();
+      const user = await resolveSessionUser(input.sessionToken);
 
-      if (sessionError || !session) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid session' });
-      }
-
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id, role, is_active')
-        .eq('id', session.user_id)
-        .single();
-
-      if (userError || !user) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
-      }
-      if (!user.is_active) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'User is not active' });
-      }
       if (user.role !== 'creator') {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only creators can update CMS content' });
       }
@@ -93,6 +77,7 @@ export const cmsRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
       }
       
+      await CacheService.delPattern('ref:cms:content:*');
       return { success: true };
     }),
 
@@ -107,28 +92,8 @@ export const cmsRouter = router({
       })
     }))
     .mutation(async ({ input }) => {
-      const { data: session, error: sessionError } = await supabase
-        .from('user_sessions')
-        .select('user_id')
-        .eq('session_token', input.sessionToken)
-        .single();
+      const user = await resolveSessionUser(input.sessionToken);
 
-      if (sessionError || !session) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid session' });
-      }
-
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id, role, is_active')
-        .eq('id', session.user_id)
-        .single();
-
-      if (userError || !user) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
-      }
-      if (!user.is_active) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'User is not active' });
-      }
       if (user.role !== 'creator') {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only creators can update CMS content' });
       }
@@ -156,6 +121,7 @@ export const cmsRouter = router({
         );
         
       if (error) throw new Error(error.message);
+      await CacheService.delPattern('ref:cms:content:*');
       return { success: true };
     })
 });

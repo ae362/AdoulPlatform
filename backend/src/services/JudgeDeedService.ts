@@ -366,6 +366,19 @@ export class JudgeDeedService {
     ].filter(Boolean);
 
     extraPayloadFiles.forEach((f: any, idx: number) => {
+      const rawCat = String(f.category || f.field || '').trim().toLowerCase();
+      if (
+        rawCat === 'judge_attachment' ||
+        rawCat === 'judge_attachment_docx' ||
+        rawCat === 'audit_final_pdf' ||
+        rawCat === 'audit_final_docx' ||
+        rawCat === 'audit_draft_pdf' ||
+        rawCat === 'audit_draft_docx' ||
+        rawCat === 'primary_docx'
+      ) {
+        return;
+      }
+
       const name = String(f.name || f.fileName || f.filename || `مرفق_${idx + 1}`);
       const mime = f.type || f.mimeType || f.mime_type || null;
       let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || '').trim();

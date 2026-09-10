@@ -1,30 +1,11 @@
-﻿import { z } from 'zod';
-import { router, publicProcedure } from './trpc';
+import { z } from 'zod';
+import { router, publicProcedure, resolveSessionUser } from './trpc';
 import { supabase } from '../services/supabase';
 import { TRPCError } from '@trpc/server';
 
 async function validateSession(sessionToken: string) {
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !session) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Unauthorized - Invalid Session',
-    });
-  }
-
-  if (new Date(session.expires_at) < new Date()) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Unauthorized - Session Expired',
-    });
-  }
-
-  return session.user_id;
+  const user = await resolveSessionUser(sessionToken);
+  return user.id;
 }
 
 export const dailyLedgerRouter = router({

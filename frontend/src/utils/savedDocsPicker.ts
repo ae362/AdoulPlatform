@@ -195,6 +195,12 @@ export function pickNormalizedDocument(
         title: candidate.name,
         fileType: 'PDF',
         streamUrl: url,
+        docxUrl:
+          payload?.attachment?.fileUrl ||
+          payload?.attachment?.url ||
+          (submissionPayload as any)?.attachment?.fileUrl ||
+          (submissionPayload as any)?.attachment?.url ||
+          null,
         metadata: {
           category: 'compiled_pdf_stream',
           source: 'server_pipeline',
@@ -327,7 +333,9 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
   primaryDoc?: { url?: string | null; streamUrl?: string | null; fileName?: string | null; name?: string | null; title?: string | null } | null
 ): T[] {
   const primaryUrl = String(primaryDoc?.streamUrl || primaryDoc?.url || '').trim().toLowerCase();
+  const primaryDocxUrl = String((primaryDoc as any)?.docxUrl || (primaryDoc as any)?.editableUrl || '').trim().toLowerCase();
   const primaryName = String(primaryDoc?.title || primaryDoc?.fileName || primaryDoc?.name || '').trim().toLowerCase().replace(/\.(pdf|docx?|dotx?)$/i, '');
+  const primaryUrlBase = primaryUrl.split('?')[0].replace(/\.(pdf|docx?|dotx?)$/i, '');
 
   const isPrimaryDeedCategory = (cat: string) => {
     const c = (cat || '').toLowerCase().trim();
@@ -345,6 +353,7 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
       c === 'manualrasmfile' ||
       c === 'الرسم الأساسي المعتمد' ||
       c === 'وثيقة موجهة للقاضي' ||
+      c === 'وثيقة التوثيق المرفقة' ||
       c === 'مسودة التوثيق' ||
       c === 'مسودة الرسم' ||
       c === 'مستند القاضي' ||
@@ -354,7 +363,8 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
       c.includes('judge_attachment') ||
       c.includes('audit_final') ||
       c.includes('audit_draft') ||
-      c.includes('primary_docx')
+      c.includes('primary_docx') ||
+      c.includes('companion')
     );
   };
 
@@ -364,13 +374,21 @@ export function deduplicateAttachments<T extends { fileName?: string; name?: str
   for (const att of attachments) {
     if ((att as any)?.isPrimary) continue;
     const url = String(att.url || att.fileUrl || '').trim().toLowerCase();
+    const urlBase = url.split('?')[0].replace(/\.(pdf|docx?|dotx?)$/i, '');
     const name = String(att.fileName || att.name || '').trim().toLowerCase();
     const baseName = name.replace(/\.(pdf|docx?|dotx?|png|jpe?g)$/i, '');
     const cat = String(att.category || '').toLowerCase();
     const rawCat = String(att.rawCategory || '').toLowerCase();
 
     // If matches primary document by url, skip
+    // If matches primary document by url or extensionless base URL (e.g. .pdf vs .docx companion), skip
     if (primaryUrl && url && (url === primaryUrl || url.split('?')[0] === primaryUrl.split('?')[0])) {
+      continue;
+    }
+    if (primaryDocxUrl && url && (url === primaryDocxUrl || url.split('?')[0] === primaryDocxUrl.split('?')[0])) {
+      continue;
+    }
+    if (primaryUrlBase && urlBase && primaryUrlBase === urlBase) {
       continue;
     }
     // If categorized as primary deed attachment, skip (already represented by primary deed card)

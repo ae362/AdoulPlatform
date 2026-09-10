@@ -10,7 +10,8 @@ import {
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, router, resolveSessionUser } from './trpc';
+import { CacheService } from '../services/cacheService';
 import { uploadBufferToDocumentsBucket } from '../utils/storage';
 import { PDFDocument } from 'pdf-lib';
 import { sha256Hex } from '../utils/auditDocPatch';
@@ -59,32 +60,22 @@ const JUDGE_CITY_CODE_MAP: Record<string, string> = {
   مكناس: 'MEK',
 };
 
-const FINAL_ARCHIVING_CACHE_TTL_MS = 15_000;
-const finalArchivingCache = new Map<string, { expiresAt: number; data: { registries: any[]; entries: any[] } }>();
+const FINAL_ARCHIVING_CACHE_TTL_SEC = 15;
 
 function getFinalArchivingCacheKey(userId: string) {
-  return `judge-final-archiving:${userId}`;
+  return `judge:final-archiving:${userId}`;
 }
 
-function readFinalArchivingCache(userId: string) {
-  const cached = finalArchivingCache.get(getFinalArchivingCacheKey(userId));
-  if (!cached) return null;
-  if (cached.expiresAt <= Date.now()) {
-    finalArchivingCache.delete(getFinalArchivingCacheKey(userId));
-    return null;
-  }
-  return cached.data;
+async function readFinalArchivingCache(userId: string) {
+  return CacheService.get<{ registries: any[]; entries: any[] }>(getFinalArchivingCacheKey(userId));
 }
 
-function writeFinalArchivingCache(userId: string, data: { registries: any[]; entries: any[] }) {
-  finalArchivingCache.set(getFinalArchivingCacheKey(userId), {
-    data,
-    expiresAt: Date.now() + FINAL_ARCHIVING_CACHE_TTL_MS,
-  });
+async function writeFinalArchivingCache(userId: string, data: { registries: any[]; entries: any[] }) {
+  await CacheService.set(getFinalArchivingCacheKey(userId), data, FINAL_ARCHIVING_CACHE_TTL_SEC);
 }
 
-function invalidateFinalArchivingCache(userId: string) {
-  finalArchivingCache.delete(getFinalArchivingCacheKey(userId));
+async function invalidateFinalArchivingCache(userId: string) {
+  await CacheService.del(getFinalArchivingCacheKey(userId));
 }
 
 function buildJudgeInclusionDescriptor(registryType: InclusionRegistryType, registryLetter: string) {
@@ -884,31 +875,7 @@ async function requireJudgeSubmission(sessionToken: string, id: string) {
 }
 
 async function requireSession(sessionToken: string) {
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !session) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
-  }
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, role, full_name, email, is_active')
-    .eq('id', session.user_id)
-    .single();
-
-  if (userError || !user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'مستخدم غير موجود' });
-  }
-
-  if (!user.is_active) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'الحساب غير نشط' });
-  }
-
-  return user;
+  return resolveSessionUser(sessionToken);
 }
 
 function isJudgeRole(role: string) {
@@ -1104,7 +1071,7 @@ export const judgeRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: logRes.error.message });
       }
 
-      invalidateFinalArchivingCache(String(user.id));
+      await invalidateFinalArchivingCache(String(user.id));
       return { success: true, sentAt, alreadySent: false };
     }),
 
@@ -1118,7 +1085,7 @@ export const judgeRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح' });
       }
 
-      const cached = readFinalArchivingCache(String(user.id));
+      const cached = await readFinalArchivingCache(String(user.id));
       if (cached) {
         console.log('[judge.listFinalArchivingRecords] cache hit', {
           userId: user.id,
@@ -1468,7 +1435,7 @@ export const judgeRouter = router({
       });
 
       const response = { registries, entries };
-      writeFinalArchivingCache(String(user.id), response);
+      await writeFinalArchivingCache(String(user.id), response);
       console.log('[judge.listFinalArchivingRecords] timings', {
         userId: user.id,
         submissionsMs: submissionsFetchedAt - startedAt,
@@ -1763,7 +1730,7 @@ export const judgeRouter = router({
         // best-effort
       }
 
-      invalidateFinalArchivingCache(String(user.id));
+      await invalidateFinalArchivingCache(String(user.id));
       return {
         success: true,
         signedDeedId,
@@ -2252,7 +2219,9 @@ export const judgeRouter = router({
     .input(DecideSubmissionInputSchema)
     .mutation(async ({ input }) => {
       const user = await requireSession(input.sessionToken);
-      return JudgeDeedService.decideSubmission(user, input);
+      const result = await JudgeDeedService.decideSubmission(user, input);
+      await invalidateFinalArchivingCache(String(user.id));
+      return result;
     }),
 });
 

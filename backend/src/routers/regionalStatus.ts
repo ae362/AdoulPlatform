@@ -2,40 +2,13 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { uploadDocument, fileUploadSchema } from '../utils/storage';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, router, resolveSessionUser } from './trpc';
 
 type AuthUser = { id: string; role: string; is_active: boolean };
 
 async function requireUser(sessionToken: string): Promise<AuthUser> {
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !session) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid session' });
-  }
-
-  if (session.expires_at && new Date(session.expires_at).getTime() < Date.now()) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Session expired' });
-  }
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, role, is_active')
-    .eq('id', session.user_id)
-    .single();
-
-  if (userError || !user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
-  }
-
-  if (!user.is_active) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'User is not active' });
-  }
-
-  return user;
+  const user = await resolveSessionUser(sessionToken);
+  return { id: user.id, role: user.role, is_active: user.is_active };
 }
 
 function requireNational(user: AuthUser) {

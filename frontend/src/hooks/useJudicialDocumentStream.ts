@@ -52,12 +52,32 @@ export function useJudicialDocumentStream(
     const normalizedType = (fileType || '').toLowerCase();
 
     // 1. Direct Raw HTML / Text Content bypasses binary conversions
+    const isBinaryAsset =
+      normalizedType === 'docx' ||
+      normalizedType === 'pdf' ||
+      normalizedType === 'image' ||
+      rawInput.endsWith('.docx') ||
+      rawInput.endsWith('.pdf') ||
+      /\.(png|jpe?g|webp|gif)$/i.test(rawInput) ||
+      rawInput.startsWith('http://') ||
+      rawInput.startsWith('https://') ||
+      rawInput.startsWith('blob:') ||
+      rawInput.startsWith('data:application/pdf') ||
+      rawInput.startsWith('data:application/vnd') ||
+      rawInput.startsWith('data:image/');
+
     const isInlineHtml =
       (initialRawContent && initialRawContent.trim().length > 0) ||
       rawInput.startsWith('<') ||
       rawInput.startsWith('html://') ||
       rawInput.startsWith('draft://') ||
       (normalizedType.includes('html') && !rawInput.startsWith('http://') && !rawInput.startsWith('https://') && !rawInput.startsWith('/'));
+      !isBinaryAsset &&
+      ((initialRawContent && initialRawContent.trim().length > 0) ||
+        rawInput.startsWith('<') ||
+        rawInput.startsWith('html://') ||
+        rawInput.startsWith('draft://') ||
+        normalizedType.includes('html'));
 
     if (isInlineHtml) {
       cleanupActiveBlobUrl();
@@ -109,7 +129,13 @@ export function useJudicialDocumentStream(
 
       try {
         const headers: HeadersInit = {};
-        if (sessionToken && !rawInput.startsWith('data:')) {
+        const isExternalStorageUrl =
+          rawInput.includes('/storage/v1/object/public/') ||
+          rawInput.includes('/storage/v1/object/sign/') ||
+          rawInput.startsWith('blob:') ||
+          rawInput.startsWith('data:');
+
+        if (sessionToken && !isExternalStorageUrl) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
           headers['x-session-token'] = sessionToken;
         }

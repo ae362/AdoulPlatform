@@ -1,37 +1,14 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, router, resolveSessionUser } from './trpc';
 import sanitizeHtml from 'sanitize-html';
 import { sendEmail } from '../services/email';
 
 const sessionSchema = z.object({ sessionToken: z.string() });
 
 async function requireSession(sessionToken: string) {
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !session) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
-  }
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, role, full_name, email, is_active')
-    .eq('id', session.user_id)
-    .single();
-
-  if (userError || !user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'المستخدم غير موجود' });
-  }
-
-  if (!user.is_active) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'الحساب غير نشط' });
-  }
-
+  const user = await resolveSessionUser(sessionToken);
   return user as {
     id: string;
     role: 'authentication_judge' | 'notary' | 'government_authority' | 'national_notary_authority' | 'regional_adoul_council';

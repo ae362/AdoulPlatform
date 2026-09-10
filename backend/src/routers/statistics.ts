@@ -2,31 +2,12 @@ import crypto from 'crypto';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, resolveSessionUser } from './trpc';
 
 type AuthUser = { id: string; role: string; is_active: boolean; email?: string | null; full_name?: string | null };
 
 async function requireUser(sessionToken: string): Promise<AuthUser> {
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !session) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid session' });
-  if (session.expires_at && new Date(session.expires_at).getTime() < Date.now()) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Session expired' });
-  }
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, role, is_active, email, full_name')
-    .eq('id', session.user_id)
-    .single();
-
-  if (userError || !user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User not found' });
-  if (!user.is_active) throw new TRPCError({ code: 'FORBIDDEN', message: 'User is not active' });
-
+  const user = await resolveSessionUser(sessionToken);
   return user as any;
 }
 

@@ -110,3 +110,34 @@ export const judgeProcedure = protectedProcedure.use(
 export const councilProcedure = protectedProcedure.use(
   requireRole(['regional_adoul_council'])
 );
+
+/**
+ * Resolves user session from CacheService (< 1ms).
+ * Throws TRPCError UNAUTHORIZED / FORBIDDEN if session is invalid or user is inactive.
+ */
+export async function resolveSessionUser(sessionToken: string): Promise<UserSessionPayload> {
+  if (!sessionToken || typeof sessionToken !== 'string') {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'رمز الجلسة غير صالح أو مفقود',
+    });
+  }
+
+  const verified = await CacheService.verifySessionWithCache(sessionToken);
+  if (!verified || !verified.user) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'جلسة غير صالحة أو منتهية الصلاحية',
+    });
+  }
+
+  if (!verified.user.is_active) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'الحساب غير مفعّل',
+    });
+  }
+
+  return verified.user as UserSessionPayload;
+}
+

@@ -50,6 +50,9 @@ export default function JudicialDeedsDashboard() {
     {
       enabled: !!sessionToken,
       staleTime: 30_000,
+      staleTime: 4_000,
+      refetchInterval: 6_000,
+      refetchOnWindowFocus: true,
       retry: false,
       placeholderData: (prev) => prev,
     }

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import { randomUUID } from 'crypto';
 import { supabase } from '../services/supabase';
+import { CacheService } from '../services/cacheService';
 
 type PeerInfo = {
   peerId: string;
@@ -25,21 +26,9 @@ function getRoom(sessionId: string) {
 }
 
 async function authBySessionToken(sessionId: string, sessionToken: string): Promise<PeerInfo> {
-  const { data: userSession, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .single();
-
-  if (sessionError || !userSession) throw new Error('Invalid session');
-  if (userSession.expires_at && new Date(userSession.expires_at).getTime() < Date.now()) throw new Error('Session expired');
-
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, role, full_name, is_active')
-    .eq('id', userSession.user_id)
-    .single();
-  if (userError || !user) throw new Error('User not found');
+  const sessionRes = await CacheService.verifySessionWithCache(sessionToken, supabase);
+  if (!sessionRes || !sessionRes.user) throw new Error('Invalid or expired session');
+  const user = sessionRes.user;
   if (!user.is_active) throw new Error('User inactive');
 
   const { data: hearing, error: hearingError } = await supabase
