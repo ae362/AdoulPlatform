@@ -9,23 +9,6 @@ import './i18n';
 import { trpc } from './trpc';
 import { languages, navigation } from '../../shared';
 import { DateWidget } from './modules/DateWidget';
-import { Dashboard } from './modules/Dashboard';
-import { NotariesModule } from './modules/Notaries.tsx';
-import { NotaryDetails } from './modules/NotaryDetails.tsx';
-import { FeesModule } from './modules/Fees';
-import { IndexingModule, FinalIndexing, OngoingIndexing } from './modules/Indexing';
-import { CopyRequestsModule } from './modules/CopyRequests';
-import { ContractsModule } from './modules/Contracts';
-import { LegalProceduresModule } from './modules/LegalProcedures';
-import { StatisticsModule } from './modules/Statistics';
-import { FilesMiscModule } from './modules/FilesMisc';
-import { ContractTemplatesModule } from './modules/ContractTemplates';
-import { RegistrationStampModule } from './modules/RegistrationStamp';
-import { SocietyMembersLogin } from './modules/SocietyMembersLogin';
-import { MessagingInbox } from './modules/MessagingInbox.tsx';
-import { WorkCertificatesModule } from './modules/WorkCertificates';
-import { MarriagesModule } from './modules/Marriages';
-import { SubscriptionsModule } from './modules/Subscriptions';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { MessagingNotificationsProvider } from './contexts/MessagingNotificationsContext.tsx';
 import { Login } from './components/auth/Login.tsx';
@@ -34,28 +17,58 @@ import { DashboardRouter } from './components/DashboardRouter';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Unauthorized } from './components/Unauthorized';
 import { LandingPage } from './components/LandingPage';
-import { PublicSubCategoryPage } from './modules/PublicSubCategoryPage.tsx';
-import { ProfessionalProgramsPage } from './modules/knowledge/professionalPrograms';
-import { AudiovisualLibraryPage } from './modules/knowledge/audiovisualLibrary';
-import { DigitalArchivePage } from './modules/knowledge/digitalArchive';
-import { MeetingsDialoguesPage } from './modules/knowledge/meetingsDialogues';
-import { SmartReminderPage } from './modules/news/smartReminder';
-import { LegalNewsPage } from './modules/news/legalNews';
-import { LegislativeChangesPage } from './modules/news/legislativeChanges';
-import { NationalCouncilPortal } from './modules/NationalCouncilPortal';
-import { NationalExecutiveRequests } from './modules/NationalExecutiveRequests';
-import { SearchArchiveManagement } from './modules/SearchArchiveManagement';
-import { ExtractionManagement } from './modules/ExtractionManagement';
-import { DailyLedgerModule } from './modules/DailyLedger';
-import { NotaryDashboard } from './components/dashboards/NotaryDashboard';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { OrnateScrollBanner } from './components/common/OrnateScrollBanner';
 import { getBackendHttpOrigin } from './utils/backendOrigin';
-import RemoteHearingJoin from './pages/RemoteHearingJoin';
-import { PublicCopyExtractionPage } from './pages/PublicCopyExtractionPage.tsx';
-import { PublicSearchDeedsPage } from './pages/PublicSearchDeedsPage.tsx';
 
-const queryClient = new QueryClient();
+// Lazily-loaded application modules to eliminate initial bundle bloat (< 300 kB target)
+const Dashboard = lazy(() => import('./modules/Dashboard').then((m: any) => ({ default: m.Dashboard || m.default })));
+const NotariesModule = lazy(() => import('./modules/Notaries').then((m: any) => ({ default: m.NotariesModule || m.default })));
+const NotaryDetails = lazy(() => import('./modules/NotaryDetails').then((m: any) => ({ default: m.NotaryDetails || m.default })));
+const FeesModule = lazy(() => import('./modules/Fees').then((m: any) => ({ default: m.FeesModule || m.default })));
+const IndexingModule = lazy(() => import('./modules/Indexing').then((m: any) => ({ default: m.IndexingModule || m.default })));
+const FinalIndexing = lazy(() => import('./modules/Indexing').then((m: any) => ({ default: m.FinalIndexing || m.default })));
+const OngoingIndexing = lazy(() => import('./modules/Indexing').then((m: any) => ({ default: m.OngoingIndexing || m.default })));
+const CopyRequestsModule = lazy(() => import('./modules/CopyRequests').then((m: any) => ({ default: m.CopyRequestsModule || m.default })));
+const ContractsModule = lazy(() => import('./modules/Contracts').then((m: any) => ({ default: m.ContractsModule || m.default })));
+const LegalProceduresModule = lazy(() => import('./modules/LegalProcedures').then((m: any) => ({ default: m.LegalProceduresModule || m.default })));
+const StatisticsModule = lazy(() => import('./modules/Statistics').then((m: any) => ({ default: m.StatisticsModule || m.default })));
+const FilesMiscModule = lazy(() => import('./modules/FilesMisc').then((m: any) => ({ default: m.FilesMiscModule || m.default })));
+const ContractTemplatesModule = lazy(() => import('./modules/ContractTemplates').then((m: any) => ({ default: m.ContractTemplatesModule || m.default })));
+const RegistrationStampModule = lazy(() => import('./modules/RegistrationStamp').then((m: any) => ({ default: m.RegistrationStampModule || m.default })));
+const SocietyMembersLogin = lazy(() => import('./modules/SocietyMembersLogin').then((m: any) => ({ default: m.SocietyMembersLogin || m.default })));
+const MessagingInbox = lazy(() => import('./modules/MessagingInbox').then((m: any) => ({ default: m.MessagingInbox || m.default })));
+const WorkCertificatesModule = lazy(() => import('./modules/WorkCertificates').then((m: any) => ({ default: m.WorkCertificatesModule || m.default })));
+const MarriagesModule = lazy(() => import('./modules/Marriages').then((m: any) => ({ default: m.MarriagesModule || m.default })));
+const SubscriptionsModule = lazy(() => import('./modules/Subscriptions').then((m: any) => ({ default: m.SubscriptionsModule || m.default })));
+const PublicSubCategoryPage = lazy(() => import('./modules/PublicSubCategoryPage').then((m: any) => ({ default: m.PublicSubCategoryPage || m.default })));
+const ProfessionalProgramsPage = lazy(() => import('./modules/knowledge/professionalPrograms').then((m: any) => ({ default: m.ProfessionalProgramsPage || m.default })));
+const AudiovisualLibraryPage = lazy(() => import('./modules/knowledge/audiovisualLibrary').then((m: any) => ({ default: m.AudiovisualLibraryPage || m.default })));
+const DigitalArchivePage = lazy(() => import('./modules/knowledge/digitalArchive').then((m: any) => ({ default: m.DigitalArchivePage || m.default })));
+const MeetingsDialoguesPage = lazy(() => import('./modules/knowledge/meetingsDialogues').then((m: any) => ({ default: m.MeetingsDialoguesPage || m.default })));
+const SmartReminderPage = lazy(() => import('./modules/news/smartReminder').then((m: any) => ({ default: m.SmartReminderPage || m.default })));
+const LegalNewsPage = lazy(() => import('./modules/news/legalNews').then((m: any) => ({ default: m.LegalNewsPage || m.default })));
+const LegislativeChangesPage = lazy(() => import('./modules/news/legislativeChanges').then((m: any) => ({ default: m.LegislativeChangesPage || m.default })));
+const NationalCouncilPortal = lazy(() => import('./modules/NationalCouncilPortal').then((m: any) => ({ default: m.NationalCouncilPortal || m.default })));
+const NationalExecutiveRequests = lazy(() => import('./modules/NationalExecutiveRequests').then((m: any) => ({ default: m.NationalExecutiveRequests || m.default })));
+const SearchArchiveManagement = lazy(() => import('./modules/SearchArchiveManagement').then((m: any) => ({ default: m.SearchArchiveManagement || m.default })));
+const ExtractionManagement = lazy(() => import('./modules/ExtractionManagement').then((m: any) => ({ default: m.ExtractionManagement || m.default })));
+const DailyLedgerModule = lazy(() => import('./modules/DailyLedger').then((m: any) => ({ default: m.DailyLedgerModule || m.default })));
+const NotaryDashboard = lazy(() => import('./components/dashboards/NotaryDashboard').then((m: any) => ({ default: m.NotaryDashboard || m.default })));
+const RemoteHearingJoin = lazy(() => import('./pages/RemoteHearingJoin').then((m: any) => ({ default: m.RemoteHearingJoin || m.default })));
+const PublicCopyExtractionPage = lazy(() => import('./pages/PublicCopyExtractionPage').then((m: any) => ({ default: m.PublicCopyExtractionPage || m.default })));
+const PublicSearchDeedsPage = lazy(() => import('./pages/PublicSearchDeedsPage').then((m: any) => ({ default: m.PublicSearchDeedsPage || m.default })));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
@@ -182,7 +195,7 @@ const [
   NAV_REGISTRATION_STAMP,
 ] = navigation;
 
-import { NationalRequestsManagement } from './modules/NationalRequestsManagement';
+const NationalRequestsManagement = lazy(() => import('./modules/NationalRequestsManagement').then((m: any) => ({ default: m.NationalRequestsManagement || m.default })));
 
 const NAV_ITEMS: { key: ModuleKey | 'permissions' | 'administrative' | 'visitors'; label: string; icon: string; children?: { key: ModuleKey; label: string; icon: string }[] }[] = [
   { key: 'notaryPortal', label: 'لوحة التحكم الرئيسية', icon: '🏛️' },
@@ -326,8 +339,14 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
   const [visitorsExpanded, setVisitorsExpanded] = React.useState(false);
   const { unreadTotal, decisionsTotal, judgeRequestsTotal, judgePermissionsTotal, judgeAdlCopyPermissionsTotal, permissionsCounts, adminCounts, notaryNotificationsTotal, unseenCopyRequestsTotal } = useMessagingNotifications();
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+
   const isArabic = (i18n.language || '').toLowerCase().startsWith('ar');
   const sidebarOnRight = true;
+
+  React.useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [active, location.pathname, location.search]);
 
   React.useEffect(() => {
     setActive(initialModule);
@@ -509,8 +528,26 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
 
   return (
     <div className="flex h-screen w-full bg-slate-100 text-slate-900 overflow-hidden" dir="ltr">
-      {/* Sidebar */}
-      <aside dir={isArabic ? 'rtl' : 'ltr'} className={`order-2 w-72 bg-gradient-to-b from-[#5a0c0b] via-[#800020] to-[#450a0a] text-white shadow-2xl z-20 ${sidebarOnRight ? 'border-l-4' : 'border-r-4'} border-[#0891b2] transition-all duration-300 flex flex-col h-full flex-shrink-0 relative font-kufi overflow-hidden`}>
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar (Desktop Persistent + Mobile Slide-Over Drawer) */}
+      <aside
+        dir={isArabic ? 'rtl' : 'ltr'}
+        className={`order-2 w-72 bg-gradient-to-b from-[#5a0c0b] via-[#800020] to-[#450a0a] text-white shadow-2xl z-50 ${
+          sidebarOnRight ? 'border-l-4' : 'border-r-4'
+        } border-[#0891b2] transition-transform duration-300 flex flex-col h-full flex-shrink-0 font-kufi overflow-hidden ${
+          mobileSidebarOpen
+            ? 'fixed inset-y-0 right-0 max-w-[85vw] translate-x-0'
+            : 'hidden md:flex relative'
+        }`}
+      >
         {/* Luxury Grand Moroccan Islamic Pattern Watermark */}
         <div className="absolute inset-0 moroccan-luxury-pattern pointer-events-none z-0"></div>
 
@@ -784,27 +821,37 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
           {/* Subtle light pattern overlay */}
           <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/pinstripe.png')] pointer-events-none"></div>
           
-          <div className="flex items-center justify-between px-6 py-2.5 relative z-10">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 relative z-10">
+            <div className="flex items-center gap-2.5 sm:gap-4">
+              {/* Mobile Sidebar Hamburger Toggle */}
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen((prev) => !prev)}
+                className="p-2 md:hidden rounded-xl bg-white/90 border border-slate-200 text-slate-800 hover:bg-slate-100 shadow-sm focus:outline-none transition-all"
+                aria-label="القائمة"
+              >
+                <span className="text-xl leading-none">☰</span>
+              </button>
+
               <div className="p-1 bg-white/80 rounded-xl shadow-sm border border-white backdrop-blur-sm">
                 <img
                   src="/logos/morocco-coat.jpg"
                   alt="شعار المملكة المغربية"
-                  className="h-11 sm:h-12 w-auto object-contain drop-shadow-sm"
+                  className="h-9 sm:h-12 w-auto object-contain drop-shadow-sm"
                 />
               </div>
               <div className="text-right leading-tight font-maghribi select-none">
-                <div className="text-lg sm:text-xl font-[800] text-slate-800 tracking-normal">
+                <div className="text-sm sm:text-xl font-[800] text-slate-800 tracking-normal">
                   <span>المملكة المغربية</span>
                 </div>
-                <div className="text-lg sm:text-xl font-[800] text-slate-600 tracking-normal">
+                <div className="text-xs sm:text-xl font-[800] text-slate-600 tracking-normal">
                   <span>الهيئة الوطنية للعدول</span>
                 </div>
               </div>
             </div>
 
-            {/* Centered Identity Spot - Stable Element */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+            {/* Centered Identity Spot - Hidden on mobile screens to prevent overlap */}
+            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center pointer-events-none">
               <div className="pointer-events-auto">
                 {user?.role === 'notary' && (
                   <div className="relative group">

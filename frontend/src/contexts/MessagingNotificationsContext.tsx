@@ -184,10 +184,10 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     {
       enabled: !!user && isNotary,
       staleTime: 30_000,
-      refetchInterval: 10000,
-      refetchIntervalInBackground: true,
-      refetchOnWindowFocus: true,
-      retry: 3,
+      refetchInterval: 35000,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: false,
+      retry: 2,
     }
   );
 
@@ -196,9 +196,9 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     {
       enabled: !!sessionToken && !!user && isNotary,
       staleTime: 30_000,
-      refetchInterval: 10_000,
-      refetchIntervalInBackground: true,
-      refetchOnWindowFocus: true,
+      refetchInterval: 35000,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: false,
       retry: 2,
     }
   );
@@ -206,10 +206,10 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
   // Citizen Copy/Extraction Requests Tracking (for Notaries)
   const notaryCopyRequestsQuery = trpc.copyRequests.list.useQuery(undefined, {
     enabled: !!user && isNotary,
-    staleTime: 10_000,
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchInterval: 35000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 
@@ -220,6 +220,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       enabled: !!user && isJudge,
       staleTime: 30_000,
       refetchInterval: 45000,
+      refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
       retry: false,
     }
@@ -232,6 +233,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       enabled: !!user && isJudge,
       staleTime: 30_000,
       refetchInterval: 45000,
+      refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
       retry: false,
     }
@@ -239,11 +241,12 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
 
   // New Requests Tracking (for Regional Council)
   const councilAllNotificationsQuery = trpc.notifications.getRequestsList.useQuery(
-    { status: 'all', limit: 500, offset: 0 },
+    { status: 'all', limit: 30, offset: 0 },
     {
       enabled: !!user && isCouncil,
       staleTime: 30_000,
       refetchInterval: 45000,
+      refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
       retry: false,
     }

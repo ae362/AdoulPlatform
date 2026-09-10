@@ -44,11 +44,11 @@ export const useAuditHubData = ({
       enabled: Boolean(targetId),
       staleTime: 0,             // Always fetch fresh — never serve cached PDF stream
       refetchOnMount: 'always', // Force a network hit every time the component mounts
-      // Auto-poll every 1s when the backend says the PDF is not yet compiled.
+      // Auto-poll every 2.5s when the backend says the PDF is not yet compiled.
       // Stops automatically once pdfCompilationReady flips to true.
       refetchInterval: (arg: any) => {
         const payloadObj = arg?.state?.data?.payload || arg?.data?.payload || arg?.payload;
-        return payloadObj?.pdfCompilationReady === false ? 1000 : false;
+        return payloadObj?.pdfCompilationReady === false ? 2500 : false;
       },
     }
   );
