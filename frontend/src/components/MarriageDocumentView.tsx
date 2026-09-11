@@ -7,6 +7,7 @@ interface MarriageDocumentViewProps {
     fullName?: string;
     jurisdiction?: string;
     professionalNumber?: string;
+    appellateCourt?: string;
   };
 }
 

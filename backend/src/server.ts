@@ -9,6 +9,7 @@ import { registerStuReleaseRoute } from './routes/stuRelease';
 import { registerOnlyOfficeRoutes } from './routes/onlyoffice';
 import { CacheService } from './services/cacheService';
 import { TrpcContext } from './routers/trpc';
+import { AIService } from './services/ai';
 import securityHeaders from './plugins/securityHeaders';
 import rateLimiter from './plugins/rateLimiter';
 
@@ -141,6 +142,33 @@ registerStuReleaseRoute(fastify).catch((err) => {
 // OnlyOffice integration (DOCX WYSIWYG editing server -> callback persists artifacts to Supabase).
 registerOnlyOfficeRoutes(fastify).catch((err) => {
   fastify.log.error({ err }, 'Failed to register OnlyOffice routes');
+});
+
+// AI Streaming Draft endpoint (Server-Sent Events)
+fastify.get('/api/ai/stream-draft', async (req, reply) => {
+  const query = (req.query as any) || {};
+  const contractType = String(query.contractType || 'sale');
+  const parties = String(query.parties || '');
+  const details = query.details ? String(query.details) : undefined;
+
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  const aiService = new AIService();
+  try {
+    for await (const chunk of aiService.streamContractDraft({ contractType, parties, details })) {
+      reply.raw.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+    }
+    reply.raw.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err: any) {
+    reply.raw.write(`data: ${JSON.stringify({ error: err?.message || 'Streaming failed' })}\n\n`);
+  } finally {
+    reply.raw.end();
+  }
 });
 
 export const createContext = async (opts: { req: any; res: any }): Promise<TrpcContext> => {

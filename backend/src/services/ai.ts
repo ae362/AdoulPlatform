@@ -112,6 +112,41 @@ export class AIService {
     }
   }
 
+  async *streamContractDraft(input: ContractDraftInput): AsyncGenerator<string, void, unknown> {
+    const template = await this.resolveTemplate(input.contractType);
+    const prompt = this.buildContractPrompt({
+      contractType: input.contractType,
+      parties: input.parties,
+      details: input.details,
+      template,
+    });
+
+    try {
+      const responseStream = await (ollama.generate as any)({
+        model: this.contractModel,
+        prompt,
+        stream: true,
+        options: {
+          temperature: 0.2,
+          top_p: 0.9,
+        },
+      });
+
+      for await (const part of responseStream) {
+        if (part?.response) {
+          yield part.response;
+        }
+      }
+    } catch (error) {
+      console.error('Ollama streaming error, falling back to simulated draft stream:', error);
+      const fallback = this.buildFallbackDraft(input, template);
+      const words = fallback.split(' ');
+      for (const word of words) {
+        yield word + ' ';
+      }
+    }
+  }
+
   async reviewContractLegality(input: ContractReviewInput) {
     const issues: Issue[] = [
       { level: 'info', message: 'O¦U. OU,U?O-Oæ O"U+OªOO-.' },

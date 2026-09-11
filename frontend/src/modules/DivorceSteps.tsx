@@ -1,5 +1,5 @@
 import React from 'react';
-import { FeesAgentState } from './FeesAgent';
+import type { FeesAgentState } from '../types/feesAgentTypes';
 
 interface StepProps {
   state: FeesAgentState;
@@ -848,7 +848,7 @@ export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setS
           <div className="md:col-span-2 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
             <h4 className="font-bold text-yellow-800 mb-3">تفاصيل الأبناء</h4>
             <div className="space-y-4">
-              {divorceState.childrenList?.map((child, index) => (
+              {divorceState.childrenList?.map((child: any, index: number) => (
                 <div key={index} className="flex gap-4 items-end border-b pb-2">
                   <div className="flex-1">
                     <label className="block text-xs text-gray-600">الاسم</label>
@@ -908,7 +908,7 @@ export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setS
                   </div>
                   <button
                     onClick={() => {
-                      const newList = divorceState.childrenList?.filter((_, i) => i !== index);
+                      const newList = divorceState.childrenList?.filter((_: any, i: number) => i !== index);
                       updateDivorceState({ childrenList: newList });
                     }}
                     className="text-red-500 hover:text-red-700"

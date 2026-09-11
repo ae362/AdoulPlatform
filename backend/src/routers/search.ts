@@ -12,11 +12,20 @@ export const searchRouter = router({
         name: z.string().optional(),
         from: z.string().optional(),
         to: z.string().optional(),
+        limit: z.number().min(1).max(200).optional(),
+        offset: z.number().min(0).optional(),
       }),
     )
     .query(async ({ input }) => {
-      const { recordType, cin, name, from, to } = input;
+      const { recordType, cin, name, from, to, limit, offset = 0 } = input;
       const selectedType = recordType === 'all' ? undefined : recordType;
+
+      const applyRange = (q: any) => {
+        if (limit) {
+          return q.range(offset, offset + limit - 1);
+        }
+        return q;
+      };
 
       const makeMarriageQuery = () => {
         let q = supabase.from('marriage_records').select('id,husband_name,wife_name,husband_cin,wife_cin,inclusion_date,registry_book_type,registry_number,registry_count,registry_page');
@@ -29,7 +38,7 @@ export const searchRouter = router({
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
-        return q;
+        return applyRange(q);
       };
 
       const makeDivorceQuery = () => {
@@ -43,7 +52,7 @@ export const searchRouter = router({
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
-        return q;
+        return applyRange(q);
       };
 
       const results: any[] = [];
@@ -59,7 +68,7 @@ export const searchRouter = router({
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
-        return q;
+        return applyRange(q);
       };
 
       const makeInheritanceQuery = () => {
@@ -75,7 +84,7 @@ export const searchRouter = router({
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
-        return q;
+        return applyRange(q);
       };
 
       const makeOtherFeesQuery = () => {
@@ -91,7 +100,7 @@ export const searchRouter = router({
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
-        return q;
+        return applyRange(q);
       };
 
       if (!selectedType || selectedType === 'marriage') {

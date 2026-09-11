@@ -13,6 +13,7 @@ const suites = [
   { name: 'Cryptographic Deed Sealing & Ledger Integrity', script: 'test-deed-sealing.js' },
   { name: 'Automated PII & Secrets Redaction', script: 'test-pii-redaction.js' },
   { name: 'Server Lifecycle & Deep Health Probes', script: 'test-lifecycle-health.js' },
+  { name: 'Client Bundle Secrets Leak Guard', script: 'audit-client-bundle.js' },
 ];
 
 console.log('===============================================================');

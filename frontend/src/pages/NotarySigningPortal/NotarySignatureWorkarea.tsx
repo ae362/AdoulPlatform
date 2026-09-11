@@ -581,7 +581,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       return;
     }
 
-    const selectedAttachment = rasm?.attachments?.find(a => a.id === selectedAttachmentId);
+    const selectedAttachment = rasm?.attachments?.find((a: any) => a.id === selectedAttachmentId);
     const url = selectedAttachment?.fileUrl;
 
     if (url && isPdfCandidate(url, selectedAttachment?.fileName, selectedAttachment?.mimeType || selectedAttachment?.type)) {
@@ -2105,7 +2105,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
   }, [id]);
 
   // --- Support multiple document types in the signing workarea ---
-  const attachment = rasm?.attachments?.find(a => a.id === selectedAttachmentId);
+  const attachment = rasm?.attachments?.find((a: any) => a.id === selectedAttachmentId);
   const url = currentPdfUrl || originalPdfUrl || attachment?.fileUrl || '';
   const fileName = (attachment?.fileName || '').toLowerCase();
   const fileMime = String(attachment?.mimeType || attachment?.type || '').toLowerCase();
@@ -2564,8 +2564,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
           
           {/* Attachments Selector */}
           {(() => {
-            const finalPdfs = rasm?.attachments?.filter(a => a.category === 'audit_final_pdf') || [];
-            const judgeAttachments = rasm?.attachments?.filter(a => a.category === 'judge_attachment') || [];
+            const finalPdfs = rasm?.attachments?.filter((a: any) => a.category === 'audit_final_pdf') || [];
+            const judgeAttachments = rasm?.attachments?.filter((a: any) => a.category === 'judge_attachment') || [];
             const signableAttachments = finalPdfs.length ? finalPdfs : judgeAttachments;
             return signableAttachments.length > 1 ? (
               <div className="border-b border-[#eadfca] bg-[#f6f0e5] p-6">

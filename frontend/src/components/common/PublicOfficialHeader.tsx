@@ -14,6 +14,8 @@ export function PublicOfficialHeader() {
               src="/logos/morocco-coat.jpg"
               alt="شعار المملكة المغربية"
               className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm"
+              loading="lazy"
+              decoding="async"
             />
           </div>
           <div className="text-right leading-[1.3] font-maghribi select-none">
@@ -32,6 +34,8 @@ export function PublicOfficialHeader() {
             src="/logos/adoul-logo.jpg"
             alt="شعار الهيئة الوطنية للعدول"
             className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm rounded-xl"
+            loading="lazy"
+            decoding="async"
           />
         </div>
       </div>

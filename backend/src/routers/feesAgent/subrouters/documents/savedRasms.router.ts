@@ -577,7 +577,12 @@ export const savedRasmsProcedures = {
       }),
 
     listSavedRasms: publicProcedure
-      .input(z.object({ sessionToken: z.string(), category: z.string().optional() }))
+      .input(z.object({
+        sessionToken: z.string(),
+        category: z.string().optional(),
+        limit: z.number().min(1).max(200).optional(),
+        offset: z.number().min(0).optional(),
+      }))
       .output(z.array(z.object({
         id: z.string(),
         fileNumber: z.string().nullable(),
@@ -628,6 +633,12 @@ export const savedRasmsProcedures = {
 
             if (input.category) {
               q = q.eq('document_type', input.category);
+            }
+
+            if (input.limit) {
+              const from = input.offset || 0;
+              const to = from + input.limit - 1;
+              q = q.range(from, to);
             }
 
             return q;

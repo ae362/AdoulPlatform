@@ -10,11 +10,19 @@ const legalChecker = new LegalCheckerService();
 const idInput = z.object({ id: z.string() });
 
 export const contractsRouter = router({
-  list: publicProcedure.query(async () => {
-    const { data, error } = await supabase.from('contracts').select('*').order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  }),
+  list: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).optional(), offset: z.number().min(0).optional() }).optional())
+    .query(async ({ input }) => {
+      let q = supabase.from('contracts').select('*').order('created_at', { ascending: false });
+      if (input?.limit) {
+        const from = input.offset || 0;
+        const to = from + input.limit - 1;
+        q = q.range(from, to);
+      }
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    }),
 
   create: publicProcedure.input(contractSchema).mutation(async ({ input }) => {
     const { id, ...rest } = input;

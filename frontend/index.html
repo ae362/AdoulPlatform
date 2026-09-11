@@ -33,6 +33,25 @@
     <script defer src="/demobuttons/q.js" charset="UTF-8"></script>
     <script defer src="/demobuttons/wgssStuSdk.js" charset="UTF-8"></script>
     <script defer src="/wgssSigCaptX.js" charset="UTF-8"></script>
+
+    <!-- Structured Data (Schema.org / Government & Legal Service) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "GovernmentService",
+      "name": "المنظومة الرقمية للتوثيق العدلي بالمملكة المغربية",
+      "serviceType": "توثيق العقود والشهادات والرسوم العدلية",
+      "provider": {
+        "@type": "GovernmentOrganization",
+        "name": "الهيئة الوطنية للعدول - وزارة العدل المغربية"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "المملكة المغربية"
+      },
+      "description": "منظومة سيادية رقمية مغربية لتوثيق وتحرير وتدقيق وتوقيع العقود والرسوم العدلية وفق القانون 16.03."
+    }
+    </script>
   </head>
   <body class="bg-slate-50">
     <div id="root"></div>

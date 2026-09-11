@@ -81,8 +81,21 @@ const parseMarriageNotes = (notes: string | undefined | null) => {
   return null;
 };
 
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64String = (reader.result as string).split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const NotaryPortalWorkflow: React.FC = () => {
   const { user, notaryProfile } = useAuth();
+  const profile = notaryProfile as any;
   const [activeTab, setActiveTab] = useState<'dashboard' | 'create' | 'list' | 'notifications_responses' | 'permissions_responses' | 'national_requests' | 'archive'>('national_requests');
   const [showPreview, setShowPreview] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<any>(null);
@@ -363,18 +376,6 @@ const NotaryPortalWorkflow: React.FC = () => {
     try {
       // 1. Logic to upload all files first
       const uploadedAttachments: { name: string; url: string }[] = [];
-      
-      const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-            const base64String = (reader.result as string).split(',')[1];
-            resolve(base64String);
-          };
-          reader.onerror = (error) => reject(error);
-        });
-      };
 
       const processDocs = async (docs: any) => {
         if (!docs) return;
@@ -421,18 +422,6 @@ const NotaryPortalWorkflow: React.FC = () => {
     try {
       // 1. Logic to upload attachments
       const uploadedAttachments: { name: string; url: string }[] = [];
-      
-      const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-             const base64String = (reader.result as string).split(',')[1];
-             resolve(base64String);
-          };
-          reader.onerror = (error) => reject(error);
-        });
-      };
 
       if (data.attachments) {
         for (const key of Object.keys(data.attachments)) {
@@ -471,18 +460,6 @@ const NotaryPortalWorkflow: React.FC = () => {
   const handleAdlCopySubmit = async (data: any) => {
     setIsSubmittingAdlCopy(true);
     try {
-      const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-             const base64String = (reader.result as string).split(',')[1];
-             resolve(base64String);
-          };
-          reader.onerror = (error) => reject(error);
-        });
-      };
-
       const uploadedAttachments: { name: string; url: string; type: string }[] = [];
 
       // 1. Handle main ID card file if exists

@@ -17,6 +17,8 @@ export const NotFoundPage: React.FC = () => {
               src="/logos/morocco-coat.jpg" 
               alt="شعار المملكة المغربية" 
               className="h-10 w-10 object-contain rounded"
+              loading="lazy"
+              decoding="async"
             />
             <div>
               <h1 className="text-sm font-bold font-serif text-white">الهيئة الوطنية للعدول</h1>

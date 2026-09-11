@@ -1961,6 +1961,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   src="/logos/morocco-coat.jpg" 
                   alt="شعار المملكة" 
                   className="h-16 w-16 object-contain"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div className="text-right">
                   <h3 className="text-xl font-bold">الهيئة الوطنية للعدول</h3>

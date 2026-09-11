@@ -22,7 +22,7 @@ type NotificationRow = {
   isPermission: boolean;
   savedRasmId?: string;
   citizenName?: string;
-  citizenCin?: string;
+  citizenCin: string | undefined;
   isSearch?: boolean;
   rawId?: string;
 };
@@ -226,8 +226,8 @@ const NotaryNotificationsPage: React.FC = () => {
     });
 
     // 2. Messaging Threads with incoming unread
-    const rawThreads = Array.isArray(threadsQuery.data) ? threadsQuery.data : (threadsQuery.data as any)?.threads ?? [];
-    const messageNotifications = (rawThreads as any[])
+    const rawThreads: any[] = Array.isArray(threadsQuery.data) ? (threadsQuery.data as any[]) : [];
+    const messageNotifications: NotificationRow[] = rawThreads
       .filter((t) => (t?.unreadCount ?? 0) > 0 || t?.lastMessage?.body)
       .map((t) => {
         const syntheticId = `thread:${String(t.id)}`;
@@ -237,6 +237,7 @@ const NotaryNotificationsPage: React.FC = () => {
           source: 'message' as const,
           requestNumber: `MSG-${String(t.id).slice(-6)}`,
           citizenName: otherName,
+          citizenCin: undefined,
           decisionType: 'رسالة جديدة',
           certificateType: 'صندوق المحادثات المهنية',
           targetCourt: 'المراسلات',
@@ -248,11 +249,11 @@ const NotaryNotificationsPage: React.FC = () => {
           isSeen: Boolean((t.unreadCount ?? 0) === 0 || isDecisionSeen(syntheticId)),
           isPermission: false,
           rawId: String(t.id),
-        } satisfies NotificationRow;
+        };
       });
 
     // 3. Judicial Requests & Office Movements
-    const requestNotifications = ((notificationsQuery.data ?? []) as any[])
+    const requestNotifications: NotificationRow[] = ((notificationsQuery.data ?? []) as any[])
       .filter((item) => item?.id)
       .map((item) => {
         const isDecision = Boolean(item?.decision_type ?? item?.decisionType);
@@ -271,6 +272,7 @@ const NotaryNotificationsPage: React.FC = () => {
           source: 'request' as const,
           requestNumber: String(item?.request_number ?? ''),
           citizenName: authorityName,
+          citizenCin: undefined,
           decisionType: decisionType,
           certificateType: String(item?.certificate_type ?? item?.certificateType ?? 'غير محدد'),
           targetCourt: String(item?.target_court ?? item?.targetCourt ?? item?.jurisdiction ?? 'غير محدد'),
@@ -282,10 +284,10 @@ const NotaryNotificationsPage: React.FC = () => {
           isSeen: isDecisionSeen(String(item.id)),
           isPermission: isPermissionDecision(item),
         };
-      }) as NotificationRow[];
+      });
 
     // 4. Judge Submissions
-    const judgeSubmissionNotifications = ((judgeSubmissionsQuery.data ?? []) as any[])
+    const judgeSubmissionNotifications: NotificationRow[] = ((judgeSubmissionsQuery.data ?? []) as any[])
       .filter((item) => item?.id && (item?.decision || item?.decidedAt || ['accepted', 'accepted_with_notes', 'substantive_notes', 'rejected', 'declined'].includes(String(item?.status || '').toLowerCase())))
       .map((item) => {
         const syntheticId = `judge_submission:${String(item.id)}`;
@@ -295,6 +297,7 @@ const NotaryNotificationsPage: React.FC = () => {
           source: 'judge_submission' as const,
           requestNumber: String(item?.fileNumber ?? ''),
           citizenName: 'قاضي التوثيق',
+          citizenCin: undefined,
           decisionType: String(item?.decision ?? item?.status ?? 'قرار جديد على الرسم'),
           certificateType: String(item?.documentType ?? 'رسم عدلي'),
           targetCourt: 'الرسوم العدلية',
@@ -307,7 +310,7 @@ const NotaryNotificationsPage: React.FC = () => {
           isPermission: false,
           savedRasmId: String((payload as any)?.savedRasmId ?? (payload as any)?.saved_rasm_id ?? ''),
           rawId: String(item.id),
-        } satisfies NotificationRow;
+        };
       });
 
     return ([...citizenRequests, ...messageNotifications, ...requestNotifications, ...judgeSubmissionNotifications] as NotificationRow[])

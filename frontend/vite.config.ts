@@ -80,6 +80,10 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'http://localhost:4000',
         ws: true,
@@ -93,6 +97,10 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/trpc': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/api': {
         target: 'http://localhost:4000',
         changeOrigin: true,
       },

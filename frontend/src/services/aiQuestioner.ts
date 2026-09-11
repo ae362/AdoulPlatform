@@ -4,7 +4,8 @@
  * ويوجهه خطوة بخطوة لملء النموذج
  */
 
-import type { FeesAgentState, DocumentType, PropertyType } from '../modules/FeesAgent';
+import type { FeesAgentState, PropertyType } from '../types/feesAgentTypes';
+import type { DocumentType } from '../constants/feesAgentLocales';
 
 // ============================================================================
 // TYPES
