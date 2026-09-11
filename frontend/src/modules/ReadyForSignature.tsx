@@ -5,6 +5,7 @@ import { trpc } from '../trpc';
 import { WordPreview } from '../components/WordPreview';
 import { RasmDocxPreview } from '../components/SmartDrafting/RasmDocxPreview';
 import { releaseStuViaBeacon } from '../utils/stuReleaseBeacon';
+import { toast } from '../components/common/ToastNotification';
 import { 
   PenTool, 
   ShieldCheck, 
@@ -662,8 +663,10 @@ export const ReadyForSignature: React.FC = () => {
                 notaryStage: stage === 'SENT_TO_JUDGE' ? 'sending' : (stage as any)
             });
             await rasmDetailQuery.refetch();
-        } catch (err) {
+            toast.success('تم تحديث مرحلة الوثيقة بنجاح');
+        } catch (err: any) {
             console.error('[handleSaveDeed] Error:', err);
+            toast.error('تعذر تحديث مرحلة الوثيقة: ' + (err?.message || 'خطأ غير متوقع'));
         }
     };
 

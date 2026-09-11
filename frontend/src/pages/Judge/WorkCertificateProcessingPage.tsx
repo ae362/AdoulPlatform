@@ -20,6 +20,7 @@ import jsPDF from 'jspdf';
 import { WorkCertificateApprovalTemplate } from '../../components/WorkCertificateApprovalTemplate';
 import { WorkCertificateDocumentView } from '../../components/WorkCertificateDocumentView';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../../components/common/ToastNotification';
 
 ChartJS.register(
   CategoryScale,
@@ -136,6 +137,7 @@ const WorkCertificateProcessingPage: React.FC = () => {
     const element = document.getElementById(divId);
     if (!element) return;
     setIsExporting(true);
+    toast.info('جاري تحضير وتصدير الشهادة بصيغة PDF...');
     try {
       const canvas = await html2canvas(element, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
@@ -145,8 +147,10 @@ const WorkCertificateProcessingPage: React.FC = () => {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${fileName}.pdf`);
+      toast.success('تم تصدير وثيقة الشهادة بنجاح');
     } catch (error) {
       console.error('PDF Export Error:', error);
+      toast.error('تعذر تصدير ملف PDF، يرجى المحاولة مرة أخرى');
     } finally {
       setIsExporting(false);
     }

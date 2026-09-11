@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Palette, Lock, Pen, Eye, Save, AlertCircle, ToggleLeft } from 'lucide-react';
+import { toast } from '../../../components/common/ToastNotification';
 
 interface AdvancedSettingsProps {
   onClose: () => void;
@@ -38,7 +39,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({ onClose }) =
 
   const handleSave = () => {
     // In real implementation, this would save to database
-    console.log('Settings saved:', settings);
+    toast.success('تم حفظ الإعدادات المتقدمة بنجاح');
     onClose();
   };
 

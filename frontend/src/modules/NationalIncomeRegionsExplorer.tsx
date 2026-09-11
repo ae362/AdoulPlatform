@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { trpc } from '../trpc';
 import { useAuth } from '../contexts/AuthContext';
 import { COURT_MAPPINGS } from '../../../shared/courts';
+import { toast } from '../components/common/ToastNotification';
 // import icons as needed
 // import jsPDF or similar for PDF export (placeholder)
 // import QRCode from 'qrcode.react';
@@ -90,8 +91,7 @@ export const NationalIncomeRegionsExplorer: React.FC = () => {
 
   const createInvoice = trpc.subscriptions.createInvoiceForCouncil.useMutation({
     onSuccess: async (data, variables: any) => {
-      console.log('[createInvoice] Success, refetching invoices...');
-      alert('تم إنشاء الفاتورة بنجاح');
+      toast.success('تم إنشاء الفاتورة بنجاح');
       
       // Refetch invoices to show the new one - wait for it to complete
       await invoices.refetch();
@@ -101,7 +101,6 @@ export const NationalIncomeRegionsExplorer: React.FC = () => {
       // Expand the row to show the new invoice
       if (variables?.userId) {
         const targetRowKey = String(variables.userId);
-        console.log('[createInvoice] Expanding row:', targetRowKey);
         setExpanded((prev) => ({ ...prev, [targetRowKey]: true }));
       }
       
@@ -110,13 +109,17 @@ export const NationalIncomeRegionsExplorer: React.FC = () => {
     },
     onError: (error: any) => {
       console.error('[createInvoice] Error:', error?.message || error);
-      alert('خطأ في إنشاء الفاتورة: ' + (error?.message || 'حاول مجددا'));
+      toast.error('خطأ في إنشاء الفاتورة: ' + (error?.message || 'حاول مجدداً'));
     }
   });
 
   const toggleStatusMutation = trpc.subscriptions.togglePaymentStatus.useMutation({
     onSuccess: () => {
       invoices.refetch();
+      toast.success('تم تحديث حالة أداء الفاتورة بنجاح');
+    },
+    onError: (error: any) => {
+      toast.error('فشل تحديث حالة الفاتورة: ' + (error?.message || 'خطأ غير متوقع'));
     }
   });
 

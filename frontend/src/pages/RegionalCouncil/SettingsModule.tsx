@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from '../../components/common/ToastNotification';
 
 interface Setting {
   id: string;
@@ -92,7 +93,7 @@ const SettingsModule: React.FC = () => {
   const handleSaveSettings = () => {
     setSavedMessage('تم حفظ الإعدادات بنجاح ✅');
     setTimeout(() => setSavedMessage(''), 3000);
-    console.log('Saved settings:', settings);
+    toast.success('تم حفظ إعدادات المجلس الجهوي بنجاح');
   };
 
   const handleResetSettings = () => {

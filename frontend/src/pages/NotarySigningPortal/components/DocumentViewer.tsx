@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Download, Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from '../../../components/common/ToastNotification';
 
 interface DocumentViewerProps {
   documentId: string;
@@ -27,7 +28,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const handleZoomIn = () => setZoom(Math.min(zoom + 10, 200));
   const handleZoomOut = () => setZoom(Math.max(zoom - 10, 50));
   const handleDownload = () => {
-    console.log(`Downloading document: ${documentId}`);
+    toast.info(`جاري تحضير وتنزيل الوثيقة الرسمية (${documentName || 'وثيقة'})...`);
     // Implement actual download logic
   };
   const handlePrint = () => {

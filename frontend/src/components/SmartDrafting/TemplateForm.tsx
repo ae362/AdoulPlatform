@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { trpc } from '../../trpc';
+import { toast } from '../common/ToastNotification';
 
 interface TemplateFormProps {
   templateId: string;
@@ -330,15 +331,17 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ templateId, onBack, 
   }, [variables, context, setValue]);
 
   const onSubmit = (data: any) => {
-    console.log("Submitting data:", data);
+    toast.info('جاري معالجة وتوليد مسودة الوثيقة...');
     generateMutation.mutate(
       { templateId, data },
       {
         onSuccess: (result) => {
+          toast.success('تم توليد مسودة الوثيقة بنجاح');
           onSuccess(result.draft);
         },
         onError: (error) => {
           console.error("Generation failed:", error);
+          toast.error('تعذر توليد المسودة، يرجى التحقق من المدخلات والمحاولة مجدداً');
         }
       }
     );

@@ -11,6 +11,7 @@ import { RegionalCouncilInvoicesDashboard } from './RegionalCouncilInvoicesDashb
 import { RegionalStatisticalManagement } from './RegionalStatisticalManagement';
 import { DateWidget } from './DateWidget';
 import { OrnateScrollBanner } from '../components/common/OrnateScrollBanner';
+import { ToastContainer, toast } from '../components/common/ToastNotification';
 import { COURT_MAPPINGS } from '../../../shared/courts';
 
 // Import Notification Management Components
@@ -607,10 +608,11 @@ function FinancialManagement() {
   const toggleStatusMutation = trpc.subscriptions.togglePaymentStatus.useMutation({
     onSuccess: () => {
       utils.subscriptions.getPaymentsForCouncil.invalidate();
+      toast.success('تم تحديث حالة الأداء بنجاح');
     },
     onError: (err) => {
         console.error("Toggle Payment Failed:", err);
-        alert("فشل تحديث الحالة: " + err.message);
+        toast.error("فشل تحديث الحالة: " + err.message);
     }
   });
 
@@ -620,23 +622,24 @@ function FinancialManagement() {
     },
     onError: (err) => {
         console.error("Bulk Payment Failed:", err);
-        alert("فشل إنشاء الفواتير: " + err.message);
+        toast.error("فشل إنشاء الفواتير: " + err.message);
     }
   });
 
   const deletePaymentMutation = trpc.subscriptions.deletePayment.useMutation({
     onSuccess: () => {
       utils.subscriptions.getPaymentsForCouncil.invalidate();
+      toast.success('تم حذف الفاتورة بنجاح');
     },
     onError: (err) => {
         console.error("Delete Payment Failed:", err);
-        alert("فشل حذف الفاتورة: " + err.message);
+        toast.error("فشل حذف الفاتورة: " + err.message);
     }
   });
 
   const handleDeletePayment = (recordId: string, notaryName: string) => {
     if (!recordId) {
-      alert('لا يمكن حذف هذه الفاتورة');
+      toast.warning('لا يمكن حذف هذه الفاتورة');
       return;
     }
 
@@ -653,7 +656,7 @@ function FinancialManagement() {
     }
 
     if (!selectedNotaryForInvoice) {
-      alert('لم يتم اختيار عدل');
+      toast.warning('لم يتم اختيار عدل');
       return;
     }
 
@@ -672,23 +675,24 @@ function FinancialManagement() {
         const message = result.updated > 0 
           ? `تم تحديث فاتورة ${selectedNotaryForInvoice.full_name} بنجاح`
           : `تم إنشاء فاتورة لـ ${selectedNotaryForInvoice.full_name} بنجاح`;
-        alert(message);
+        toast.success(message);
       } else {
-        alert('الفاتورة موجودة مسبقاً ولم يتم إجراء أي تغيير');
+        toast.info('الفاتورة موجودة مسبقاً ولم يتم إجراء أي تغيير');
       }
       setIsCreateInvoiceModalOpen(false);
       setSingleInvoiceAmount('');
       setSingleInvoiceMarkAsPaid(false);
       setSelectedNotaryForInvoice(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create invoice error:', error);
+      toast.error('تعذر إنشاء الفاتورة: ' + (error?.message || 'خطأ غير متوقع'));
     }
   };
 
   const handleBulkPayment = async () => {
     const amount = Number(bulkPaymentAmount);
     if (!amount || amount <= 0) {
-      alert('يرجى إدخال مبلغ صحيح');
+      toast.warning('يرجى إدخال مبلغ صحيح');
       return;
     }
 
@@ -699,7 +703,7 @@ function FinancialManagement() {
     }
 
     if (notariesToInvoice.length === 0) {
-      alert('لا يوجد عدول محددين');
+      toast.warning('لا يوجد عدول محددين');
       return;
     }
 
@@ -720,15 +724,16 @@ function FinancialManagement() {
 
     try {
       const result = await bulkPaymentMutation.mutateAsync({ payments });
-      alert(result.message || `تم إنشاء ${result.count} فاتورة بنجاح`);
+      toast.success(result.message || `تم إنشاء ${result.count} فاتورة بنجاح`);
       setIsBulkPaymentModalOpen(false);
       setBulkPaymentAmount('');
       setBulkPaymentMarkAsPaid(false);
       setSelectedNotariesForBulk(new Set());
       setShowNotarySelection(false);
       setAmountEditConfirmed(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Bulk payment error:', error);
+      toast.error('تعذر إنشاء الفواتير الجماعية: ' + (error?.message || 'خطأ غير متوقع'));
     }
   };
 

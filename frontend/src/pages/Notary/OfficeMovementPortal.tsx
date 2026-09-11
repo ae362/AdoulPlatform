@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import OfficeMovementForm from './OfficeMovementForm';
 import { OfficeMovementDocumentView } from '../../components/OfficeMovementDocumentView';
 import { OfficeMovementApprovalTemplate } from '../../components/OfficeMovementApprovalTemplate';
+import { toast } from '../../components/common/ToastNotification';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -60,6 +61,7 @@ const OfficeMovementPortal: React.FC = () => {
     try {
       const element = document.getElementById(elementId);
       if (!element) return;
+      toast.info('جاري تحضير وتصدير وثيقة التوجه بصيغة PDF...');
       
       const canvas = await html2canvas(element, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
@@ -70,8 +72,10 @@ const OfficeMovementPortal: React.FC = () => {
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${filename}.pdf`);
+      toast.success('تم تصدير وثيقة التوجه بنجاح');
     } catch (error) {
       console.error('PDF Export Error:', error);
+      toast.error('تعذر تصدير الوثيقة بصيغة PDF، يرجى إعادة المحاولة');
     } finally {
       setIsExporting(false);
     }
@@ -183,11 +187,11 @@ const OfficeMovementPortal: React.FC = () => {
       };
 
       await createMutation.mutateAsync(payload);
-      alert('✓ تم إرسال إشعار التوجه بنجاح');
+      toast.success('تم إرسال إشعار التوجه بنجاح');
       setActiveTab('list');
       refetchMovements();
     } catch (error: any) {
-      alert('✗ فشل في الإرسال: ' + error.message);
+      toast.error('فشل في الإرسال: ' + (error?.message || 'خطأ غير متوقع'));
     } finally {
       setIsSubmitting(false);
     }

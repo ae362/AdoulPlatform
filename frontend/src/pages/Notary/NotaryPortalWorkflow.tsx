@@ -13,6 +13,7 @@ import { MarriagePermissionApprovalTemplate } from '../../components/MarriagePer
 import { WorkCertificateApprovalTemplate } from '../../components/WorkCertificateApprovalTemplate';
 import { IndividualReceptionDocumentTemplate } from '../../components/IndividualReceptionDocumentTemplate';
 import { printElement } from '../../utils/print';
+import { toast } from '../../components/common/ToastNotification';
 
 import { NationalRequestsManagement } from '../../modules/NationalRequestsManagement';
 
@@ -411,7 +412,7 @@ const NotaryPortalWorkflow: React.FC = () => {
       
     } catch (err) {
       console.error('Submission failed:', err);
-      alert('فشل إرسال الطلب. يرجى المحاولة مرة أخرى.');
+      toast.error('فشل إعداد طلب إذن الزواج، يرجى المحاولة مرة أخرى');
     } finally {
       setIsSubmittingMarriage(false);
     }
@@ -451,7 +452,7 @@ const NotaryPortalWorkflow: React.FC = () => {
       
     } catch (err) {
       console.error('Work Certificate submission failed:', err);
-      alert('فشل إرسال الطلب. يرجى المحاولة مرة أخرى.');
+      toast.error('فشل إعداد طلب شهادة العمل، يرجى المحاولة مرة أخرى');
     } finally {
       setIsSubmittingWorkCert(false);
     }
@@ -534,7 +535,7 @@ const NotaryPortalWorkflow: React.FC = () => {
       
     } catch (err) {
       console.error('ADL Copy submission failed:', err);
-      alert('فشل إرسال الطلب. يرجى المراجعة والمحاولة مرة أخرى.');
+      toast.error('فشل إعداد طلب تسليم نسخة رسم، يرجى المحاولة مرة أخرى');
     } finally {
       setIsSubmittingAdlCopy(false);
     }
@@ -542,7 +543,7 @@ const NotaryPortalWorkflow: React.FC = () => {
 
   const handleFinalSend = () => {
     if (!requestKind) {
-      alert('يرجى اختيار نوع الطلب قبل الإرسال.');
+      toast.warning('يرجى اختيار نوع الطلب قبل الإرسال');
       return;
     }
 
@@ -1830,13 +1831,13 @@ ${data.generatedText}
                           appointmentDate: (notaryProfile as any)?.appointment_date,
                         });
 
-                        alert('تم إرسال طلب الإذن بالتلقي الفردي بنجاح.');
+                        toast.success('تم إرسال طلب الإذن بالتلقي الفردي بنجاح');
                         setRequestKind(null);
                         setActiveTab('list');
                         refetchNotifications();
                       } catch (err: any) {
                         console.error('Submission error:', err);
-                        alert('خطأ في الإرسال: ' + (err.message || 'فشل الاتصال بالخادم'));
+                        toast.error('خطأ في الإرسال: ' + (err.message || 'فشل الاتصال بالخادم'));
                       } finally {
                         setIsSubmittingIndividual(false);
                       }

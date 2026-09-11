@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { trpc } from '../trpc';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '../components/common/ToastNotification';
 import { ContentEditorProvider, type ContentEditorApi } from './content/editorContext';
 import { ProfessionalProgramsPage } from './knowledge/professionalPrograms';
 import { AudiovisualLibraryPage } from './knowledge/audiovisualLibrary';
@@ -442,12 +443,13 @@ export function CreatorContentPortal() {
   const applyJson = () => {
     const parsed = safeJsonParse<PageContent>(jsonDraft, null as any);
     if (!parsed || typeof parsed !== 'object') {
-      alert('JSON غير صالح');
+      toast.warning('تنسيق JSON غير صالح، يرجى التحقق من البنية البرمجية');
       return;
     }
     setDraft(parsed);
     setDirty(true);
     setShowJson(false);
+    toast.success('تم تطبيق بنية البيانات بنجاح');
   };
 
   const handleLogout = async () => {
@@ -464,7 +466,7 @@ export function CreatorContentPortal() {
 
   const save = async () => {
     if (!sessionToken) {
-      alert('غير مسجّل الدخول');
+      toast.error('يرجى تسجيل الدخول أولاً للمتابعة');
       return;
     }
 
@@ -480,12 +482,17 @@ export function CreatorContentPortal() {
       }),
     };
 
-    await updateMutation.mutateAsync({
-      sessionToken,
-      updates: [{ key: page.cmsKey, value: JSON.stringify(normalized), type: 'json', section: page.section }],
-    });
-    await utils.cms.getContent.invalidate();
-    setDirty(false);
+    try {
+      await updateMutation.mutateAsync({
+        sessionToken,
+        updates: [{ key: page.cmsKey, value: JSON.stringify(normalized), type: 'json', section: page.section }],
+      });
+      await utils.cms.getContent.invalidate();
+      setDirty(false);
+      toast.success('تم حفظ التغييرات وتحديث المحتوى بنجاح');
+    } catch (err: any) {
+      toast.error('تعذر حفظ المحتوى: ' + (err?.message || 'خطأ في الخادم'));
+    }
   };
 
   const uploadImage = async (file: File) => {

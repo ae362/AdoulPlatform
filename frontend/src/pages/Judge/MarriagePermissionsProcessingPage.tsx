@@ -22,6 +22,7 @@ import { MarriageDocumentView } from '../../components/MarriageDocumentView';
 import { MarriageDualInspectorModal, ComplianceRule } from './components/MarriageDualInspectorModal';
 import { MarriageAttachmentItem } from './components/MarriageAttachmentCarousel';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../../components/common/ToastNotification';
 import { X, Plus, Minus, Download, Search, FileText, CheckCircle2, AlertCircle, Paperclip, Shield, Columns } from 'lucide-react';
 
 ChartJS.register(
@@ -212,6 +213,7 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
     const element = document.getElementById(divId);
     if (!element) return;
     setIsExporting(true);
+    toast.info('جاري تحضير وتصدير إذن الزواج بصيغة PDF...');
     try {
       const canvas = await html2canvas(element, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
@@ -221,8 +223,10 @@ const MarriagePermissionsProcessingPage: React.FC = () => {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${fileName}.pdf`);
+      toast.success('تم تصدير وثيقة إذن الزواج بنجاح');
     } catch (error) {
       console.error('PDF Export Error:', error);
+      toast.error('تعذر تصدير ملف PDF، يرجى المحاولة مرة أخرى');
     } finally {
       setIsExporting(false);
     }

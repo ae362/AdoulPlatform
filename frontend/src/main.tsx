@@ -19,6 +19,7 @@ import { Unauthorized } from './components/Unauthorized';
 import { LandingPage } from './components/LandingPage';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { OrnateScrollBanner } from './components/common/OrnateScrollBanner';
+import { ToastContainer, toast } from './components/common/ToastNotification';
 import { getBackendHttpOrigin } from './utils/backendOrigin';
 
 // Lazily-loaded application modules to eliminate initial bundle bloat (< 300 kB target)
@@ -761,7 +762,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
           <button
             type="button"
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-right text-xs font-bold transition-all duration-200 text-gray-100/80 hover:text-white hover:bg-white/10 group relative"
-            onClick={() => alert('سيتم إضافة الرابط لاحقاً')}
+            onClick={() => toast.info('سيتم إتاحة بوابة فواتير التسجيل والتمبر قريباً')}
           >
             <span className="text-lg group-hover:scale-110 transition-transform">
               <span>📄</span>
@@ -1298,6 +1299,7 @@ function App() {
             </Routes>
             </Suspense>
             </MessagingNotificationsProvider>
+            <ToastContainer />
           </BrowserRouter>
         </AuthProvider>
       </QueryClientProvider>
