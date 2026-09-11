@@ -216,8 +216,18 @@ export function MessagingInbox({ mode }: { mode: MessagingMode }) {
   const token = sessionToken || '';
   const { markCopyRequestSeen } = useMessagingNotifications();
 
+  // Only notaries are authorized to access citizen copy requests and extraction management
+  const isNotary = mode === 'notary' && user?.role !== 'judge';
+
   // Main Active View: Direct Messages vs Copy Requests Management
   const [mainTab, setMainTab] = useState<MainTab>('messages');
+
+  // Guard: Automatically redirect non-notaries away from copy_requests
+  useEffect(() => {
+    if (!isNotary && mainTab === 'copy_requests') {
+      setMainTab('messages');
+    }
+  }, [isNotary, mainTab]);
 
   // Search
   const [search, setSearch] = useState('');
@@ -443,6 +453,7 @@ const updateCopyRequestMutation = (trpc.copyRequests as any).updateStatus ? (trp
   // 2. BACKEND COPY REQUESTS (Real Supabase/tRPC Linkage)
   // -------------------------------------------------------------
   const copyRequestsQuery = trpc.copyRequests.list.useQuery(undefined, {
+    enabled: isNotary,
     staleTime: 5_000,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
@@ -1222,18 +1233,21 @@ function downloadAttachmentFile(fileUrl?: string, fileName: string = 'document.p
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="text-right">
             <div className="text-2xl font-extrabold text-slate-900">
-              {mainTab === 'messages' ? 'صندوق الرسائل' : 'الصندوق المهني وإدارة طلبات النسخ'}
+              {!isNotary || mainTab === 'messages' ? 'صندوق الرسائل' : 'الصندوق المهني وإدارة طلبات النسخ'}
             </div>
             <div className="mt-1 text-sm text-slate-600">
-              {mode === 'judge'
+              {!isNotary
                 ? 'تواصل مهني مؤمن بين قاضي التوثيق والعدول.'
+                : mainTab === 'messages'
+                ? 'تواصل مهني مؤمن بين العدول وقضاة التوثيق.'
                 : 'تواصل مهني مؤمن وإدارة شاملة لطلبات استخراج نسخ الرسوم والشهادات العدلية.'}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Toggle between Direct Messaging and Copy Extraction Management */}
-            <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+            {/* Toggle between Direct Messaging and Copy Extraction Management (Notaries ONLY) */}
+            {isNotary && (
+              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
               <button
                 type="button"
                 onClick={() => setMainTab('messages')}
@@ -1270,6 +1284,7 @@ function downloadAttachmentFile(fileUrl?: string, fileName: string = 'document.p
                 )}
               </button>
             </div>
+            )}
 
             <button
               type="button"
@@ -1612,7 +1627,7 @@ function downloadAttachmentFile(fileUrl?: string, fileName: string = 'document.p
       )}
 
       {/* VIEW B: COPY EXTRACTION REQUESTS (Upgraded Features Linked to Real Backend) */}
-      {mainTab === 'copy_requests' && (
+      {isNotary && mainTab === 'copy_requests' && (
         <div className="space-y-6">
           {/* Top KPI counters */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

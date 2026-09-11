@@ -270,9 +270,9 @@ export default function PortalNotificationsCenter({
           </div>
         </div>
 
-        <aside className={`overflow-hidden rounded-[30px] border border-slate-200/80 bg-gradient-to-b ${selectedTheme.panel} shadow-[0_24px_70px_rgba(15,23,42,0.10)]`}>
+        <aside className={`sticky top-6 self-start max-h-[calc(100vh-5rem)] flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b ${selectedTheme.panel} shadow-xl`}>
           {selectedItem ? (
-            <div className="flex h-full flex-col">
+            <div className="flex flex-col h-full overflow-hidden">
               <div className="border-b border-white/80 p-7">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-3 py-1 text-[11px] font-black ${selectedTheme.badge}`}>{selectedItem.statusLabel}</span>
@@ -282,7 +282,7 @@ export default function PortalNotificationsCenter({
                 {selectedItem.subtitle ? <p className="mt-3 text-sm font-bold leading-7 text-slate-600">{selectedItem.subtitle}</p> : null}
               </div>
 
-              <div className="flex-1 space-y-6 p-7">
+              <div className="flex-1 overflow-y-auto space-y-4 p-5">
                 {selectedItem.meta?.length ? (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                     {selectedItem.meta.map((item) => (
@@ -308,7 +308,7 @@ export default function PortalNotificationsCenter({
               </div>
 
               {(selectedItem.onOpen || selectedItem.onDelete) ? (
-                <div className="border-t border-white/80 p-7">
+                <div className="border-t border-white/80 p-4 bg-white/60 backdrop-blur-md shrink-0">
                   <div className="flex flex-col gap-3">
                     {selectedItem.onOpen ? (
                       <button

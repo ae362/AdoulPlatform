@@ -440,9 +440,9 @@ const NotaryNotificationsPage: React.FC = () => {
   const selectedTheme = getDecisionTheme(selectedNotification?.decisionType ?? '', selectedNotification?.source);
 
   return (
-    <div className="min-h-full space-y-8 bg-[radial-gradient(circle_at_top_left,_rgba(127,29,29,0.08),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(8,145,178,0.10),_transparent_28%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_45%,_#eef2ff_100%)] p-1 notranslate" dir="rtl" translate="no">
+    <div className="min-h-full space-y-4 bg-[radial-gradient(circle_at_top_left,_rgba(127,29,29,0.08),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(8,145,178,0.10),_transparent_28%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_45%,_#eef2ff_100%)] p-1 notranslate" dir="rtl" translate="no">
       {/* Top Banner Header */}
-      <section className="relative overflow-hidden rounded-[32px] border border-white/70 bg-white/85 px-8 py-8 shadow-[0_30px_80px_rgba(15,23,42,0.10)] backdrop-blur-sm">
+      <section className="relative overflow-hidden rounded-2xl border border-white/70 bg-white/85 px-6 py-4 shadow-sm backdrop-blur-sm">
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(127,29,29,0.06),transparent_35%,rgba(8,145,178,0.06))]" />
         <div className="absolute -top-20 left-0 h-56 w-56 rounded-full bg-rose-200/30 blur-3xl" />
         <div className="absolute -bottom-24 right-8 h-56 w-56 rounded-full bg-cyan-200/30 blur-3xl" />
@@ -684,9 +684,9 @@ const NotaryNotificationsPage: React.FC = () => {
         </div>
 
         {/* Detail Panel Aside */}
-        <aside className={`overflow-hidden rounded-[30px] border border-slate-200/80 bg-gradient-to-b ${selectedTheme.panel} shadow-[0_24px_70px_rgba(15,23,42,0.10)]`}>
+        <aside className={`sticky top-6 self-start max-h-[calc(100vh-5rem)] flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b ${selectedTheme.panel} shadow-xl`}>
           {selectedNotification ? (
-            <div key={selectedNotification.id} className="flex h-full flex-col">
+            <div key={selectedNotification.id} className="flex flex-col h-full overflow-hidden">
               <div className="border-b border-white/80 p-7">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-3 py-1 text-[11px] font-black ${selectedTheme.badge}`}>
@@ -716,7 +716,7 @@ const NotaryNotificationsPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex-1 space-y-5 p-7">
+              <div className="flex-1 overflow-y-auto space-y-4 p-5">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm">
                     <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">رقم الطلب / المرجع</div>
@@ -759,7 +759,7 @@ const NotaryNotificationsPage: React.FC = () => {
               </div>
 
               {/* Detail Action Buttons */}
-              <div className="border-t border-white/80 p-6">
+              <div className="border-t border-white/80 p-4 bg-white/60 backdrop-blur-md shrink-0">
                 <div className="flex flex-col gap-3">
                   <button
                     type="button"

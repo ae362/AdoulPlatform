@@ -1468,7 +1468,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* Features Section - Scrollable Advertisement Sections */}
-      <section id="features" className="bg-gray-50 py-24">
+      <section id="features" className="bg-gray-50 py-14 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2
@@ -1609,7 +1609,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 	      </section>
 
       {/* About */}
-      <section id="about" className="bg-white py-24">
+      <section id="about" className="bg-white py-14 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
              <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1">
@@ -1660,7 +1660,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* AI */}
-      <section id="ai" className="bg-gradient-to-br from-gray-900 to-gray-800 py-24 text-white">
+      <section id="ai" className="bg-gradient-to-br from-gray-900 to-gray-800 py-14 md:py-16 text-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-block bg-yellow-400 text-gray-900 px-6 py-2 rounded-full font-bold mb-6">
@@ -1755,7 +1755,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Roles */}
       <section
         id="roles"
-        className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 py-24 text-white relative overflow-hidden"
+        className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 py-14 md:py-16 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">

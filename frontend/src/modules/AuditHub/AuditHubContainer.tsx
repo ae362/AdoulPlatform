@@ -3690,7 +3690,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   };
 
   if (rasmQuery.isLoading || !state) return (
-    <div className={`h-screen flex flex-col items-center justify-center gap-6 transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`h-[calc(100vh-5rem)] min-h-[500px] flex flex-col items-center justify-center gap-6 transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
       <div className="relative">
         <div className="w-24 h-24 border-4 border-blue-500/20 rounded-full"></div>
         <div className="w-24 h-24 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0 shadow-lg shadow-blue-500/20"></div>
@@ -3704,8 +3704,8 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   );
   
   if (error || rasmQuery.error) return (
-    <div className="h-screen flex items-center justify-center bg-red-50 p-12">
-      <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border-2 border-red-100 flex flex-col items-center gap-6 max-w-lg text-center">
+    <div className="h-[calc(100vh-5rem)] min-h-[500px] flex items-center justify-center bg-red-50 p-6 md:p-12">
+      <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border-2 border-red-100 flex flex-col items-center gap-6 max-w-lg text-center">
         <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center text-red-600">
           <AlertCircle className="w-12 h-12" />
         </div>

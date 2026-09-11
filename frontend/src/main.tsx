@@ -62,10 +62,25 @@ const PublicSearchDeedsPage = lazy(() => import('./pages/PublicSearchDeedsPage')
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000,
+      staleTime: 30 * 1000,
       gcTime: 10 * 60 * 1000,
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        if (failureCount >= 3) return false;
+        const status = error?.data?.httpStatus ?? error?.status;
+        if (typeof status === 'number' && status >= 400 && status < 500) return false;
+        return true;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        if (failureCount >= 2) return false;
+        const status = error?.data?.httpStatus ?? error?.status;
+        if (typeof status === 'number' && status >= 400 && status < 500) return false;
+        return true;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     },
   },
 });

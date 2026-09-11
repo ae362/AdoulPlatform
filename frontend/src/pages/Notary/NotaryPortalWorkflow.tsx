@@ -1360,58 +1360,55 @@ ${data.generatedText}
 
   return (
     <div className="space-y-6 animate-fadeIn" dir="rtl">
-      {/* Premium Header with Search */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#fff7ed] via-[#ffedd5] to-white border border-orange-100 p-10 rounded-3xl shadow-xl mb-8 group">
+      {/* Compact Header with Integrated Search */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#fff7ed] via-[#ffedd5] to-white border border-orange-100 p-4 md:p-5 rounded-2xl shadow-sm mb-4 group">
         <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/pinstripe.png')] pointer-events-none"></div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-200/20 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-200/20 rounded-full -ml-32 -mb-32 blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-48 h-48 bg-orange-200/20 rounded-full -mr-24 -mt-24 blur-2xl"></div>
         
-        <div className="relative z-10 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-4xl font-[800] font-maghribi tracking-tight text-slate-800">بوابة الطلبات المهنية الوطنية</h1>
-              <p className="text-slate-500 text-sm mt-1.5 font-medium">نظام التتبع الذكي للطلبات والإشعارات العدلية</p>
-            </div>
-            
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setActiveTab('create')}
-                className="bg-red-950 hover:bg-red-900 text-[#E6BE8A] px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2"
-              >
-                <span>➕</span>
-                إنشاء طلب إشعار
-              </button>
-            </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="shrink-0">
+            <h1 className="text-xl md:text-2xl font-[800] font-maghribi tracking-tight text-slate-800">بوابة الطلبات المهنية الوطنية</h1>
+            <p className="text-slate-500 text-xs mt-0.5 font-medium">نظام التتبع الذكي للطلبات والإشعارات العدلية</p>
           </div>
 
-          {/* Search Bar */}
-          <div className="max-w-3xl relative">
-            <div className="relative flex items-center bg-white/50 backdrop-blur-md border border-orange-200 rounded-2xl p-1.5 shadow-sm focus-within:ring-4 focus-within:ring-orange-500/20 transition-all">
-              <div className="absolute right-5 text-orange-400 pointer-events-none">
+          {/* Integrated Search Bar */}
+          <div className="flex-1 max-w-xl">
+            <div className="relative flex items-center bg-white/70 backdrop-blur-md border border-orange-200 rounded-xl p-1 shadow-sm focus-within:ring-2 focus-within:ring-orange-500/30 transition-all">
+              <div className="absolute right-3.5 text-orange-400 pointer-events-none text-sm">
                 🔍
               </div>
               <input
                 type="text"
                 placeholder="ابحث عن رقم الطلب، المحكمة، أو نوع الشهادة..."
-                className="w-full bg-transparent text-slate-800 pr-12 pl-6 py-3.5 outline-none placeholder:text-slate-400 text-lg font-amiri"
+                className="w-full bg-transparent text-slate-800 pr-9 pl-4 py-1.5 outline-none placeholder:text-slate-400 text-sm font-amiri"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="ml-3 p-2 hover:bg-orange-50 rounded-lg text-slate-400 transition-colors"
+                  className="ml-2 p-1 hover:bg-orange-50 rounded-lg text-slate-400 transition-colors text-xs"
                 >
                   ✕
                 </button>
               )}
             </div>
           </div>
+
+          <div className="shrink-0">
+            <button 
+              onClick={() => setActiveTab('create')}
+              className="bg-red-950 hover:bg-red-900 text-[#E6BE8A] px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+            >
+              <span>➕</span>
+              إنشاء طلب إشعار
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Navigation Tabs - Enhanced */}
-      <div className="flex gap-4 border-b border-gray-200 flex-wrap overflow-x-auto pb-px">
+      <div className="flex gap-2 border-b border-gray-200 flex-wrap overflow-x-auto pb-px">
         {[
           { id: 'national_requests', label: 'الطلبات المهنية الوطنية', icon: '⚖️' },
           { id: 'create', label: 'طلب جديد', icon: '➕' },
@@ -1426,7 +1423,7 @@ ${data.generatedText}
             onClick={() => {
               setActiveTab(tab.id as any);
             }}
-            className={`px-6 py-4 font-bold transition-all flex items-center gap-2 border-b-4 -mb-px whitespace-nowrap relative ${
+            className={`px-4 py-2.5 font-bold text-sm transition-all flex items-center gap-1.5 border-b-2 -mb-px whitespace-nowrap relative ${
               activeTab === tab.id
                 ? 'border-red-950 text-red-950'
                 : 'border-transparent text-gray-500 hover:text-red-950 hover:border-red-200'
