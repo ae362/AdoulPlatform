@@ -189,6 +189,18 @@ export function inspectDocxSafety(docxBuffer: Buffer): void {
     throw new Error('Security Error: DOCX does not contain valid zip structure');
   }
 
+  // 1. Fast binary string scan for known macro/script signatures
+  const rawString = docxBuffer.toString('binary').toLowerCase();
+  if (
+    rawString.includes('vbaproject') ||
+    rawString.includes('vba_project') ||
+    rawString.includes('word/vba') ||
+    rawString.includes('macrosheets') ||
+    rawString.includes('oleobject')
+  ) {
+    throw new Error('Security Error: Forbidden active script or macro detected inside DOCX archive');
+  }
+
   const MAX_UNCOMPRESSED_TOTAL_BYTES = 50 * 1024 * 1024; // 50 MB
   const MAX_COMPRESSION_RATIO = 50; // 50:1 ratio limit
   const MAX_ENTRY_COUNT = 500;
@@ -229,13 +241,16 @@ export function inspectDocxSafety(docxBuffer: Buffer): void {
         // Macro & Forbidden Script Check
         const lowerName = entryName.toLowerCase();
         if (
-          lowerName.includes('vbaproject.bin') ||
+          lowerName.includes('vbaproject') ||
+          lowerName.includes('vba') ||
           lowerName.endsWith('.exe') ||
           lowerName.endsWith('.py') ||
           lowerName.endsWith('.sh') ||
           lowerName.endsWith('.bat') ||
           lowerName.endsWith('.ps1') ||
-          lowerName.endsWith('.js')
+          lowerName.endsWith('.js') ||
+          lowerName.endsWith('.bin') ||
+          lowerName.endsWith('.dll')
         ) {
           throw new Error(`Security Error: Forbidden active script or macro (${entryName}) detected inside DOCX`);
         }

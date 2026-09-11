@@ -120,11 +120,21 @@ export const extractionRequestsRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         let query = supabase.from('copy_requests').select('*');
-        // If notary, scope to their notary id or assignments
-        const targetNotaryId = ctx.notaryProfile?.id || input?.notaryId;
-        if (targetNotaryId) {
+        const isCitizen = ctx.user.role === 'citizen';
+        const isOversight = ctx.user.role === 'regional_adoul_council' || ctx.user.role === 'national_notary_authority' || ctx.user.role === 'admin';
+
+        if (isCitizen) {
+          const userCin = (ctx.user as any).national_id || (ctx.user as any).cin;
+          if (!userCin) return [];
+          query = query.eq('requester_cin', userCin);
+        } else if (!isOversight) {
+          // For notaries, strictly scope to their own assigned records
+          const targetNotaryId = ctx.notaryProfile?.id || ctx.user.id;
           query = query.contains('assigned_notary_ids', [sanitizePlainText(targetNotaryId)]);
+        } else if (input?.notaryId) {
+          query = query.contains('assigned_notary_ids', [sanitizePlainText(input.notaryId)]);
         }
+
         if (input?.status) {
           query = query.eq('status', sanitizePlainText(input.status));
         }

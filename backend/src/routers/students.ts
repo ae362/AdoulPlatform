@@ -13,7 +13,10 @@ export const studentsRouter = router({
       status: z.enum(['active', 'pending', 'inactive']).optional(),
       search: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - سجل المتدربين مقتصر على المجالس الجهوية' });
+      }
       try {
         let query = supabase
           .from('students')
@@ -74,11 +77,14 @@ export const studentsRouter = router({
     }),
 
   // Get pending requests
-  getPendingRequests: publicProcedure
+  getPendingRequests: protectedProcedure
     .input(z.object({ 
       limit: z.number().optional().default(10),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - طلبات المتدربين مقتصرة على المجالس الجهوية' });
+      }
       try {
         const { data: requests, error } = await supabase
           .from('student_requests')
@@ -170,9 +176,12 @@ export const studentsRouter = router({
     }),
 
   // Get student by ID
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.string())
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - بيانات المتدرب مقتصرة على المجالس الجهوية' });
+      }
       try {
         const { data: student, error } = await supabase
           .from('students')

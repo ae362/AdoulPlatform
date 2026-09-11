@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { db, ensureId } from '../data/store';
 import { protectedProcedure, router } from './trpc';
 import { sanitizePlainText, sanitizeIlikePattern } from '../utils/inputSanitizer';
+import { TRPCError } from '@trpc/server';
 
 const idInput = z.object({ id: z.string().min(1) });
 
@@ -20,14 +21,22 @@ export const copyRequestsRouter = router({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       let remoteData: any[] = [];
+      const isCitizen = ctx.user.role === 'citizen';
+      const userCin = (ctx.user as any).national_id || (ctx.user as any).cin;
+
       try {
         let query = supabase.from('copy_requests').select('*');
 
-        if (input?.cin) query = query.eq('requester_cin', sanitizePlainText(input.cin));
+        if (isCitizen) {
+          if (!userCin) return [];
+          query = query.eq('requester_cin', userCin);
+        } else if (input?.cin) {
+          query = query.eq('requester_cin', sanitizePlainText(input.cin));
+        }
         if (input?.record_type) query = query.eq('record_type', sanitizePlainText(input.record_type));
-        if (input?.name) {
+        if (input?.name && !isCitizen) {
           const term = sanitizeIlikePattern(input.name);
           query = query.ilike('requester_name', `%${term}%`);
         }
@@ -58,9 +67,13 @@ export const copyRequestsRouter = router({
         if (!d?.id || remoteIds.has(String(d.id))) return false;
         const reqNum = String(d?.record_details?.requestNumber || d?.notes || '');
         if (reqNum && remoteReqNums.has(reqNum)) return false;
-        if (input?.cin && d.requester_cin !== input.cin) return false;
+        if (isCitizen) {
+          if (d.requester_cin !== userCin) return false;
+        } else {
+          if (input?.cin && d.requester_cin !== input.cin) return false;
+        }
         if (input?.record_type && d.record_type !== input.record_type) return false;
-        if (input?.name && !String(d.requester_name || '').toLowerCase().includes(input.name.trim().toLowerCase())) return false;
+        if (input?.name && !isCitizen && !String(d.requester_name || '').toLowerCase().includes(input.name.trim().toLowerCase())) return false;
         return true;
       });
 
@@ -74,8 +87,14 @@ export const copyRequestsRouter = router({
       return combined;
     }),
 
-  create: protectedProcedure.input(copyRequestSchema).mutation(async ({ input }) => {
-    const item = ensureId(input);
+  create: protectedProcedure.input(copyRequestSchema).mutation(async ({ input, ctx }) => {
+    const isCitizen = ctx.user.role === 'citizen';
+    const userCin = (ctx.user as any).national_id || (ctx.user as any).cin;
+    const item = ensureId({
+      ...input,
+      requester_cin: isCitizen && userCin ? userCin : input.requester_cin,
+      user_id: ctx.user.id
+    });
     db.copyRequests.unshift(item as any);
 
     try {
@@ -93,7 +112,15 @@ export const copyRequestsRouter = router({
     return item;
   }),
 
-  update: protectedProcedure.input(copyRequestSchema.extend({ id: z.string().min(1) })).mutation(async ({ input }) => {
+  update: protectedProcedure.input(copyRequestSchema.extend({ id: z.string().min(1) })).mutation(async ({ input, ctx }) => {
+    if (ctx.user.role === 'citizen') {
+      const userCin = (ctx.user as any).national_id || (ctx.user as any).cin;
+      const { data: existing } = await supabase.from('copy_requests').select('requester_cin, user_id').eq('id', input.id).maybeSingle();
+      if (existing && existing.requester_cin !== userCin && existing.user_id !== ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح بتعديل هذا الطلب' });
+      }
+    }
+
     const idx = db.copyRequests.findIndex((r) => r.id === input.id);
     if (idx >= 0) {
       db.copyRequests[idx] = { ...db.copyRequests[idx], ...input } as any;
@@ -115,7 +142,15 @@ export const copyRequestsRouter = router({
     return input;
   }),
 
-  delete: protectedProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
+    if (ctx.user.role !== 'admin' && ctx.user.role !== 'national_notary_authority') {
+      const userCin = (ctx.user as any).national_id || (ctx.user as any).cin;
+      const { data: existing } = await supabase.from('copy_requests').select('requester_cin, user_id').eq('id', input.id).maybeSingle();
+      if (existing && existing.requester_cin !== userCin && existing.user_id !== ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح بحذف هذا الطلب' });
+      }
+    }
+
     db.copyRequests = db.copyRequests.filter((r) => r.id !== input.id);
     try {
       await supabase.from('copy_requests').delete().eq('id', input.id);

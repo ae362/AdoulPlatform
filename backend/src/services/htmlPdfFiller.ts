@@ -165,7 +165,7 @@ export class HtmlPdfFillerService {
     return this.addInteractiveFields(pdfBuffer);
   }
 
-  private buildMarriageCertificateHtml(
+  public buildMarriageCertificateHtml(
     data: MarriagePdfData,
     logoDataUrl: string,
     adoulLogoDataUrl: string,
@@ -1197,7 +1197,7 @@ ${
 </html>`;
   }
 
-  private buildAuthorizationHtml(
+  public buildAuthorizationHtml(
     data: any,
     logoDataUrl: string,
     adoulLogoDataUrl: string,
