@@ -93,7 +93,7 @@ export const NotFoundPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => navigate('/public-search-deeds')}
+                onClick={() => navigate('/public/search-deeds')}
                 className="p-3 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-100 hover:border-amber-200 transition-colors flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-amber-950"
               >
                 <Search className="w-4 h-4 text-blue-600 flex-shrink-0" />

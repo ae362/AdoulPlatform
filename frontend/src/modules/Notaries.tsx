@@ -224,16 +224,28 @@ function NotarySearch() {
           </div>
         </div>
         <nav className="flex flex-wrap gap-4 text-sm">
-          {['من نحن', 'بحث عن عدل', 'الخدمات الإلكترونية', 'الأخبار', 'النصوص القانونية', 'دليل العدول', 'اتصل بنا'].map((item) => (
-            <button key={item} className="hover:text-yellow-300 transition-colors">
-              {item}
+          {[
+            { label: 'من نحن', action: () => navigate('/') },
+            { label: 'بحث عن عدل', action: () => { const el = document.getElementById('search-section'); if (el) el.scrollIntoView({ behavior: 'smooth' }); } },
+            { label: 'الخدمات الإلكترونية', action: () => navigate('/') },
+            { label: 'الأخبار', action: () => navigate('/news/legal-news') },
+            { label: 'النصوص القانونية', action: () => navigate('/knowledge/digital-archive') },
+            { label: 'دليل العدول', action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+            { label: 'اتصل بنا', action: () => navigate('/') },
+          ].map((item) => (
+            <button key={item.label} type="button" onClick={item.action} className="hover:text-yellow-300 transition-colors">
+              {item.label}
             </button>
           ))}
         </nav>
-          <div className="flex flex-col gap-2 text-sm text-white">
-            <button className="self-start md:self-auto bg-white/10 hover:bg-white/20 transition-colors px-4 py-2 rounded-full border border-white/30">
-              فضاء العدول
-            </button>
+        <div className="flex flex-col gap-2 text-sm text-white">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="self-start md:self-auto bg-white/10 hover:bg-white/20 transition-colors px-4 py-2 rounded-full border border-white/30"
+          >
+            فضاء العدول
+          </button>
           <button
             type="button"
             onClick={goToSocietyMembersLogin}

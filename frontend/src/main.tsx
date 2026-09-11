@@ -1024,6 +1024,8 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/public/copy-extraction" element={<PublicCopyExtractionPage />} />
               <Route path="/public/search-deeds" element={<PublicSearchDeedsPage />} />
+              <Route path="/public-copy-extraction" element={<Navigate to="/public/copy-extraction" replace />} />
+              <Route path="/public-search-deeds" element={<Navigate to="/public/search-deeds" replace />} />
               <Route path="/knowledge/professional-programs" element={<ProfessionalProgramsPage />} />
               <Route path="/knowledge/audiovisual-library" element={<AudiovisualLibraryPage />} />
               <Route path="/knowledge/digital-archive" element={<DigitalArchivePage />} />

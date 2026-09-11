@@ -2488,7 +2488,9 @@ export const SovereignSignature: React.FC = () => {
                             <span className="text-rose-600 text-xs font-black">منع الحذف النهائي للرسوم</span>
                         </div>
                         <div className="flex items-center justify-between">
-                             <button className="w-10 h-5 bg-slate-200 rounded-full"></button>
+                             <button type="button" aria-label="تبديل المصادقة الثنائية (2FA)" className="w-10 h-5 bg-slate-200 rounded-full flex items-center px-0.5">
+                                 <span className="w-4 h-4 bg-white rounded-full shadow-sm"></span>
+                             </button>
                              <span className="text-slate-500 text-xs font-bold italic">المصادقة الثنائية (2FA)</span>
                         </div>
                         <button className="w-full py-3 bg-slate-50 rounded-xl text-xs font-black text-slate-600 flex items-center justify-between px-4 hover:bg-slate-100 transition-all border border-slate-200">

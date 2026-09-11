@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Enterprise Page Title & Favicon Manager
  * Provides dynamic, route-aware, role-aware browser tab titles and notification badges.
  */
@@ -71,6 +71,8 @@ const PUBLIC_ROUTE_TITLES: Record<string, string> = {
   '/unauthorized': 'غير مصرح بالدخول',
   '/public-copy': 'بوابة استخراج النسخ العدلية',
   '/public-search': 'البحث في السجلات العدلية',
+  '/public/copy-extraction': 'بوابة استخراج النسخ العدلية',
+  '/public/search-deeds': 'البحث في السجلات العدلية',
   '/verify': 'التحقق من صحة الوثائق',
 };
 

@@ -848,6 +848,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         items: [
           { label: 'طلبات استخراج نسخ العقود/الشهادات العدلية', href: '/public-copy-extraction' },
           { label: 'طلبات البحث عن العقود/الشهادات العدلية', href: '/public-search-deeds' },
+          { label: 'طلبات استخراج نسخ العقود/الشهادات العدلية', href: '/public/copy-extraction' },
+          { label: 'طلبات البحث عن العقود/الشهادات العدلية', href: '/public/search-deeds' },
         ],
       },
       {

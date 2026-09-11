@@ -56,4 +56,6 @@ FeesAgent old.tsx
 *.tsbuildinfo
 .graphify/
 .agents/.graphify/
+graphify-out/
+
 
