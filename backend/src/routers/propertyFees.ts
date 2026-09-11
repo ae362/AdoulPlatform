@@ -28,9 +28,10 @@ export const propertyFeesRouter = router({
       return data ?? [];
     }),
 
-  create: publicProcedure.input(propertyCreateSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(propertyCreateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.parties_names) payload.parties_names = sanitizeIlikePattern(payload.parties_names);
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -45,9 +46,10 @@ export const propertyFeesRouter = router({
     return data;
   }),
 
-  update: publicProcedure.input(propertyUpdateSchema).mutation(async ({ input }) => {
+  update: protectedProcedure.input(propertyUpdateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.parties_names) payload.parties_names = sanitizeIlikePattern(payload.parties_names);
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -63,7 +65,7 @@ export const propertyFeesRouter = router({
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
     const { error } = await supabase.from('property_fees').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

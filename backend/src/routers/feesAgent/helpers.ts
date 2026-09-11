@@ -10,6 +10,7 @@ import {
   ARABIC_RE,
   JUDGE_CITY_CODE_MAP,
 } from './types';
+import { deepSanitizeObject } from '../../utils/inputSanitizer';
 
 const bidi = new Bidi();
 
@@ -154,7 +155,8 @@ export function sanitizeAttachmentLikeValue(value: any): any {
 export function sanitizePersistedPayload<T>(payload: T): T {
   if (!payload || typeof payload !== 'object') return payload;
 
-  const next: Record<string, unknown> = { ...(payload as any) };
+  const sanitized = deepSanitizeObject(payload);
+  const next: Record<string, unknown> = { ...(sanitized as any) };
 
   if (Array.isArray((next as any).attachments)) {
     next.attachments = ((next as any).attachments as any[]).map((att) => sanitizeAttachmentLikeValue(att));

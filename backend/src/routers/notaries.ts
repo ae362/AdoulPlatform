@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { notarySchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
 import { PasswordService } from '../services/password';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 
 const idInput = z.object({ id: z.string() });
 
@@ -141,7 +141,7 @@ export const notariesRouter = router({
       };
     }),
 
-  updateProfile: publicProcedure
+  updateProfile: protectedProcedure
     .input(
       z.object({
         id: z.string(),
@@ -158,7 +158,12 @@ export const notariesRouter = router({
         appellate_court: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // IDOR Defense: only allow updating own profile unless caller is national authority
+      if (input.id !== ctx.user.id && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'regional_adoul_council') {
+        throw new Error('غير مصرح لك بتعديل هذا الملف التعريفي');
+      }
+
       const { id, full_name, ...profileData } = input;
 
       // Update User (Full Name)
@@ -261,9 +266,14 @@ export const notariesRouter = router({
       return { success: true, id: userId };
     }),
 
-  deleteAccount: publicProcedure
+  deleteAccount: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Role enforcement: Only national authority can delete user accounts
+      if (ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+        throw new Error('غير مصرح - هذه العملية تتطلب صلاحية الهيئة الوطنية للعدول');
+      }
+
       // Delete from Auth
       const { error: authError } = await supabase.auth.admin.deleteUser(input.id);
       if (authError) throw new Error(authError.message);
@@ -275,21 +285,30 @@ export const notariesRouter = router({
     }),
 
   // Legacy CRUD operations
-  create: publicProcedure.input(notarySchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(notarySchema).mutation(async ({ input, ctx }) => {
+    if (ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'regional_adoul_council') {
+      throw new Error('غير مصرح');
+    }
     const { id, ...rest } = input;
     const { data, error } = await supabase.from('notaries').insert(rest).select('*').single();
     if (error) throw new Error(error.message);
     return data;
   }),
 
-  update: publicProcedure.input(notarySchema.extend({ id: z.string() })).mutation(async ({ input }) => {
+  update: protectedProcedure.input(notarySchema.extend({ id: z.string() })).mutation(async ({ input, ctx }) => {
+    if (ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'regional_adoul_council') {
+      throw new Error('غير مصرح');
+    }
     const { id, ...rest } = input;
     const { data, error } = await supabase.from('notaries').update(rest).eq('id', id).select('*').single();
     if (error) throw new Error(error.message);
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
+    if (ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'regional_adoul_council') {
+      throw new Error('غير مصرح');
+    }
     const { error } = await supabase.from('notaries').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

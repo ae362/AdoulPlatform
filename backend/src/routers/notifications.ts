@@ -1,4 +1,4 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, protectedProcedure } from './trpc';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { sendEmail } from '../services/email';
@@ -98,7 +98,7 @@ async function updateJudicialNotificationWithFallback({
 }
 
 export const notificationsRouter = router({
-  uploadFile: publicProcedure
+  uploadFile: protectedProcedure
     .input(z.object({
       file: fileUploadSchema
     }))
@@ -551,19 +551,24 @@ export const notificationsRouter = router({
       }
     }),
 
-  deleteNotification: publicProcedure
+  deleteNotification: protectedProcedure
     .input(z.object({
       notificationId: z.string(),
       notaryId: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
+        const isAuthority = ctx.user.role === 'authentication_judge' || ctx.user.role === 'regional_adoul_council' || ctx.user.role === 'national_notary_authority';
+        
         let query = supabase
           .from('judicial_notifications')
           .delete()
           .eq('id', input.notificationId);
 
-        if (input.notaryId) {
+        // If not judicial authority, enforce scoping to own notary ID
+        if (!isAuthority) {
+          query = query.eq('notary_id', ctx.user.id);
+        } else if (input.notaryId) {
           query = query.eq('notary_id', input.notaryId);
         }
 
@@ -641,7 +646,7 @@ export const notificationsRouter = router({
       }
     }),
 
-  recordDecision: publicProcedure
+  recordDecision: protectedProcedure
     .input(z.object({
       notificationId: z.string(),
       decisionType: z.enum(['موافقة', 'موافقة_مع_شروط', 'رفض', 'تأجيل', 'حفظ_دون_أثر', 'قيد_الدراسة']),
@@ -652,7 +657,15 @@ export const notificationsRouter = router({
       authorityName: z.string().optional(),
       authorityType: z.enum(['judge', 'regional_council']).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      // Role enforcement: Only judges or regional council can record judicial decisions
+      if (ctx.user.role !== 'authentication_judge' && ctx.user.role !== 'regional_adoul_council') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'غير مصرح - تسجيل القرارات القضائية مقتصر على السادة القضاة والمجلس الجهوي',
+        });
+      }
+
       try {
         let status = 'قيد_المعالجة';
         
@@ -867,7 +880,7 @@ export const notificationsRouter = router({
       }
     }),
 
-  appendWorkflowEvent: publicProcedure
+  appendWorkflowEvent: protectedProcedure
     .input(
       z.object({
         notificationId: z.string(),
@@ -878,7 +891,9 @@ export const notificationsRouter = router({
         actorRole: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const actorName = input.actorName || ctx.user.full_name;
+      const actorRole = input.actorRole || ctx.user.role;
       const { data: existing, error: readError } = await supabase
         .from('judicial_notifications')
         .select('id, notes')

@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, publicProcedure, resolveSessionUser } from '../../../trpc';
 import { supabase } from '../../../../services/supabase';
 import { uploadBufferToDocumentsBucket, uploadDocument, fileUploadSchema } from '../../../../utils/storage';
+import { validateFileSafety, inspectDocxSafety } from '../../../../utils/fileSecurity';
 import { sha256Hex } from '../../../../utils/auditDocPatch';
 import { convertDocxToPdfViaLibreOffice } from '../../../../services/auditDocArtifacts';
 import {
@@ -96,16 +97,13 @@ export const savedRasmsProcedures = {
             // Preferred mechanism: the current saved document is the Saved-Docs source-of-truth.
             if (canonicalDocument && f === canonicalDocument) {
               const fileBuffer = Buffer.from(f.base64, 'base64');
+              const validation = validateFileSafety(f.name, fileBuffer);
+              if (validation.extension === 'docx') {
+                inspectDocxSafety(fileBuffer);
+              }
               const fileSha = sha256Hex(fileBuffer);
-              const mimeType = f.type || 'application/octet-stream';
-              const lowerName = String(f.name || '').toLowerCase();
-              const extension = lowerName.endsWith('.docx')
-                ? 'docx'
-                : lowerName.endsWith('.doc')
-                  ? 'doc'
-                  : mimeType.includes('pdf')
-                    ? 'pdf'
-                    : 'bin';
+              const mimeType = validation.detectedMimeType;
+              const extension = validation.extension;
               const uploaded = await uploadBufferToDocumentsBucket({
                 path: `saved/${created.id}/${fileSha}.${extension}`,
                 buffer: fileBuffer,
@@ -327,13 +325,16 @@ export const savedRasmsProcedures = {
 
           for (const f of files) {
             const fileBuffer = Buffer.from(f.base64, 'base64');
+            const validation = validateFileSafety(f.name, fileBuffer);
+            if (validation.extension === 'docx') {
+              inspectDocxSafety(fileBuffer);
+            }
             const fileSha = sha256Hex(fileBuffer);
-            const lowerName = String(f.name || '').toLowerCase();
-            const isDocx = lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || String(f.type || '').includes('wordprocessingml');
+            const isDocx = validation.extension === 'docx';
 
             if (isDocx || (canonicalDocument && f === canonicalDocument)) {
-              const mimeType = isDocx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : (f.type || 'application/octet-stream');
-              const extension = isDocx ? 'docx' : (lowerName.endsWith('.pdf') ? 'pdf' : 'bin');
+              const mimeType = validation.detectedMimeType;
+              const extension = validation.extension;
               
               // Extract text and HTML content from docx buffer if available
               let extractedDocxText: string | null = null;

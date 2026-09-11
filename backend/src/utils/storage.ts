@@ -65,6 +65,19 @@ export async function uploadBufferToDocumentsBucket(opts: {
   const normalizedPath = String(opts.path || '').replace(/^\/+/, '');
   if (!normalizedPath) throw new Error('uploadBufferToDocumentsBucket: path is required');
 
+  // Defense-in-depth: prohibit dangerous extensions and oversized buffers
+  const dotIndex = normalizedPath.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    const ext = normalizedPath.slice(dotIndex + 1).toLowerCase();
+    if (['py', 'pyw', 'sh', 'bash', 'exe', 'bat', 'cmd', 'ps1', 'vbs', 'js', 'ts', 'php', 'jar', 'msi'].includes(ext)) {
+      throw new Error(`Security Error: Uploading .${ext} to documents bucket is strictly prohibited`);
+    }
+  }
+
+  if (opts.buffer.length > 50 * 1024 * 1024) {
+    throw new Error('Security Error: Upload buffer exceeds 50MB limit');
+  }
+
   const { error } = await supabase.storage.from(DOCUMENT_BUCKET).upload(normalizedPath, opts.buffer, {
     contentType: opts.contentType || 'application/octet-stream',
     upsert: opts.upsert ?? true,

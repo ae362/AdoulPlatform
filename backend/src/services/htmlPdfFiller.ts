@@ -170,11 +170,20 @@ export class HtmlPdfFillerService {
     logoDataUrl: string,
     adoulLogoDataUrl: string,
   ): string {
+    const escapeHtml = (str: string) => {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
     const safe = (v?: string | number | null) => {
       if (v === undefined || v === null || v === '' || Number.isNaN(v)) {
         return '';
       }
-      return v.toString();
+      return escapeHtml(v.toString());
     };
     const display = (value: string, placeholder = '.............') =>
       value && value.trim().length > 0 ? value : placeholder;
@@ -1193,11 +1202,20 @@ ${
     logoDataUrl: string,
     adoulLogoDataUrl: string,
   ): string {
+    const escapeHtml = (str: string) => {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
     const safe = (v?: string | number | null) => {
       if (v === undefined || v === null || v === '' || Number.isNaN(v)) {
         return '..........';
       }
-      return v.toString();
+      return escapeHtml(v.toString());
     };
     
     // Map actual form fields to template variables

@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router, resolveSessionUser } from './trpc';
+import { publicProcedure, protectedProcedure, router, resolveSessionUser } from './trpc';
 
 type AuthUser = { id: string; role: string; is_active: boolean };
 
@@ -517,7 +517,7 @@ export const subscriptionsRouter = router({
       }));
     }),
 
-  togglePaymentStatus: publicProcedure
+  togglePaymentStatus: protectedProcedure
     .input(z.object({
       id: z.string().uuid().optional(), // Specific Record ID
       userId: z.string().uuid(),
@@ -527,7 +527,11 @@ export const subscriptionsRouter = router({
       amount: z.number().optional(),
       periodMonth: z.number().optional()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+       // Only regional council, national authority, or admin can toggle subscription payments
+       if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+         throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - تعديل حالة الأداء مقتصر على المجالس الجهوية والهيئة الوطنية' });
+       }
        const now = new Date().toISOString();
        const normalizedType = input.type === 'yearly' ? 'annual' : input.type;
        
@@ -781,11 +785,15 @@ export const subscriptionsRouter = router({
        };
     }),
 
-    deletePayment: publicProcedure
+    deletePayment: protectedProcedure
     .input(z.object({
       id: z.string().uuid()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+       if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+         throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - حذف الفواتير مقتصر على المجالس الجهوية والهيئة الوطنية' });
+       }
+
        const { error } = await supabase
          .from('subscription_payments')
          .delete()

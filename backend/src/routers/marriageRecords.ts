@@ -98,7 +98,7 @@ export const marriageRecordsRouter = router({
       return (data ?? []).map((row) => normalizeMarriageRecord(row));
     }),
 
-  create: publicProcedure.input(marriageCreateSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(marriageCreateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_files, ...rest } = input;
     
     // Extract OCR data from uploaded files if available
@@ -113,6 +113,10 @@ export const marriageRecordsRouter = router({
     
     const payload = { 
       ...rest,
+      husband_name: sanitizePlainText(rest.husband_name || ''),
+      wife_name: sanitizePlainText(rest.wife_name || ''),
+      husband_cin: sanitizePostgrestValue(rest.husband_cin || ''),
+      wife_cin: sanitizePostgrestValue(rest.wife_cin || ''),
       // Store consolidated OCR extracted data for reference
       ...(Object.keys(ocrData).length > 0 && { ocr_metadata: ocrData })
     };
@@ -135,9 +139,14 @@ export const marriageRecordsRouter = router({
     return fetchMarriageRecordWithDocuments(data.id);
   }),
 
-  update: publicProcedure.input(marriageUpdateSchema).mutation(async ({ input }) => {
+  update: protectedProcedure.input(marriageUpdateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_files, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.husband_name) payload.husband_name = sanitizePlainText(payload.husband_name);
+    if (payload.wife_name) payload.wife_name = sanitizePlainText(payload.wife_name);
+    if (payload.husband_cin) payload.husband_cin = sanitizePostgrestValue(payload.husband_cin);
+    if (payload.wife_cin) payload.wife_cin = sanitizePostgrestValue(payload.wife_cin);
+
     const { data, error } = await supabase
       .from('marriage_records')
       .update(payload)
@@ -157,7 +166,7 @@ export const marriageRecordsRouter = router({
     return fetchMarriageRecordWithDocuments(id);
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
     const { error } = await supabase.from('marriage_records').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

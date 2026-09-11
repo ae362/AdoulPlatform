@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { registrationStampSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 
 const idInput = z.object({ id: z.string() });
 
@@ -12,7 +12,7 @@ export const registrationStampsRouter = router({
     return data ?? [];
   }),
 
-  create: publicProcedure.input(registrationStampSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(registrationStampSchema).mutation(async ({ input, ctx }) => {
     const { id, ...rest } = input;
     const { data, error } = await supabase
       .from('registration_stamps')
@@ -23,7 +23,7 @@ export const registrationStampsRouter = router({
     return data;
   }),
 
-  update: publicProcedure.input(registrationStampSchema.extend({ id: z.string() })).mutation(async ({ input }) => {
+  update: protectedProcedure.input(registrationStampSchema.extend({ id: z.string() })).mutation(async ({ input, ctx }) => {
     const { id, ...rest } = input;
     const { data, error } = await supabase
       .from('registration_stamps')
@@ -35,7 +35,7 @@ export const registrationStampsRouter = router({
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
     const { error } = await supabase.from('registration_stamps').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

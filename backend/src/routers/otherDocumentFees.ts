@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { otherDocumentFeeSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 import { fileUploadSchema, uploadDocument } from '../utils/storage';
+import { sanitizePlainText } from '../utils/inputSanitizer';
 
 const idInput = z.object({ id: z.string() });
 const otherCreateSchema = otherDocumentFeeSchema.extend({
@@ -20,9 +21,10 @@ export const otherDocumentFeesRouter = router({
     return data ?? [];
   }),
 
-  create: publicProcedure.input(otherCreateSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(otherCreateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.applicants_names) payload.applicants_names = sanitizePlainText(payload.applicants_names);
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -37,9 +39,10 @@ export const otherDocumentFeesRouter = router({
     return data;
   }),
 
-  update: publicProcedure.input(otherUpdateSchema).mutation(async ({ input }) => {
+  update: protectedProcedure.input(otherUpdateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.applicants_names) payload.applicants_names = sanitizePlainText(payload.applicants_names);
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -55,7 +58,7 @@ export const otherDocumentFeesRouter = router({
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
     const { error } = await supabase.from('other_document_fees').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

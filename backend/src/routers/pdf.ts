@@ -1,4 +1,4 @@
-import { router, publicProcedure } from './trpc';
+import { router, protectedProcedure } from './trpc';
 import { HtmlPdfFillerService } from '../services/htmlPdfFiller';
 import { z } from 'zod';
 
@@ -64,7 +64,7 @@ const marriagePdfDataSchema = z.object({
 
 export const pdfRouter = router({
   // OLD: Fill marriage certificate PDF using HTML template (4-page document)
-  fillMarriageCertificate: publicProcedure
+  fillMarriageCertificate: protectedProcedure
     .input(marriagePdfDataSchema)
     .mutation(async ({ input }) => {
       const pdfFiller = new HtmlPdfFillerService();
@@ -77,7 +77,7 @@ export const pdfRouter = router({
     }),
 
   // NEW: Generate authorization template (single-page document from screenshot)
-  generateAuthorizationTemplate: publicProcedure
+  generateAuthorizationTemplate: protectedProcedure
     .input(marriagePdfDataSchema)
     .mutation(async ({ input }) => {
       const pdfFiller = new HtmlPdfFillerService();

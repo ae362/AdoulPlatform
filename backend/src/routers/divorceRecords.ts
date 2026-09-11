@@ -31,9 +31,15 @@ export const divorceRecordsRouter = router({
       return data ?? [];
     }),
 
-  create: publicProcedure.input(divorceCreateSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(divorceCreateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = {
+      ...rest,
+      husband_name: sanitizePlainText(rest.husband_name || ''),
+      wife_name: sanitizePlainText(rest.wife_name || ''),
+      husband_cin: sanitizePostgrestValue(rest.husband_cin || ''),
+      wife_cin: sanitizePostgrestValue(rest.wife_cin || ''),
+    };
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -48,9 +54,14 @@ export const divorceRecordsRouter = router({
     return data;
   }),
 
-  update: publicProcedure.input(divorceUpdateSchema).mutation(async ({ input }) => {
+  update: protectedProcedure.input(divorceUpdateSchema).mutation(async ({ input, ctx }) => {
     const { id, uploaded_file, ...rest } = input;
-    const payload = { ...rest };
+    const payload: any = { ...rest };
+    if (payload.husband_name) payload.husband_name = sanitizePlainText(payload.husband_name);
+    if (payload.wife_name) payload.wife_name = sanitizePlainText(payload.wife_name);
+    if (payload.husband_cin) payload.husband_cin = sanitizePostgrestValue(payload.husband_cin);
+    if (payload.wife_cin) payload.wife_cin = sanitizePostgrestValue(payload.wife_cin);
+
     if (uploaded_file) {
       const uploaded = await uploadDocument(uploaded_file);
       payload.document_url = uploaded.url;
@@ -66,7 +77,7 @@ export const divorceRecordsRouter = router({
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
     const { error } = await supabase.from('divorce_records').delete().eq('id', input.id);
     if (error) throw new Error(error.message);
     return { success: true };

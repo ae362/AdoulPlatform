@@ -1,11 +1,12 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, protectedProcedure } from './trpc';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { supabase } from '../services/supabase';
 import { sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 export const studentsRouter = router({
   // Get all students for a region/council
-  getAll: publicProcedure
+  getAll: protectedProcedure
     .input(z.object({ 
       limit: z.number().optional().default(50),
       offset: z.number().optional().default(0),
@@ -188,13 +189,17 @@ export const studentsRouter = router({
     }),
 
   // Create or update student request decision
-  processRequest: publicProcedure
+  processRequest: protectedProcedure
     .input(z.object({
       requestId: z.string(),
       decision: z.enum(['approved', 'rejected']),
       reason: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'regional_adoul_council' && ctx.user.role !== 'national_notary_authority' && ctx.user.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'غير مصرح - معالجة طلبات المتدربين مقتصرة على المجالس الجهوية' });
+      }
+
       try {
         const { data, error } = await supabase
           .from('student_requests')
