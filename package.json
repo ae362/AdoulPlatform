@@ -4,9 +4,14 @@
   "scripts": {
     "verify": "node backend/scripts/audit-client-bundle.js && node backend/node_modules/typescript/bin/tsc --noEmit -p backend/tsconfig.json && node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json",
     "check:backend": "node backend/node_modules/typescript/bin/tsc --noEmit -p backend/tsconfig.json",
-    "check:frontend": "node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json"
+    "check:frontend": "node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json",
+    "test:e2e": "playwright test",
+    "test:crawler": "playwright test e2e/crawler.spec.ts"
   },
   "dependencies": {
     "dependency-cruiser": "^18.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

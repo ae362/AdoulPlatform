@@ -88,6 +88,8 @@ const deedCategories = [
   },
 ];
 
+const EMPTY_NOTARY_ARRAY: any[] = [];
+
 export function PublicCopyExtractionPage() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -425,17 +427,19 @@ const interestProofs = [
       .replace(/[\u064B-\u065F]/g, '');
 
   // 1. Fetch notaries in the selected court (static court query)
-  const { data: courtNotaryMatches = [], isLoading: isLoadingCourtNotaries } = trpc.notaries.list.useQuery(
+  const { data: rawCourtNotaries, isLoading: isLoadingCourtNotaries } = trpc.notaries.list.useQuery(
     { court: form.court },
     { enabled: Boolean(form.court) }
   );
+  const courtNotaryMatches = rawCourtNotaries || EMPTY_NOTARY_ARRAY;
 
   // 2. Fetch remote search results when typing >= 2 characters
   const activeNotaryQuery = activeNotaryField ? form[activeNotaryField] : '';
-  const { data: searchedNotaries = [], isFetching: isSearchingRemote } = trpc.notaries.list.useQuery(
+  const { data: rawSearchedNotaries, isFetching: isSearchingRemote } = trpc.notaries.list.useQuery(
     { court: form.court || undefined, name: activeNotaryQuery.trim() },
     { enabled: Boolean(activeNotaryQuery.trim().length >= 2) }
   );
+  const searchedNotaries = rawSearchedNotaries || EMPTY_NOTARY_ARRAY;
 
   // 3. Combined pool of notaries
   const combinedNotaryPool = useMemo(() => {
@@ -462,6 +466,8 @@ const interestProofs = [
     if (!form.court) {
       setSelectedNotaryIds([]);
       setNotariesInitialized(false);
+      setSelectedNotaryIds((prev) => (prev.length > 0 ? [] : prev));
+      setNotariesInitialized((prev) => (prev ? false : prev));
       return;
     }
     if (courtNotaryMatches.length && !notariesInitialized) {

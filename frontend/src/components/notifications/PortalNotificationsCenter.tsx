@@ -214,9 +214,10 @@ export default function PortalNotificationsCenter({
               filteredItems.map((item) => {
                 const theme = accentMap[item.accent];
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedId(item.id)}
                     className={`group relative overflow-hidden rounded-[28px] border text-right transition-all ${selectedId === item.id ? 'border-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.14)]' : item.isSeen ? 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg' : 'border-amber-300 bg-gradient-to-r from-amber-50 via-white to-rose-50 shadow-[0_14px_38px_rgba(245,158,11,0.16)] hover:-translate-y-0.5'}`}
                   >
@@ -257,7 +258,7 @@ export default function PortalNotificationsCenter({
                         ) : null}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             ) : (

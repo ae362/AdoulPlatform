@@ -11,6 +11,83 @@ function buildItemAccent(status: string): PortalNotificationItem['accent'] {
   return 'cyan';
 }
 
+function getJudgeNotificationTargetPath(item: any): string {
+  const certType = String(item?.certificate_type || '').toLowerCase();
+  const reason = String(item?.reason_for_movement || '').toLowerCase();
+  const notes = String(item?.notes || '').toLowerCase();
+  const reqNum = String(item?.request_number || '');
+  const combined = `${certType} ${reason} ${notes} ${reqNum}`;
+
+  // 1. Deeds & Judicial Speech (إحالة رسم، خطاب قضائي، تضمين، رسوم الزواج والطلاق والبيوع)
+  if (
+    combined.includes('خطاب') ||
+    combined.includes('إحالة') ||
+    combined.includes('رسم') ||
+    combined.includes('jsg') ||
+    combined.includes('deed') ||
+    combined.includes('فحص')
+  ) {
+    if (combined.includes('خطاب')) {
+      return '/judge/judicial-speech';
+    }
+    return '/judge/deeds';
+  }
+
+  // 2. Office movement outside jurisdiction (التوجه خارج مكتب التعيين)
+  if (
+    combined.includes('توجه') ||
+    combined.includes('خارج') ||
+    combined.includes('مكتب التعيين') ||
+    combined.includes('movement')
+  ) {
+    return '/judge/office-movement';
+  }
+
+  // 3. Work certificates (شهادة عمل)
+  if (combined.includes('عمل') || combined.includes('مهنية') || combined.includes('work')) {
+    return '/judge/work-certificates';
+  }
+
+  // 4. Marriage permissions (زواج، استلحاق)
+  if (combined.includes('زواج') || combined.includes('استلحاق') || combined.includes('marriage')) {
+    return '/judge/marriage-permissions';
+  }
+
+  // 5. Scientific permissions (علمية، مثلية)
+  if (combined.includes('علمية') || combined.includes('مثلية') || combined.includes('scientific')) {
+    return '/judge/scientific-permissions';
+  }
+
+  // 6. Adl copy permissions (استخراج نسخ، نظائر الرسوم)
+  if (combined.includes('نسخ') || combined.includes('نظائر') || combined.includes('copy')) {
+    return '/judge/adl-copy-permissions';
+  }
+
+  // 7. Individual reception (تلقي فردي)
+  if (combined.includes('فردي') || combined.includes('individual')) {
+    return '/judge/individual-reception';
+  }
+
+  return '/judge';
+}
+
+function getJudgeNotificationCategory(item: any): string {
+  const certType = String(item?.certificate_type || '').toLowerCase();
+  const reason = String(item?.reason_for_movement || '').toLowerCase();
+  const notes = String(item?.notes || '').toLowerCase();
+  const combined = `${certType} ${reason} ${notes}`;
+
+  if (combined.includes('خطاب')) return 'الخطاب القضائي';
+  if (combined.includes('رسم') || combined.includes('jsg') || combined.includes('deed')) return 'فحص الرسوم والتوثيق';
+  if (combined.includes('توجه') || combined.includes('خارج')) return 'التنقل خارج الاختصاص';
+  if (combined.includes('عمل')) return 'شواهد العمل';
+  if (combined.includes('زواج')) return 'أذونات الزواج';
+  if (combined.includes('علمية')) return 'الشهادات العلمية';
+  if (combined.includes('نسخ') || combined.includes('نظائر')) return 'نسخ ونظائر الرسوم';
+  if (combined.includes('فردي')) return 'التلقي الفردي';
+  return 'الطلبات القضائية';
+}
+
 const JudgeNotificationsPage: React.FC = () => {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -57,7 +134,7 @@ const JudgeNotificationsPage: React.FC = () => {
       title: item?.request_number ? `طلب قضائي: ${item.request_number}` : 'طلب قضائي جديد',
       subtitle: `${item?.notary_name || 'عدل'}${item?.involved_names ? ` • ${item.involved_names}` : ''}`,
       statusLabel: item?.status ?? 'قيد_المعالجة',
-      categoryLabel: 'التنقل خارج الاختصاص',
+      categoryLabel: getJudgeNotificationCategory(item),
       timestamp: String(item?.created_at ?? ''),
       body: `نوع الطلب: ${item?.certificate_type || 'غير محدد'} • المحكمة: ${item?.jurisdiction || 'غير محدد'}`,
       detailTitle: item?.request_number ? `ملف الطلب ${item.request_number}` : 'ملف الطلب',
@@ -70,7 +147,7 @@ const JudgeNotificationsPage: React.FC = () => {
       accent: buildItemAccent(String(item?.status ?? '')),
       onOpen: () => {
         markJudgeRequestSeen(String(item.id));
-        navigate('/judge/notifications');
+        navigate(getJudgeNotificationTargetPath(item));
       },
       onDelete: () => {
         if (!window.confirm('هل تريد حذف هذا الطلب من مركز الإشعارات؟')) return;
