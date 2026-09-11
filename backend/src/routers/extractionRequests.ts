@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
+import { sanitizePlainText, deepSanitizeObject } from '../utils/inputSanitizer';
+
+const ALLOWED_EXTRACTION_DATA_KEYS = [
+  'requestNumber', 'firstName', 'lastName', 'identityNumber', 'cin',
+  'phone', 'email', 'address', 'capacity', 'court', 'deedType', 'deedCategory',
+  'year', 'notes', 'communicationChannel', 'deliveryPreference', 'city'
+];
 
 const createPublicInputSchema = z.object({
   requestNumber: z.string().optional(),
@@ -12,31 +19,38 @@ export const extractionRequestsRouter = router({
   createPublic: publicProcedure
     .input(createPublicInputSchema)
     .mutation(async ({ input }) => {
-      const { requestNumber, assignedNotaryIds = [], data } = input;
+      const { requestNumber, assignedNotaryIds = [], data: rawData } = input;
 
-      const recordYear = parseInt(data?.year, 10);
-      const requesterName = `${data?.firstName || ''} ${data?.lastName || ''}`.trim() || 'مواطن';
+      // Deep sanitize all input fields to strip malicious HTML/JavaScript payloads
+      const cleanData = deepSanitizeObject(rawData, ALLOWED_EXTRACTION_DATA_KEYS);
+
+      const recordYear = parseInt(String(cleanData?.year || ''), 10);
+      const requesterName = sanitizePlainText(`${cleanData?.firstName || ''} ${cleanData?.lastName || ''}`).trim() || 'مواطن';
+      const requesterCin = sanitizePlainText(cleanData?.identityNumber || cleanData?.cin || 'N/A');
+      const recordType = sanitizePlainText(cleanData?.deedType || cleanData?.deedCategory || 'استخراج رسم عدلي');
+      const primaryCourt = cleanData?.court ? sanitizePlainText(cleanData.court) : null;
+      const safeNotes = requestNumber ? `رقم الطلب: ${sanitizePlainText(requestNumber)}` : null;
 
       // Only columns that exist in the copy_requests Supabase table schema
       const payload = {
         requester_name: requesterName,
-        requester_cin: String(data?.identityNumber || data?.cin || 'N/A'),
-        record_type: String(data?.deedType || data?.deedCategory || 'استخراج رسم عدلي'),
+        requester_cin: requesterCin,
+        record_type: recordType,
         request_date: new Date().toISOString().split('T')[0],
         status: 'pending' as const,
-        notes: requestNumber ? `رقم الطلب: ${requestNumber}` : null,
-        primary_court: data?.court || null,
+        notes: safeNotes,
+        primary_court: primaryCourt,
         record_year: isNaN(recordYear) ? null : recordYear,
         record_details: {
-          requestNumber,
-          phone: data?.phone || null,
-          email: data?.email || null,
-          address: data?.address || null,
-          capacity: data?.capacity || null,
-          communicationChannel: data?.communicationChannel || 'inbox',
-          ...data,
+          requestNumber: sanitizePlainText(requestNumber || ''),
+          phone: cleanData?.phone ? sanitizePlainText(cleanData.phone) : null,
+          email: cleanData?.email ? sanitizePlainText(cleanData.email) : null,
+          address: cleanData?.address ? sanitizePlainText(cleanData.address) : null,
+          capacity: cleanData?.capacity ? sanitizePlainText(cleanData.capacity) : null,
+          communicationChannel: cleanData?.communicationChannel || 'inbox',
+          ...cleanData,
         },
-        assigned_notary_ids: assignedNotaryIds,
+        assigned_notary_ids: assignedNotaryIds.map((id) => sanitizePlainText(id)),
         routing_mode: assignedNotaryIds.length > 1 ? 'historical_selection' : ('direct' as const),
       };
 
@@ -93,7 +107,7 @@ export const extractionRequestsRouter = router({
       }
     }),
 
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
@@ -103,14 +117,16 @@ export const extractionRequestsRouter = router({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         let query = supabase.from('copy_requests').select('*');
-        if (input?.notaryId) {
-          query = query.contains('assigned_notary_ids', [input.notaryId]);
+        // If notary, scope to their notary id or assignments
+        const targetNotaryId = ctx.notaryProfile?.id || input?.notaryId;
+        if (targetNotaryId) {
+          query = query.contains('assigned_notary_ids', [sanitizePlainText(targetNotaryId)]);
         }
         if (input?.status) {
-          query = query.eq('status', input.status);
+          query = query.eq('status', sanitizePlainText(input.status));
         }
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) {

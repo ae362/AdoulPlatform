@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, publicProcedure } from './trpc';
+import { router, protectedProcedure } from './trpc';
 import { 
   smartDraftingService, 
   IMMUTABLE_TEMPLATES, 
@@ -7,10 +7,11 @@ import {
   type TemplateId,
   generateDocxFromText
 } from '../services/smartDrafting';
+import { deepSanitizeObject } from '../utils/inputSanitizer';
 
 export const smartDraftingRouter = router({
   // 1. List available templates
-  listTemplates: publicProcedure.query(() => {
+  listTemplates: protectedProcedure.query(() => {
     return Object.keys(IMMUTABLE_TEMPLATES).map(id => ({
       id,
       name: id.replace(/_/g, ' '), // Simple formatting
@@ -18,7 +19,7 @@ export const smartDraftingRouter = router({
   }),
 
   // 2. Get variables map for a template
-  getTemplateVariables: publicProcedure
+  getTemplateVariables: protectedProcedure
     .input(z.object({ templateId: z.string() }))
     .query(({ input }) => {
       const templateId = input.templateId as TemplateId;
@@ -43,16 +44,17 @@ export const smartDraftingRouter = router({
     }),
 
   // 3. Generate Draft
-  generateDraft: publicProcedure
+  generateDraft: protectedProcedure
     .input(z.object({
       templateId: z.string(),
       data: z.record(z.any()),
     }))
     .mutation(async ({ input }) => {
       const templateId = input.templateId as TemplateId;
+      const cleanData = deepSanitizeObject(input.data);
       
       // The service handles validation and generation
-      const draft = await smartDraftingService.generateDraft(templateId, input.data);
+      const draft = await smartDraftingService.generateDraft(templateId, cleanData);
       
       return {
         success: true,
@@ -61,7 +63,7 @@ export const smartDraftingRouter = router({
     }),
 
   // 4. Generate DOCX from text (server-side, for stability)
-  generateDocxFromText: publicProcedure
+  generateDocxFromText: protectedProcedure
     .input(z.object({
       text: z.string().min(1, 'Text content is required'),
       templateBase64: z.string().min(1, 'Template base64 is required'),

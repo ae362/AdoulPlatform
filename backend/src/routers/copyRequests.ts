@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { copyRequestSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
 import { db, ensureId } from '../data/store';
-import { publicProcedure, router } from './trpc';
+import { protectedProcedure, router } from './trpc';
+import { sanitizePlainText, sanitizeIlikePattern } from '../utils/inputSanitizer';
 
-const idInput = z.object({ id: z.string() });
+const idInput = z.object({ id: z.string().min(1) });
 
 export const copyRequestsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
@@ -24,17 +25,17 @@ export const copyRequestsRouter = router({
       try {
         let query = supabase.from('copy_requests').select('*');
 
-        if (input?.cin) query = query.eq('requester_cin', input.cin);
-        if (input?.record_type) query = query.eq('record_type', input.record_type);
+        if (input?.cin) query = query.eq('requester_cin', sanitizePlainText(input.cin));
+        if (input?.record_type) query = query.eq('record_type', sanitizePlainText(input.record_type));
         if (input?.name) {
-          const term = input.name.trim();
+          const term = sanitizeIlikePattern(input.name);
           query = query.ilike('requester_name', `%${term}%`);
         }
         if (input?.from) {
-          query = query.gte('request_date', input.from);
+          query = query.gte('request_date', sanitizePlainText(input.from));
         }
         if (input?.to) {
-          query = query.lte('request_date', input.to);
+          query = query.lte('request_date', sanitizePlainText(input.to));
         }
 
         const { data, error } = await query.order('request_date', { ascending: false });
@@ -73,7 +74,7 @@ export const copyRequestsRouter = router({
       return combined;
     }),
 
-  create: publicProcedure.input(copyRequestSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(copyRequestSchema).mutation(async ({ input }) => {
     const item = ensureId(input);
     db.copyRequests.unshift(item as any);
 
@@ -92,7 +93,7 @@ export const copyRequestsRouter = router({
     return item;
   }),
 
-  update: publicProcedure.input(copyRequestSchema.extend({ id: z.string() })).mutation(async ({ input }) => {
+  update: protectedProcedure.input(copyRequestSchema.extend({ id: z.string().min(1) })).mutation(async ({ input }) => {
     const idx = db.copyRequests.findIndex((r) => r.id === input.id);
     if (idx >= 0) {
       db.copyRequests[idx] = { ...db.copyRequests[idx], ...input } as any;
@@ -114,7 +115,7 @@ export const copyRequestsRouter = router({
     return input;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
+  delete: protectedProcedure.input(idInput).mutation(async ({ input }) => {
     db.copyRequests = db.copyRequests.filter((r) => r.id !== input.id);
     try {
       await supabase.from('copy_requests').delete().eq('id', input.id);

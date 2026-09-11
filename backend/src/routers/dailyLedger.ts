@@ -69,11 +69,13 @@ export const dailyLedgerRouter = router({
       date: z.string().optional() // YYYY-MM-DD
     }))
     .query(async ({ input }) => {
-      await validateSession(input.sessionToken);
+      const userId = await validateSession(input.sessionToken);
 
+      // IDOR Defense: Scope entries to the logged-in notary
       let query = supabase
         .from('daily_ledger')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (input.date) {
@@ -91,12 +93,13 @@ export const dailyLedgerRouter = router({
       sessionToken: z.string()
     }))
     .query(async ({ input }) => {
-      await validateSession(input.sessionToken);
+      const userId = await validateSession(input.sessionToken);
 
-      const today = new Date().toISOString().split('T')[0];
+      // IDOR Defense: Scope revenue/stats to the logged-in notary
       const { data, error } = await supabase
         .from('daily_ledger')
-        .select('amount_received, created_at, operation_type');
+        .select('amount_received, created_at, operation_type')
+        .eq('user_id', userId);
 
       if (error) throw new Error(error.message);
 

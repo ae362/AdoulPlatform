@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { propertyFeeSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 import { fileUploadSchema, uploadDocument } from '../utils/storage';
+import { sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 const idInput = z.object({ id: z.string() });
 const propertyCreateSchema = propertyFeeSchema.extend({
@@ -14,12 +15,12 @@ const propertyUpdateSchema = propertyFeeSchema.extend({
 });
 
 export const propertyFeesRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(z.object({ search: z.string().optional() }).optional())
     .query(async ({ input }) => {
       let query = supabase.from('property_fees').select('*');
       if (input?.search) {
-        const term = input.search.trim();
+        const term = sanitizeIlikePattern(input.search);
         query = query.or(`parties_names.ilike.%${term}%,parties_cin.ilike.%${term}%`);
       }
       const { data, error } = await query.order('inclusion_date', { ascending: false });

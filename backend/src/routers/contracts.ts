@@ -3,17 +3,24 @@ import { contractSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
 import { AIService, type ContractDraftInput, type ContractReviewInput } from '../services/ai';
 import { LegalCheckerService } from '../services/legalChecker';
-import { publicProcedure, router } from './trpc';
+import { protectedProcedure, router } from './trpc';
+import { sanitizePlainText } from '../utils/inputSanitizer';
 
 const aiService = new AIService();
 const legalChecker = new LegalCheckerService();
-const idInput = z.object({ id: z.string() });
+const idInput = z.object({ id: z.string().min(1) });
 
 export const contractsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(200).optional(), offset: z.number().min(0).optional() }).optional())
-    .query(async ({ input }) => {
-      let q = supabase.from('contracts').select('*').order('created_at', { ascending: false });
+    .query(async ({ input, ctx }) => {
+      // IDOR Defense: Scope contract listing to the authenticated user/notary
+      let q = supabase
+        .from('contracts')
+        .select('*')
+        .eq('user_id', ctx.user.id)
+        .order('created_at', { ascending: false });
+
       if (input?.limit) {
         const from = input.offset || 0;
         const to = from + input.limit - 1;
@@ -24,40 +31,72 @@ export const contractsRouter = router({
       return data ?? [];
     }),
 
-  create: publicProcedure.input(contractSchema).mutation(async ({ input }) => {
+  create: protectedProcedure.input(contractSchema).mutation(async ({ input, ctx }) => {
     const { id, ...rest } = input;
+    // IDOR Defense: Bind contract to authenticated user
+    const insertPayload = {
+      ...rest,
+      user_id: ctx.user.id,
+      title: sanitizePlainText(rest.title || ''),
+      ai_notes: rest.ai_notes ? sanitizePlainText(rest.ai_notes) : null,
+    };
+
     const { data, error } = await supabase
       .from('contracts')
-      .insert(rest)
+      .insert(insertPayload)
       .select('*')
       .single();
     if (error) throw new Error(error.message);
     return data;
   }),
 
-  update: publicProcedure.input(contractSchema.extend({ id: z.string() })).mutation(async ({ input }) => {
+  update: protectedProcedure.input(contractSchema.extend({ id: z.string().min(1) })).mutation(async ({ input, ctx }) => {
     const { id, ...rest } = input;
+    // IDOR Defense: Only allow update if contract belongs to authenticated user
+    const updatePayload = {
+      ...rest,
+      title: rest.title ? sanitizePlainText(rest.title) : undefined,
+      ai_notes: rest.ai_notes ? sanitizePlainText(rest.ai_notes) : undefined,
+    };
+
     const { data, error } = await supabase
       .from('contracts')
-      .update(rest)
+      .update(updatePayload)
       .eq('id', id)
+      .eq('user_id', ctx.user.id)
       .select('*')
       .single();
     if (error) throw new Error(error.message);
     return data;
   }),
 
-  delete: publicProcedure.input(idInput).mutation(async ({ input }) => {
-    const { error } = await supabase.from('contracts').delete().eq('id', input.id);
+  delete: protectedProcedure.input(idInput).mutation(async ({ input, ctx }) => {
+    // IDOR Defense: Only allow delete if contract belongs to authenticated user
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('id', input.id)
+      .eq('user_id', ctx.user.id);
     if (error) throw new Error(error.message);
     return { success: true };
   }),
 
-  generateDraft: publicProcedure
-    .input(z.object({ contractType: z.string(), parties: z.string(), details: z.string().optional() }))
-    .mutation(({ input }) => aiService.generateContractDraft(input as ContractDraftInput)),
+  generateDraft: protectedProcedure
+    .input(z.object({
+      contractType: z.string(),
+      parties: z.string(),
+      details: z.string().optional()
+    }))
+    .mutation(({ input }) => {
+      const cleanInput: ContractDraftInput = {
+        contractType: sanitizePlainText(input.contractType),
+        parties: sanitizePlainText(input.parties),
+        details: input.details ? sanitizePlainText(input.details) : undefined,
+      };
+      return aiService.generateContractDraft(cleanInput);
+    }),
 
-  legalReview: publicProcedure
+  legalReview: protectedProcedure
     .input(z.object({ recordType: z.string(), payload: z.any() }))
     .mutation(({ input }) =>
       legalChecker.validateLegalRecord((input as ContractReviewInput).recordType, (input as ContractReviewInput).payload),

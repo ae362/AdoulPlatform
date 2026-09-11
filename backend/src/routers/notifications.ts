@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { sendEmail } from '../services/email';
 import { uploadDocument, fileUploadSchema } from '../utils/storage';
 import { TRPCError } from '@trpc/server';
+import { sanitizePostgrestValue, sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 function formatSupabaseError(err: any) {
   if (!err) return '';
@@ -127,7 +128,8 @@ export const notificationsRouter = router({
           .lt('created_at', `${year + 1}-01-01`);
 
         if (input.notaryId) {
-          query = query.or(`notary_id.eq.${input.notaryId},notary_id.is.null`);
+          const safeNotaryId = sanitizePostgrestValue(input.notaryId);
+          query = query.or(`notary_id.eq.${safeNotaryId},notary_id.is.null`);
         }
 
         const { data: result, error } = await query;
@@ -190,7 +192,8 @@ export const notificationsRouter = router({
           .lt('created_at', `${year + 1}-01-01`);
 
         if (input.notaryId) {
-          query = query.or(`notary_id.eq.${input.notaryId},notary_id.is.null`);
+          const safeNotaryId = sanitizePostgrestValue(input.notaryId);
+          query = query.or(`notary_id.eq.${safeNotaryId},notary_id.is.null`);
         }
 
         const { data: result, error } = await query;
@@ -420,7 +423,8 @@ export const notificationsRouter = router({
         }
 
         if (input.searchTerm) {
-          query = query.or(`notary_name.ilike.%${input.searchTerm}%,request_number.ilike.%${input.searchTerm}%,involved_names.ilike.%${input.searchTerm}%,certificate_type.ilike.%${input.searchTerm}%`);
+          const term = sanitizeIlikePattern(input.searchTerm);
+          query = query.or(`notary_name.ilike.%${term}%,request_number.ilike.%${term}%,involved_names.ilike.%${term}%,certificate_type.ilike.%${term}%`);
         }
 
         query = query.range(input.offset, input.offset + input.limit - 1);

@@ -2,7 +2,6 @@
   "name": "adoul-platform",
   "private": true,
   "scripts": {
-    "verify": "node backend/scripts/audit-client-bundle.js && node backend/node_modules/typescript/bin/tsc --noEmit -p backend/tsconfig.json && node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json",
     "verify": "node backend/scripts/audit-client-bundle.js && node scripts/audit-frontend-actions.js && node backend/node_modules/typescript/bin/tsc --noEmit -p backend/tsconfig.json && node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json",
     "check:backend": "node backend/node_modules/typescript/bin/tsc --noEmit -p backend/tsconfig.json",
     "check:frontend": "node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json",

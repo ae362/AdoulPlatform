@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { divorceRecordSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 import { fileUploadSchema, uploadDocument } from '../utils/storage';
+import { sanitizePostgrestValue, sanitizePlainText } from '../utils/inputSanitizer';
 
 const idInput = z.object({ id: z.string() });
 const divorceCreateSchema = divorceRecordSchema.extend({
@@ -14,15 +15,16 @@ const divorceUpdateSchema = divorceRecordSchema.extend({
 });
 
 export const divorceRecordsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(z.object({ cin: z.string().optional(), divorce_type: z.string().optional() }).optional())
     .query(async ({ input }) => {
       let query = supabase.from('divorce_records').select('*');
       if (input?.cin) {
-        query = query.or(`husband_cin.eq.${input.cin},wife_cin.eq.${input.cin}`);
+        const safeCin = sanitizePostgrestValue(input.cin);
+        query = query.or(`husband_cin.eq.${safeCin},wife_cin.eq.${safeCin}`);
       }
       if (input?.divorce_type) {
-        query = query.eq('divorce_type', input.divorce_type);
+        query = query.eq('divorce_type', sanitizePlainText(input.divorce_type));
       }
       const { data, error } = await query.order('inclusion_date', { ascending: false });
       if (error) throw new Error(error.message);

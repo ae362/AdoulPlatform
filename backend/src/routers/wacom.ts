@@ -1,15 +1,26 @@
 import { z } from 'zod';
-import { router, publicProcedure } from './trpc';
+import { router, protectedProcedure } from './trpc';
 import { isWacomServiceAvailable, sendWacomCommand } from '../services/wacomProxy';
+
+// SSRF Defense: Wacom hardware daemon is local hardware only (127.0.0.1 or localhost)
+const safeHostSchema = z
+  .string()
+  .default('localhost')
+  .refine(
+    (h) => h === 'localhost' || h === '127.0.0.1' || h === '::1',
+    { message: 'Security Error: Wacom proxy host must be loopback (localhost or 127.0.0.1)' }
+  );
+
+const safePortSchema = z.number().int().min(1024).max(65535).default(9000);
 
 export const wacomRouter = router({
   /**
    * Check if Wacom device is available
    */
-  isConnected: publicProcedure
+  isConnected: protectedProcedure
     .input(z.object({ 
-      host: z.string().default('localhost').describe('Wacom service host'),
-      port: z.number().int().default(9000).describe('Wacom service port'),
+      host: safeHostSchema,
+      port: safePortSchema,
     }).optional())
     .query(async ({ input = {} }) => {
       const host = input?.host || 'localhost';
@@ -35,10 +46,10 @@ export const wacomRouter = router({
   /**
    * Get Wacom device information (enumerate devices)
    */
-  getDevices: publicProcedure
+  getDevices: protectedProcedure
     .input(z.object({
-      host: z.string().default('localhost'),
-      port: z.number().int().default(9000),
+      host: safeHostSchema,
+      port: safePortSchema,
     }).optional())
     .query(async ({ input = {} }) => {
       const host = input?.host || 'localhost';
@@ -82,14 +93,14 @@ export const wacomRouter = router({
     }),
 
   /**
-   * Generic command proxy - forward any Wacom command to the service
+   * Generic command proxy - forward safe Wacom command to the service
    */
-  sendCommand: publicProcedure
+  sendCommand: protectedProcedure
     .input(z.object({
-      host: z.string().default('localhost'),
-      port: z.number().int().default(9000),
+      host: safeHostSchema,
+      port: safePortSchema,
       command: z.record(z.any()),
-      timeout: z.number().int().default(1200),
+      timeout: z.number().int().min(100).max(10000).default(1200),
     }))
     .mutation(async ({ input }) => {
       try {

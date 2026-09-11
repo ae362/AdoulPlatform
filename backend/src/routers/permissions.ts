@@ -1,11 +1,12 @@
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, protectedProcedure, judgeProcedure, councilProcedure } from './trpc';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { uploadDocument, fileUploadSchema } from '../utils/storage';
+import { sanitizePlainText, deepSanitizeObject } from '../utils/inputSanitizer';
 
 const permissionSchema = z.object({
-  fullName: z.string(),
-  professionalNumber: z.string(),
+  fullName: z.string().min(1),
+  professionalNumber: z.string().min(1),
   appointmentDecreeNumber: z.string().optional(),
   appointmentDate: z.string().optional(),
   officeNumber: z.string().optional(),
@@ -72,28 +73,30 @@ const createPermissionHandler = async (input: PermissionInput, tableName: string
       attachmentsString = JSON.stringify(results.map(r => r.url));
     }
 
+    const cleanData = input.data ? deepSanitizeObject(input.data) : {};
+
     const insertData = {
       request_number: requestNumber,
-      notary_name: input.fullName,
-      notary_professional_number: input.professionalNumber,
-      notary_office_number: input.officeNumber,
-      jurisdiction: input.jurisdiction,
-      target_court: input.targetCourt,
-      certificate_type: input.certificateType,
-      appointment_decree_number: input.appointmentDecreeNumber,
-      appointment_date: input.appointmentDate,
-      reception_place: input.receptionPlace,
-      reception_date: input.receptionDate,
-      reception_time: input.receptionTime,
-      writing_place: input.writingPlace,
-      involved_names: input.involvedNames,
+      notary_name: sanitizePlainText(input.fullName),
+      notary_professional_number: sanitizePlainText(input.professionalNumber),
+      notary_office_number: input.officeNumber ? sanitizePlainText(input.officeNumber) : null,
+      jurisdiction: input.jurisdiction ? sanitizePlainText(input.jurisdiction) : null,
+      target_court: input.targetCourt ? sanitizePlainText(input.targetCourt) : null,
+      certificate_type: input.certificateType ? sanitizePlainText(input.certificateType) : null,
+      appointment_decree_number: input.appointmentDecreeNumber ? sanitizePlainText(input.appointmentDecreeNumber) : null,
+      appointment_date: input.appointmentDate ? sanitizePlainText(input.appointmentDate) : null,
+      reception_place: input.receptionPlace ? sanitizePlainText(input.receptionPlace) : null,
+      reception_date: input.receptionDate ? sanitizePlainText(input.receptionDate) : null,
+      reception_time: input.receptionTime ? sanitizePlainText(input.receptionTime) : null,
+      writing_place: input.writingPlace ? sanitizePlainText(input.writingPlace) : null,
+      involved_names: input.involvedNames ? sanitizePlainText(input.involvedNames) : null,
       recipient_type: input.recipientType || 'judge',
-      reason_for_movement: input.reasonForMovement,
-      notary_id: input.notaryId,
+      reason_for_movement: input.reasonForMovement ? sanitizePlainText(input.reasonForMovement) : null,
+      notary_id: input.notaryId ? sanitizePlainText(input.notaryId) : null,
       status: 'قيد_المعالجة',
-      notes: input.notes,
+      notes: input.notes ? sanitizePlainText(input.notes) : null,
       attachments: attachmentsString,
-      data: input.data,
+      data: cleanData,
       requested_duration: parseInt(input.requestedDuration || '1', 10),
       duration_unit: input.durationUnit || 'يوم',
     };
@@ -321,75 +324,92 @@ const updatePermissionNotarySigningHandler = async (
 
 export const permissionsRouter = router({
   // Scientific Certificate Permissions
-  createScientific: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createScientific: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'scientific_certificate_permissions')),
-  getScientific: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'scientific_certificate_permissions')),
-  getAllScientific: publicProcedure.query(() => 
+  getScientific: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'scientific_certificate_permissions')),
+  getAllScientific: judgeProcedure.query(() => 
     getAllPermissionsHandler('scientific_certificate_permissions')),
 
   // Marriage Permissions
-  createMarriage: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createMarriage: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'marriage_permissions')),
-  getMarriage: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'marriage_permissions')),
-  getAllMarriage: publicProcedure.query(() => 
+  getMarriage: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'marriage_permissions')),
+  getAllMarriage: judgeProcedure.query(() => 
     getAllPermissionsHandler('marriage_permissions')),
 
   // Judicial Fees Permissions
-  createJudicialFees: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createJudicialFees: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'judicial_fees_permissions')),
-  getJudicialFees: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'judicial_fees_permissions')),
-  getAllJudicialFees: publicProcedure.query(() => 
+  getJudicialFees: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'judicial_fees_permissions')),
+  getAllJudicialFees: judgeProcedure.query(() => 
     getAllPermissionsHandler('judicial_fees_permissions')),
 
   // Individual Reception Permissions
-  createIndividualReception: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createIndividualReception: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'individual_reception_permissions')),
-  getIndividualReception: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'individual_reception_permissions')),
-  getAllIndividualReception: publicProcedure.query(() => 
+  getIndividualReception: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'individual_reception_permissions')),
+  getAllIndividualReception: judgeProcedure.query(() => 
     getAllPermissionsHandler('individual_reception_permissions')),
 
   // Work Certificate Requests
-  createWorkCertificate: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createWorkCertificate: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'work_certificate_requests')),
-  getWorkCertificates: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'work_certificate_requests')),
-  getAllWorkCertificates: publicProcedure.query(() => 
+  getWorkCertificates: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'work_certificate_requests')),
+  getAllWorkCertificates: judgeProcedure.query(() => 
     getAllPermissionsHandler('work_certificate_requests')),
 
   // Office Movement Notifications
-  createOfficeMovement: publicProcedure.input(permissionSchema).mutation(({ input }) => 
+  createOfficeMovement: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'office_movement_notifications')),
-  getOfficeMovements: publicProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input }) => 
-    getPermissionsHandler(input.notaryId, 'office_movement_notifications')),
-  getAllOfficeMovements: publicProcedure.query(() => 
+  getOfficeMovements: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
+    getPermissionsHandler(ctx.notaryProfile?.id || input.notaryId, 'office_movement_notifications')),
+  getAllOfficeMovements: judgeProcedure.query(() => 
     getAllPermissionsHandler('office_movement_notifications')),
 
-  // Unified Update
-  updateStatus: publicProcedure.input(z.object({
-    id: z.string(),
+  // Unified Update - Restricted to Judges & Councils
+  updateStatus: protectedProcedure.input(z.object({
+    id: z.string().min(1),
     type: z.enum(['scientific', 'marriage', 'judicialFees', 'individualReception', 'workCertificate', 'officeMovement']),
-    status: z.string(),
+    status: z.string().min(1),
     decisionType: z.string().optional(),
     decisionSerialNumber: z.string().optional(),
     reasoning: z.string().optional(),
     judgeName: z.string().optional(),
-  })).mutation(({ input }) => {
-    return updatePermissionStatusHandler(permissionTypeTableMap[input.type], input.id, input.status, input.decisionType, input.decisionSerialNumber, input.reasoning, input.judgeName);
+  })).mutation(({ input, ctx }) => {
+    // RBAC Defense: Only judicial officers or regional councils can update permission status
+    const allowedRoles = ['authentication_judge', 'regional_judge', 'supreme_judge', 'regional_adoul_council', 'government_authority'];
+    if (!ctx.user || !allowedRoles.includes(ctx.user.role)) {
+      throw new Error('Security Error: Notaries are not authorized to decide on or approve permissions');
+    }
+    const safeReasoning = input.reasoning ? sanitizePlainText(input.reasoning) : undefined;
+    const safeJudgeName = input.judgeName ? sanitizePlainText(input.judgeName) : (ctx.user.full_name || 'قاضي التوثيق');
+    const safeSerial = input.decisionSerialNumber ? sanitizePlainText(input.decisionSerialNumber) : undefined;
+
+    return updatePermissionStatusHandler(
+      permissionTypeTableMap[input.type],
+      input.id,
+      sanitizePlainText(input.status),
+      input.decisionType ? sanitizePlainText(input.decisionType) : undefined,
+      safeSerial,
+      safeReasoning,
+      safeJudgeName
+    );
   }),
 
-  updateNotarySigning: publicProcedure.input(z.object({
-    id: z.string(),
+  updateNotarySigning: protectedProcedure.input(z.object({
+    id: z.string().min(1),
     type: z.enum(['scientific', 'marriage', 'judicialFees', 'individualReception', 'workCertificate', 'officeMovement']),
     signerSlot: z.enum(['adoul1', 'adoul2']),
     signerLabel: z.string(),
     signerName: z.string(),
     professionalNumber: z.string().optional(),
-    signatureDataUrl: z.string(),
-    bioHash: z.string(),
+    signatureDataUrl: z.string().min(1),
+    bioHash: z.string().min(1),
     signedAt: z.string().optional(),
     deviceInfo: z.object({
       serial: z.string().optional(),
@@ -402,9 +422,9 @@ export const permissionsRouter = router({
     return updatePermissionNotarySigningHandler(tableName, {
       id: input.id,
       signerSlot: input.signerSlot,
-      signerLabel: input.signerLabel,
-      signerName: input.signerName,
-      professionalNumber: input.professionalNumber,
+      signerLabel: sanitizePlainText(input.signerLabel),
+      signerName: sanitizePlainText(input.signerName),
+      professionalNumber: input.professionalNumber ? sanitizePlainText(input.professionalNumber) : undefined,
       signatureDataUrl: input.signatureDataUrl,
       bioHash: input.bioHash,
       signedAt: input.signedAt,

@@ -1,15 +1,16 @@
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
+import { validateFileSafety, inspectDocxSafety } from './fileSecurity';
 
 const DOCUMENT_BUCKET = 'rasm-files';
 let bucketReady: Promise<void> | null = null;
 
 export const fileUploadSchema = z.object({
-  name: z.string(),
-  type: z.string(),
-  size: z.number(),
-  base64: z.string(),
+  name: z.string().min(1, 'اسم الملف مطلوب'),
+  type: z.string().optional(),
+  size: z.number().max(15 * 1024 * 1024, 'حجم الملف يتجاوز الحد الأقصى المسموح به (15 ميغابايت)'),
+  base64: z.string().min(1, 'محتوى الملف مفقود'),
 });
 
 function sanitizeFileName(name: string) {
@@ -33,11 +34,20 @@ async function ensureBucket() {
 
 export async function uploadDocument(file: z.infer<typeof fileUploadSchema>) {
   await ensureBucket();
+  const buffer = Buffer.from(file.base64, 'base64');
+
+  // Strict binary signature, extension whitelist, and size validation
+  const validation = validateFileSafety(file.name, buffer);
+
+  // If DOCX, inspect zip headers for decompression bombs and embedded macros
+  if (validation.extension === 'docx') {
+    inspectDocxSafety(buffer);
+  }
+
   const safeName = sanitizeFileName(file.name);
   const path = `${randomUUID()}-${safeName}`;
-  const buffer = Buffer.from(file.base64, 'base64');
   const { error } = await supabase.storage.from(DOCUMENT_BUCKET).upload(path, buffer, {
-    contentType: file.type || 'application/octet-stream',
+    contentType: validation.detectedMimeType,
     upsert: false,
   });
   if (error) throw new Error(error.message);

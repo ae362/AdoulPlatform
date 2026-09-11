@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { file as tmpFile, dir as tmpDir } from 'tmp-promise';
 import * as htmlPdf from 'html-pdf-node';
+import { inspectDocxSafety } from '../utils/fileSecurity';
 
 export type LibreOfficeResult = {
   pdfBuffer: Buffer;
@@ -161,6 +162,9 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
   docxBuffer: Buffer;
   timeoutMs?: number;
 }): Promise<LibreOfficeResult> {
+  // Enterprise Security: Validate docx structure and protect against zip bombs or embedded scripts
+  inspectDocxSafety(opts.docxBuffer);
+
   const timeoutMs = opts.timeoutMs ?? 60_000;
 
   const tmpOutDir = await tmpDir({ unsafeCleanup: true });

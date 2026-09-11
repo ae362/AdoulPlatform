@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { uploadDocument, fileUploadSchema } from '../utils/storage';
 import { publicProcedure, router, resolveSessionUser } from './trpc';
+import { sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 type AuthUser = { id: string; role: string; is_active: boolean };
 
@@ -432,8 +433,8 @@ export const expendituresRouter = router({
     if (input.maxAmount != null) q = q.lte('amount', input.maxAmount);
 
     if (input.q) {
-      // Basic search (ilike) on key fields
-      const term = `%${input.q}%`;
+      // Basic search (ilike) on key fields with PostgREST injection defense
+      const term = `%${sanitizeIlikePattern(input.q)}%`;
       q = q.or(`operation_number.ilike.${term},beneficiary_entity.ilike.${term},payer_entity.ilike.${term},document_reference.ilike.${term}`);
     }
 
@@ -732,7 +733,7 @@ export const expendituresRouter = router({
       if (input.minAmount != null) q = q.gte('amount', input.minAmount);
       if (input.maxAmount != null) q = q.lte('amount', input.maxAmount);
       if (input.q) {
-        const term = `%${input.q}%`;
+        const term = `%${sanitizeIlikePattern(input.q)}%`;
         q = q.or(`operation_number.ilike.${term},beneficiary_entity.ilike.${term},payer_entity.ilike.${term},document_reference.ilike.${term}`);
       }
 

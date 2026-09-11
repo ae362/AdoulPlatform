@@ -10,14 +10,18 @@ export interface RateLimitOptions {
 }
 
 function getClientIp(request: FastifyRequest): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    const first = forwarded.split(',')[0].trim();
-    if (first) return first;
-  }
-  const realIp = request.headers['x-real-ip'];
-  if (typeof realIp === 'string' && realIp.trim()) {
-    return realIp.trim();
+  // Only trust X-Forwarded-For if request came from trusted proxy or TRUST_PROXY is enabled
+  const trustProxyEnv = process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production';
+  if (trustProxyEnv) {
+    const forwarded = request.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string') {
+      const first = forwarded.split(',')[0].trim();
+      if (first && /^[0-9a-f.:]+$/i.test(first)) return first;
+    }
+    const realIp = request.headers['x-real-ip'];
+    if (typeof realIp === 'string' && realIp.trim() && /^[0-9a-f.:]+$/i.test(realIp.trim())) {
+      return realIp.trim();
+    }
   }
   return request.ip || '127.0.0.1';
 }
@@ -33,9 +37,11 @@ function classifyRouteTier(url: string): { tier: 'auth' | 'heavy' | 'general' | 
   // 2. Sensitive Authentication Routes (Brute-force protection)
   if (
     cleanUrl.includes('auth.login') ||
+    cleanUrl.includes('auth.register') ||
     cleanUrl.includes('auth.forgotpassword') ||
     cleanUrl.includes('auth.resetpassword') ||
-    cleanUrl.includes('/login')
+    cleanUrl.includes('/login') ||
+    cleanUrl.includes('/register')
   ) {
     return { tier: 'auth', max: 10, window: 60 };
   }

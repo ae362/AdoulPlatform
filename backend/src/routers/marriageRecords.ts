@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { marriageRecordSchema } from '../../../shared/schemas';
 import { supabase } from '../services/supabase';
-import { publicProcedure, router } from './trpc';
+import { publicProcedure, protectedProcedure, router } from './trpc';
 import { fileUploadSchema, uploadDocument } from '../utils/storage';
+import { sanitizePostgrestValue, sanitizePlainText } from '../utils/inputSanitizer';
 
 const documentSelectFields =
   'id,file_name,file_url,file_type,file_size,subject,ocr_raw_text,ocr_detected_fields,created_at';
@@ -78,17 +79,18 @@ async function attachMarriageDocuments(recordId: string, files?: MarriageDocumen
 }
 
 export const marriageRecordsRouter = router({
-  list: publicProcedure
+  list: protectedProcedure
     .input(z.object({ cin: z.string().optional(), type: z.string().optional() }).optional())
     .query(async ({ input }) => {
       let query = supabase.from('marriage_records').select(marriageSelect);
 
       if (input?.cin) {
         // Filter by either husband or wife CIN.
-        query = query.or(`husband_cin.eq.${input.cin},wife_cin.eq.${input.cin}`);
+        const safeCin = sanitizePostgrestValue(input.cin);
+        query = query.or(`husband_cin.eq.${safeCin},wife_cin.eq.${safeCin}`);
       }
       if (input?.type) {
-        query = query.eq('record_type', input.type);
+        query = query.eq('record_type', sanitizePlainText(input.type));
       }
 
       const { data, error } = await query.order('inclusion_date', { ascending: false });

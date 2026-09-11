@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
 import { router, publicProcedure } from './trpc';
+import { sanitizePostgrestValue, sanitizeIlikePattern, sanitizePlainText } from '../utils/inputSanitizer';
 
 export const searchRouter = router({
   // Search by identity / CIN / name across marriage, divorce, and other fee records.
@@ -17,7 +18,11 @@ export const searchRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const { recordType, cin, name, from, to, limit, offset = 0 } = input;
+      const { recordType, limit, offset = 0 } = input;
+      const cin = input.cin ? sanitizePostgrestValue(input.cin) : undefined;
+      const name = input.name ? sanitizeIlikePattern(input.name) : undefined;
+      const from = input.from ? sanitizePlainText(input.from) : undefined;
+      const to = input.to ? sanitizePlainText(input.to) : undefined;
       const selectedType = recordType === 'all' ? undefined : recordType;
 
       const applyRange = (q: any) => {
@@ -33,8 +38,7 @@ export const searchRouter = router({
           q = q.or(`husband_cin.eq.${cin},wife_cin.eq.${cin}`);
         }
         if (name) {
-          const term = name.trim();
-          q = q.or(`husband_name.ilike.%${term}%,wife_name.ilike.%${term}%`);
+          q = q.or(`husband_name.ilike.%${name}%,wife_name.ilike.%${name}%`);
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);
@@ -47,8 +51,7 @@ export const searchRouter = router({
           q = q.or(`husband_cin.eq.${cin},wife_cin.eq.${cin}`);
         }
         if (name) {
-          const term = name.trim();
-          q = q.or(`husband_name.ilike.%${term}%,wife_name.ilike.%${term}%`);
+          q = q.or(`husband_name.ilike.%${name}%,wife_name.ilike.%${name}%`);
         }
         if (from) q = q.gte('inclusion_date', from);
         if (to) q = q.lte('inclusion_date', to);

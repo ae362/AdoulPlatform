@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { supabase } from './supabase';
 import { uploadBufferToDocumentsBucket } from '../utils/storage';
 import { sha256Hex } from '../utils/auditDocPatch';
+import { sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 export const JudgeSubmissionStatusEnum = z.enum([
   'pending',
@@ -112,8 +113,10 @@ export class JudgeDeedService {
     }
 
     if (input.searchQuery && input.searchQuery.trim().length > 0) {
-      const q = input.searchQuery.trim();
-      query = query.or(`file_number.ilike.%${q}%,notary_name.ilike.%${q}%,summary.ilike.%${q}%`);
+      const q = sanitizeIlikePattern(input.searchQuery.trim());
+      if (q.length > 0) {
+        query = query.or(`file_number.ilike.%${q}%,notary_name.ilike.%${q}%,summary.ilike.%${q}%`);
+      }
     }
 
     if (input.cursor) {

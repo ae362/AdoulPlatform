@@ -56,13 +56,15 @@ export async function registerOnlyOfficeRoutes(fastify: FastifyInstance) {
     if (!attachmentId) return reply.code(400).send({ error: 'attachmentId required' });
     fastify.log.info({ attachmentId, query: req.query }, 'OnlyOffice file request');
 
-    const secret = process.env.ONLYOFFICE_FILE_TOKEN_SECRET || '';
+    const secret = process.env.ONLYOFFICE_FILE_TOKEN_SECRET || process.env.ONLYOFFICE_JWT_SECRET || process.env.JWT_SECRET || '';
     if (secret) {
       const token = String((req.query as any)?.token || '');
       const expected = hmacToken(secret, attachmentId);
       if (!timingSafeEq(token, expected)) {
         return reply.code(403).send({ error: 'forbidden' });
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      return reply.code(500).send({ error: 'Server configuration error: Token secret missing' });
     }
 
     const { data: att, error } = await supabase
@@ -101,13 +103,15 @@ export async function registerOnlyOfficeRoutes(fastify: FastifyInstance) {
       'OnlyOffice callback received'
     );
 
-    const secret = process.env.ONLYOFFICE_CALLBACK_TOKEN_SECRET || '';
+    const secret = process.env.ONLYOFFICE_CALLBACK_TOKEN_SECRET || process.env.ONLYOFFICE_JWT_SECRET || process.env.JWT_SECRET || '';
     if (secret) {
       const token = String((req.query as any)?.token || '');
       const expected = hmacToken(secret, `${savedRasmId}:${baseAttachmentId}`);
       if (!timingSafeEq(token, expected)) {
         return reply.code(403).send({ error: 1 });
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      return reply.code(500).send({ error: 'Server configuration error: Token secret missing' });
     }
 
     const body = jsonParseBody((req as any).body);

@@ -1,6 +1,7 @@
 import { router, publicProcedure } from './trpc';
 import { z } from 'zod';
 import { supabase } from '../services/supabase';
+import { sanitizeIlikePattern } from '../utils/inputSanitizer';
 
 export const studentsRouter = router({
   // Get all students for a region/council
@@ -24,7 +25,8 @@ export const studentsRouter = router({
         }
 
         if (input.search) {
-          query = query.or(`name.ilike.%${input.search}%,email.ilike.%${input.search}%`);
+          const term = sanitizeIlikePattern(input.search);
+          query = query.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
         }
 
         const { data: students, error } = await query;
