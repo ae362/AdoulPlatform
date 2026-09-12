@@ -1543,6 +1543,99 @@ export interface SmartMarriageClassificationData {
   confirmedAt?: string;
 }
 
+export type DivorceClassificationType =
+  | 'consensual'          // 🤝 الطلاق الاتفاقي (D-01)
+  | 'discord'             // ⚖️ الطلاق للشقاق (D-02)
+  | 'revocable'           // 🔄 الطلاق الرجعي (D-03)
+  | 'khul'                // 💰 الطلاق الخلعي (D-04)
+  | 'tamlik'              // 👩 الطلاق المملك (D-05)
+  | 'revocation_return';  // 🔁 الرجعة أو المراجعة (D-06)
+
+export type DivorceStatisticalCode = 'D-01' | 'D-02' | 'D-03' | 'D-04' | 'D-05' | 'D-06';
+
+export type DivorceCountType = 'first' | 'second' | 'third' | 'other';
+
+export interface TamlikBasisDetails {
+  sourceType: 'marriage_deed' | 'voluntary_deed' | 'family_booklet' | 'other_document';
+  deedNumber?: string;
+  letter?: string;
+  page?: string;
+  count?: string;
+  deedDate?: string;
+  courtName?: string;
+  attachmentName?: string;
+  isLinked?: boolean;
+}
+
+export interface KhulDetails {
+  compensationAmount?: number;
+  compensationInWords?: string;
+  compensationNature?: string;
+  waiverDetails?: string;
+  specialConditions?: string[];
+  presenceStatus?: 'both_present' | 'wife_representative';
+}
+
+export interface ReturnRevocationDetails {
+  scenario: 'husband_return' | 'khul_reconciliation';
+  husbandName?: string;
+  wifeName?: string;
+  previousDeedNumber?: string;
+  previousDeedLetter?: string;
+  previousDeedPage?: string;
+  previousDeedCount?: string;
+  previousDeedDate?: string;
+  previousDeedCourt?: string;
+  previousDivorceType?: DivorceClassificationType;
+  isLinked?: boolean;
+  iddahStatus?: 'valid' | 'expired';
+}
+
+export interface SmartDivorceClassificationData {
+  primaryType: DivorceClassificationType;
+  statisticalCode: DivorceStatisticalCode;
+  divorceCount?: DivorceCountType;
+  wifePresence?: 'present' | 'absent';
+  
+  tamlikBasis?: TamlikBasisDetails;
+  khulDetails?: KhulDetails;
+  returnRevocation?: ReturnRevocationDetails;
+  consensualAgreement?: {
+    terms?: string[];
+    childrenCustodyAgreed?: boolean;
+    housingAgreed?: boolean;
+    courtPermissionNumber?: string;
+    courtPermissionDate?: string;
+    courtName?: string;
+  };
+  discordDetails?: {
+    caseFileNumber?: string;
+    judgmentNumber?: string;
+    judgmentDate?: string;
+    courtName?: string;
+    isLinkedToCourtFile?: boolean;
+  };
+
+  generatedFormulaText?: string;
+  customFormulaText?: string;
+  isFormulaOverridden?: boolean;
+
+  readinessStatus?: {
+    isTypeSelected: boolean;
+    isSpousesDefined: boolean;
+    isSpecialPathComplete: boolean;
+    isPreviousDeedVerified: boolean;
+    isFormulaGenerated: boolean;
+    isReadyToCertify: boolean;
+  };
+  auditTrail?: {
+    time: string;
+    action: string;
+    details?: string;
+  }[];
+  confirmedAt?: string;
+}
+
 export interface MarriageDetails {
   dowryAmount?: number;
   dowryAmountInWords?: string;
@@ -2227,6 +2320,7 @@ export interface FeesAgentState {
   manualRasmFile?: File | null;
   preReceptionVerification?: PreReceptionVerificationData;
   marriageClassification?: SmartMarriageClassificationData;
+  divorceClassification?: SmartDivorceClassificationData;
   [key: string]: any;
 }
 
