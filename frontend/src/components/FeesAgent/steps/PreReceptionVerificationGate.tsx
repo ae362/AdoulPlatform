@@ -68,6 +68,146 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   const defaultOfficeLocation = profileAny?.office_address || profileAny?.city || 'مقر المكتب العدلي المعتمد';
   const defaultRegionalCouncil = profileAny?.regional_council || 'المجلس الجهوي لعدول استئنافية الدائرة';
 
+  // Document Type Classification for contextual stepper & instructions
+  const isSale = useMemo(() => {
+    const docType = String(state.documentType || '');
+    return (
+      docType === 'بيع_وشراء' ||
+      docType === 'بيع_وشراء_معنوي' ||
+      docType === 'بيع_وشراء_ملكية_مشتركة' ||
+      docType === 'بيع_وشراء_طور_انجاز_ابتدائي' ||
+      docType === 'بيع_وشراء_طور_انجاز_نهائي' ||
+      docType === 'عقد_بيع_حق_الهواء_والتعلية' ||
+      docType === 'عقد_تفويت_حق_السطحية' ||
+      docType === 'عقد_ايجار_المفضي_الى_تملك' ||
+      docType === 'وعد_بالبيع' ||
+      docType.includes('بيع') ||
+      docType.includes('شراء')
+    );
+  }, [state.documentType]);
+
+  const stages = useMemo(() => {
+    if (isSale) {
+      return [
+        {
+          num: '①',
+          index: 1,
+          title: 'شروط التلقي',
+          desc: 'التحقق القبلي والأهلية',
+          active: true,
+          icon: ShieldCheck,
+        },
+        {
+          num: '②',
+          index: 2,
+          title: 'أطراف العقد',
+          desc: 'البائع والمشتري والصفات',
+          active: false,
+          icon: Users,
+        },
+        {
+          num: '③',
+          index: 3,
+          title: 'العقار المبيع',
+          desc: 'بيانات العقار والتحفيظ',
+          active: false,
+          icon: Building2,
+        },
+        {
+          num: '④',
+          index: 4,
+          title: 'الشواهد الإدارية',
+          desc: 'الإبراء ورخص التعمير',
+          active: false,
+          icon: FileCheck,
+        },
+        {
+          num: '⑤',
+          index: 5,
+          title: 'الثمن والوفاء',
+          desc: 'الجانب المالي والالتزامات',
+          active: false,
+          icon: Scale,
+        },
+        {
+          num: '⑥',
+          index: 6,
+          title: 'مجلس الإشهاد',
+          desc: 'التلقي الثنائي والشهود',
+          active: false,
+          icon: Clock,
+        },
+        {
+          num: '⑦',
+          index: 7,
+          title: 'التحرير والتدقيق',
+          desc: 'الصياغة العدلية النموذجية',
+          active: false,
+          icon: FileText,
+        },
+        {
+          num: '⑧',
+          index: 8,
+          title: 'التسجيل والإيداع',
+          desc: 'الضرائب والتأشير القضائي',
+          active: false,
+          icon: Lock,
+        },
+      ];
+    }
+
+    return [
+      {
+        num: '①',
+        index: 1,
+        title: 'شروط التلقي',
+        desc: 'التحقق القبلي والأهلية',
+        active: true,
+        icon: ShieldCheck,
+      },
+      {
+        num: '②',
+        index: 2,
+        title: 'أطراف الشهادة',
+        desc: 'الهويات والصفات',
+        active: false,
+        icon: Users,
+      },
+      {
+        num: '③',
+        index: 3,
+        title: 'بيانات الشهادة',
+        desc: 'تفاصيل وموضوع العقد',
+        active: false,
+        icon: FileText,
+      },
+      {
+        num: '④',
+        index: 4,
+        title: 'مجلس الإشهاد',
+        desc: 'التلقي الثنائي والشهود',
+        active: false,
+        icon: Clock,
+      },
+      {
+        num: '⑤',
+        index: 5,
+        title: 'التحرير والصياغة',
+        desc: 'التدقيق العدلي النهائي',
+        active: false,
+        icon: Scale,
+      },
+      {
+        num: '⑥',
+        index: 6,
+        title: 'التسجيل والإيداع',
+        desc: 'التأشير القضائي والحفظ',
+        active: false,
+        icon: Lock,
+      },
+    ];
+  }, [isSale]);
+
   // State initialization with backward-compatible state hydration
   const initialVerification: PreReceptionVerificationData = state.preReceptionVerification || {
     isSimultaneousCouncil: undefined,
@@ -362,7 +502,9 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
               🏛️ التحقق من شروط التلقي
             </h1>
             <p className="text-sm font-bold text-slate-300">
-              قبل الشروع في إدخال بيانات الشهادة، يرجى الإجابة عن الأسئلة التالية لتحديد المسار القانوني المناسب للتلقي.
+              {isSale
+                ? 'قبل الشروع في إدخال بيانات عقد البيع، يرجى استيفاء شروط التلقي وفحص الأهلية والصفات وموانع التصرف العقاري.'
+                : 'قبل الشروع في إدخال بيانات الشهادة، يرجى الإجابة عن الأسئلة التالية لتحديد المسار القانوني المناسب للتلقي.'}
             </p>
           </div>
 
@@ -378,32 +520,97 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
 
         {/* Stages Stepper */}
         <div className="mt-8 border-t border-slate-700/60 pt-6">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
-            {[
-              { num: '①', title: 'شروط التلقي', active: true, desc: 'التحقق القبلي' },
-              { num: '②', title: 'الأطراف', active: false, desc: 'الهويات والصفات' },
-              { num: '③', title: 'بيانات الشهادة', active: false, desc: 'تفاصيل العقد' },
-              { num: '④', title: 'التلقي', active: false, desc: 'مجلس الإشهاد' },
-              { num: '⑤', title: 'التحرير', active: false, desc: 'الصياغة والتدقيق' },
-              { num: '⑥', title: 'الإيداع', active: false, desc: 'التأشير القضائي' },
-            ].map((st, i) => (
-              <div
-                key={i}
-                className={`flex flex-col items-center rounded-2xl p-2.5 text-center transition-all ${
-                  st.active
-                    ? 'border-2 border-emerald-400 bg-emerald-500/20 shadow-md shadow-emerald-950/40'
-                    : 'border border-slate-800 bg-slate-900/40 opacity-70'
-                }`}
-              >
-                <span className={`text-base font-black ${st.active ? 'text-emerald-300' : 'text-slate-400'}`}>
-                  {st.num}
-                </span>
-                <span className={`text-xs font-black ${st.active ? 'text-white' : 'text-slate-300'}`}>
-                  {st.title}
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold">{st.desc}</span>
-              </div>
-            ))}
+          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 font-black text-slate-200">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
+              <span>
+                {isSale
+                  ? 'خريطة المسار الإجرائي لعقد البيع العقاري (8 مراحل قانونية متسلسلة)'
+                  : 'خريطة المسار الإجرائي للرسم العدلي (مراحل التلقي والتحرير)'}
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/90 px-3.5 py-1 text-xs font-bold text-slate-200 border border-slate-700/80 shadow-inner">
+              <span>المرحلة الحالية:</span>
+              <strong className="text-emerald-300 font-black">① شروط التلقي</strong>
+              <span className="text-slate-400">من أصل {stages.length}</span>
+            </span>
+          </div>
+
+          <div
+            className={`grid gap-2 sm:gap-2.5 ${
+              isSale
+                ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-8'
+                : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'
+            }`}
+          >
+            {stages.map((st, i) => {
+              const IconComponent = st.icon;
+              return (
+                <div
+                  key={i}
+                  className={`group relative flex flex-col justify-between rounded-2xl p-3 text-center transition-all duration-300 ${
+                    st.active
+                      ? 'border-2 border-emerald-400 bg-gradient-to-b from-emerald-500/25 via-emerald-950/40 to-slate-900 shadow-xl shadow-emerald-950/70 ring-2 ring-emerald-400/20'
+                      : 'border border-slate-700/80 bg-slate-800/50 hover:bg-slate-800/80 hover:border-slate-600/90 backdrop-blur-xs'
+                  }`}
+                >
+                  {/* Top Badge & Number */}
+                  <div className="flex w-full items-center justify-between gap-1 mb-2">
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-black shadow-inner ${
+                        st.active
+                          ? 'bg-emerald-400 text-slate-950 ring-2 ring-emerald-300/40'
+                          : 'bg-slate-700/80 text-slate-200 border border-slate-600'
+                      }`}
+                    >
+                      {st.index}
+                    </span>
+
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 ${
+                        st.active
+                          ? 'bg-emerald-400/20 text-emerald-300'
+                          : 'bg-slate-700/60 text-slate-300'
+                      }`}
+                    >
+                      <IconComponent className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+
+                  {/* Title & Description */}
+                  <div className="flex flex-col items-center my-auto space-y-1">
+                    <span
+                      className={`text-xs font-black leading-tight tracking-tight ${
+                        st.active ? 'text-white drop-shadow-sm' : 'text-slate-100'
+                      }`}
+                    >
+                      {st.title}
+                    </span>
+                    <span
+                      className={`text-[10px] leading-tight font-bold line-clamp-2 ${
+                        st.active ? 'text-emerald-200' : 'text-slate-400'
+                      }`}
+                    >
+                      {st.desc}
+                    </span>
+                  </div>
+
+                  {/* Bottom Indicator */}
+                  <div className="mt-2.5 w-full pt-1">
+                    {st.active ? (
+                      <span className="inline-flex items-center justify-center gap-1 text-[10px] font-black text-emerald-300 bg-emerald-500/10 rounded-md py-0.5 w-full border border-emerald-400/20">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        المرحلة الحالية
+                      </span>
+                    ) : (
+                      <div className="h-1 w-full rounded-full bg-slate-700/50 overflow-hidden">
+                        <div className="h-full bg-slate-500/50 w-0 group-hover:w-full transition-all duration-300" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -449,7 +656,16 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
         </div>
 
         <div className="text-left text-xs font-bold opacity-80">
-          نوع الشهادة: <span className="font-black text-slate-900">{state.documentType || 'عام'}</span>
+          نوع الشهادة:{' '}
+          <span className="font-black text-slate-900 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
+            {state.documentType === 'بيع_وشراء'
+              ? 'رسم شراء (شخص ذاتي)'
+              : state.documentType === 'بيع_وشراء_معنوي'
+              ? 'رسم شراء (شخص معنوي)'
+              : state.documentType === 'بيع_وشراء_ملكية_مشتركة'
+              ? 'شراء في الملكية المشتركة'
+              : state.documentType || 'عام'}
+          </span>
         </div>
       </div>
 
@@ -1186,7 +1402,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
                 : 'bg-slate-300 border border-slate-300 cursor-not-allowed text-slate-500 shadow-none'
             }`}
           >
-            <span>متابعة إلى بيانات الأطراف</span>
+            <span>{isSale ? 'متابعة إلى أطراف العقد (البائع والمشتري)' : 'متابعة إلى بيانات الأطراف'}</span>
             <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
