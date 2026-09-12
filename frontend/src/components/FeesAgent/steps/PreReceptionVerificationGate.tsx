@@ -381,8 +381,8 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
             {[
               { num: '①', title: 'شروط التلقي', active: true, desc: 'التحقق القبلي' },
-              { num: '②', title: 'بيانات الشهادة', active: false, desc: 'نوع العقد' },
-              { num: '③', title: 'الأطراف', active: false, desc: 'الهويات والصفات' },
+              { num: '②', title: 'الأطراف', active: false, desc: 'الهويات والصفات' },
+              { num: '③', title: 'بيانات الشهادة', active: false, desc: 'تفاصيل العقد' },
               { num: '④', title: 'التلقي', active: false, desc: 'مجلس الإشهاد' },
               { num: '⑤', title: 'التحرير', active: false, desc: 'الصياغة والتدقيق' },
               { num: '⑥', title: 'الإيداع', active: false, desc: 'التأشير القضائي' },
@@ -1186,7 +1186,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
                 : 'bg-slate-300 border border-slate-300 cursor-not-allowed text-slate-500 shadow-none'
             }`}
           >
-            <span>متابعة إلى بيانات الشهادة</span>
+            <span>متابعة إلى بيانات الأطراف</span>
             <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
