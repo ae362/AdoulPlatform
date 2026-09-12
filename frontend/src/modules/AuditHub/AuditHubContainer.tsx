@@ -4295,10 +4295,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                           navigate('/saved-documents');
                                         }}
                                         className="px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
-                                        title="عرض المحفوظات"
+                                        title="مكتبة الوثائق المحفوظة"
                                     >
                                         <FolderArchive className="w-3.5 h-3.5" />
-                                        <span>عرض المحفوظات</span>
+                                        <span>مكتبة الوثائق المحفوظة</span>
                                     </button>
                                 </div>
 
