@@ -256,7 +256,7 @@ const NotaryNotificationsPage: React.FC = () => {
     const requestNotifications: NotificationRow[] = ((notificationsQuery.data ?? []) as any[])
       .filter((item) => item?.id)
       .map((item) => {
-        const isDecision = Boolean(item?.decision_type ?? item?.decisionType);
+        const isDecision = Boolean(item?.decision_type ?? item?.decisionType ?? (item?.recipient_type === 'notary'));
         const authorityName = item.recipient_type === 'regional_council'
           ? 'المجلس الجهوي للعدول'
           : item.recipient_type === 'both'
@@ -264,8 +264,8 @@ const NotaryNotificationsPage: React.FC = () => {
             : 'قاضي التوثيق';
 
         const decisionType = isDecision
-          ? String(item?.decision_type ?? item?.decisionType)
-          : (item.status === 'قيد_المعالجة' ? 'إشعار مرسل (قيد المعالجة)' : String(item.status || 'إشعار قيد المعالجة'));
+          ? String(item?.decision_type ?? item?.decisionType ?? (item?.recipient_type === 'notary' ? 'إشعار قضائي' : 'قرار قضائي'))
+          : (item.status === 'قيد_المعالجة' ? 'طلب مرسل (قيد المعالجة)' : String(item.status || 'طلب قيد المعالجة'));
 
         return {
           id: String(item.id),
@@ -281,14 +281,27 @@ const NotaryNotificationsPage: React.FC = () => {
           decisionReasoning: String(item?.decision_reasoning ?? item?.decisionReasoning ?? ''),
           decidedAt: String(item?.decided_at ?? item?.decidedAt ?? item?.created_at ?? ''),
           createdAt: String(item?.created_at ?? ''),
-          isSeen: isDecisionSeen(String(item.id)),
+          isSeen: !isDecision || isDecisionSeen(String(item.id)),
           isPermission: isPermissionDecision(item),
         };
       });
 
-    // 4. Judge Submissions
+    // 4. Judge Submissions (Deduplicated with judicial_notifications)
+    const knownSubmissionIdsFromNotifs = new Set<string>();
+    requestNotifications.forEach((r) => {
+      if (r.notes && r.notes.includes('judge_deed_decision')) {
+        try {
+          const match = r.notes.match(/--- DATA JSON START ---\s*([\s\S]*?)\s*--- DATA JSON END ---/);
+          if (match && match[1]) {
+            const parsed = JSON.parse(match[1]);
+            if (parsed.submissionId) knownSubmissionIdsFromNotifs.add(String(parsed.submissionId));
+          }
+        } catch {}
+      }
+    });
+
     const judgeSubmissionNotifications: NotificationRow[] = ((judgeSubmissionsQuery.data ?? []) as any[])
-      .filter((item) => item?.id && (item?.decision || item?.decidedAt || ['accepted', 'accepted_with_notes', 'substantive_notes', 'rejected', 'declined'].includes(String(item?.status || '').toLowerCase())))
+      .filter((item) => item?.id && !knownSubmissionIdsFromNotifs.has(String(item.id)) && (item?.decision || item?.decidedAt || ['accepted', 'accepted_with_notes', 'substantive_notes', 'rejected', 'declined'].includes(String(item?.status || '').toLowerCase())))
       .map((item) => {
         const syntheticId = `judge_submission:${String(item.id)}`;
         const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};

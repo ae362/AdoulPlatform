@@ -1,28 +1,60 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Eye, FileText, FolderOpen, RefreshCw, Search, ChevronRight } from 'lucide-react';
+import { 
+  Calendar, 
+  Eye, 
+  FileText, 
+  FolderOpen, 
+  RefreshCw, 
+  Search, 
+  ChevronRight, 
+  CheckCircle2, 
+  FileSignature, 
+  ShieldCheck, 
+  Clock, 
+  Users 
+} from 'lucide-react';
 import { trpc } from '../trpc';
 import { useAuth } from '../contexts/AuthContext';
 
-type FilterKey = 'all' | 'marriage' | 'divorce' | 'property' | 'inheritance' | 'misc';
+type FilterKey = 'all' | 'audited' | 'marriage' | 'divorce' | 'property' | 'inheritance' | 'misc';
 
 type SavedRow = {
   id: string;
   fileNumber: string | null;
   documentType: string | null;
+  status?: string | null;
+  payload?: Record<string, any> | null;
+  partyNames?: string[];
   createdAt: string;
   attachmentsCount: number;
   latestDraftUpdatedAt: string | null;
+  latestDraftDocxUrl?: string | null;
+  displayUrl?: string | null;
 };
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: 'all', label: 'الكل' },
+  { key: 'audited', label: '🟢 مدققة وجاهزة للتوقيع' },
   { key: 'marriage', label: 'الزواج' },
   { key: 'divorce', label: 'الطلاق' },
   { key: 'property', label: 'الأملاك' },
   { key: 'inheritance', label: 'التركات' },
   { key: 'misc', label: 'أخرى' },
 ];
+
+function isAuditedDocument(row: SavedRow): boolean {
+  const payload = row.payload || {};
+  return (
+    payload.auditStatus === 'completed' ||
+    payload.storedInLibrary === true ||
+    payload.readyForSigning === true ||
+    payload.isAudited === true ||
+    !!payload.auditHubInclusion ||
+    row.status === 'audited' ||
+    row.status === 'ready_for_signing'
+  );
+}
 
 function categorizeDocumentType(value: string | null | undefined): FilterKey {
   const docType = String(value || '');
@@ -71,15 +103,24 @@ export const SavedDocumentsGallery: React.FC = () => {
     return (savedRasmsQuery.data || []) as SavedRow[];
   }, [savedRasmsQuery.data]);
 
+  const auditedCount = useMemo(() => {
+    return mergedRows.filter(isAuditedDocument).length;
+  }, [mergedRows]);
+
   const rows = useMemo(() => {
     const source = mergedRows;
     const q = search.trim().toLowerCase();
 
     return source
-      .filter((row) => activeFilter === 'all' || categorizeDocumentType(row.documentType) === activeFilter)
+      .filter((row) => {
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'audited') return isAuditedDocument(row);
+        return categorizeDocumentType(row.documentType) === activeFilter;
+      })
       .filter((row) => {
         if (!q) return true;
-        return [row.fileNumber || '', row.documentType || '', row.id]
+        const partiesStr = (row.partyNames || []).join(' ');
+        return [row.fileNumber || '', row.documentType || '', row.id, partiesStr]
           .join(' ')
           .toLowerCase()
           .includes(q);
@@ -124,19 +165,34 @@ export const SavedDocumentsGallery: React.FC = () => {
                 </div>
                 <h1 className="text-4xl font-black text-slate-900 font-maghribi">مكتبة الوثائق المحفوظة</h1>
                 <p className="mt-2 text-sm font-bold text-slate-500">
-                  افتح أي رسم محفوظ مباشرة داخل AuditHub للمعاينة.
+                  المستودع الآمن للرسوم المحفوظة والمدققة عبر مسار AuditHub قبل التوقيع النهائي.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div 
+                  onClick={() => setActiveFilter('all')}
+                  className={`cursor-pointer rounded-2xl p-4 transition ${activeFilter === 'all' ? 'ring-2 ring-slate-900 shadow-md' : 'hover:opacity-90'} bg-slate-950 text-white`}
+                >
                   <div className="text-xs font-bold text-slate-300">إجمالي الوثائق</div>
                   <div className="mt-1 text-3xl font-black">{totalCount}</div>
                 </div>
+
+                <div 
+                  onClick={() => setActiveFilter('audited')}
+                  className={`cursor-pointer rounded-2xl p-4 transition ${activeFilter === 'audited' ? 'ring-2 ring-emerald-500 shadow-md' : 'hover:opacity-95'} bg-gradient-to-br from-emerald-900 via-teal-900 to-emerald-950 border border-emerald-500/30 text-white`}
+                >
+                  <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    مدققة (جاهزة للتوقيع)
+                  </div>
+                  <div className="mt-1 text-3xl font-black text-emerald-300">{auditedCount}</div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => savedRasmsQuery.refetch()}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-700 transition hover:bg-slate-50 shadow-sm"
                 >
                   <RefreshCw className="h-4 w-4" />
                   تحديث القائمة
@@ -150,7 +206,7 @@ export const SavedDocumentsGallery: React.FC = () => {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="ابحث برقم الملف أو نوع الوثيقة"
+                  placeholder="ابحث برقم الملف، اسم الطرف، أو نوع الوثيقة..."
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pr-11 pl-4 text-sm font-bold text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white"
                 />
               </label>
@@ -165,7 +221,9 @@ export const SavedDocumentsGallery: React.FC = () => {
                       onClick={() => setActiveFilter(filter.key)}
                       className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
                         active
-                          ? 'bg-[#102043] text-white shadow-sm'
+                          ? filter.key === 'audited' 
+                            ? 'bg-emerald-700 text-white shadow-sm' 
+                            : 'bg-[#102043] text-white shadow-sm'
                           : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -214,43 +272,89 @@ export const SavedDocumentsGallery: React.FC = () => {
             )}
 
             {!savedRasmsQuery.isLoading && !savedRasmsQuery.isError && rows.length > 0 && (
-              <div className="overflow-hidden rounded-3xl border border-slate-200">
-                <div className="grid grid-cols-[1.1fr_1fr_140px_130px_140px] gap-4 bg-slate-50 px-6 py-4 text-xs font-black text-slate-500">
-                  <div>نوع الوثيقة</div>
+              <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+                <div className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_200px] gap-4 bg-slate-50 px-6 py-4 text-xs font-black text-slate-500">
+                  <div>نوع الوثيقة والحالة</div>
+                  <div>الأطراف المعنية</div>
                   <div>رقم الملف</div>
                   <div>المرفقات</div>
-                  <div>التاريخ</div>
-                  <div className="text-left">الإجراءات</div>
+                  <div>تاريخ الحفظ</div>
+                  <div className="text-left">الإجراءات المتاحة</div>
                 </div>
 
                 <div className="divide-y divide-slate-100 bg-white">
-                  {rows.map((row) => (
-                    <div
-                      key={row.id}
-                      className="grid grid-cols-[1.1fr_1fr_140px_130px_140px] items-center gap-4 px-6 py-5 transition hover:bg-slate-50"
-                    >
-                      <div>
-                        <div className="text-sm font-black text-slate-900">{row.documentType || 'غير محدد'}</div>
-                        <div className="mt-1 text-xs font-bold text-slate-500">{row.id}</div>
+                  {rows.map((row) => {
+                    const audited = isAuditedDocument(row);
+                    const parties = row.partyNames && row.partyNames.length > 0
+                      ? row.partyNames.join(' • ')
+                      : (row.payload?.sellers?.[0]?.name ? `${row.payload?.sellers?.[0]?.name}...` : '---');
+
+                    return (
+                      <div
+                        key={row.id}
+                        className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_200px] items-center gap-4 px-6 py-5 transition hover:bg-slate-50/80"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-slate-900">{row.documentType || 'غير محدد'}</span>
+                            {audited && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 shadow-xs">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                مدققة (جاهزة للتوقيع)
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 text-xs font-mono font-bold text-slate-400">{row.id}</div>
+                        </div>
+
+                        <div className="text-xs font-bold text-slate-700 truncate" title={parties}>
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{parties}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-xs font-mono font-bold text-slate-700">{row.fileNumber || '---'}</div>
+
+                        <div className="text-xs font-bold text-slate-600">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
+                            {row.attachmentsCount || 0}
+                          </span>
+                        </div>
+
+                        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                          {formatDate(row.latestDraftUpdatedAt || row.createdAt)}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/dashboard?module=auditHub&id=${row.id}`)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 transition hover:bg-slate-200"
+                            title="فتح الرسم في مسار المراقبة والتضمين لمعاينته وتعديله"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            مسار التضمين
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/notary-signing-portal/sign/${row.id}`)}
+                            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black text-white transition shadow-sm ${
+                              audited
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 shadow-emerald-700/20'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:brightness-110 shadow-blue-700/20'
+                            }`}
+                            title="الانتقال إلى رواق التوقيع لتوقيع الرسم"
+                          >
+                            <FileSignature className="h-3.5 w-3.5" />
+                            توقيع الرسم
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-sm font-black text-slate-700">{row.fileNumber || '---'}</div>
-                      <div className="text-sm font-black text-slate-600">{row.attachmentsCount || 0}</div>
-                      <div className="inline-flex items-center gap-2 text-sm font-black text-slate-600">
-                        <Calendar className="h-4 w-4 text-slate-400" />
-                        {formatDate(row.latestDraftUpdatedAt || row.createdAt)}
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/dashboard?module=auditHub&id=${row.id}`)}
-                          className="inline-flex items-center gap-2 rounded-2xl bg-blue-50 px-4 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
-                        >
-                          <Eye className="h-4 w-4" />
-                          عرض
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -260,3 +364,5 @@ export const SavedDocumentsGallery: React.FC = () => {
     </div>
   );
 };
+
+export default SavedDocumentsGallery;

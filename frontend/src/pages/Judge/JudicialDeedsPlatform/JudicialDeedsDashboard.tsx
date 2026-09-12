@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Users, Sparkles, Clock, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 import { trpc } from '../../../trpc';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -28,7 +29,7 @@ ChartJS.register(
 );
 
 type DeedStatus = 'all' | 'pending' | 'in_review' | 'accepted' | 'accepted_with_notes' | 'substantive_notes';
-type Category = 'all' | 'marriage' | 'divorce' | 'property' | 'inheritance' | 'others';
+type Category = 'all' | 'new_incoming' | 'marriage' | 'divorce' | 'property' | 'inheritance' | 'others';
 
 export default function JudicialDeedsDashboard() {
   const navigate = useNavigate();
@@ -100,14 +101,20 @@ export default function JudicialDeedsDashboard() {
     return list.sort((a, b) => b.waiting - a.waiting);
   }, [allDeeds, searchQuery]);
 
+  const selectedNotaryPendingCount = useMemo(() => {
+    if (!selectedNotaryId) return 0;
+    return allDeeds.filter(d => (d.notaryUserId || d.notaryName) === selectedNotaryId && d.status === 'pending').length;
+  }, [allDeeds, selectedNotaryId]);
+
   // 2. Filter Deeds for specific notary and category
   const categorizedDeeds = useMemo(() => {
     if (!selectedNotaryId) return [];
     const notaryDeeds = allDeeds.filter(d => (d.notaryUserId || d.notaryName) === selectedNotaryId);
     
     return notaryDeeds.filter(d => {
-      const type = (d.documentType || '').toLowerCase();
       if (activeCategory === 'all') return true;
+      if (activeCategory === 'new_incoming') return d.status === 'pending';
+      const type = (d.documentType || '').toLowerCase();
       if (activeCategory === 'marriage') return type.includes('زواج');
       if (activeCategory === 'divorce') return type.includes('طلاق');
       if (activeCategory === 'property') return type.includes('بيع') || type.includes('حيازة') || type.includes('ملك') || type.includes('سكن') || type.includes('عقار');
@@ -135,8 +142,9 @@ export default function JudicialDeedsDashboard() {
   }, [allDeeds]);
 
   // CATEGORIES FOR TABS
-  const categories: { id: Category; label: string; icon: string }[] = [
+  const categories: { id: Category; label: string; icon: string; badge?: number }[] = [
     { id: 'all', label: 'الكل', icon: '📊' },
+    { id: 'new_incoming', label: 'الطلبات الجديدة الواردة', icon: '⚡', badge: selectedNotaryPendingCount },
     { id: 'marriage', label: 'رسوم الزواج', icon: '💍' },
     { id: 'divorce', label: 'رسوم الطلاق', icon: '⚖️' },
     { id: 'property', label: 'رسوم الأملاك', icon: '🏠' },
@@ -177,24 +185,40 @@ export default function JudicialDeedsDashboard() {
                           </span>
                           <span className="text-slate-200 font-bold">|</span>
                           <span className="text-slate-500 font-black text-xs">إجمالي الرسوم المكتشفة: {selectedNotary?.all.length}</span>
+                          {selectedNotaryPendingCount > 0 && (
+                            <>
+                              <span className="text-slate-200 font-bold">|</span>
+                              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-600 text-white font-black text-xs shadow-sm animate-pulse">
+                                <span>⚡</span>
+                                <span>{selectedNotaryPendingCount} طلبات جديدة بانتظار الفحص</span>
+                              </span>
+                            </>
+                          )}
                         </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-inner overflow-x-auto">
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-inner overflow-x-auto gap-1">
                   {categories.map(c => (
                     <button
                       key={c.id}
                       onClick={() => setActiveCategory(c.id)}
-                      className={`px-8 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-3 whitespace-nowrap ${
+                      className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2.5 whitespace-nowrap ${
                         activeCategory === c.id 
                           ? 'bg-[#023120] text-[#E6BE8A] shadow-lg scale-[1.02]' 
                           : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                       }`}
                     >
-                      <span className="text-lg">{c.icon}</span>
+                      <span className="text-base">{c.icon}</span>
                       <span>{c.label}</span>
+                      {c.badge != null && c.badge > 0 && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          activeCategory === c.id ? 'bg-[#E6BE8A] text-[#023120]' : 'bg-blue-600 text-white shadow-xs animate-pulse'
+                        }`}>
+                          {c.badge}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -206,72 +230,126 @@ export default function JudicialDeedsDashboard() {
             <table className="w-full text-right border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <th className="p-8 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center w-32">رقم المرجع</th>
-                      <th className="p-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">تاريخ التسجيل</th>
-                      <th className="p-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">نوع الوثيقة</th>
-                      <th className="p-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">مستوى المراجعة</th>
-                      <th className="p-8 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">إجراء المراجعة</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center w-28">رقم المرجع</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">نوع الوثيقة</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">أطراف المعاملة</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">تاريخ ووقت الورود</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">مستوى المراجعة</th>
+                      <th className="py-6 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">إجراء الفحص</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {categorizedDeeds.length === 0 ? (
                     <tr>
-                        <td colSpan={5} className="p-32 text-center">
+                        <td colSpan={6} className="p-32 text-center">
                           <div className="flex flex-col items-center gap-4">
                             <span className="text-6xl opacity-20">📂</span>
                             <p className="text-slate-300 font-black text-xl font-amiri">لا توجد رسوم في هذا القسم حالياً</p>
                           </div>
                         </td>
                     </tr>
-                  ) : categorizedDeeds.map(d => (
+                  ) : categorizedDeeds.map(d => {
+                    const isNewPending = d.status === 'pending';
+                    const parties = (d as any).partySummary || d.summary || 'غير محدد';
+                    const dateObj = new Date(d.createdAt);
+                    const isToday = Date.now() - dateObj.getTime() < 24 * 60 * 60 * 1000;
+
+                    return (
                     <tr 
                       key={d.id} 
                       onMouseEnter={() => handlePrefetchDeed(d.id)}
-                      className="hover:bg-[#023120]/[0.01] transition-colors group"
+                      className={`transition-colors group ${
+                        isNewPending ? 'bg-blue-50/25 hover:bg-blue-50/60' : 'hover:bg-[#023120]/[0.01]'
+                      }`}
                     >
-                        <td className="p-8 font-sans font-black text-slate-900 border-l border-slate-50 text-center">
-                          <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs">#{d.fileNumber || d.id.slice(0,6)}</span>
-                        </td>
-                        <td className="p-8">
-                          <div className="flex flex-col">
-                            <span className="font-black text-slate-700">{new Date(d.createdAt).toLocaleDateString('ar-MA')}</span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-1">{new Date(d.createdAt).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </td>
-                        <td className="p-8">
-                          <div className="flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-lg border border-slate-100">⚖️</span>
-                            <span className="font-black text-slate-800 text-lg font-amiri">{d.documentType}</span>
-                          </div>
-                        </td>
-                        <td className="p-8">
-                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black border tracking-tight ${
-                            d.status === 'pending' ? 'bg-blue-50 border-blue-100 text-blue-700' : 
-                            d.status === 'in_review' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                            d.status === 'accepted' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                            'bg-red-50 border-red-100 text-red-700'
+                        <td className="py-6 px-6 font-sans font-black text-slate-900 border-l border-slate-50 text-center">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                            isNewPending ? 'bg-blue-100 text-blue-900 border border-blue-200' : 'bg-slate-100 text-slate-800'
                           }`}>
-                            <span className={`w-2 h-2 rounded-full ${
-                              d.status === 'pending' ? 'bg-blue-500 animate-pulse' : 
-                              d.status === 'in_review' ? 'bg-amber-500 animate-pulse' :
-                              d.status === 'accepted' ? 'bg-emerald-500' : 'bg-red-500'
-                            }`}></span>
-                            {d.status === 'pending' ? 'بانتظار الفحص والتدقيق' : 
-                              d.status === 'in_review' ? 'تجري حاليا معالجة الملف' :
-                              d.status === 'accepted' ? 'تم التأشير والقبول' : 'ملاحظات جوهرية مرفوضة'}
+                            #{d.fileNumber || d.id.slice(0,6)}
+                          </span>
+                        </td>
+
+                        <td className="py-6 px-6">
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-lg border border-slate-100 shrink-0">
+                              {d.documentType?.includes('زواج') ? '💍' : 
+                               d.documentType?.includes('طلاق') ? '⚖️' :
+                               d.documentType?.includes('بيع') || d.documentType?.includes('ملك') ? '🏠' :
+                               d.documentType?.includes('تركات') || d.documentType?.includes('إراثة') ? '📜' : '📄'}
+                            </span>
+                            <div>
+                              <span className="font-black text-slate-800 text-base font-amiri block">{d.documentType || 'رسم عدلي'}</span>
+                              {isNewPending && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mt-0.5">
+                                  <Sparkles className="w-3 h-3 text-blue-600" />
+                                  طلب جديد وارد
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
-                        <td className="p-8 text-center">
+
+                        <td className="py-6 px-6 max-w-xs">
+                          <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
+                            <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate" title={parties}>{parties}</span>
+                          </div>
+                        </td>
+
+                        <td className="py-6 px-6">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-black text-slate-700 text-xs">{dateObj.toLocaleDateString('ar-MA')}</span>
+                              {isToday && (
+                                <span className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md">اليوم</span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono font-bold mt-0.5">
+                              {dateObj.toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-6 px-6">
+                          <div className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black border tracking-tight shadow-xs ${
+                            d.status === 'pending' ? 'bg-blue-50 border-blue-200 text-blue-800 ring-2 ring-blue-500/20' : 
+                            d.status === 'in_review' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                            d.status === 'accepted' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                            d.status === 'accepted_with_notes' ? 'bg-teal-50 border-teal-200 text-teal-800' :
+                            'bg-red-50 border-red-200 text-red-800'
+                          }`}>
+                            <span className={`w-2.5 h-2.5 rounded-full ${
+                              d.status === 'pending' ? 'bg-blue-600 animate-ping' : 
+                              d.status === 'in_review' ? 'bg-amber-500 animate-pulse' :
+                              d.status === 'accepted' ? 'bg-emerald-500' : 
+                              d.status === 'accepted_with_notes' ? 'bg-teal-500' : 'bg-red-500'
+                            }`}></span>
+                            <span>
+                              {d.status === 'pending' ? 'طلب جديد (بانتظار الفحص)' : 
+                               d.status === 'in_review' ? 'قيد التدقيق القضائي' :
+                               d.status === 'accepted' ? 'تم التأشير والقبول' : 
+                               d.status === 'accepted_with_notes' ? 'مقبول مع ملاحظات' : 'ملاحظات جوهرية (طلب تصحيح)'}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-6 px-6 text-center">
                           <button 
                             onClick={() => navigate(`/judge/deeds/${d.id}`)}
-                            className="inline-flex items-center gap-3 px-8 py-3.5 bg-[#023120] text-[#E6BE8A] rounded-2xl text-[11px] font-black hover:scale-[1.02] transition-all shadow-xl shadow-[#023120]/10 active:scale-95 group-hover:brightness-110"
+                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 ${
+                              isNewPending
+                                ? 'bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white shadow-blue-700/25 ring-2 ring-blue-400/40 hover:scale-105'
+                                : 'bg-[#023120] text-[#E6BE8A] shadow-[#023120]/10 hover:scale-[1.02]'
+                            }`}
                           >
-                            <span>فتح منصة التدقيق الرقمي</span>
-                            <span className="text-lg">🔍</span>
+                            <span>{isNewPending ? 'فحص الطلب الجديد' : 'فتح منصة التدقيق'}</span>
+                            <span className="text-sm">🔍</span>
                           </button>
                         </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
             </table>
           </div>
@@ -377,7 +455,12 @@ export default function JudicialDeedsDashboard() {
                         <h3 className="text-3xl font-black text-slate-800 font-amiri group-hover:text-[#023120] transition-colors leading-snug">{n.name}</h3>
                         <div className="flex items-center gap-3 mt-2">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">License ID: {n.id.slice(0, 8)}</span>
-                            {n.waiting > 0 && <span className="flex h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] animate-pulse"></span>}
+                            {n.waiting > 0 && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-md shadow-blue-500/30 animate-pulse">
+                                <span>⚡</span>
+                                <span>{n.waiting} طلب جديد</span>
+                              </span>
+                            )}
                         </div>
                       </div>
                   </div>

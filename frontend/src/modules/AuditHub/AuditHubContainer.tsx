@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../../components/common/ToastNotification';
 import type { FeesAgentState } from '../FeesAgent';
 import { generateDocxBlobFromTemplate } from '../../utils/docxTemplate';
 import html2canvas from 'html2canvas';
@@ -105,8 +106,8 @@ export const AuditHubContainer: React.FC = () => {
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   // Pre-save review (before category selection)
   const [isPreSaveReviewModalOpen, setIsPreSaveReviewModalOpen] = useState(false);
-  const [preSaveReviewIntent, setPreSaveReviewIntent] = useState<'save' | 'signing'>('save');
-  const [saveCategoryIntent, setSaveCategoryIntent] = useState<'save' | 'signing'>('save');
+  const [preSaveReviewIntent, setPreSaveReviewIntent] = useState<'save' | 'signing' | 'library'>('library');
+  const [saveCategoryIntent, setSaveCategoryIntent] = useState<'save' | 'signing' | 'library'>('library');
   const [isSaveCategoryModalOpen, setIsSaveCategoryModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<{ show: boolean; docId?: string }>({ show: false });
   const [sigChecks, setSigChecks] = useState({ 
@@ -3578,6 +3579,12 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       // Persist edited artifact identity for Saved Documents (stable across refresh/users)
       auditDocVersionId: editedVersionId,
       auditEditedArtifactUrl: editedUrl,
+      // Stamp audit completion and library readiness
+      auditStatus: 'completed',
+      readyForSigning: true,
+      storedInLibrary: true,
+      auditedAt: new Date().toISOString(),
+      isAudited: true,
     };
 
     const isSigningIntent = saveCategoryIntent === 'signing';
@@ -3675,11 +3682,12 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
       // Show success message
       setSuccessMessage({ show: true, docId: finalId });
+      toast.success('تم حفظ وتأمين الرسم في مكتبة الوثائق المحفوظة كوثيقة مدققة جاهزة للتوقيع بنجاح');
       
-      // Auto-hide success message after 5 seconds
+      // Auto-hide success message after 6 seconds
       setTimeout(() => {
         setSuccessMessage({ show: false });
-      }, 5000);
+      }, 6000);
     } catch (err: any) {
       setIsSaveCategoryModalOpen(false);
       setIsCategorySaving(false);
@@ -3786,16 +3794,29 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       {/* Success Toast */}
       {successMessage.show && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 animate-in slide-in-from-top duration-300">
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl shadow-2xl p-6 flex items-center gap-4 border border-emerald-400/50">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl shadow-2xl p-6 flex items-center gap-4 border border-emerald-400/50">
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
               <CheckCircle className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="font-black text-lg">تم الحفظ بنجاح! ✨</p>
-              <p className="text-sm text-emerald-50 font-bold">تم حفظ الرسم في فئة الوثائق المختارة</p>
+              <p className="font-black text-lg">تم الحفظ في مكتبة الوثائق بنجاح! 📚✨</p>
+              <p className="text-sm text-emerald-50 font-bold">تم توثيق وتأمين الرسم كوثيقة مدققة جاهزة للتوقيع في مكتبة الوثائق المحفوظة</p>
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
+                onClick={() => {
+                  setSuccessMessage({ show: false });
+                  navigate('/dashboard?module=savedDocuments');
+                }}
+                className="px-4 py-2 bg-white text-emerald-800 rounded-xl font-black text-sm hover:bg-emerald-50 transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
+              >
+                <span>📚</span>
+                <span>الانتقال لمكتبة الوثائق</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setSuccessMessage({ show: false });
                   try {
@@ -3804,13 +3825,17 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                   openNotarySigningFromAuditHub();
                 }}
                 disabled={!rasmId}
-                className="px-4 py-2 bg-white text-emerald-600 rounded-lg font-bold text-sm hover:bg-emerald-50 transition-colors whitespace-nowrap"
+                className="px-4 py-2 bg-emerald-800 text-white rounded-xl font-black text-sm hover:bg-emerald-900 transition-colors whitespace-nowrap flex items-center gap-1.5"
               >
-                رواق التوقيع العدلي
+                <span>🖋</span>
+                <span>رواق التوقيع العدلي</span>
               </button>
+
               <button
+                type="button"
                 onClick={() => setSuccessMessage({ show: false })}
                 className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="إغلاق"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4174,7 +4199,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                             {/* Document Actions Bar (Optimized Responsive Layout for 100% Zoom) */}
                             <div className="h-12 bg-white/95 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-3 z-30 shrink-0 gap-2 overflow-x-auto no-scrollbar" dir="rtl">
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {/* Primary Save & Sign Button */}
+                                    {/* Action 1: Save directly to Saved Documents Library (without signing) */}
                                     <button 
                                       onClick={() => {
                                         if (!state) {
@@ -4188,19 +4213,48 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                           }
                                           setPrimaryTextEditorOpen(false);
                                         }
-                                        setPreSaveReviewIntent('save');
+                                        setPreSaveReviewIntent('library');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
                                       disabled={!state || isRedirecting}
-                                      className={`px-3.5 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
+                                      className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
                                         state && !isRedirecting
                                           ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 cursor-pointer shadow-emerald-700/20'
                                           : 'bg-emerald-400 cursor-not-allowed opacity-60'
                                       }`}
-                                      title="حفظ الرسم وتأهيله للتوقيع الرقمي"
+                                      title="حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً"
                                     >
                                         <ShieldCheck className="w-3.5 h-3.5" />
-                                        <span>حفظ وتصنيف (رواق التوقيع)</span>
+                                        <span>حفظ في مكتبة الوثائق 📚</span>
+                                    </button>
+
+                                    {/* Action 2: Save & Proceed Directly to Notary Signing Portal */}
+                                    <button 
+                                      onClick={() => {
+                                        if (!state) {
+                                          alert('خطأ: لم يتم تحميل بيانات الرسم بعد. يرجى الانتظار قليلاً ثم المحاولة مجدداً.');
+                                          return;
+                                        }
+                                        if (primaryTextEditorOpen) {
+                                          const finalContent = editedPlainTextGetterRef.current?.();
+                                          if (finalContent) {
+                                            updateDraftContent(finalContent);
+                                          }
+                                          setPrimaryTextEditorOpen(false);
+                                        }
+                                        setPreSaveReviewIntent('signing');
+                                        setIsPreSaveReviewModalOpen(true);
+                                      }}
+                                      disabled={!state || isRedirecting}
+                                      className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
+                                        state && !isRedirecting
+                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:brightness-110 cursor-pointer shadow-blue-700/20'
+                                          : 'bg-blue-400 cursor-not-allowed opacity-60'
+                                      }`}
+                                      title="اعتماد الرسم والانتقال الفوري إلى رواق التوقيع"
+                                    >
+                                        <FileSignature className="w-3.5 h-3.5" />
+                                        <span>رواق التوقيع 🖋️</span>
                                     </button>
 
                                     {/* Compact Readiness Indicator */}
@@ -4998,6 +5052,23 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        setPreSaveReviewIntent('library');
+                                        setIsPreSaveReviewModalOpen(true);
+                                      }}
+                                      disabled={!rasmId}
+                                      className={`w-full rounded-xl px-4 py-3 text-sm font-black text-white transition-all flex items-center justify-center gap-2 border ${
+                                        rasmId
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 border-emerald-500/30 hover:brightness-110 shadow-lg shadow-emerald-900/20'
+                                        : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'
+                                      }`}
+                                    >
+                                      <ShieldCheck className="w-4 h-4" />
+                                      حفظ في مكتبة الوثائق 📚
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
                                         setPreSaveReviewIntent('signing');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
@@ -5009,7 +5080,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                       }`}
                                     >
                                       <FileSignature className="w-4 h-4" />
-                                      رواق التوقيع العدلي
+                                      رواق التوقيع العدلي 🖋️
                                     </button>
 
                                     <button
@@ -5117,7 +5188,50 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                     </button>
                 </div>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <button 
+                        type="button"
+                        onClick={() => {
+                          if (!state) {
+                            alert('خطأ: لم يتم تحميل بيانات الرسم بعد.');
+                            return;
+                          }
+                          setPreSaveReviewIntent('library');
+                          setIsPreSaveReviewModalOpen(true);
+                        }}
+                        disabled={!state || isRedirecting}
+                        className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
+                          state && !isRedirecting
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:brightness-110 shadow-emerald-600/20 cursor-pointer'
+                            : 'bg-emerald-300 text-white cursor-not-allowed opacity-60'
+                        }`}
+                        title="حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً"
+                    >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>حفظ في مكتبة الوثائق 📚</span>
+                    </button>
+
+                    <button 
+                        type="button"
+                        onClick={() => {
+                          if (!state) {
+                            alert('خطأ: لم يتم تحميل بيانات الرسم بعد.');
+                            return;
+                          }
+                          setPreSaveReviewIntent('signing');
+                          setIsPreSaveReviewModalOpen(true);
+                        }}
+                        disabled={!state || isRedirecting}
+                        className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
+                          state && !isRedirecting
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:brightness-110 shadow-blue-600/20 cursor-pointer'
+                            : 'bg-blue-300 text-white cursor-not-allowed opacity-60'
+                        }`}
+                        title="اعتماد الرسم والانتقال المباشر للتوقيع"
+                    >
+                        <FileSignature className="w-4 h-4" />
+                        <span>اعتماد ورواق التوقيع 🖋️</span>
+                    </button>
                 </div>
             </div>
 
@@ -5139,9 +5253,9 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         checks={preSaveChecks}
         setChecks={setPreSaveChecks}
         showRegistration={needsRegistrationReview}
-        onConfirm={async () => {
+        onConfirm={async (intent?: 'library' | 'signing') => {
           setIsPreSaveReviewModalOpen(false);
-          setSaveCategoryIntent(preSaveReviewIntent);
+          setSaveCategoryIntent(intent || preSaveReviewIntent);
           setIsSaveCategoryModalOpen(true);
         }}
       />

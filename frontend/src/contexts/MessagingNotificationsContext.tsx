@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { CheckCircle2, AlertTriangle, AlertCircle, Bell, X, ArrowLeft } from 'lucide-react';
 import { useAuth } from './AuthContext.tsx';
 import { trpc } from '../trpc';
 import { resolvePageTitle, formatDocumentTitle, updateFaviconBadge } from '../utils/pageTitle';
@@ -9,6 +10,8 @@ type Toast = {
   title: string;
   message?: string;
   onClick?: () => void;
+  actionLabel?: string;
+  type?: 'success' | 'warning' | 'error' | 'info';
 };
 
 type MessagingNotificationsValue = {
@@ -109,42 +112,143 @@ function isJudgeSubmissionDecision(item: any) {
   return !!decision || !!decidedAt || ['accepted', 'accepted_with_notes', 'substantive_notes', 'rejected', 'declined'].includes(status);
 }
 
+function getToastVariant(toast: Toast) {
+  const t = toast.type;
+  const rawTitle = toast.title || '';
+  
+  if (t === 'success' || rawTitle.includes('✅') || rawTitle.includes('تم قبول') || rawTitle.includes('موافقة')) {
+    return {
+      type: 'success' as const,
+      badge: 'تأشير وقبول قضائي',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+      icon: CheckCircle2,
+      iconBg: 'bg-emerald-100 text-emerald-600 ring-4 ring-emerald-500/10',
+      borderGlow: 'hover:border-emerald-300/80',
+      accentBar: 'bg-emerald-500',
+      actionClass: 'text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60',
+    };
+  }
+  if (t === 'error' || rawTitle.includes('🔴') || rawTitle.includes('تصحيح') || rawTitle.includes('رفض')) {
+    return {
+      type: 'error' as const,
+      badge: 'ملاحظات جوهرية',
+      badgeClass: 'bg-rose-50 text-rose-700 border-rose-200/80',
+      icon: AlertCircle,
+      iconBg: 'bg-rose-100 text-rose-600 ring-4 ring-rose-500/10',
+      borderGlow: 'hover:border-rose-300/80',
+      accentBar: 'bg-rose-500',
+      actionClass: 'text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/60',
+    };
+  }
+  if (t === 'warning' || rawTitle.includes('⚠️') || rawTitle.includes('ملاحظات')) {
+    return {
+      type: 'warning' as const,
+      badge: 'ملاحظات توجيهية',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-200/80',
+      icon: AlertTriangle,
+      iconBg: 'bg-amber-100 text-amber-600 ring-4 ring-amber-500/10',
+      borderGlow: 'hover:border-amber-300/80',
+      accentBar: 'bg-amber-500',
+      actionClass: 'text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/60',
+    };
+  }
+  return {
+    type: 'info' as const,
+    badge: 'إشعار قضائي رسمي',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200/80',
+    icon: Bell,
+    iconBg: 'bg-blue-100 text-blue-600 ring-4 ring-blue-500/10',
+    borderGlow: 'hover:border-blue-300/80',
+    accentBar: 'bg-blue-500',
+    actionClass: 'text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100/80 border border-blue-200/60',
+  };
+}
+
 function ToastStack({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null;
+
   return (
     <div 
-      className="fixed top-4 right-4 z-[1000] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-3 pointer-events-none"
+      className="fixed bottom-6 left-6 z-[99999] flex w-[390px] max-w-[calc(100vw-2rem)] flex-col-reverse gap-3 pointer-events-none select-none font-sans"
       aria-live="polite"
+      dir="rtl"
     >
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            t.onClick?.();
-            dismiss(t.id);
-          }}
-          className="cursor-pointer pointer-events-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-lg ring-1 ring-black/5 flex flex-col"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-extrabold text-slate-900">{t.title}</div>
-              {t.message ? <div className="mt-1 line-clamp-2 text-xs text-slate-600">{t.message}</div> : null}
-            </div>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={(e) => {
-                e.stopPropagation();
+      {toasts.map((t) => {
+        const variant = getToastVariant(t);
+        const Icon = variant.icon;
+        const cleanTitle = (t.title || '').replace(/^[✅⚠️🔴ℹ️🔔]\s*/, '');
+
+        return (
+          <div
+            key={t.id}
+            role="alert"
+            onClick={() => {
+              if (t.onClick) {
+                t.onClick();
                 dismiss(t.id);
-              }}
-              className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 flex-shrink-0"
-            >
-              ×
-            </button>
+              }
+            }}
+            className={`group pointer-events-auto relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white/98 p-4 shadow-2xl shadow-slate-900/15 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl cursor-pointer ${variant.borderGlow}`}
+          >
+            {/* Top Accent Indicator Bar */}
+            <div className={`absolute top-0 right-0 left-0 h-1.5 ${variant.accentBar}`} />
+
+            <div className="flex items-start gap-3.5 pt-1">
+              {/* Status Icon with soft colored ring */}
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${variant.iconBg} transition-transform duration-200 group-hover:scale-105 shadow-sm`}>
+                <Icon className="h-5 w-5" />
+              </div>
+
+              {/* Content Section */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold border ${variant.badgeClass}`}>
+                    {variant.badge}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium mr-auto">الآن</span>
+                </div>
+
+                <h4 className="text-sm font-bold text-slate-900 leading-snug">
+                  {cleanTitle}
+                </h4>
+
+                {t.message && (
+                  <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">
+                    {t.message}
+                  </p>
+                )}
+
+                {/* Action Button */}
+                {t.onClick && (
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${variant.actionClass}`}
+                    >
+                      <span>{t.actionLabel || 'عرض التفاصيل'}</span>
+                      <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+                    </span>
+
+                    <span className="text-[11px] text-slate-400 font-medium">انقر للمعاينة</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dismiss Button */}
+              <button
+                type="button"
+                aria-label="إغلاق الإشعار"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismiss(t.id);
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors shrink-0 -mt-1 -ml-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -319,6 +423,15 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     }
   }, [copyRequestsSeenIdsKey]);
 
+  useEffect(() => {
+    if (!copyRequestsSeenIdsKey) return;
+    try {
+      localStorage.setItem(copyRequestsSeenIdsKey, JSON.stringify(copyRequestsSeenIds));
+    } catch {
+      // ignore
+    }
+  }, [copyRequestsSeenIds, copyRequestsSeenIdsKey]);
+
   const copyRequestsSeenSet = useMemo(() => new Set(copyRequestsSeenIds), [copyRequestsSeenIds]);
 
   const markCopyRequestSeen = React.useCallback(
@@ -326,11 +439,7 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       if (!requestId || !user?.id) return;
       setCopyRequestsSeenIds((prev) => {
         if (prev.includes(requestId)) return prev;
-        const updated = [...prev, requestId];
-        try {
-          localStorage.setItem(`copy_requests_seen_ids:${user.id}`, JSON.stringify(updated));
-        } catch {}
-        return updated;
+        return [...prev, requestId];
       });
     },
     [user?.id]
@@ -343,34 +452,41 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
     [copyRequestsSeenSet]
   );
 
-  const copyRequestsQuery = trpc.copyRequests.list.useQuery(undefined, {
-    enabled: !!user?.id && isNotary,
-    staleTime: 10_000,
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    retry: 2,
-  });
-
   const copyRequestsItems = useMemo(() => {
     if (!isNotary) return [];
-    return (copyRequestsQuery.data ?? []) as any[];
-  }, [copyRequestsQuery.data, isNotary]);
+    return (notaryCopyRequestsQuery.data ?? []) as any[];
+  }, [notaryCopyRequestsQuery.data, isNotary]);
 
   const decisionItems = useMemo(() => {
     if (!isNotary) return [];
     return (decisions as any[]).filter((d) => d?.id && (d?.decision_type ?? d?.decisionType));
   }, [decisions, isNotary]);
 
+  const knownSubmissionIdsFromNotifications = useMemo(() => {
+    const set = new Set<string>();
+    decisionItems.forEach((d: any) => {
+      if (d?.notes && String(d.notes).includes('judge_deed_decision')) {
+        try {
+          const match = String(d.notes).match(/--- DATA JSON START ---\s*([\s\S]*?)\s*--- DATA JSON END ---/);
+          if (match && match[1]) {
+            const parsed = JSON.parse(match[1]);
+            if (parsed.submissionId) set.add(String(parsed.submissionId));
+          }
+        } catch {}
+      }
+    });
+    return set;
+  }, [decisionItems]);
+
   const judgeSubmissionDecisionItems = useMemo(() => {
     if (!isNotary) return [];
     return ((judgeSubmissionDecisionsQuery.data ?? []) as any[])
-      .filter((item) => item?.id && isJudgeSubmissionDecision(item))
+      .filter((item) => item?.id && isJudgeSubmissionDecision(item) && !knownSubmissionIdsFromNotifications.has(String(item.id)))
       .map((item: any) => ({
         ...item,
         syntheticId: `judge_submission:${String(item.id)}`,
       }));
-  }, [isNotary, judgeSubmissionDecisionsQuery.data]);
+  }, [isNotary, judgeSubmissionDecisionsQuery.data, knownSubmissionIdsFromNotifications]);
 
   useEffect(() => {
     if (!isNotary) return;
@@ -403,7 +519,13 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
 
   const isDecisionSeen = React.useCallback(
     (notificationId: string) => {
-      return decisionsSeenSet.has(notificationId) || copyRequestsSeenSet.has(notificationId);
+      if (!notificationId) return true;
+      if (decisionsSeenSet.has(notificationId) || copyRequestsSeenSet.has(notificationId)) return true;
+      if (notificationId.startsWith('judge_submission:')) {
+        const rawSubId = notificationId.replace('judge_submission:', '');
+        if (decisionsSeenSet.has(rawSubId)) return true;
+      }
+      return false;
     },
     [decisionsSeenSet, copyRequestsSeenSet]
   );
@@ -441,19 +563,59 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
   const markDecisionSeen = React.useCallback(
     (notificationId: string) => {
       if (!notificationId) return;
-      setDecisionsSeenIds((prev) => (prev.includes(notificationId) ? prev : [...prev, notificationId]));
-      setCopyRequestsSeenIds((prev) => (prev.includes(notificationId) ? prev : [...prev, notificationId]));
+
+      const idsToMark: string[] = [notificationId];
+
+      if (notificationId.startsWith('judge_submission:')) {
+        const rawSubId = notificationId.replace('judge_submission:', '');
+        idsToMark.push(rawSubId);
+        const linkedNotif = decisionItems.find((d: any) => {
+          if (!d?.notes || !String(d.notes).includes('judge_deed_decision')) return false;
+          return String(d.notes).includes(rawSubId);
+        });
+        if (linkedNotif?.id) idsToMark.push(String(linkedNotif.id));
+      } else {
+        const notif = decisionItems.find((d: any) => String(d.id) === notificationId);
+        if (notif && notif.notes && String(notif.notes).includes('judge_deed_decision')) {
+          try {
+            const match = String(notif.notes).match(/--- DATA JSON START ---\s*([\s\S]*?)\s*--- DATA JSON END ---/);
+            if (match && match[1]) {
+              const parsed = JSON.parse(match[1]);
+              if (parsed.submissionId) {
+                idsToMark.push(String(parsed.submissionId));
+                idsToMark.push(`judge_submission:${parsed.submissionId}`);
+              }
+            }
+          } catch {}
+        }
+      }
+
+      setDecisionsSeenIds((prev) => {
+        const next = [...prev];
+        let changed = false;
+        for (const id of idsToMark) {
+          if (!next.includes(id)) {
+            next.push(id);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+
+      setCopyRequestsSeenIds((prev) => {
+        if (!prev.includes(notificationId)) return [...prev, notificationId];
+        return prev;
+      });
     },
-    []
+    [decisionItems]
   );
 
   const decisionsTotal = useMemo(() => {
     if (!isNotary) return 0;
     const requestDecisions = decisionItems.filter((d: any) => !decisionsSeenSet.has(String(d.id))).length;
     const judgeSubmissionDecisions = judgeSubmissionDecisionItems.filter((d: any) => !decisionsSeenSet.has(String(d.syntheticId))).length;
-    const unseenCopyRequests = copyRequestsItems.filter((r: any) => !copyRequestsSeenSet.has(String(r.id)) && !decisionsSeenSet.has(String(r.id))).length;
-    return requestDecisions + judgeSubmissionDecisions + unseenCopyRequests;
-  }, [decisionItems, decisionsSeenSet, isNotary, judgeSubmissionDecisionItems, copyRequestsItems, copyRequestsSeenSet]);
+    return requestDecisions + judgeSubmissionDecisions;
+  }, [decisionItems, decisionsSeenSet, isNotary, judgeSubmissionDecisionItems]);
 
   const judgeRequestsSeenIdsKey = useMemo(() => {
     if (!user?.id) return null;
@@ -759,6 +921,51 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       const certificateType = item?.certificate_type ?? item?.certificateType ?? '';
       const reasonForMovement = item?.reason_for_movement ?? item?.reasonForMovement ?? '';
       const notes = item?.notes ?? '';
+
+      // Check if this is a Judge Deed decision notification
+      if (String(notes || '').includes('judge_deed_decision')) {
+        let meta: any = {};
+        try {
+          const match = String(notes).match(/--- DATA JSON START ---\s*([\s\S]*?)\s*--- DATA JSON END ---/);
+          if (match && match[1]) {
+            meta = JSON.parse(match[1]);
+          }
+        } catch {}
+
+        const dec = meta.decision || (decisionType === 'موافقة' ? 'accepted' : 'substantive_notes');
+        const fileNo = meta.fileNumber || requestNumber;
+        const docType = meta.documentType || certificateType || 'رسم توثيقي';
+        const judgeNotes = meta.judgeNotes;
+
+        if (dec === 'accepted') {
+          return {
+            title: `تم قبول وتأشير الرسم${fileNo ? `: ${fileNo}` : ''}`,
+            message: `أشر السيد قاضي التوثيق بالموافقة على ${docType} واعتماده للتضمين.`,
+            type: 'success' as const,
+            actionLabel: 'فتح المحفوظات',
+            onClick: () => navigate('/dashboard?module=savedDocuments'),
+          };
+        }
+
+        if (dec === 'accepted_with_notes') {
+          return {
+            title: `تم قبول الرسم مع ملاحظات${fileNo ? `: ${fileNo}` : ''}`,
+            message: judgeNotes ? `ملاحظات القاضي: ${judgeNotes}` : `أشر القاضي على ${docType} مع تسجيل توجيهات.`,
+            type: 'warning' as const,
+            actionLabel: 'مراجعة الملاحظات',
+            onClick: () => navigate(meta.submissionId ? `/dashboard?module=auditHub&id=${meta.submissionId}` : '/dashboard?module=savedDocuments'),
+          };
+        }
+
+        return {
+          title: `ملاحظات جوهرية تتطلب التصحيح${fileNo ? `: ${fileNo}` : ''}`,
+          message: judgeNotes ? `ملاحظات القاضي: ${judgeNotes}` : `أعاد القاضي الرسم ${docType} لوجود ملاحظات تتطلب التصحيح.`,
+          type: 'error' as const,
+          actionLabel: 'تصحيح المسودة',
+          onClick: () => navigate(meta.submissionId ? `/dashboard?module=auditHub&id=${meta.submissionId}` : '/notary-notifications'),
+        };
+      }
+
       const isPermissionDecision =
         String(certificateType || '').includes('بوابة') ||
         String(certificateType || '').includes('زواج') ||
@@ -768,6 +975,8 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       return {
         title: `قرار قضائي جديد${requestNumber ? `: ${requestNumber}` : ''}`,
         message: `${decisionType || 'تم تحديث الطلب'}${targetCourt ? ` • ${targetCourt}` : ''}`,
+        type: 'info' as const,
+        actionLabel: 'معاينة القرار',
         onClick: () => navigate(`/notary-portal?tab=${isPermissionDecision ? 'permissions_responses' : 'notifications_responses'}`),
       };
     };
@@ -811,10 +1020,27 @@ export function MessagingNotificationsProvider({ children }: { children: React.R
       const fileNumber = item?.fileNumber ?? '';
       const decision = item?.decision ?? item?.status ?? 'تم تحديث الرسم';
       const documentType = item?.documentType ?? 'رسم عدلي';
+      const isAccepted = decision === 'accepted' || decision === 'تم التأشير والقبول';
+      const hasNotes = decision === 'substantive_notes' || decision === 'accepted_with_notes';
+
+      const title = isAccepted
+        ? `تم قبول وتأشير الرسم العدلي${fileNumber ? `: ${fileNumber}` : ''}`
+        : hasNotes
+        ? `ملاحظات قضائية على الرسم${fileNumber ? `: ${fileNumber}` : ''}`
+        : `قرار جديد على الرسم${fileNumber ? `: ${fileNumber}` : ''}`;
+
+      const message = isAccepted
+        ? `أشر السيد قاضي التوثيق بالموافقة على ${documentType} بنجاح.`
+        : hasNotes
+        ? `سجل السيد قاضي التوثيق ملاحظات على ${documentType} تتطلب مراجعتكم.`
+        : `${decision} • ${documentType}`;
+
       return {
-        title: `قرار جديد على الرسم${fileNumber ? `: ${fileNumber}` : ''}`,
-        message: `${decision}${documentType ? ` • ${documentType}` : ''}`,
-        onClick: () => navigate('/notary-notifications'),
+        title,
+        message,
+        type: isAccepted ? ('success' as const) : hasNotes ? ('warning' as const) : ('info' as const),
+        actionLabel: isAccepted ? 'فتح المحفوظات' : 'قاعة التدقيق',
+        onClick: () => navigate(isAccepted ? '/dashboard?module=savedDocuments' : `/dashboard?module=auditHub&id=${item?.savedRasmId || item?.id || ''}`),
       };
     };
 

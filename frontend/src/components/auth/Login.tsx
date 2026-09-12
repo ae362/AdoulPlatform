@@ -101,13 +101,13 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-slate-900" dir="rtl" lang="ar">
+    <div className="min-h-screen bg-gradient-to-b from-[#212328] via-[#1a1b1e] to-[#141517] text-slate-100" dir="rtl" lang="ar">
       <div className="relative isolate min-h-screen overflow-hidden">
-        {/* Animated background gradients */}
+        {/* Dark grey ambient background lighting */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-gradient-to-tr from-rose-900/20 via-amber-600/15 to-amber-500/20 blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 right-[-6rem] h-80 w-80 rounded-full bg-gradient-to-tr from-rose-800/15 via-amber-500/15 to-rose-700/15 blur-3xl animate-pulse" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,0.1)_1px,transparent_0)] [background-size:18px_18px] opacity-30" />
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-slate-700/10 blur-3xl" />
+          <div className="absolute -bottom-40 right-[-6rem] h-80 w-80 rounded-full bg-zinc-700/10 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.04)_1px,transparent_0)] [background-size:20px_20px]" />
         </div>
 
         <ReturnToLandingButton className="absolute right-6 top-6 z-20" />
@@ -116,30 +116,23 @@ export const Login: React.FC = () => {
           {/* Centered Form card */}
           <section className="flex w-full max-w-md flex-col justify-center">
             <div className="group relative">
-              {/* Gradient border glow effect */}
-              <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-rose-900/50 via-amber-700/50 to-rose-900/50 blur opacity-20 group-hover:opacity-40 transition duration-500" />
+              {/* Dark grey border glow effect */}
+              <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-zinc-700/40 via-slate-600/30 to-zinc-700/40 blur opacity-30 group-hover:opacity-60 transition duration-500" />
               
               <div className="relative rounded-3xl bg-white/98 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
                 {/* Logo Section at Top */}
                 <div className="mb-8 flex flex-col items-center gap-4">
-                  <div className="flex items-center justify-center gap-4">
+                  <div className="flex items-center justify-center">
                     <img
                       src="/logos/adoul-logo.jpg"
                       alt="شعار الهيئة الوطنية للعدول"
-                      className="h-20 w-auto object-contain rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 p-2 shadow-md ring-1 ring-slate-200 transition-transform duration-300 hover:scale-110"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <img
-                      src="/logos/morocco-coat.jpg"
-                      alt="شعار المملكة المغربية"
-                      className="h-20 w-20 object-contain rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 p-2 shadow-md ring-1 ring-slate-200 transition-transform duration-300 hover:scale-110"
+                      className="h-24 w-auto object-contain rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-2.5 shadow-md ring-1 ring-slate-200 transition-transform duration-300 hover:scale-105"
                       loading="lazy"
                       decoding="async"
                     />
                   </div>
                   <div className="flex flex-col items-center text-center">
-                    <p className="text-sm font-bold text-rose-900">الهيئة الوطنية للعدول</p>
+                    <p className="text-base font-bold text-rose-900">الهيئة الوطنية للعدول</p>
                     <p className="text-xs text-amber-700 mt-1 font-medium">المملكة المغربية</p>
                   </div>
                 </div>

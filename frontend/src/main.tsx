@@ -601,6 +601,9 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
                  if (item.key === 'administrative') {
                    return (adminCounts.workCertificate || 0);
                  }
+                 if (item.key === 'visitors') {
+                   return unseenCopyRequestsTotal || 0;
+                 }
                  return 0;
               })();
 
@@ -643,12 +646,13 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
                        {item.children.map((child) => {
                          const childBadgeCount = (() => {
                            if (child.key === 'scientificPermission') return permissionsCounts.scientific;
-                           if (child.key === 'notaryNotifications') return decisionsTotal;
+                           if (child.key === 'notaryNotifications') return notaryNotificationsTotal;
                            if (child.key === 'marriagePermission') return permissionsCounts.marriage;
                            if (child.key === 'judicialFeesPermission') return permissionsCounts.judicialFees;
                            if (child.key === 'individualReceptionPermission') return permissionsCounts.individualReception;
                            if (child.key === 'officeMovementPortal') return permissionsCounts.officeMovement;
                            if (child.key === 'workCertificatePortal') return adminCounts.workCertificate;
+                           if (child.key === 'searchArchive' || child.key === 'finalIndexing') return unseenCopyRequestsTotal;
                            return 0;
                          })();
 
@@ -916,7 +920,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
                   (() => {
                     const bellCount = user?.role === 'authentication_judge'
                       ? (judgeRequestsTotal + judgePermissionsTotal + judgeAdlCopyPermissionsTotal)
-                      : decisionsTotal;
+                      : notaryNotificationsTotal;
 
                     return (
                       <button

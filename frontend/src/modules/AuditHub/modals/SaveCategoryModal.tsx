@@ -50,7 +50,7 @@ export const SaveCategoryModal = ({ isOpen, onClose, onSave, fileName, intent, i
                     <p className="text-slate-600 font-bold text-sm">
                       {intent === 'signing'
                         ? 'اختر نوع الرسم أولًا، ثم سيتم فتح رواق التوقيع مباشرة'
-                        : 'المرجو تصنيف الرسم للحفظ ضمن السلة المناسبة'}
+                        : 'اختر تصنيف السلة المناسبة لحفظ الوثيقة المدققة للرجوع إليها أو توقيعها لاحقاً عبر مكتبة الوثائق'}
                     </p>
                     </div>
                     <button disabled={isBusy} onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 disabled:opacity-30">
@@ -107,7 +107,7 @@ export const SaveCategoryModal = ({ isOpen, onClose, onSave, fileName, intent, i
                                         <p className="text-slate-500 font-bold text-xs uppercase opacity-80">
                                           {intent === 'signing'
                                             ? `اختيار ${cat.label} ثم فتح رواق التوقيع`
-                                            : `إرسال إلى رواق ${(cat.label).includes('رسوم') ? cat.label : cat.label}`}
+                                            : `حفظ في مكتبة الوثائق تحت فئة ${cat.label}`}
                                         </p>
                                     </div>
                                     <ChevronLeft className={`w-6 h-6 transition-all duration-300 ${isSelected ? `${cat.color} opacity-100 translate-x-0` : `${cat.color} opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0`}`} />
@@ -143,10 +143,10 @@ export const SaveCategoryModal = ({ isOpen, onClose, onSave, fileName, intent, i
                       {isBusy ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin inline-block" />
-                          <span>{intent === 'signing' ? 'جاري الانتقال إلى التوقيع...' : 'جاري الحفظ والاعتماد...'}</span>
+                          <span>{intent === 'signing' ? 'جاري الانتقال إلى التوقيع...' : 'جاري الحفظ في مكتبة الوثائق...'}</span>
                         </>
                       ) : (
-                        intent === 'signing' ? 'متابعة إلى رواق التوقيع' : 'اعتماد الصنف المختار'
+                        intent === 'signing' ? '🖋️ متابعة إلى رواق التوقيع' : '📚 حفظ في مكتبة الوثائق المحفوظة'
                       )}
                     </button>
                 </div>

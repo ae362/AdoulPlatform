@@ -163,25 +163,46 @@ export const PreSaveReviewModal = ({ isOpen, onClose, checks, setChecks, showReg
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 rounded-2xl font-black text-sm text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-sm text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all"
             >
               ⬅ العودة للمراجعة
             </button>
 
-            <button
-              type="button"
-              disabled={!allChecked}
-              onClick={onConfirm}
-              className={`px-6 py-3 rounded-2xl font-black text-sm text-white transition-all active:scale-95 ${
-                allChecked ? 'bg-blue-600 hover:bg-blue-700 shadow-lg' : 'bg-blue-300 cursor-not-allowed opacity-70'
-              }`}
-            >
-              🖋 اعتماد الرسم والانتقال إلى توقيع العدلين
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                disabled={!allChecked}
+                onClick={() => onConfirm('library')}
+                className={`w-full sm:w-auto px-6 py-3 rounded-2xl font-black text-sm text-white transition-all flex items-center justify-center gap-2 active:scale-95 ${
+                  allChecked
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                    : 'bg-emerald-300 cursor-not-allowed opacity-70'
+                }`}
+                title="حفظ الرسم المدقق في مكتبة الوثائق دون الانتقال للتوقيع الآن"
+              >
+                <span>📚</span>
+                <span>حفظ في مكتبة الوثائق المحفوظة</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={!allChecked}
+                onClick={() => onConfirm('signing')}
+                className={`w-full sm:w-auto px-6 py-3 rounded-2xl font-black text-sm text-white transition-all flex items-center justify-center gap-2 active:scale-95 ${
+                  allChecked
+                    ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20'
+                    : 'bg-blue-300 cursor-not-allowed opacity-70'
+                }`}
+                title="اعتماد الرسم والانتقال الفوري إلى رواق توقيع العدلين"
+              >
+                <span>🖋</span>
+                <span>اعتماد والانتقال للتوقيع</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

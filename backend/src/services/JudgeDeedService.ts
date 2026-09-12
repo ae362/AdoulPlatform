@@ -99,7 +99,7 @@ export class JudgeDeedService {
     let query = supabase
       .from('judge_submissions')
       .select(
-        'id, notary_user_id, notary_name, file_number, document_type, summary, status, decision, judge_notes, created_at, updated_at, decided_at, judge_user_id'
+        'id, notary_user_id, notary_name, file_number, document_type, summary, payload, status, decision, judge_notes, created_at, updated_at, decided_at, judge_user_id'
       )
       .or(`judge_user_id.is.null,judge_user_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
@@ -132,21 +132,37 @@ export class JudgeDeedService {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
     }
 
-    return (data ?? []).map((row: any) => ({
-      id: row.id as string,
-      notaryUserId: row.notary_user_id as string,
-      notaryName: row.notary_name as string,
-      fileNumber: (row.file_number ?? '') as string,
-      documentType: (row.document_type ?? '') as string,
-      summary: (row.summary ?? '') as string,
-      status: row.status as JudgeSubmissionStatus,
-      decision: (row.decision ?? null) as JudgeDecision | null,
-      judgeNotes: (row.judge_notes ?? null) as string | null,
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-      decidedAt: (row.decided_at ?? null) as string | null,
-      judgeUserId: (row.judge_user_id ?? null) as string | null,
-    }));
+    return (data ?? []).map((row: any) => {
+      const p = (row.payload && typeof row.payload === 'object') ? (row.payload as Record<string, any>) : {};
+      const partySummary =
+        (p.husband_name && p.wife_name ? `${p.husband_name} • ${p.wife_name}` : null) ||
+        p.parties_names ||
+        p.involvedNames ||
+        p.partySummary ||
+        (Array.isArray(p.sellers) && p.sellers.length ? p.sellers.map((s: any) => s?.name).filter(Boolean).join(' • ') : null) ||
+        p.applicant_name ||
+        p.deceased_name ||
+        (row.summary ? String(row.summary).slice(0, 60) : null) ||
+        null;
+
+      return {
+        id: row.id as string,
+        notaryUserId: row.notary_user_id as string,
+        notaryName: row.notary_name as string,
+        fileNumber: (row.file_number ?? '') as string,
+        documentType: (row.document_type ?? '') as string,
+        summary: (row.summary ?? '') as string,
+        partySummary,
+        payload: p,
+        status: row.status as JudgeSubmissionStatus,
+        decision: (row.decision ?? null) as JudgeDecision | null,
+        judgeNotes: (row.judge_notes ?? null) as string | null,
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string,
+        decidedAt: (row.decided_at ?? null) as string | null,
+        judgeUserId: (row.judge_user_id ?? null) as string | null,
+      };
+    });
   }
 
   /**
@@ -557,7 +573,7 @@ export class JudgeDeedService {
     // 1. Fetch current submission
     const { data: existing, error: fetchError } = await supabase
       .from('judge_submissions')
-      .select('id, status, decision, payload, file_number, judge_user_id, notary_user_id')
+      .select('id, status, decision, payload, file_number, document_type, notary_name, judge_user_id, notary_user_id')
       .eq('id', input.id)
       .single();
 
@@ -897,6 +913,68 @@ export class JudgeDeedService {
         }
       } catch (syncErr) {
         console.warn('[JudgeDeedService.decideSubmission] Best-effort persistence sync error:', syncErr);
+      }
+    }
+
+    // 4. Notify the notary who submitted this rasm
+    if (existing.notary_user_id) {
+      try {
+        const decLabel =
+          input.decision === 'accepted'
+            ? 'تم التأشير والقبول'
+            : input.decision === 'accepted_with_notes'
+            ? 'تم القبول مع تسجيل ملاحظات'
+            : 'ملاحظات جوهرية تتطلب التصحيح والاستكمال';
+
+        const decType =
+          input.decision === 'accepted'
+            ? 'موافقة'
+            : input.decision === 'accepted_with_notes'
+            ? 'موافقة_بملاحظات'
+            : 'ملاحظات_جوهرية';
+
+        const fileNum = existing.file_number || existing.id.slice(0, 8);
+        const docType = existing.document_type || 'رسم توثيقي عدلي';
+        const partySummary =
+          (existingPayload as any)?.partySummary ||
+          (existingPayload as any)?.involvedNames ||
+          (activePayload as any)?.partySummary ||
+          '';
+
+        await supabase.from('judicial_notifications').insert({
+          request_number: `JD-${String(fileNum).slice(0, 48)}`,
+          notary_name: existing.notary_name || '',
+          certificate_type: docType,
+          involved_names: partySummary || null,
+          recipient_type: 'notary',
+          notary_id: existing.notary_user_id,
+          reason_for_movement: `قرار السيد قاضي التوثيق بشأن الرسم ${fileNum}: ${decLabel}`,
+          status: 'تم_البت',
+          decision_type: decType,
+          decision_date: now,
+          notes: [
+            input.decision === 'accepted'
+              ? `✅ تم التأشير والقبول على الرسم العدلي (${docType}) رقم ${fileNum} من طرف السيد قاضي التوثيق.`
+              : input.decision === 'accepted_with_notes'
+              ? `⚠️ تم التأشير بالقبول على الرسم العدلي (${docType}) رقم ${fileNum} مع الملاحظات التالية: ${input.notes || ''}`
+              : `🔴 قرر السيد قاضي التوثيق إرجاع الرسم (${docType}) رقم ${fileNum} لوجود ملاحظات جوهرية: ${input.notes || ''}`,
+            '',
+            '--- DATA JSON START ---',
+            JSON.stringify({
+              source: 'judge_deed_decision',
+              submissionId: existing.id,
+              fileNumber: existing.file_number,
+              documentType: docType,
+              decision: input.decision,
+              judgeName: user.full_name || 'السيد قاضي التوثيق',
+              judgeNotes: input.notes || null,
+              decidedAt: now,
+            }),
+            '--- DATA JSON END ---',
+          ].join('\n'),
+        });
+      } catch (notifErr) {
+        console.warn('[JudgeDeedService.decideSubmission] Notification creation skipped:', notifErr);
       }
     }
 

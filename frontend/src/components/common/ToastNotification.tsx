@@ -152,7 +152,7 @@ export function ToastContainer() {
     <div
       dir="rtl"
       aria-live="polite"
-      className="fixed top-5 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[99999] flex flex-col gap-2.5 w-[calc(100vw-2rem)] sm:w-[380px] pointer-events-none select-none font-sans"
+      className="fixed bottom-6 left-6 z-[99999] flex flex-col-reverse gap-2.5 w-[calc(100vw-2rem)] sm:w-[380px] pointer-events-none select-none font-sans"
     >
       {toasts.map((t) => {
         const config = toastConfig[t.type];
@@ -162,7 +162,7 @@ export function ToastContainer() {
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md p-4 transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${config.cardClasses}`}
+            className={`pointer-events-auto relative overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md p-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${config.cardClasses}`}
           >
             {/* Right accent line */}
             <div className={`absolute top-0 right-0 bottom-0 w-1.5 ${config.accentBar}`} />

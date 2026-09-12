@@ -27,6 +27,7 @@ export const Navbar: React.FC = () => {
   const {
     unreadTotal,
     decisionsTotal,
+    notaryNotificationsTotal,
     judgeRequestsTotal,
     judgePermissionsTotal,
     judgeAdlCopyPermissionsTotal,
@@ -436,9 +437,9 @@ export const Navbar: React.FC = () => {
                     title="القرارات والإشعارات القضائية"
                   >
                     <span className="text-xl group-hover:scale-110 transition-transform">🔔</span>
-                    {decisionsTotal > 0 ? (
+                    {notaryNotificationsTotal > 0 ? (
                       <span className="absolute -top-1 -right-1 flex min-h-[20px] min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 border-2 border-red-950 text-[10px] font-black animate-pulse">
-                        {decisionsTotal}
+                        {notaryNotificationsTotal}
                       </span>
                     ) : null}
                   </button>
