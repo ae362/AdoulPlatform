@@ -146,6 +146,10 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
            }
         }
         
+        if (current <= 1) {
+          return { ...prev, legalEntitySetupStep: 0, step: 0.25 };
+        }
+        
         return { ...prev, legalEntitySetupStep: current - 1 };
       });
     };
@@ -155,8 +159,10 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
       const isBuyerLegal = state.legalEntityTransactionType === 'buyer_legal';
       
       setState(prev => {
-        const newBuyers = [...prev.buyers];
-        const newSellers = [...prev.sellers];
+        const newBuyers = [...(prev.buyers || [])];
+        const newSellers = [...(prev.sellers || [])];
+        if (newBuyers.length === 0) newBuyers.push(createEmptyParty());
+        if (newSellers.length === 0) newSellers.push(createEmptyParty());
         
         if (isBuyerLegal) {
           newBuyers[0] = { ...newBuyers[0], ...updates, partyType: 'legal' };
@@ -171,7 +177,9 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
     };
 
     const getLegalParty = () => {
-      return state.legalEntityTransactionType === 'buyer_legal' ? state.buyers[0] : state.sellers[0];
+      const isBuyer = state.legalEntityTransactionType === 'buyer_legal';
+      const party = isBuyer ? state.buyers?.[0] : state.sellers?.[0];
+      return party || ({} as Party);
     };
 
     const legalParty = getLegalParty();
@@ -200,6 +208,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       ...prev, 
                       legalEntityTransactionType: 'seller_legal',
                       legalEntitySetupStep: 0, // Exit wizard temporarily
+                      step: 1, 
                       isEnteringNaturalPartyFirst: true // Flag to show only Buyer in Parties screen
                     }));
                   }}
@@ -730,6 +739,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       setState(prev => ({ 
                         ...prev, 
                         legalEntitySetupStep: 0, 
+                        step: 1, 
                         isEnteringNaturalPartySecond: true 
                       }));
                   }
@@ -743,8 +753,6 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         )}
       </div>
     );
-
-    return <div className="p-4 text-red-500 font-bold text-center">Error: Step mismatch in Step0. Current step: {state.step}</div>;
   };
 
     const isLegalEntityWizard = (state.documentType as string) === 'بيع_وشراء_معنوي' && (state.legalEntitySetupStep || 0) > 0;

@@ -2167,7 +2167,58 @@ export interface FeesAgentState {
   rasmHtml?: string;
   selectedHeaderId?: string;
   manualRasmFile?: File | null;
+  preReceptionVerification?: PreReceptionVerificationData;
   [key: string]: any;
+}
+
+export interface JudgePermissionDetails {
+  permissionNumber?: string;
+  permissionDate?: string;
+  courtName?: string;
+  judgeName?: string;
+  issueDate?: string;
+  reason?: string;
+  attachment?: { name: string; size: number; base64?: string; url?: string; type?: string } | null;
+  isVerified?: boolean;
+  verificationSource?: 'manual' | 'qr' | 'digital' | 'database';
+  statusText?: string;
+}
+
+export interface NoticeDetails {
+  noticeNumber?: string;
+  noticeDate?: string;
+  receivedDate?: string;
+  destination?: string;
+  courtName?: string;
+  regionalCouncil?: string;
+  attachment?: { name: string; size: number; base64?: string; url?: string; type?: string } | null;
+}
+
+export interface PreReceptionVerificationData {
+  isSimultaneousCouncil?: boolean;
+  notary1Name: string;
+  notary2Name: string;
+  receptionDate: string;
+  receptionTime: string;
+  receptionCouncil: string;
+  receptionLocation: string;
+  operationNumber: string;
+  hasJudgePermission?: boolean;
+  judgePermissionDetails: JudgePermissionDetails;
+  isWithinJurisdiction?: boolean;
+  appealCourt: string;
+  primaryCourt: string;
+  officeLocation: string;
+  judgeNotice: NoticeDetails;
+  councilNotice: NoticeDetails;
+  complianceStatus?: 'compliant' | 'blocked' | 'pending';
+  complianceCompletedAt?: string;
+  timeline?: Array<{
+    id: string;
+    timestamp: string;
+    title: string;
+    status: 'info' | 'success' | 'warning' | 'error';
+  }>;
 }
 
 export interface FeesAgentProps {
@@ -2175,3 +2226,4 @@ export interface FeesAgentProps {
   initialJudgeSubmissionId?: string | null;
   startMode?: 'intake' | 'drafting';
 }
+

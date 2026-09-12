@@ -44,6 +44,7 @@ import { ExpandedTableModal } from '../modals/ExpandedTableModal';
 import { VaultModal } from '../modals/VaultModal';
 import { trpc } from '../../../trpc';
 import { useAuth } from '../../../contexts/AuthContext';
+import { PreReceptionVerificationGate } from './PreReceptionVerificationGate';
 
 interface PublicSearchResultRow {
   key: string;
@@ -527,14 +528,13 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
 
     const handleDocumentSelect = (type: DocumentType) => {
       const isMarriage = type === 'زواج' || type === 'زواج_مختلط';
-      const isLegalEntity = type === 'بيع_وشراء_معنوي';
       const isDivorce = type === 'الاشهاد_على_الطلاق_الاتفاقي';
 
       setState((prev) => ({
         ...prev,
         documentType: type,
         step: startMode === 'drafting' ? 7 : 0.1, // Go to Decision Gateway or Drafting
-        legalEntitySetupStep: isLegalEntity ? 1 : 0,
+        legalEntitySetupStep: 0,
         marriageDetails: isMarriage ? {
           dowryAmount: 0,
           dowryAmountInWords: '',
@@ -562,11 +562,23 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
       addAuditEntry('اختيار نوع الرسم', 'documentType', '', type);
     };
 
+    const goToVerificationGate = () => {
+      setState(prev => ({
+        ...prev,
+        step: 0.25
+      }));
+    };
+
     const proceedToWizard = () => {
-       setState(prev => ({
-         ...prev,
-         step: prev.documentType === 'زواج_مختلط' ? 0.5 : 1
-       }));
+      setState(prev => {
+        const isLegalEntity = prev.documentType === 'بيع_وشراء_معنوي';
+        const isMixedMarriage = prev.documentType === 'زواج_مختلط';
+        return {
+          ...prev,
+          step: isMixedMarriage ? 0.5 : 1,
+          legalEntitySetupStep: isLegalEntity ? 1 : 0
+        };
+      });
     };
 
     // 0. Dashboard
@@ -911,7 +923,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Option 1 */}
-              <div className="border-2 border-green-100 rounded-xl p-6 hover:border-green-500 transition-all cursor-pointer group" onClick={proceedToWizard}>
+              <div className="border-2 border-green-100 rounded-xl p-6 hover:border-green-500 transition-all cursor-pointer group" onClick={goToVerificationGate}>
                 <div className="mb-4 bg-green-100 w-16 h-16 rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
                   ✅
                 </div>
@@ -2125,7 +2137,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
             </div>
 
             <button 
-              onClick={proceedToWizard}
+              onClick={goToVerificationGate}
               className="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-xl hover:bg-green-700 transition shadow-lg flex items-center justify-center gap-3"
             >
               <span>✍️</span>
@@ -2307,7 +2319,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
           </div>
 
           <button 
-            onClick={proceedToWizard}
+            onClick={goToVerificationGate}
             className="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-xl hover:bg-green-700 transition shadow-lg flex items-center justify-center gap-3"
           >
             <span>✍️</span>
@@ -2508,7 +2520,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
           </div>
 
           <button 
-            onClick={proceedToWizard}
+            onClick={goToVerificationGate}
             className="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-xl hover:bg-green-700 transition shadow-lg flex items-center justify-center gap-3"
           >
             <span>✍️</span>
@@ -2696,7 +2708,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
           </div>
 
           <button 
-            onClick={proceedToWizard}
+            onClick={goToVerificationGate}
             className="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-xl hover:bg-green-700 transition shadow-lg flex items-center justify-center gap-3"
           >
             <span>✍️</span>
@@ -2708,6 +2720,32 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
           </button>
         </div>
       );
+    }
+
+    // 0.25 Pre-Reception Verification Gate (قسم «التلقي العدلي» — بوابة التحقق القبلي)
+    if (state.step === 0.25) {
+      return (
+        <PreReceptionVerificationGate
+          state={state}
+          setState={setState}
+          onProceed={proceedToWizard}
+          onBack={() => setState(prev => ({ ...prev, step: 0.1 }))}
+        />
+      );
+    }
+
+    // Safety fallback: if step is an unexpected number under 0.5, ensure it never shows an empty page
+    if (state.step && state.step > 0 && state.step < 0.5) {
+      if (state.documentType) {
+        return (
+          <PreReceptionVerificationGate
+            state={state}
+            setState={setState}
+            onProceed={proceedToWizard}
+            onBack={() => setState(prev => ({ ...prev, step: 0.1 }))}
+          />
+        );
+      }
     }
 
     return null;

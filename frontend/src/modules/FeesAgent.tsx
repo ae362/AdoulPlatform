@@ -153,6 +153,17 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
     });
   }, [initialJudgeSubmissionId]);
 
+  // Self-heal any stale transition steps (such as 0.35) so the user never sees a blank page
+  useEffect(() => {
+    if (state.step === 0.35) {
+      setState(prev => ({
+        ...prev,
+        step: 1,
+        legalEntitySetupStep: prev.documentType === 'بيع_وشراء_معنوي' ? (prev.legalEntitySetupStep !== undefined ? prev.legalEntitySetupStep : 1) : 0
+      }));
+    }
+  }, [state.step]);
+
   const handleNext = useCallback(() => {
     setState((prev) => ({ ...prev, step: (prev.step || 0) + 1 }));
   }, []);
@@ -168,8 +179,15 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
           <div className="bg-white rounded-lg shadow-lg p-6">
             {/* Step 0 & Intake Gateways */}
             {(state.step === 0 || state.step === undefined || state.step === null || (state.step > 0 && state.step < 0.5)) && (
-              state.legalEntitySetupStep && state.legalEntitySetupStep > 0 ? (
-                <LegalEntityWizard state={state} setState={setState} onNext={handleNext} onBack={handleBack} />
+              state.step === 0.35 ? (
+                (() => {
+                  const WizardComponent = DOCUMENT_WIZARD_REGISTRY[state.documentType || 'بيع_وشراء_معنوي'];
+                  return WizardComponent ? (
+                    <WizardComponent state={{ ...state, step: 1 }} setState={setState} onNext={handleNext} onBack={handleBack} />
+                  ) : (
+                    <Step0_DocumentSelection state={state} setState={setState} onNext={handleNext} onBack={handleBack} startMode={startMode} />
+                  );
+                })()
               ) : (
                 <Step0_DocumentSelection state={state} setState={setState} onNext={handleNext} onBack={handleBack} startMode={startMode} />
               )
@@ -179,7 +197,16 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
             {state.step >= 0.5 && state.step < 7 && state.documentType && (
               (() => {
                 const WizardComponent = DOCUMENT_WIZARD_REGISTRY[state.documentType];
-                if (!WizardComponent) return null;
+                if (!WizardComponent) {
+                  return (
+                    <div className="p-8 text-center bg-amber-50 rounded-2xl border border-amber-200">
+                      <p className="text-lg font-bold text-amber-900 mb-2">نوع الشهادة المحدد ({state.documentType}) قيد المعالجة</p>
+                      <button onClick={() => setState(prev => ({ ...prev, step: 0 }))} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold">
+                        العودة لاختيار نوع الشهادة
+                      </button>
+                    </div>
+                  );
+                }
                 return <WizardComponent state={state} setState={setState} onNext={handleNext} onBack={handleBack} />;
               })()
             )}

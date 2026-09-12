@@ -2132,6 +2132,70 @@ export const NotarySignatureWorkarea: React.FC = () => {
     );
   }
 
+  const docPayload = (rasm as any)?.payload || {};
+  const isAudited =
+    docPayload.auditStatus === 'completed' ||
+    docPayload.storedInLibrary === true ||
+    docPayload.readyForSigning === true ||
+    docPayload.isAudited === true ||
+    !!docPayload.auditHubInclusion ||
+    rasm?.status === 'audited' ||
+    rasm?.status === 'ready_for_signing';
+
+  if (!isLoading && rasm && !isAudited) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a192f] p-4 font-sans text-slate-100" dir="rtl">
+        <div className="max-w-md w-full rounded-3xl border border-amber-500/30 bg-slate-900/95 p-8 text-center shadow-2xl backdrop-blur-xl">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shadow-inner">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-black text-white">الرسم غير جاهز للتوقيع</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-300">
+            هذا الرسم لم يستكمل مرحلة التدقيق والتحقق القانوني بعد. يلزم إتمام مسار التدقيق والتضمين أولاً قبل الشروع في التوقيع العدلي.
+          </p>
+          <div className="mt-8 flex flex-col gap-3">
+            <button
+              onClick={() => navigate(`/dashboard?module=auditHub&id=${id}`)}
+              className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 py-3 text-xs font-black text-white shadow-lg shadow-emerald-700/20 transition hover:brightness-110 active:scale-95"
+            >
+              الانتقال إلى مسار التضمين والتدقيق
+            </button>
+            <button
+              onClick={() => navigate('/dashboard?module=savedDocuments')}
+              className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 text-xs font-bold text-slate-300 transition hover:bg-slate-700 hover:text-white"
+            >
+              العودة إلى مكتبة الوثائق المحفوظة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoading && !rasm && !!id) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a192f] p-4 font-sans text-slate-100" dir="rtl">
+        <div className="max-w-md w-full rounded-3xl border border-rose-500/30 bg-slate-900/95 p-8 text-center shadow-2xl backdrop-blur-xl">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 shadow-inner">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-black text-white">تعذر العثور على الرسم</h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-300">
+            الرسم المطلوب غير موجود أو تم حذفه من النظام.
+          </p>
+          <div className="mt-8">
+            <button
+              onClick={() => navigate('/dashboard?module=savedDocuments')}
+              className="w-full rounded-xl bg-slate-800 border border-slate-700 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-slate-700"
+            >
+              العودة إلى مكتبة الوثائق المحفوظة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#0a192f] font-sans text-slate-100" dir="rtl">
       <div className="relative shrink-0 overflow-hidden border-b border-blue-900/50 bg-[linear-gradient(135deg,#071426_0%,#0B254E_35%,#123E7E_70%,#1A56B0_100%)] text-white shadow-2xl z-20">

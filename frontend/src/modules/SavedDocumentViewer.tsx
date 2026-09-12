@@ -65,7 +65,15 @@ export const SavedDocumentViewer: React.FC = () => {
       metadata: Record<string, unknown> | null;
     }>;
   } | undefined;
-  const payload = document?.payload || {};
+  const payload = (document?.payload || {}) as Record<string, any>;
+  const isAudited =
+    payload.auditStatus === 'completed' ||
+    payload.storedInLibrary === true ||
+    payload.readyForSigning === true ||
+    payload.isAudited === true ||
+    !!payload.auditHubInclusion ||
+    (document as any)?.status === 'audited' ||
+    (document as any)?.status === 'ready_for_signing';
 
   React.useEffect(() => {
     const list = document?.attachments || [];
@@ -605,23 +613,39 @@ export const SavedDocumentViewer: React.FC = () => {
 
               {/* Footer - Action Buttons */}
               <div className="border-t border-slate-800 p-6 space-y-3 bg-gradient-to-t from-slate-950 to-slate-900">
+                {isAudited ? (
+                  <button
+                    onClick={() => {
+                      if (!id) return;
+                      const navState: any = {};
+                      if (selectedAttachmentId) navState.preferredAttachmentId = selectedAttachmentId;
+                      if (selectedAttachmentUrl) navState.preferredAttachmentUrl = selectedAttachmentUrl;
+                      navigate(`/notary-signing-portal/sign/${id}`, { state: navState });
+                    }}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg font-bold hover:brightness-110 transition-colors flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-700/20"
+                  >
+                    <FileText className="w-4 h-4" />
+                    رواق التوقيع العدلي
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    title="الرسم غير جاهز للتوقيع. يجب استكمال تدقيقه وتضمينه أولاً"
+                    className="w-full px-6 py-3 bg-slate-800 text-slate-500 rounded-lg font-bold flex items-center justify-center gap-2 text-sm cursor-not-allowed border border-slate-700/60 opacity-70 select-none"
+                  >
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    غير جاهز للتوقيع العدلي
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
-                    if (!id) return;
-                    const navState: any = {};
-                    if (selectedAttachmentId) navState.preferredAttachmentId = selectedAttachmentId;
-                    if (selectedAttachmentUrl) navState.preferredAttachmentUrl = selectedAttachmentUrl;
-                    navigate(`/notary-signing-portal/sign/${id}`, { state: navState });
+                    if (id) navigate(`/dashboard?module=auditHub&id=${id}`);
                   }}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-500/20"
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2 text-sm shadow-md"
                 >
-                  <FileText className="w-4 h-4" />
-                  رواق التوقيع العدلي
-                </button>
-
-                <button className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm">
                   <Edit className="w-4 h-4" />
-                  تعديل الوثيقة
+                  مسار التضمين والتدقيق
                 </button>
 
                 <button className="w-full px-6 py-3 bg-slate-700/50 text-slate-100 rounded-lg font-bold hover:bg-slate-600/50 transition-colors flex items-center justify-center gap-2 text-sm border border-slate-600/50">

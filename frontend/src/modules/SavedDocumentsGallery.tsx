@@ -273,7 +273,7 @@ export const SavedDocumentsGallery: React.FC = () => {
 
             {!savedRasmsQuery.isLoading && !savedRasmsQuery.isError && rows.length > 0 && (
               <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
-                <div className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_200px] gap-4 bg-slate-50 px-6 py-4 text-xs font-black text-slate-500">
+                <div className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_220px] gap-4 bg-slate-50 px-6 py-4 text-xs font-black text-slate-500">
                   <div>نوع الوثيقة والحالة</div>
                   <div>الأطراف المعنية</div>
                   <div>رقم الملف</div>
@@ -292,7 +292,7 @@ export const SavedDocumentsGallery: React.FC = () => {
                     return (
                       <div
                         key={row.id}
-                        className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_200px] items-center gap-4 px-6 py-5 transition hover:bg-slate-50/80"
+                        className="grid grid-cols-[1.3fr_1.2fr_120px_100px_130px_220px] items-center gap-4 px-6 py-5 transition hover:bg-slate-50/80"
                       >
                         <div>
                           <div className="flex items-center gap-2">
@@ -338,19 +338,27 @@ export const SavedDocumentsGallery: React.FC = () => {
                             مسار التضمين
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/notary-signing-portal/sign/${row.id}`)}
-                            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black text-white transition shadow-sm ${
-                              audited
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 shadow-emerald-700/20'
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:brightness-110 shadow-blue-700/20'
-                            }`}
-                            title="الانتقال إلى رواق التوقيع لتوقيع الرسم"
-                          >
-                            <FileSignature className="h-3.5 w-3.5" />
-                            توقيع الرسم
-                          </button>
+                          {audited ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/notary-signing-portal/sign/${row.id}`)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-3 py-1.5 text-xs font-black text-white shadow-sm shadow-emerald-700/20 transition hover:brightness-110 active:scale-95 cursor-pointer"
+                              title="الانتقال إلى رواق التوقيع لتوقيع الرسم"
+                            >
+                              <FileSignature className="h-3.5 w-3.5" />
+                              توقيع الرسم
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-400 cursor-not-allowed opacity-75 select-none"
+                              title="الرسم غير جاهز للتوقيع. يجب استكمال تدقيقه وتضمينه أولاً عبر زر 'مسار التضمين'"
+                            >
+                              <FileSignature className="h-3.5 w-3.5 text-slate-400" />
+                              غير جاهز للتوقيع
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
