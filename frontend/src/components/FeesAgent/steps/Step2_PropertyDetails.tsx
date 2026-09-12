@@ -331,10 +331,30 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
     }
 
     return (
-      <div className="space-y-8">
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">{(state.documentType as string) === 'حيازة' ? 'الخطوة الثالثة: تفاصيل الحيازة' : 'الخطوة الثالثة: تفاصيل الملكية'}</h2>
-          <p className="text-gray-700">أدخل تفاصيل العقار/الموضوع المراد التصرف فيه.</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800 border border-amber-200">
+              <span>🏢</span>
+              <span>المرحلة 3 من 8</span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              العقار ومحل المعاملة
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>🏛️</span>
+            <span>
+              {state.documentType?.includes('بيع') || state.documentType?.includes('شراء')
+                ? 'الخطوة الثالثة: العقار المبيع والتحفيظ العقاري'
+                : (state.documentType as string) === 'حيازة'
+                ? 'الخطوة الثالثة: تفاصيل الحيازة'
+                : 'الخطوة الثالثة: تفاصيل الملكية والعقار'}
+            </span>
+          </h2>
+          <p className="text-sm font-medium text-slate-600">
+            أدخل تفاصيل ومواصفات العقار المبيع، حالة التحفيظ (محفظ / غير محفظ / في طور التحفيظ)، والحدود الجغرافية.
+          </p>
         </div>
 
         <div className="space-y-6">
@@ -2690,9 +2710,9 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
               
               return newState;
             })}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق (بيانات الأطراف)</span>
           </button>
           <button
             onClick={() => {
@@ -2702,9 +2722,10 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                 step: 3,
               }));
             }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            التالي: الشواهد الادارية
+            <span>التالي: الشواهد الإدارية والتراخيص</span>
+            <span>→</span>
           </button>
         </div>
       </div>

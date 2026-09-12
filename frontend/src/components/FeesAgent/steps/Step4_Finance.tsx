@@ -6,22 +6,37 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar
+  MapPin, XCircle, Printer, Upload, Calendar, Scale
 } from 'lucide-react';
 
 export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }) => {
     const isInheritanceType = ['ara', 'fari', 'ihsa', 'اراثة', 'بيان_فريضة', 'احصاء_متروك', 'مقاسمة', 'ملكية'].includes(state.documentType);
     const isMunakala = state.documentType === 'مناقلة';
+    const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
     const [tempFinance, setTempFinance] = useState(state.finance);
 
     return (
-      <div className="space-y-8">
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة الرابعة: الثمن والالتزامات</h2>
-          <p className="text-gray-700">أدخل تفاصيل الثمن وطريقة الأداء والتزاماتكم الضريبية.</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="relative overflow-hidden rounded-3xl border border-teal-100 bg-gradient-to-r from-teal-50/90 via-emerald-50/50 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-1 text-xs font-black text-teal-800 border border-teal-200">
+              <Scale className="h-3.5 w-3.5 text-teal-600" />
+              <span>{isSale ? 'المرحلة 5 من 8' : 'الجانب المالي'}</span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              {state.documentType || 'المعاملة المالية'}
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>💰</span>
+            <span>{isSale ? 'الخطوة الخامسة: الثمن والوفاء والالتزامات' : 'الجانب المالي: الثمن والالتزامات'}</span>
+          </h2>
+          <p className="text-sm font-medium text-slate-600">
+            أدخل تفاصيل الثمن المتفق عليه بالأرقام والحروف، طريقة الوفاء، وشروط التسجيل الضريبي والتحفيظ العقاري.
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+        <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-slate-200 space-y-6">
           {isInheritanceType && (
              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-gray-800 font-semibold">
                 قوم المخلف/العقارات المذكورة اعلاه من اجل التسجيل و التمبربمصلحة الضرائب في مبلغ
@@ -177,12 +192,12 @@ export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }
           )}
         </div>
 
-        <div className="flex gap-4 justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => setState((prev) => ({ ...prev, step: state.documentType === 'مقاسمة' ? 3.5 : 3 }))}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق</span>
           </button>
           <button
             onClick={() => {
@@ -192,9 +207,10 @@ export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }
                 step: 5,
               }));
             }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            التالي →
+            <span>التالي: بيانات الشهود ومجلس العقد</span>
+            <span>→</span>
           </button>
         </div>
       </div>

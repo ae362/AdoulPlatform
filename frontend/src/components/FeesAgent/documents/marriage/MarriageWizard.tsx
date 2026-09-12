@@ -149,13 +149,27 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
     };
 
     return (
-      <div className="space-y-8">
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة الثانية: تفاصيل الزواج</h2>
-          <p className="text-gray-700">أدخل بيانات الصداق والإذن بالزواج.</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="relative overflow-hidden rounded-3xl border border-rose-100 bg-gradient-to-r from-rose-50/90 via-amber-50/50 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-800 border border-rose-200">
+              <span>💍</span>
+              <span>المرحلة 3: تفاصيل وشروط النكاح</span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              توثيق الصداق والشروط الاتفاقية
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>📜</span>
+            <span>الخطوة الثانية: تفاصيل الزواج والصداق والشروط</span>
+          </h2>
+          <p className="text-sm font-medium text-slate-600">
+            توثيق مقدار الصداق وحال قبضه أو تأجيله، وتضمين الشروط الاتفاقية ومراجع الإذن القضائي بالزواج.
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+        <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-slate-200 space-y-6">
           <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات الصداق</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-1 md:col-span-2">
@@ -638,18 +652,19 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
           </div>
         </div>
 
-        <div className="flex gap-4 justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق (بيانات الزوجين)</span>
           </button>
           <button
             onClick={handleNext}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            التالي: التواريخ
+            <span>التالي: التواريخ ومجلس الإشهاد</span>
+            <span>→</span>
           </button>
         </div>
       </div>

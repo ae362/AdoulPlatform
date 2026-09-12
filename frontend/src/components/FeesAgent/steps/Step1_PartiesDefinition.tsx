@@ -15,7 +15,7 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar
+  MapPin, XCircle, Printer, Upload, Calendar, Users
 } from 'lucide-react';
 
 export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, setState }) => {
@@ -1291,21 +1291,49 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           </div>
         )}
 
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            {state.isEnteringNaturalPartyFirst 
-              ? 'بيانات المشتري (الشخص الذاتي)' 
-              : state.isEnteringNaturalPartySecond 
-                ? 'بيانات البائع (الشخص الذاتي)'
-                : 'الخطوة الثانية: بيانات الأطراف'
-            }
+        <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800 border border-blue-200">
+              <Users className="h-3.5 w-3.5 text-blue-600" />
+              <span>
+                {state.documentType === 'زواج' || state.documentType === 'زواج_مختلط'
+                  ? 'المرحلة 2: الزوجان والولي'
+                  : (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء')
+                  ? 'المرحلة 2 من 8: أطراف العقد'
+                  : 'المرحلة 2: بيانات الأطراف'}
+              </span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              {state.documentType === 'زواج' || state.documentType === 'زواج_مختلط'
+                ? 'رسم الزواج والنكاح'
+                : (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء')
+                ? 'عقد البيع والشراء العقاري'
+                : state.documentType || 'توثيق الهويات والصفات'}
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>👥</span>
+            <span>
+              {state.isEnteringNaturalPartyFirst 
+                ? 'بيانات المشتري (الشخص الذاتي)' 
+                : state.isEnteringNaturalPartySecond 
+                  ? 'بيانات البائع (الشخص الذاتي)'
+                  : state.documentType === 'زواج' || state.documentType === 'زواج_مختلط'
+                  ? 'الخطوة الأولى: بيانات الزوجين والولي الشرعي'
+                  : (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء')
+                  ? 'الخطوة الثانية: أطراف العقد (البائع والمشتري)'
+                  : 'الخطوة الأولى: بيانات الأطراف والهويات'
+              }
+            </span>
           </h2>
-          <p className="text-gray-700">
+          <p className="text-sm font-medium text-slate-600">
             {state.isEnteringNaturalPartyFirst 
               ? 'أدخل بيانات المشتري أولاً، ثم سننتقل لإعداد بيانات البائع (الشخص المعنوي).'
-              : state.isEnteringNaturalPartySecond
+              : state.isEnteringNaturalPartySecond 
                 ? 'أدخل بيانات البائع (الشخص الذاتي) لإتمام العملية.'
-                : `أدخل بيانات ${labels.sellerSingle} و${labels.buyerGroup}${isInheritanceType ? ' وطالب الشهادة' : ''} مع التحقق من اكتمال المعلومات القانونية.`
+                : state.documentType === 'زواج' || state.documentType === 'زواج_مختلط'
+                ? 'إدخال بيانات الزوج والزوجة والولي (إن وجد) والتحقق من الهوية والأهلية ومطابقة المعطيات الرسمية.'
+                : `أدخل بيانات ${labels.sellerSingle} و${labels.buyerGroup}${isInheritanceType ? ' وطالب الشهادة' : ''} مع التحقق من اكتمال الأوصاف والمعلومات القانونية.`
             }
           </p>
         </div>
@@ -4810,7 +4838,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           ))}
         </div>
         )}
-        <div className="flex gap-4 justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => {
               if (state.isEnteringNaturalPartyFirst) {
@@ -4823,31 +4851,36 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 setState((prev) => ({ ...prev, step: prev.documentType === 'زواج_مختلط' ? 0.5 : 0 }));
               }
             }}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق</span>
           </button>
           <button
             onClick={handleNext}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            {state.isEnteringNaturalPartyFirst 
-              ? 'تابع: إعداد بيانات الشخص المعنوي' 
-              : state.documentType === 'زواج' || state.documentType === 'زواج_مختلط' || (state.documentType as string) === 'استمرار_الزوجية'
-                ? 'التالي: تفاصيل الزواج والصداق'
-                : state.documentType === 'حيازة' 
-                  ? 'التالي: تفاصيل الحيازة' 
-                  : (state.documentType as string) === 'طلاق' || (state.documentType as string) === 'طلاق_اتفاقي' || (state.documentType as string) === 'رجعة'
-                    ? 'التالي: تفاصيل الطلاق'
-                    : state.documentType === 'وصية'
-                      ? 'التالي: تفاصيل الوصية'
-                      : state.documentType === 'هبة' || state.documentType === 'صدقة'
-                        ? `التالي: تفاصيل ${state.documentType}`
-                        : state.documentType === 'رهن' || state.documentType === 'رهن_حيازي'
-                          ? 'التالي: تفاصيل الرهن'
-                          : (state.documentType as string) === 'مقاسمة'
-                            ? 'التالي: تفاصيل المقاسمة'
-                            : 'التالي: تفاصيل الملكية'}
+            <span>
+              {state.isEnteringNaturalPartyFirst 
+                ? 'تابع: إعداد بيانات الشخص المعنوي' 
+                : state.documentType === 'زواج' || state.documentType === 'زواج_مختلط' || (state.documentType as string) === 'استمرار_الزوجية'
+                  ? 'التالي: تفاصيل الزواج والصداق'
+                  : state.documentType === 'حيازة' 
+                    ? 'التالي: تفاصيل الحيازة' 
+                    : (state.documentType as string) === 'طلاق' || (state.documentType as string) === 'طلاق_اتفاقي' || (state.documentType as string) === 'رجعة'
+                      ? 'التالي: تفاصيل الطلاق'
+                      : state.documentType === 'وصية'
+                        ? 'التالي: تفاصيل الوصية'
+                        : state.documentType === 'هبة' || state.documentType === 'صدقة'
+                          ? `التالي: تفاصيل ${state.documentType}`
+                          : state.documentType === 'رهن' || state.documentType === 'رهن_حيازي'
+                            ? 'التالي: تفاصيل الرهن'
+                            : (state.documentType as string) === 'مقاسمة'
+                              ? 'التالي: تفاصيل المقاسمة'
+                              : (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء')
+                              ? 'التالي: بيانات العقار المبيع'
+                              : 'التالي: تفاصيل الملكية'}
+            </span>
+            <span>→</span>
           </button>
         </div>
       </div>

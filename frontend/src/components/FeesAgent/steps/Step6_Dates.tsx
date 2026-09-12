@@ -9,12 +9,15 @@ import {
   performValidationChecks,
 } from '../../../utils/feesAgentUtils';
 import { generateDocumentDraft, generateRasmHtml } from '../../../templates/feesAgentTemplates';
+import { Calendar } from 'lucide-react';
 
 export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) => {
     const { user } = useAuth();
     const currentNotary = user?.full_name || 'عدول متلقي';
     const secondaryNotaryName = '';
     const isInheritanceType = ['ara', 'fari', 'ihsa', 'اراثة', 'بيان_فريضة', 'احصاء_متروك', 'مقاسمة', 'ملكية'].includes(state.documentType);
+    const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
+    const isMarriage = state.documentType === 'زواج' || state.documentType === 'زواج_مختلط';
 
     useEffect(() => {
         // Run specific effects for date/time conversion when component mounts or dependencies change
@@ -47,13 +50,27 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
     }, [state.meta.dateGregorian, state.meta.time]); // Dependencies
 
     return (
-      <div className="space-y-8">
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة {isInheritanceType ? 'السابعة' : 'السادسة'}: التواريخ والمراجع</h2>
-          <p className="text-gray-700">أدخل التواريخ والمراجع النهائية للرسم.</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800 border border-blue-200">
+              <Calendar className="h-3.5 w-3.5 text-blue-600" />
+              <span>{isSale ? 'المرحلة 6 من 8' : isMarriage ? 'تاريخ ومجلس الإشهاد' : 'التواريخ ومجلس العقد'}</span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              {state.documentType || 'توثيق التاريخ والمراجع'}
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>📅</span>
+            <span>{isSale ? 'الخطوة السادسة: تواريخ التلقي والمراجع ومجلس الإشهاد' : 'الخطوة السادسة: التواريخ والمراجع ومجلس العقد'}</span>
+          </h2>
+          <p className="text-sm font-medium text-slate-600">
+            تحديد التواريخ الميلادية والهجرية وتفقيطها بالحروف، وتوثيق مجلس الإشهاد ومراجع الاستناد قبل الانتقال إلى التحرير والصياغة.
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+        <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-slate-200 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">التاريخ الميلادي *</label>
@@ -281,9 +298,9 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
               // Default for all other deeds with witnesses: Return to Step 5
               return { ...prev, step: 5 };
             })}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق</span>
           </button>
           <button
             onClick={() => {
@@ -298,9 +315,10 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
                 step: 7,
               }));
             }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            المراجعة النهائية →
+            <span>متابعة إلى التحرير والمراجعة النهائية</span>
+            <span>→</span>
           </button>
         </div>
       </div>

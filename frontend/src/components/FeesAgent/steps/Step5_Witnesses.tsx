@@ -6,12 +6,14 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar
+  MapPin, XCircle, Printer, Upload, Calendar, Users
 } from 'lucide-react';
 
 export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState }) => {
     const witnesses = state.witnesses || [];
     const isAra = (state.documentType as string) === 'ara' || state.documentType === 'اراثة';
+    const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
+    const isMarriage = state.documentType === 'زواج' || state.documentType === 'زواج_مختلط';
 
     const handleWitnessChange = (index: number, field: keyof Witness, value: any) => {
       if (value instanceof File) {
@@ -53,33 +55,47 @@ export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState
       setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
     };
 
-    // Initialize with one witness if empty
-    React.useEffect(() => {
-      if (witnesses.length === 0) {
-        setState((prev) => ({ ...prev, witnesses: [createEmptyWitness()] }));
-      }
-    }, []);
-
     return (
-      <div className="space-y-8">
-        <div className="bg-blue-50 p-6 rounded-lg border-r-4 border-blue-400">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">الخطوة الخامسة: بيانات الشهود</h2>
-          <p className="text-gray-700">أدخل بيانات الشهود (الحد الأقصى 12 شاهد).</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="relative overflow-hidden rounded-3xl border border-cyan-100 bg-gradient-to-r from-cyan-50/90 via-blue-50/50 to-white p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 px-3 py-1 text-xs font-black text-cyan-800 border border-cyan-200">
+              <Users className="h-3.5 w-3.5 text-cyan-600" />
+              <span>{isSale ? 'المرحلة 6 من 8' : isMarriage ? 'شهود عقد الزواج' : 'مجلس الإشهاد والشهود'}</span>
+            </span>
+            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+              {state.documentType || 'مجلس الإشهاد'}
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
+            <span>👥</span>
+            <span>{isSale ? 'الخطوة السادسة: بيانات الشهود ومجلس التلقي' : 'الخطوة الخامسة: بيانات الشهود ومجلس العقد'}</span>
+          </h2>
+          <p className="text-sm font-medium text-slate-600">
+            {isMarriage
+              ? 'إدخال بيانات الشاهدين العدلين أو شهود العقد مع التحقق من الهويات والأهلية الشرعية.'
+              : 'أدخل بيانات الشهود المستمعين أو شهود العقد (الحد الأدنى حسب مقتضيات رسم المعاملة).'}
+          </p>
         </div>
 
         <div className="space-y-6">
           {witnesses.map((witness, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-400 relative">
+            <div key={index} className="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 hover:border-slate-300 transition-all relative space-y-4">
               {witnesses.length > 1 && (
                 <button
                   onClick={() => removeWitness(index)}
-                  className="absolute top-4 left-4 text-red-500 hover:text-red-700 font-semibold"
+                  className="absolute top-4 left-4 inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition"
                 >
                   ✕ حذف
                 </button>
               )}
               
-              <h4 className="text-lg font-bold text-gray-800 mb-4">الشاهد رقم {index + 1}</h4>
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-cyan-800 text-xs font-black">
+                  {index + 1}
+                </span>
+                <h4 className="text-base font-black text-slate-800">بيانات الشاهد رقم {index + 1}</h4>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -390,21 +406,22 @@ export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState
           )}
         </div>
 
-        <div className="flex gap-4 justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => setState((prev) => ({
               ...prev,
               step: prev.documentType === 'ثبوت_نسب_ببينة_السماع' ? 3 : 4
             }))}
-            className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
-            ← السابق
+            <span>← السابق</span>
           </button>
           <button
             onClick={() => setState((prev) => ({ ...prev, step: 6 }))}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            التالي: التواريخ والمراجع
+            <span>التالي: التواريخ والمراجع ومجلس الإشهاد</span>
+            <span>→</span>
           </button>
         </div>
       </div>
