@@ -15,7 +15,9 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar, Users
+  MapPin, XCircle, Printer, Upload, Calendar, Users,
+  User, CreditCard, Briefcase, Heart, Home, Trash2, Sparkles,
+  Building, CheckCircle2, Award, Globe, Building2, Hash, Scale, BookOpen
 } from 'lucide-react';
 
 export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, setState }) => {
@@ -1406,24 +1408,37 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
         {!state.isEnteringNaturalPartyFirst && (!isInheritanceType || (state.documentType !== 'ملكية' && state.documentType !== 'حيازة') || ownershipCriteria.areOwnersAlive === 'no') && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-800">
-              {labels.sellerGroup}
-              {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (state.documentType as string) !== 'استمرار_الزوجية' ? ` (عددهم ${tempSellers.length})` : ''}
-            </h3>
-            <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <span>{labels.sellerGroup}</span>
+                  {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (state.documentType as string) !== 'استمرار_الزوجية' && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200">
+                      {tempSellers.length} طرف
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">إدخال والتحقق من الهوية والأهلية القانونية</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
                 <button 
-                  className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 font-semibold text-sm"
+                  className="px-3.5 py-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl hover:bg-amber-100 font-bold text-xs transition shadow-2xs flex items-center gap-1.5"
                   type="button" 
                   onClick={() => setShowSellerShareModal(true)}
                 >
-                  📊 توزيع الحصص
+                  <Award className="w-4 h-4 text-amber-600" />
+                  <span>توزيع الحصص</span>
                 </button>
               )}
               {(state.documentType === 'ملكية' || state.documentType === 'حيازة') && ownershipCriteria.areOwnersAlive === 'no' && (
                 <button 
-                  className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-semibold text-sm"
+                  className="px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 font-bold text-xs transition shadow-2xs"
                   type="button" 
                   onClick={() => setShowDeceasedSelectionModal(true)}
                 >
@@ -1431,18 +1446,43 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 </button>
               )}
               {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
-                <button className="btn-secondary text-sm" type="button" onClick={addSeller}>+ {labels.sellerAdd}</button>
+                <button 
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  type="button" 
+                  onClick={addSeller}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{labels.sellerAdd}</span>
+                </button>
               )}
             </div>
           </div>
-          {errors.sellers && <p className="text-red-500 text-sm">{errors.sellers}</p>}
+          {errors.sellers && <p className="text-rose-500 text-xs font-bold">{errors.sellers}</p>}
 
           {tempSellers.map((seller, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow border-l-4 border-orange-400 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-800">{labels.sellerSingle} رقم {index + 1}</h4>
+            <div key={index} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all p-6 sm:p-7 space-y-6 overflow-hidden relative">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-black shadow-2xs">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-lg font-black text-slate-800">{labels.sellerSingle} رقم {index + 1}</h4>
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">الطرف الأول</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-400">البيانات الشخصية ووثائق إثبات الهوية</p>
+                  </div>
+                </div>
                 {tempSellers.length > 1 && (
-                  <button className="text-red-600 font-semibold" type="button" onClick={() => removeSeller(index)}>حذف</button>
+                  <button 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition shadow-2xs"
+                    type="button" 
+                    onClick={() => removeSeller(index)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>حذف</span>
+                  </button>
                 )}
               </div>
 
@@ -1551,25 +1591,30 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   <>
                     {/* Nationality Selection */}
                     {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
-                      <div className="col-span-1 md:col-span-2 mb-4">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الجنسية</label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="col-span-1 md:col-span-2 mb-2 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                          <Globe className="w-3.5 h-3.5 text-blue-600" />
+                          <span>الجنسية</span>
+                        </label>
+                        <div className="flex gap-3">
+                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition border ${seller.nationality !== 'اجنبي' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                             <input
                               type="radio"
                               checked={seller.nationality !== 'اجنبي'} // Default to Moroccan
                               onChange={() => handleSellerChange(index, 'nationality', 'مغربي')}
-                              className="w-4 h-4 text-blue-600"
+                              className="sr-only"
                             />
+                            <span>{seller.nationality !== 'اجنبي' ? '✓' : '○'}</span>
                             <span>مغربي</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition border ${seller.nationality === 'اجنبي' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                             <input
                               type="radio"
                               checked={seller.nationality === 'اجنبي'}
                               onChange={() => handleSellerChange(index, 'nationality', 'اجنبي')}
-                              className="w-4 h-4 text-blue-600"
+                              className="sr-only"
                             />
+                            <span>{seller.nationality === 'اجنبي' ? '✓' : '○'}</span>
                             <span>أجنبي</span>
                           </label>
                         </div>
@@ -1577,25 +1622,33 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     )}
 
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل (بالعربية) *</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <User className="w-3.5 h-3.5 text-blue-600" />
+                        <span>الاسم الكامل (بالعربية)</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={seller.name}
                         onChange={(e) => handleSellerChange(index, 'name', e.target.value)}
-                        className={`w-full p-3 border rounded-lg ${errors[`seller_${index}_name`] ? 'border-red-500' : 'border-gray-300'}`}
-                        placeholder="مثال: محمد بن أحمد..."
+                        className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none ${errors[`seller_${index}_name`] ? 'border-rose-500' : 'border-slate-200'}`}
+                        placeholder="مثال: محمد بن أحمد بن عبد الله"
                       />
-                      {errors[`seller_${index}_name`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_name`]}</p>}
+                      {errors[`seller_${index}_name`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_name`]}</p>}
                     </div>
 
                     {seller.nationality === 'اجنبي' && (
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل (باللاتينية) *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>الاسم الكامل (باللاتينية)</span>
+                          <span className="text-rose-500 font-bold">*</span>
+                        </label>
                         <input
                           type="text"
                           value={seller.nameLatin || ''}
                           onChange={(e) => handleSellerChange(index, 'nameLatin', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
                           placeholder="Full Name (Latin)"
                         />
                       </div>
@@ -1603,67 +1656,92 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </>
                 )}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مكان الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>مكان الازدياد</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.placeOfBirth || ''}
                     onChange={(e) => handleSellerChange(index, 'placeOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="مكان الازدياد"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
+                    placeholder="مثال: فاس، الرباط، طنجة..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأب *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Users className="w-3.5 h-3.5 text-amber-600" />
+                    <span>اسم الأب</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.fatherName}
                     onChange={(e) => handleSellerChange(index, 'fatherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`seller_${index}_father`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none ${errors[`seller_${index}_father`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="اسم والد المعني"
                   />
-                  {errors[`seller_${index}_father`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_father`]}</p>}
+                  {errors[`seller_${index}_father`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_father`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأم *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Heart className="w-3.5 h-3.5 text-rose-600" />
+                    <span>اسم الأم</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.motherName}
                     onChange={(e) => handleSellerChange(index, 'motherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`seller_${index}_mother`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none ${errors[`seller_${index}_mother`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="اسم والدة المعني"
                   />
-                  {errors[`seller_${index}_mother`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_mother`]}</p>}
+                  {errors[`seller_${index}_mother`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_mother`]}</p>}
                 </div>
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">عنوان السكنى *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Home className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>عنوان السكنى</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.address}
                     onChange={(e) => handleSellerChange(index, 'address', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`seller_${index}_address`] ? 'border-red-500' : 'border-gray-300'}`}
-                    placeholder="مثال: حي الرياض - الرباط"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none ${errors[`seller_${index}_address`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="مثال: حي الرياض، شارع النخيل رقم 12 - الرباط"
                   />
-                  {errors[`seller_${index}_address`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_address`]}</p>}
+                  {errors[`seller_${index}_address`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_address`]}</p>}
                 </div>
                 {/* Conditional Rendering for Mixed Marriage Foreign Party (Husband) */}
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband') && (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">رقم البطاقة الوطنية *</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                        <span>رقم البطاقة الوطنية</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={seller.idNumber}
                         onChange={(e) => handleSellerChange(index, 'idNumber', e.target.value)}
-                        className={`w-full p-3 border rounded-lg ${errors[`seller_${index}_id`] ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-mono ${errors[`seller_${index}_id`] ? 'border-rose-500' : 'border-slate-200'}`}
                         maxLength={10}
+                        placeholder="مثال: AB123456"
                       />
-                      {errors[`seller_${index}_id`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_id`]}</p>}
+                      {errors[`seller_${index}_id`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_id`]}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ إصدار البطاقة</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                        <span>تاريخ إصدار البطاقة</span>
+                      </label>
                       <input
                         type="date"
                         value={seller.idIssueDate}
                         onChange={(e) => handleSellerChange(index, 'idIssueDate', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
                       />
                     </div>
                   </>
@@ -1748,35 +1826,38 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Criminal Record Birthplace */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">السجل العدلي من المحكمة الابتدائية التي ازداد بدائرة نفوذها</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Scale className="w-4 h-4 text-blue-600" />
+                        <h6 className="font-black text-xs text-slate-800">السجل العدلي من المحكمة الابتدائية التي ازداد بدائرة نفوذها</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلمة من</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.criminalRecordBirthplaceIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.criminalRecordBirthplaceIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.criminalRecordBirthplaceNumber || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.criminalRecordBirthplaceNumber || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.criminalRecordBirthplaceDate || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.criminalRecordBirthplaceDate || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceDate', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">دولة</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.criminalRecordBirthplaceCountry || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceCountry', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-slate-400" />دولة</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.criminalRecordBirthplaceCountry || ''} onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceCountry', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'criminalRecordBirthplaceImage', e.target.files?.[0] || null)} />
                         {seller.criminalRecordBirthplaceImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.criminalRecordBirthplaceImage as any)?.name || 'السجل العدلي'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.criminalRecordBirthplaceImage as any)?.name || 'السجل العدلي'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'criminalRecordBirthplaceImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1788,31 +1869,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Capacity to Marry */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة الكفاءة للزواج</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="w-4 h-4 text-blue-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة الكفاءة للزواج</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلمة من السفارة</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.capacityCertificateIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من السفارة</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.capacityCertificateIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.capacityCertificateDate || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.capacityCertificateDate || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">تنبيه: مؤشر عليها من وزارة الشؤون الخارجية و التعاون بالرباط في</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.capacityCertificateEndorsementDate || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateEndorsementDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-amber-800 mb-2"><span>⚠️</span>تنبيه: مؤشر عليها من وزارة الشؤون الخارجية و التعاون بالرباط في</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.capacityCertificateEndorsementDate || ''} onChange={(e) => handleSellerChange(index, 'capacityCertificateEndorsementDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
                         {seller.capacityCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'capacityCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1825,40 +1909,43 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
                     {/* Residence & Status */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">دولة السكنى</label>
-                      <input type="text" className="w-full p-3 border rounded-lg" value={seller.residenceCountry || ''} onChange={(e) => handleSellerChange(index, 'residenceCountry', e.target.value)} />
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-blue-500" />دولة السكنى</label>
+                      <input type="text" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.residenceCountry || ''} onChange={(e) => handleSellerChange(index, 'residenceCountry', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">الحال وقت الاشهاد</label>
-                      <input type="text" className="w-full p-3 border rounded-lg" value={seller.currentStatus || ''} onChange={(e) => handleSellerChange(index, 'currentStatus', e.target.value)} />
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-blue-500" />الحال وقت الاشهاد</label>
+                      <input type="text" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.currentStatus || ''} onChange={(e) => handleSellerChange(index, 'currentStatus', e.target.value)} />
                     </div>
 
                     {/* Passport */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">جواز السفر</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CreditCard className="w-4 h-4 text-blue-600" />
+                        <h6 className="font-black text-xs text-slate-800">جواز السفر</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلم من</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.passportIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'passportIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلم من</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.passportIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'passportIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.passportNumber || ''} onChange={(e) => handleSellerChange(index, 'passportNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.passportNumber || ''} onChange={(e) => handleSellerChange(index, 'passportNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">صالح الى غاية</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.passportValidUntil || ''} onChange={(e) => handleSellerChange(index, 'passportValidUntil', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />صالح الى غاية</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.passportValidUntil || ''} onChange={(e) => handleSellerChange(index, 'passportValidUntil', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة من جواز السفر</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'passportImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة من جواز السفر</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'passportImage', e.target.files?.[0] || null)} />
                         {seller.passportImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.passportImage as any)?.name || 'جواز السفر'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.passportImage as any)?.name || 'جواز السفر'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'passportImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1867,15 +1954,15 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         )}
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
                         {seller.entryStampImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.entryStampImage as any)?.name || 'ختم الدخول'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.entryStampImage as any)?.name || 'ختم الدخول'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'entryStampImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1887,27 +1974,30 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Central Criminal Record */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة السجل العدلي المركزي من المصلحة المختصة بوزارة العدل</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileCheck className="w-4 h-4 text-blue-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة السجل العدلي المركزي من المصلحة المختصة بوزارة العدل</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.centralCriminalRecordNumber || ''} onChange={(e) => handleSellerChange(index, 'centralCriminalRecordNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.centralCriminalRecordNumber || ''} onChange={(e) => handleSellerChange(index, 'centralCriminalRecordNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.centralCriminalRecordDate || ''} onChange={(e) => handleSellerChange(index, 'centralCriminalRecordDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.centralCriminalRecordDate || ''} onChange={(e) => handleSellerChange(index, 'centralCriminalRecordDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
                         {seller.centralCriminalRecordImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'centralCriminalRecordImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1919,31 +2009,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Medical Certificate 2 */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة طبية (تكميلية)</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity className="w-4 h-4 text-blue-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة طبية (تكميلية)</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.medicalCertificateNumber || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.medicalCertificateNumber || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلمة من</label>
-                          <input type="text" className="w-full p-2 border rounded" value={seller.medicalCertificateIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />مسلمة من</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.medicalCertificateIssuedBy || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={seller.medicalCertificateDate || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium" value={seller.medicalCertificateDate || ''} onChange={(e) => handleSellerChange(index, 'medicalCertificateDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-3">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
                         {seller.supplementaryMedicalCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleSellerChange(index, 'supplementaryMedicalCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -1956,22 +2049,29 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </>
                 )}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مهنته</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Briefcase className="w-3.5 h-3.5 text-teal-600" />
+                    <span>مهنته</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.profession || ''}
                     onChange={(e) => handleSellerChange(index, 'profession', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
+                    placeholder="مثال: موظف، تاجر، أعمال حرة..."
                   />
                 </div>
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband') && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    <span>تاريخ الازدياد</span>
+                  </label>
                   <input
                     type="date"
                     value={seller.dateOfBirth || ''}
                     onChange={(e) => handleSellerChange(index, 'dateOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
                   />
                   {seller.dateOfBirth && calculateAge(seller.dateOfBirth) < 18 && (state.documentType as string) !== 'مقاسمة' && (
                     <>
@@ -2080,204 +2180,210 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 </div>
                 )}
                 {(state.documentType === 'زواج' || state.documentType === 'زواج_مختلط' || (state.documentType as string) === 'بيع_وشراء_طور_انجاز_ابتدائي' || (state.documentType as string) === 'بيع_وشراء_طور_انجاز_نهائي' || state.documentType === 'بيع_وشراء_ملكية_مشتركة') && (
-                  <div className="col-span-1 md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-200 mt-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">الحالة العائلية</label>
-                    <div className="flex gap-4 mb-3">
-                      {['اعزب', 'ارمل', 'مطلق'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            value={option}
-                            checked={seller.maritalStatus === option}
-                            onChange={(e) => handleSellerChange(index, 'maritalStatus', e.target.value)}
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
+                  <div className="col-span-1 md:col-span-2 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 p-4 sm:p-5 rounded-2xl border border-blue-100/80 mt-2">
+                    <label className="flex items-center gap-2 text-xs font-black text-slate-800 mb-3">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span>الحالة العائلية</span>
+                    </label>
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      {['اعزب', 'ارمل', 'مطلق'].map((option) => {
+                        const isSelected = seller.maritalStatus === option;
+                        return (
+                          <label key={option} className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black cursor-pointer transition-all border shadow-2xs ${isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/20' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                            <input
+                              type="radio"
+                              value={option}
+                              checked={isSelected}
+                              onChange={(e) => handleSellerChange(index, 'maritalStatus', e.target.value)}
+                              className="sr-only"
+                            />
+                            <span>{isSelected ? '✓' : '○'}</span>
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {seller.maritalStatus === 'ارمل' && (
-                      <div className="mt-3">
-                        <h5 className="font-semibold text-gray-800 mb-3">حسب شهادة الوفاة المسلمة من</h5>
+                      <div className="mt-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="w-4 h-4 text-slate-500" />
+                          <h5 className="font-black text-xs text-slate-800">حسب شهادة الوفاة المسلمة من</h5>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">المسلمة من</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />المسلمة من</label>
                             <input
                               type="text"
                               value={seller.deathCertificateIssuedBy || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateIssuedBy', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">تحت عدد</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />تحت عدد</label>
                             <input
                               type="text"
                               value={seller.deathCertificateNumber || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateNumber', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                             <input
                               type="date"
                               value={seller.deathCertificateDate || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateDate', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div className="col-span-1 md:col-span-3">
-                            <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                            <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
-                        {seller.deathCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleSellerChange(index, 'deathCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                            <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
+                            {seller.deathCertificateImage && (
+                              <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span></span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSellerChange(index, 'deathCertificateImage', null)}
+                                  className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                  title="حذف المرفق"
+                                >✕</button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     )}
 
                     {seller.maritalStatus === 'مطلق' && (
-                      <div className="mt-3">
+                      <div className="mt-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
                         {state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband' ? (
                           <>
                             <div className="mb-4">
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">نوع وثيقة الطلاق</label>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    value="رسم"
-                                    checked={seller.divorceSource === 'رسم' || !seller.divorceSource}
-                                    onChange={(e) => handleSellerChange(index, 'divorceSource', 'رسم')}
-                                  />
-                                  <span>حسب رسم الطلاق المضمن بدفتر</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    value="حكم"
-                                    checked={seller.divorceSource === 'حكم'}
-                                    onChange={(e) => handleSellerChange(index, 'divorceSource', 'حكم')}
-                                  />
-                                  <span>حسب الحكم</span>
-                                </label>
+                              <label className="block text-xs font-bold text-slate-700 mb-2">نوع وثيقة الطلاق</label>
+                              <div className="flex gap-2 flex-wrap">
+                                {['رسم', 'حكم'].map(src => (
+                                  <button
+                                    key={src}
+                                    type="button"
+                                    onClick={() => handleSellerChange(index, 'divorceSource', src)}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                                      (seller.divorceSource === src || (!seller.divorceSource && src === 'رسم'))
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                                    }`}
+                                  >
+                                    {(seller.divorceSource === src || (!seller.divorceSource && src === 'رسم')) && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                    {src === 'رسم' ? 'حسب رسم الطلاق المضمن بدفتر' : 'حسب الحكم'}
+                                  </button>
+                                ))}
                               </div>
                             </div>
 
                             {seller.divorceSource === 'حكم' ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-slate-200">
                                 <div className="col-span-1 md:col-span-2">
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">حكم بالطلاق الصادر عن محكمة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Scale className="w-3.5 h-3.5 text-blue-500" />حكم بالطلاق الصادر عن محكمة</label>
                                   <input
                                     type="text"
                                     value={seller.divorceCourt || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceCourt', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ اصدار الطلاق</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ اصدار الطلاق</label>
                                   <input
                                     type="date"
                                     value={seller.divorceJudgmentDate || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceJudgmentDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">دولة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-slate-400" />دولة</label>
                                   <input
                                     type="text"
                                     value={seller.divorceCountry || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceCountry', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">صيغة تنفيذية</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صيغة تنفيذية</label>
                                   <input
                                     type="text"
                                     value={seller.divorceExecutiveFormula || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceExecutiveFormula', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                   <input
                                     type="date"
                                     value={seller.divorceExecutiveDate || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceExecutiveDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                                   <input
                                     type="text"
                                     value={seller.divorceDeedNumber || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedNumber', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">حرف</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />حرف</label>
                                   <input
                                     type="text"
                                     value={seller.divorceDeedLetter || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedLetter', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
                                   <input
                                     type="text"
                                     value={seller.divorceDeedPage || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedPage', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد</label>
                                   <input
                                     type="text"
                                     value={seller.divorceDeedCount || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedCount', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                   <input
                                     type="date"
                                     value={seller.divorceDeedDate || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
                                   <input
                                     type="text"
                                     value={seller.divorceDeedNotary || ''}
                                     onChange={(e) => handleSellerChange(index, 'divorceDeedNotary', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                               </div>
@@ -2285,60 +2391,63 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           </>
                         ) : (
                           <>
-                            <h5 className="font-semibold text-gray-800 mb-3">حسب رسم الطلاق المضمن بدفتر</h5>
+                            <div className="flex items-center gap-2 mb-3">
+                              <FileText className="w-4 h-4 text-slate-500" />
+                              <h5 className="font-black text-xs text-slate-800">حسب رسم الطلاق المضمن بدفتر</h5>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                                 <input
                                   type="text"
                                   value={seller.divorceDeedNumber || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedNumber', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">حرف</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />حرف</label>
                                 <input
                                   type="text"
                                   value={seller.divorceDeedLetter || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedLetter', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
                                 <input
                                   type="text"
                                   value={seller.divorceDeedPage || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedPage', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد</label>
                                 <input
                                   type="text"
                                   value={seller.divorceDeedCount || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedCount', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                 <input
                                   type="date"
                                   value={seller.divorceDeedDate || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedDate', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
                                 <input
                                   type="text"
                                   value={seller.divorceDeedNotary || ''}
                                   onChange={(e) => handleSellerChange(index, 'divorceDeedNotary', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                             </div>
@@ -2353,328 +2462,342 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   <>
                     {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband') && (
                       <>
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات ولادة الزوج</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 mt-2 space-y-4">
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <BookOpen className="w-4 h-4 text-blue-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات ولادة الزوج</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم رسم الولادة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-blue-500" />رقم رسم الولادة</label>
                               <input
                                 type="text"
                                 value={seller.birthCertificateNumber || ''}
                                 onChange={(e) => handleSellerChange(index, 'birthCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">سنة رسم الولادة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />سنة رسم الولادة</label>
                               <input
                                 type="text"
                                 value={seller.birthCertificateYear || ''}
                                 onChange={(e) => handleSellerChange(index, 'birthCertificateYear', e.target.value)}
                                 placeholder="مثال: 1990"
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={seller.birthCertificateDate || ''}
                                 onChange={(e) => handleSellerChange(index, 'birthCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من جماعة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من جماعة</label>
                               <input
                                 type="text"
                                 value={seller.birthCertificateCommune || ''}
                                 onChange={(e) => handleSellerChange(index, 'birthCertificateCommune', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                            <div className="col-span-1 md:col-span-2">
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={seller.birthCertificateCity || ''}
                                 onChange={(e) => handleSellerChange(index, 'birthCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                           </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات الشهادة الادارية المتعلقة بالخطوبة</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 mt-2 space-y-4">
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <FileCheck className="w-4 h-4 text-blue-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات الشهادة الادارية المتعلقة بالخطوبة</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-blue-500" />رقم</label>
                               <input
                                 type="text"
                                 value={seller.engagementCertificateNumber || ''}
                                 onChange={(e) => handleSellerChange(index, 'engagementCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={seller.engagementCertificateDate || ''}
                                 onChange={(e) => handleSellerChange(index, 'engagementCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من جماعة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من جماعة</label>
                               <input
                                 type="text"
                                 value={seller.engagementCertificateCommune || ''}
                                 onChange={(e) => handleSellerChange(index, 'engagementCertificateCommune', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={seller.engagementCertificateCity || ''}
                                 onChange={(e) => handleSellerChange(index, 'engagementCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                              <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
-                        {seller.engagementCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleSellerChange(index, 'engagementCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                              <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
+                              {seller.engagementCertificateImage && (
+                                <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                  <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span></span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSellerChange(index, 'engagementCertificateImage', null)}
+                                    className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                    title="حذف المرفق"
+                                  >✕</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات شهادة الطبيب تثبت الخلو من الامراض المعدية</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 mt-2 space-y-4">
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <Activity className="w-4 h-4 text-blue-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات شهادة الطبيب تثبت الخلو من الامراض المعدية</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-blue-500" />رقم</label>
                               <input
                                 type="text"
                                 value={seller.medicalCertificateNumber || ''}
                                 onChange={(e) => handleSellerChange(index, 'medicalCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={seller.medicalCertificateDate || ''}
                                 onChange={(e) => handleSellerChange(index, 'medicalCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />مسلمة من</label>
                               <input
                                 type="text"
                                 value={seller.medicalCertificateIssuedBy || ''}
                                 onChange={(e) => handleSellerChange(index, 'medicalCertificateIssuedBy', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={seller.medicalCertificateCity || ''}
                                 onChange={(e) => handleSellerChange(index, 'medicalCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                              <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleSellerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
-                        {seller.infectiousDiseaseCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(seller.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleSellerChange(index, 'infectiousDiseaseCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                              <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" onChange={(e) => handleSellerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
+                              {seller.infectiousDiseaseCertificateImage && (
+                                <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                  <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(seller.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span></span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSellerChange(index, 'infectiousDiseaseCertificateImage', null)}
+                                    className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                    title="حذف المرفق"
+                                  >✕</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       </>
                     )}
 
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">هل للزوج وكالة خاصة لهذا الزواج؟</label>
-                      <div className="flex gap-4 mb-3">
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 mt-2 space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                        <Clipboard className="w-4 h-4 text-blue-600" />
+                        <label className="text-xs font-bold text-slate-700">هل للزوج وكالة خاصة لهذا الزواج؟</label>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
                         {['نعم', 'لا'].map((option) => (
-                          <label key={option} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              value={option}
-                              checked={seller.hasSpecialProxy === option}
-                              onChange={(e) => handleSellerChange(index, 'hasSpecialProxy', e.target.value)}
-                            />
-                            <span className="font-semibold">{option}</span>
-                          </label>
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleSellerChange(index, 'hasSpecialProxy', option)}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                              seller.hasSpecialProxy === option
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                            }`}
+                          >
+                            {seller.hasSpecialProxy === option ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                            {option}
+                          </button>
                         ))}
                       </div>
 
                       {seller.hasSpecialProxy === 'نعم' && (
-                        <div className="mt-3 space-y-4">
+                        <div className="space-y-4 pt-2">
                           {state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband' && (
-                            <div className="bg-yellow-50 border-r-4 border-yellow-400 p-4 mb-4 rounded-lg">
-                              <div className="flex">
-                                <div className="flex-shrink-0 ml-3">
-                                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <h3 className="text-sm font-bold text-yellow-800">تنبيه</h3>
-                                  <div className="mt-1 text-sm text-yellow-700">
-                                    <p>
-                                      اذا كان الموكل مقيما خارج المغرب يجب ان تحرر وكالة الزواج لدى القنصلية او السفارة المغربية ببلد الاقامة وان تكون مصادقا عليها وفق المتطلبات القانونية المعمول بها
-                                    </p>
-                                  </div>
-                                </div>
+                            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <div className="text-xs text-amber-900 font-medium">
+                                <h4 className="font-black text-xs mb-1 text-amber-950">تنبيه</h4>
+                                <p>
+                                  اذا كان الموكل مقيما خارج المغرب يجب ان تحرر وكالة الزواج لدى القنصلية او السفارة المغربية ببلد الاقامة وان تكون مصادقا عليها وفق المتطلبات القانونية المعمول بها
+                                </p>
                               </div>
                             </div>
                           )}
-                          <h5 className="font-semibold text-gray-800">بيانات الوكيل</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">الاسم الكامل</label>
-                              <input
-                                type="text"
-                                value={seller.proxyName || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                              <User className="w-4 h-4 text-blue-600" />
+                              <h5 className="font-black text-xs text-slate-800">بيانات الوكيل</h5>
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ الازدياد</label>
-                              <input
-                                type="date"
-                                value={seller.proxyDOB || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDOB', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم البطاقة الوطنية</label>
-                              <input
-                                type="text"
-                                value={seller.proxyNationalID || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyNationalID', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">العنوان</label>
-                              <input
-                                type="text"
-                                value={seller.proxyAddress || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyAddress', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأب</label>
-                              <input
-                                type="text"
-                                value={seller.proxyFatherName || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyFatherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأم</label>
-                              <input
-                                type="text"
-                                value={seller.proxyMotherName || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyMotherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-blue-500" />الاسم الكامل</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyName || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyName', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الازدياد</label>
+                                <input
+                                  type="date"
+                                  value={seller.proxyDOB || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDOB', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><CreditCard className="w-3.5 h-3.5 text-slate-400" />رقم البطاقة الوطنية</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyNationalID || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyNationalID', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />العنوان</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyAddress || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyAddress', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأب</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyFatherName || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyFatherName', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأم</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyMotherName || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyMotherName', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
                             </div>
                           </div>
 
-                          <h5 className="font-semibold text-gray-800 mt-4">رسم الوكالة </h5>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1"> مضمن بدفتر</label>
-                              <input
-                                type="text"
-                                value={seller.proxyDeedBook || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedBook', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                              <h5 className="font-black text-xs text-slate-800">رسم الوكالة</h5>
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
-                              <input
-                                type="text"
-                                value={seller.proxyDeedNumber || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
-                              <input
-                                type="text"
-                                value={seller.proxyDeedCount || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedCount', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
-                              <input
-                                type="text"
-                                value={seller.proxyDeedPage || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedPage', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
-                              <input
-                                type="date"
-                                value={seller.proxyDeedDate || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
-                              <input
-                                type="text"
-                                value={seller.proxyDeedNotary || ''}
-                                onChange={(e) => handleSellerChange(index, 'proxyDeedNotary', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />مضمن بدفتر</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyDeedBook || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedBook', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyDeedNumber || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedNumber', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyDeedCount || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedCount', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyDeedPage || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedPage', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
+                                <input
+                                  type="date"
+                                  value={seller.proxyDeedDate || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedDate', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
+                                <input
+                                  type="text"
+                                  value={seller.proxyDeedNotary || ''}
+                                  onChange={(e) => handleSellerChange(index, 'proxyDeedNotary', e.target.value)}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 outline-none transition-all text-slate-800 text-sm font-medium"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2684,32 +2807,42 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 )}
                 {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">حصته في العقار المبيع *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Award className="w-3.5 h-3.5 text-amber-600" />
+                    <span>حصته في العقار المبيع</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={seller.share || ''}
                     readOnly
-                    className={`w-full p-3 border rounded-lg bg-gray-100 cursor-not-allowed ${errors[`seller_${index}_share`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-100 text-slate-700 text-sm font-bold cursor-not-allowed ${errors[`seller_${index}_share`] ? 'border-rose-500' : 'border-slate-200'}`}
                     placeholder="استخدم زر توزيع الحصص لتعديل النسبة"
                   />
-                  {errors[`seller_${index}_share`] && <p className="text-red-500 text-sm mt-1">{errors[`seller_${index}_share`]}</p>}
+                  {errors[`seller_${index}_share`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_share`]}</p>}
                 </div>
                 )}
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">صورة البطاقة (اختياري)</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    <span>صورة البطاقة الوطنية (اختياري)</span>
+                  </label>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
                     onChange={(e) => handleSellerChange(index, 'idImage', e.target.files?.[0] || null)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
                   />
                   {seller.idImage && (
-                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                      <span className="truncate font-medium">📎 تم إرفاق: {(seller.idImage as any)?.name || 'صورة البطاقة'}</span>
+                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                      <span className="truncate font-bold flex items-center gap-1.5">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>تم إرفاق: {(seller.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleSellerChange(index, 'idImage', null)}
-                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                         title="حذف المرفق"
                       >
                         ✕
@@ -2719,51 +2852,61 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 </div>
 
                 {isInheritanceType && state.documentType !== 'ملكية' && state.documentType !== 'حيازة' && (
-                  <div className="col-span-1 md:col-span-2 bg-red-50 p-4 rounded-lg border border-red-200 mt-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">هل الهالك حديث الوفاة؟</label>
-                    <div className="flex gap-4 mb-3">
+                  <div className="col-span-1 md:col-span-2 bg-rose-50/70 p-5 rounded-2xl border border-rose-200 mt-2 space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-rose-200">
+                      <AlertTriangle className="w-4 h-4 text-rose-600" />
+                      <label className="text-xs font-bold text-slate-800">هل الهالك حديث الوفاة؟</label>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
                       {['نعم', 'لا'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            value={option}
-                            checked={seller.isRecentDeath === option}
-                            onChange={(e) => handleSellerChange(index, 'isRecentDeath', e.target.value)}
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => handleSellerChange(index, 'isRecentDeath', option)}
+                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            seller.isRecentDeath === option
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-700'
+                          }`}
+                        >
+                          {seller.isRecentDeath === option ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {option}
+                        </button>
                       ))}
                     </div>
 
                     {seller.isRecentDeath === 'نعم' && (
-                      <div className="mt-3">
-                        <h5 className="font-semibold text-gray-800 mb-3">شهادة الوفاة</h5>
+                      <div className="p-4 bg-white rounded-2xl border border-rose-200 shadow-xs space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b border-rose-100">
+                          <FileText className="w-4 h-4 text-rose-600" />
+                          <h5 className="font-black text-xs text-slate-800">شهادة الوفاة</h5>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                             <input
                               type="text"
                               value={seller.deathCertificateNumber || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateNumber', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 outline-none transition-all text-slate-800 text-sm font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                             <input
                               type="date"
                               value={seller.deathCertificateDate || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateDate', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 outline-none transition-all text-slate-800 text-sm font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">صادرة عن</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />صادرة عن</label>
                             <input
                               type="text"
                               value={seller.deathCertificateIssuedBy || ''}
                               onChange={(e) => handleSellerChange(index, 'deathCertificateIssuedBy', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 outline-none transition-all text-slate-800 text-sm font-medium"
                             />
                           </div>
                         </div>
@@ -2779,26 +2922,40 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
         {isInheritanceType && !((state.documentType === 'ملكية' || state.documentType === 'حيازة') && ownershipCriteria.areOwnersAlive === 'yes' && ownershipCriteria.areApplicantsOwners === 'yes') && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-800">
-                {(state.documentType === 'ملكية' || state.documentType === 'حيازة') && ownershipCriteria.areApplicantsOwners === 'yes' 
-                  ? (state.documentType === 'حيازة' ? 'طالب الشهادة/الحائزون' : 'طالب الشهادة/الملاك')
-                  : 'طالب الشهادة'}
-              </h3>
+            <div className="flex items-center justify-between gap-4 p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-white rounded-2xl border border-amber-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <UserCheck className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {(state.documentType === 'ملكية' || state.documentType === 'حيازة') && ownershipCriteria.areApplicantsOwners === 'yes' 
+                      ? (state.documentType === 'حيازة' ? 'طالب الشهادة/الحائزون' : 'طالب الشهادة/الملاك')
+                      : 'طالب الشهادة'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">بيانات طالب/طالبي الشهادة</p>
+                </div>
+              </div>
               {(state.documentType === 'ملكية' || state.documentType === 'حيازة') && ownershipCriteria.areApplicantsOwners === 'no' && (
                 <div className="flex gap-2">
                   <button 
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-semibold text-sm"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 transition-all"
                     type="button" 
                     onClick={() => {
-                      // Logic to show partition modal for applicants if needed
-                      // For now just a placeholder or reuse existing modal logic if applicable
                       alert('توزيع الحصص بين طالبي الشهادة');
                     }}
                   >
-                    📊 توزيع الحصص
+                    <Award className="w-3.5 h-3.5" />
+                    توزيع الحصص
                   </button>
-                  <button className="btn-secondary text-sm" type="button" onClick={addApplicant}>+ إضافة طالب شهادة</button>
+                  <button
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-white text-amber-700 border border-amber-200 hover:bg-amber-50 hover:border-amber-400 transition-all shadow-sm"
+                    type="button"
+                    onClick={addApplicant}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    إضافة طالب شهادة
+                  </button>
                 </div>
               )}
             </div>
@@ -2807,130 +2964,150 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               // Multiple Applicants Rendering
               <div className="space-y-4">
                 {tempApplicants.map((app, index) => (
-                  <div key={index} className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-400 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-semibold text-gray-800">طالب الشهادة رقم {index + 1}</h4>
+                  <div key={index} className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all overflow-hidden">
+                    <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                          <User className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="text-white font-black text-sm">طالب الشهادة رقم {index + 1}</span>
+                      </div>
                       {tempApplicants.length > 1 && (
-                        <button className="text-red-600 font-semibold" type="button" onClick={() => removeApplicant(index)}>حذف</button>
+                        <button
+                          type="button"
+                          onClick={() => removeApplicant(index)}
+                          className="flex items-center gap-1 text-white/80 hover:text-white text-xs font-bold hover:bg-white/10 px-2 py-1 rounded-lg transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> حذف
+                        </button>
                       )}
                     </div>
+                    <div className="p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-amber-500" />الاسم الكامل *</label>
                         <input
                           type="text"
                           value={app.name}
                           onChange={(e) => handleApplicantsChange(index, 'name', e.target.value)}
-                          className={`w-full p-3 border rounded-lg ${errors[`applicant_${index}_name`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_name`] ? 'border-red-400' : 'border-slate-200'}`}
                           placeholder="مثال: محمد بن أحمد..."
                         />
                         {errors[`applicant_${index}_name`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_name`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">مكان الازدياد</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-amber-500" />مكان الازدياد</label>
                         <input
                           type="text"
                           value={app.placeOfBirth || ''}
                           onChange={(e) => handleApplicantsChange(index, 'placeOfBirth', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                           placeholder="مكان الازدياد"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأب *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Users className="w-3.5 h-3.5 text-amber-500" />اسم الأب *</label>
                         <input
                           type="text"
                           value={app.fatherName}
                           onChange={(e) => handleApplicantsChange(index, 'fatherName', e.target.value)}
-                          className={`w-full p-3 border rounded-lg ${errors[`applicant_${index}_father`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_father`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_${index}_father`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_father`]}</p>}
+                        {errors[`applicant_${index}_father`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_father`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">مهنة الأب</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Briefcase className="w-3.5 h-3.5 text-slate-400" />مهنة الأب</label>
                         <input
                           type="text"
                           value={app.fatherProfession || ''}
                           onChange={(e) => handleApplicantsChange(index, 'fatherProfession', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                           placeholder="مهنة الأب"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأم *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Heart className="w-3.5 h-3.5 text-amber-500" />اسم الأم *</label>
                         <input
                           type="text"
                           value={app.motherName}
                           onChange={(e) => handleApplicantsChange(index, 'motherName', e.target.value)}
-                          className={`w-full p-3 border rounded-lg ${errors[`applicant_${index}_mother`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_mother`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_${index}_mother`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_mother`]}</p>}
+                        {errors[`applicant_${index}_mother`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_mother`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">مهنة الأم</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Briefcase className="w-3.5 h-3.5 text-slate-400" />مهنة الأم</label>
                         <input
                           type="text"
                           value={app.motherProfession || ''}
                           onChange={(e) => handleApplicantsChange(index, 'motherProfession', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                           placeholder="مهنة الأم"
                         />
                       </div>
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">عنوان السكنى *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Home className="w-3.5 h-3.5 text-amber-500" />عنوان السكنى *</label>
                         <input
                           type="text"
                           value={app.address}
                           onChange={(e) => handleApplicantsChange(index, 'address', e.target.value)}
-                          className={`w-full p-3 border rounded-lg ${errors[`applicant_${index}_address`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_address`] ? 'border-red-400' : 'border-slate-200'}`}
                           placeholder="مثال: حي الرياض - الرباط"
                         />
-                        {errors[`applicant_${index}_address`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_address`]}</p>}
+                        {errors[`applicant_${index}_address`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_address`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">رقم البطاقة الوطنية *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><CreditCard className="w-3.5 h-3.5 text-amber-500" />رقم البطاقة الوطنية *</label>
                         <input
                           type="text"
                           value={app.idNumber}
                           onChange={(e) => handleApplicantsChange(index, 'idNumber', e.target.value)}
-                          className={`w-full p-3 border rounded-lg ${errors[`applicant_${index}_id`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_id`] ? 'border-red-400' : 'border-slate-200'}`}
                           maxLength={10}
                         />
-                        {errors[`applicant_${index}_id`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_id`]}</p>}
+                        {errors[`applicant_${index}_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_id`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ إصدار البطاقة</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ إصدار البطاقة</label>
                         <input
                           type="date"
                           value={app.idIssueDate}
                           onChange={(e) => handleApplicantsChange(index, 'idIssueDate', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الجنسية</label>
-                        <select
-                          value={app.nationality || ''}
-                          onChange={(e) => handleApplicantsChange(index, 'nationality', e.target.value as any)}
-                          className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-                        >
-                          <option value="">—</option>
-                          <option value="مغربي">مغربي</option>
-                          <option value="اجنبي">أجنبي</option>
-                        </select>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-slate-400" />الجنسية</label>
+                        <div className="flex gap-2 flex-wrap">
+                          {['مغربي', 'اجنبي'].map((nat) => (
+                            <button
+                              key={nat}
+                              type="button"
+                              onClick={() => handleApplicantsChange(index, 'nationality', nat as any)}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                                app.nationality === nat
+                                  ? 'bg-amber-500 text-white shadow-sm'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                              }`}
+                            >
+                              {app.nationality === nat && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              {nat === 'مغربي' ? 'مغربي' : 'أجنبي'}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الازدياد</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-amber-500" />تاريخ الازدياد</label>
                         <input
                           type="date"
                           value={app.dateOfBirth || ''}
                           onChange={(e) => handleApplicantsChange(index, 'dateOfBirth', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                         />
                       </div>
                       {app.nationality === 'اجنبي' && (
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-amber-500" />
                             الاسم الكامل (بالأحرف اللاتينية)
                           </label>
                           <input
@@ -2938,233 +3115,255 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                             dir="ltr"
                             value={app.nameLatin || ''}
                             onChange={(e) => handleApplicantsChange(index, 'nameLatin', e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                             placeholder="Full name in Latin alphabet"
                           />
                         </div>
                       )}
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">صورة البطاقة (اختياري)</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />صورة البطاقة (اختياري)</label>
                         <input
                           type="file"
                           accept="image/*,application/pdf"
                           onChange={(e) => handleApplicantsChange(index, 'idImage', e.target.files?.[0] || null)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition-all"
                         />
                         {app.idImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(app.idImage as any)?.name || 'صورة البطاقة'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5">
+                              <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>تم إرفاق: {(app.idImage as any)?.name || 'صورة البطاقة'}</span>
+                            </span>
                             <button
                               type="button"
                               onClick={() => handleApplicantsChange(index, 'idImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
+                            >✕</button>
                           </div>
                         )}
                       </div>
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">بصفته *</label>
-                        <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Shield className="w-3.5 h-3.5 text-amber-500" />بصفته *</label>
+                        <div className="flex gap-2 flex-wrap">
                           {['وارث', 'نائب_شرعي', 'بتوكيل'].map((option) => (
-                            <label key={option} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                value={option}
-                                checked={app.capacity === option}
-                                onChange={(e) => handleApplicantsChange(index, 'capacity', e.target.value)}
-                              />
-                              <span className="font-semibold">
-                                {option === 'وارث' && 'وارث'}
-                                {option === 'نائب_شرعي' && 'نائب شرعي'}
-                                {option === 'بتوكيل' && 'بتوكيل'}
-                              </span>
-                            </label>
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => handleApplicantsChange(index, 'capacity', option)}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                                app.capacity === option
+                                  ? 'bg-amber-500 text-white shadow-sm'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                              }`}
+                            >
+                              {app.capacity === option && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              {option === 'وارث' && 'وارث'}
+                              {option === 'نائب_شرعي' && 'نائب شرعي'}
+                              {option === 'بتوكيل' && 'بتوكيل'}
+                            </button>
                           ))}
                         </div>
-                        {errors[`applicant_${index}_capacity`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_capacity`]}</p>}
+                        {errors[`applicant_${index}_capacity`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_capacity`]}</p>}
                       </div>
                       {app.capacity === 'بتوكيل' && (
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">وكالة مضمنة بدفتر</h5>
+                        <div className="col-span-1 md:col-span-2">
+                          <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-4">
+                            <Clipboard className="w-4 h-4 text-amber-600" />
+                            <span className="text-sm font-black text-slate-800">وكالة مضمنة بدفتر</span>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بدفتر *</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />بدفتر *</label>
                               <input
                                 type="text"
                                 value={app.proxyDetails?.book || ''}
                                 onChange={(e) => handleApplicantsProxyChange(index, 'book', e.target.value)}
-                                className={`w-full p-2 border rounded-lg ${errors[`applicant_${index}_proxy_book`] ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_proxy_book`] ? 'border-red-400' : 'border-slate-200'}`}
                               />
-                              {errors[`applicant_${index}_proxy_book`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_proxy_book`]}</p>}
+                              {errors[`applicant_${index}_proxy_book`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_proxy_book`]}</p>}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة *</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة *</label>
                               <input
                                 type="text"
                                 value={app.proxyDetails?.page || ''}
                                 onChange={(e) => handleApplicantsProxyChange(index, 'page', e.target.value)}
-                                className={`w-full p-2 border rounded-lg ${errors[`applicant_${index}_proxy_page`] ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_proxy_page`] ? 'border-red-400' : 'border-slate-200'}`}
                               />
-                              {errors[`applicant_${index}_proxy_page`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_proxy_page`]}</p>}
+                              {errors[`applicant_${index}_proxy_page`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_proxy_page`]}</p>}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">عدد *</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد *</label>
                               <input
                                 type="text"
                                 value={app.proxyDetails?.number || ''}
                                 onChange={(e) => handleApplicantsProxyChange(index, 'number', e.target.value)}
-                                className={`w-full p-2 border rounded-lg ${errors[`applicant_${index}_proxy_number`] ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_proxy_number`] ? 'border-red-400' : 'border-slate-200'}`}
                               />
-                              {errors[`applicant_${index}_proxy_number`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_proxy_number`]}</p>}
+                              {errors[`applicant_${index}_proxy_number`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_proxy_number`]}</p>}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ *</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ *</label>
                               <input
                                 type="date"
                                 value={app.proxyDetails?.date || ''}
                                 onChange={(e) => handleApplicantsProxyChange(index, 'date', e.target.value)}
-                                className={`w-full p-2 border rounded-lg ${errors[`applicant_${index}_proxy_date`] ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_proxy_date`] ? 'border-red-400' : 'border-slate-200'}`}
                               />
-                              {errors[`applicant_${index}_proxy_date`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_proxy_date`]}</p>}
+                              {errors[`applicant_${index}_proxy_date`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_proxy_date`]}</p>}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق *</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق *</label>
                               <input
                                 type="text"
                                 value={app.proxyDetails?.notary || ''}
                                 onChange={(e) => handleApplicantsProxyChange(index, 'notary', e.target.value)}
-                                className={`w-full p-2 border rounded-lg ${errors[`applicant_${index}_proxy_notary`] ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_proxy_notary`] ? 'border-red-400' : 'border-slate-200'}`}
                               />
-                              {errors[`applicant_${index}_proxy_notary`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_${index}_proxy_notary`]}</p>}
+                              {errors[`applicant_${index}_proxy_notary`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_proxy_notary`]}</p>}
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-400 space-y-4">
+            <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all overflow-hidden">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <UserCheck className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-white font-black text-sm">بيانات طالب الشهادة</span>
+              </div>
+              <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-amber-500" />الاسم الكامل *</label>
                   <input
                     type="text"
                     value={tempApplicant.name}
                     onChange={(e) => handleApplicantChange('name', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`applicant_name`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_name`] ? 'border-red-400' : 'border-slate-200'}`}
                     placeholder="مثال: محمد بن أحمد..."
                   />
-                  {errors[`applicant_name`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_name`]}</p>}
+                  {errors[`applicant_name`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_name`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مكان الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-amber-500" />مكان الازدياد</label>
                   <input
                     type="text"
                     value={tempApplicant.placeOfBirth || ''}
                     onChange={(e) => handleApplicantChange('placeOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                     placeholder="مكان الازدياد"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأب *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Users className="w-3.5 h-3.5 text-amber-500" />اسم الأب *</label>
                   <input
                     type="text"
                     value={tempApplicant.fatherName}
                     onChange={(e) => handleApplicantChange('fatherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`applicant_father`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_father`] ? 'border-red-400' : 'border-slate-200'}`}
                   />
-                  {errors[`applicant_father`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_father`]}</p>}
+                  {errors[`applicant_father`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_father`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مهنة الأب</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Briefcase className="w-3.5 h-3.5 text-slate-400" />مهنة الأب</label>
                   <input
                     type="text"
                     value={tempApplicant.fatherProfession || ''}
                     onChange={(e) => handleApplicantChange('fatherProfession', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                     placeholder="مهنة الأب"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأم *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Heart className="w-3.5 h-3.5 text-amber-500" />اسم الأم *</label>
                   <input
                     type="text"
                     value={tempApplicant.motherName}
                     onChange={(e) => handleApplicantChange('motherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`applicant_mother`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_mother`] ? 'border-red-400' : 'border-slate-200'}`}
                   />
-                  {errors[`applicant_mother`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_mother`]}</p>}
+                  {errors[`applicant_mother`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_mother`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مهنة الأم</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Briefcase className="w-3.5 h-3.5 text-slate-400" />مهنة الأم</label>
                   <input
                     type="text"
                     value={tempApplicant.motherProfession || ''}
                     onChange={(e) => handleApplicantChange('motherProfession', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                     placeholder="مهنة الأم"
                   />
                 </div>
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">عنوان السكنى *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Home className="w-3.5 h-3.5 text-amber-500" />عنوان السكنى *</label>
                   <input
                     type="text"
                     value={tempApplicant.address}
                     onChange={(e) => handleApplicantChange('address', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`applicant_address`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_address`] ? 'border-red-400' : 'border-slate-200'}`}
                     placeholder="مثال: حي الرياض - الرباط"
                   />
-                  {errors[`applicant_address`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_address`]}</p>}
+                  {errors[`applicant_address`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_address`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">رقم البطاقة الوطنية *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><CreditCard className="w-3.5 h-3.5 text-amber-500" />رقم البطاقة الوطنية *</label>
                   <input
                     type="text"
                     value={tempApplicant.idNumber}
                     onChange={(e) => handleApplicantChange('idNumber', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`applicant_id`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_id`] ? 'border-red-400' : 'border-slate-200'}`}
                     maxLength={10}
                   />
-                  {errors[`applicant_id`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_id`]}</p>}
+                  {errors[`applicant_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_id`]}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ إصدار البطاقة</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ إصدار البطاقة</label>
                   <input
                     type="date"
                     value={tempApplicant.idIssueDate}
                     onChange={(e) => handleApplicantChange('idIssueDate', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">الجنسية</label>
-                  <select
-                    value={tempApplicant.nationality || ''}
-                    onChange={(e) => handleApplicantChange('nationality', e.target.value as any)}
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-                  >
-                    <option value="">—</option>
-                    <option value="مغربي">مغربي</option>
-                    <option value="اجنبي">أجنبي</option>
-                  </select>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-slate-400" />الجنسية</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {['مغربي', 'اجنبي'].map((nat) => (
+                      <button
+                        key={nat}
+                        type="button"
+                        onClick={() => handleApplicantChange('nationality', nat as any)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                          tempApplicant.nationality === nat
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                        }`}
+                      >
+                        {tempApplicant.nationality === nat && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {nat === 'مغربي' ? 'مغربي' : 'أجنبي'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-amber-500" />تاريخ الازدياد</label>
                   <input
                     type="date"
                     value={tempApplicant.dateOfBirth || ''}
                     onChange={(e) => handleApplicantChange('dateOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                   />
                   {tempApplicant.nationality === 'اجنبي' && (
                     <div className="mt-4">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-amber-500" />
                         الاسم الكامل (بالأحرف اللاتينية)
                       </label>
                       <input
@@ -3172,7 +3371,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         dir="ltr"
                         value={tempApplicant.nameLatin || ''}
                         onChange={(e) => handleApplicantChange('nameLatin', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                         placeholder="Full name in Latin alphabet"
                       />
                     </div>
@@ -3202,107 +3401,114 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   )}
                 </div>
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">صورة البطاقة (اختياري)</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />صورة البطاقة (اختياري)</label>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
                     onChange={(e) => handleApplicantChange('idImage', e.target.files?.[0] || null)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition-all"
                   />
                   {tempApplicant.idImage && (
-                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                      <span className="truncate font-medium">📎 تم إرفاق: {(tempApplicant.idImage as any)?.name || 'صورة البطاقة'}</span>
+                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                      <span className="truncate font-bold flex items-center gap-1.5">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>تم إرفاق: {(tempApplicant.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleApplicantChange('idImage', null)}
-                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                         title="حذف المرفق"
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                     </div>
                   )}
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">بصفته *</label>
-                  <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Shield className="w-3.5 h-3.5 text-amber-500" />بصفته *</label>
+                  <div className="flex gap-2 flex-wrap">
                     {['وارث', 'نائب_شرعي', 'بتوكيل'].map((option) => (
-                      <label key={option} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value={option}
-                          checked={tempApplicant.capacity === option}
-                          onChange={(e) => handleApplicantChange('capacity', e.target.value)}
-                        />
-                        <span className="font-semibold">
-                          {option === 'وارث' && 'وارث'}
-                          {option === 'نائب_شرعي' && 'نائب شرعي'}
-                          {option === 'بتوكيل' && 'بتوكيل'}
-                        </span>
-                      </label>
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => handleApplicantChange('capacity', option)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                          tempApplicant.capacity === option
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                        }`}
+                      >
+                        {tempApplicant.capacity === option && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {option === 'وارث' && 'وارث'}
+                        {option === 'نائب_شرعي' && 'نائب شرعي'}
+                        {option === 'بتوكيل' && 'بتوكيل'}
+                      </button>
                     ))}
                   </div>
-                  {errors[`applicant_capacity`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_capacity`]}</p>}
+                  {errors[`applicant_capacity`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_capacity`]}</p>}
                 </div>
 
                 {tempApplicant.capacity === 'بتوكيل' && (
-                  <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                    <h5 className="font-semibold text-gray-800 mb-3">وكالة مضمنة بدفتر</h5>
+                  <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-4">
+                      <Clipboard className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-black text-slate-800">وكالة مضمنة بدفتر</span>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">بدفتر *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />بدفتر *</label>
                         <input
                           type="text"
                           value={tempApplicant.proxyDetails?.book || ''}
                           onChange={(e) => handleApplicantProxyChange('book', e.target.value)}
-                          className={`w-full p-2 border rounded-lg ${errors[`applicant_proxy_book`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_proxy_book`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_proxy_book`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_proxy_book`]}</p>}
+                        {errors[`applicant_proxy_book`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_proxy_book`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة *</label>
                         <input
                           type="text"
                           value={tempApplicant.proxyDetails?.page || ''}
                           onChange={(e) => handleApplicantProxyChange('page', e.target.value)}
-                          className={`w-full p-2 border rounded-lg ${errors[`applicant_proxy_page`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_proxy_page`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_proxy_page`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_proxy_page`]}</p>}
+                        {errors[`applicant_proxy_page`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_proxy_page`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">عدد *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد *</label>
                         <input
                           type="text"
                           value={tempApplicant.proxyDetails?.number || ''}
                           onChange={(e) => handleApplicantProxyChange('number', e.target.value)}
-                          className={`w-full p-2 border rounded-lg ${errors[`applicant_proxy_number`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_proxy_number`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_proxy_number`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_proxy_number`]}</p>}
+                        {errors[`applicant_proxy_number`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_proxy_number`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ *</label>
                         <input
                           type="date"
                           value={tempApplicant.proxyDetails?.date || ''}
                           onChange={(e) => handleApplicantProxyChange('date', e.target.value)}
-                          className={`w-full p-2 border rounded-lg ${errors[`applicant_proxy_date`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_proxy_date`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_proxy_date`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_proxy_date`]}</p>}
+                        {errors[`applicant_proxy_date`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_proxy_date`]}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق *</label>
                         <input
                           type="text"
                           value={tempApplicant.proxyDetails?.notary || ''}
                           onChange={(e) => handleApplicantProxyChange('notary', e.target.value)}
-                          className={`w-full p-2 border rounded-lg ${errors[`applicant_proxy_notary`] ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_proxy_notary`] ? 'border-red-400' : 'border-slate-200'}`}
                         />
-                        {errors[`applicant_proxy_notary`] && <p className="text-red-500 text-sm mt-1">{errors[`applicant_proxy_notary`]}</p>}
+                        {errors[`applicant_proxy_notary`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_proxy_notary`]}</p>}
                       </div>
                     </div>
                   </div>
                 )}
+              </div>
               </div>
             </div>
             )}
@@ -3312,27 +3518,47 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         {/* Buyers Section - Hidden if entering Natural Party Second (Seller) OR if it's Lineage Proof (witnesses collected in Step 5) */}
         {!state.isEnteringNaturalPartySecond && state.documentType !== 'ثبوت_نسب_ببينة_السماع' && (!isInheritanceType || state.documentType !== 'ملكية' || ownershipCriteria.areOwnersAlive === 'no' || ownershipCriteria.areOwnersAlive === 'yes') && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-800">
-              {labels.buyerGroup}
-              {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (state.documentType as string) !== 'استمرار_الزوجية' ? ` (عددهم ${tempBuyers.length})` : ''}
-            </h3>
-            <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <span>{labels.buyerGroup}</span>
+                  {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (state.documentType as string) !== 'استمرار_الزوجية' && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {tempBuyers.length} طرف
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">إدخال والتحقق من الهوية والأهلية القانونية</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
                 <button 
-                  className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 font-semibold text-sm"
+                  className="px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl hover:bg-emerald-100 font-bold text-xs transition shadow-2xs flex items-center gap-1.5"
                   type="button" 
                   onClick={() => setShowBuyerShareModal(true)}
                 >
-                  📊 توزيع الحصص
+                  <Award className="w-4 h-4 text-emerald-600" />
+                  <span>توزيع الحصص</span>
                 </button>
               )}
               {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
-                <button className="btn-secondary text-sm" type="button" onClick={addBuyer}>+ {labels.buyerAdd}</button>
+                <button 
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  type="button" 
+                  onClick={addBuyer}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{labels.buyerAdd}</span>
+                </button>
               )}
             </div>
           </div>
-          {errors.buyers && <p className="text-red-500 text-sm">{errors.buyers}</p>}
+          {errors.buyers && <p className="text-rose-500 text-xs font-bold">{errors.buyers}</p>}
 
           {isInheritanceType && (
             <div className="bg-white p-6 rounded-lg shadow border-l-4 border-purple-400 space-y-4">
@@ -3405,14 +3631,30 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           )}
 
           {tempBuyers.map((buyer, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow border-l-4 border-green-400 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-800">{labels.buyerSingle} رقم {index + 1}</h4>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                  {tempBuyers.length > 1 && (
-                    <button className="text-red-600 font-semibold" type="button" onClick={() => removeBuyer(index)}>حذف</button>
-                  )}
+            <div key={index} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all p-6 sm:p-7 space-y-6 overflow-hidden relative">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center font-black shadow-2xs">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-lg font-black text-slate-800">{labels.buyerSingle} رقم {index + 1}</h4>
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">الطرف الثاني</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-400">البيانات الشخصية ووثائق إثبات الهوية</p>
+                  </div>
                 </div>
+                {tempBuyers.length > 1 && (
+                  <button 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition shadow-2xs"
+                    type="button" 
+                    onClick={() => removeBuyer(index)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>حذف</span>
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3524,25 +3766,30 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   <>
                     {/* Nationality Selection */}
                     {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
-                      <div className="col-span-1 md:col-span-2 mb-4">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الجنسية</label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="col-span-1 md:col-span-2 mb-2 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                          <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>الجنسية</span>
+                        </label>
+                        <div className="flex gap-3">
+                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition border ${buyer.nationality !== 'اجنبي' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                             <input
                               type="radio"
                               checked={buyer.nationality !== 'اجنبي'} // Default to Moroccan
                               onChange={() => handleBuyerChange(index, 'nationality', 'مغربي')}
-                              className="w-4 h-4 text-blue-600"
+                              className="sr-only"
                             />
+                            <span>{buyer.nationality !== 'اجنبي' ? '✓' : '○'}</span>
                             <span>مغربي</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition border ${buyer.nationality === 'اجنبي' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                             <input
                               type="radio"
                               checked={buyer.nationality === 'اجنبي'}
                               onChange={() => handleBuyerChange(index, 'nationality', 'اجنبي')}
-                              className="w-4 h-4 text-blue-600"
+                              className="sr-only"
                             />
+                            <span>{buyer.nationality === 'اجنبي' ? '✓' : '○'}</span>
                             <span>أجنبي</span>
                           </label>
                         </div>
@@ -3550,26 +3797,35 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     )}
 
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل (بالعربية) *</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <User className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>الاسم الكامل (بالعربية)</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={buyer.name}
                         onChange={(e) => handleBuyerChange(index, 'name', e.target.value)}
-                        className={`w-full p-3 border rounded-lg ${errors[`buyer_${index}_name`] ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none ${errors[`buyer_${index}_name`] ? 'border-rose-500' : 'border-slate-200'}`}
+                        placeholder="مثال: فاطمة الزهراء بن عبد السلام"
                       />
                       {errors[`buyer_${index}_name`] && (
-                        <p className="text-red-500 text-sm mt-1">{errors[`buyer_${index}_name`]}</p>
+                        <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_name`]}</p>
                       )}
                     </div>
 
                     {buyer.nationality === 'اجنبي' && (
                       <div className="col-span-1 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل (باللاتينية) *</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>الاسم الكامل (باللاتينية)</span>
+                          <span className="text-rose-500 font-bold">*</span>
+                        </label>
                         <input
                           type="text"
                           value={buyer.nameLatin || ''}
                           onChange={(e) => handleBuyerChange(index, 'nameLatin', e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                           placeholder="Full Name (Latin)"
                         />
                       </div>
@@ -3577,67 +3833,89 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </>
                 )}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مكان الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>مكان الازدياد</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.placeOfBirth || ''}
                     onChange={(e) => handleBuyerChange(index, 'placeOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="مكان الازدياد"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
+                    placeholder="مثال: مراكش، الدار البيضاء..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأب *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Users className="w-3.5 h-3.5 text-amber-600" />
+                    <span>اسم الأب</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.fatherName}
                     onChange={(e) => handleBuyerChange(index, 'fatherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`buyer_${index}_father`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none ${errors[`buyer_${index}_father`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="اسم والد المعنية"
                   />
                   {errors[`buyer_${index}_father`] && (
-                    <p className="text-red-500 text-sm mt-1">{errors[`buyer_${index}_father`]}</p>
+                    <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_father`]}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">اسم الأم *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Heart className="w-3.5 h-3.5 text-rose-600" />
+                    <span>اسم الأم</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.motherName}
                     onChange={(e) => handleBuyerChange(index, 'motherName', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`buyer_${index}_mother`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none ${errors[`buyer_${index}_mother`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="اسم والدة المعنية"
                   />
                   {errors[`buyer_${index}_mother`] && (
-                    <p className="text-red-500 text-sm mt-1">{errors[`buyer_${index}_mother`]}</p>
+                    <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_mother`]}</p>
                   )}
                 </div>
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">عنوان السكنى *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Home className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>عنوان السكنى</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.address}
                     onChange={(e) => handleBuyerChange(index, 'address', e.target.value)}
-                    className={`w-full p-3 border rounded-lg ${errors[`buyer_${index}_address`] ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none ${errors[`buyer_${index}_address`] ? 'border-rose-500' : 'border-slate-200'}`}
+                    placeholder="مثال: حي الرياض، زنقة الزهور رقم 8 - الرباط"
                   />
                   {errors[`buyer_${index}_address`] && (
-                    <p className="text-red-500 text-sm mt-1">{errors[`buyer_${index}_address`]}</p>
+                    <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_address`]}</p>
                   )}
                 </div>
 
                 {((state.documentType as string) === 'بيع_وشراء' || (state.documentType as string) === 'بيع_وشراء_معنوي' || (state.documentType as string) === 'عقد_ايجار_المفضي_الى_تملك') && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">الجنسية</label>
+                  <div className="col-span-1 md:col-span-2">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                      <Globe className="w-3.5 h-3.5 text-cyan-600" />
+                      <span>الجنسية</span>
+                    </label>
                     <select
                       value={buyer.nationality || ''}
                       onChange={(e) => handleBuyerChange(index, 'nationality', e.target.value as any)}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                     >
                       <option value="">اختر الجنسية</option>
                       <option value="مغربي">مغربي</option>
                       <option value="اجنبي">اجنبي</option>
                     </select>
                     {buyer.nationality === 'اجنبي' && (
-                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm font-semibold">
-                        تنبيه: اذا كان الشراء يتعلق باراضي فلاحية للاجانب يتطلب الامرالحصول على موافقة وزارة الفلاحة
+                      <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span>تنبيه: إذا كان الشراء يتعلق بأراض فلاحية للأجانب يتطلب الأمر الحصول على موافقة وزارة الفلاحة</span>
                       </div>
                     )}
                   </div>
@@ -3646,25 +3924,33 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife') && (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">رقم البطاقة الوطنية *</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                        <span>رقم البطاقة الوطنية</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={buyer.idNumber}
                         onChange={(e) => handleBuyerChange(index, 'idNumber', e.target.value)}
-                        className={`w-full p-3 border rounded-lg ${errors[`buyer_${index}_id`] ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none font-mono ${errors[`buyer_${index}_id`] ? 'border-rose-500' : 'border-slate-200'}`}
                         maxLength={10}
+                        placeholder="مثال: CD654321"
                       />
                       {errors[`buyer_${index}_id`] && (
-                        <p className="text-red-500 text-sm mt-1">{errors[`buyer_${index}_id`]}</p>
+                        <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_id`]}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ إصدار البطاقة</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                        <span>تاريخ إصدار البطاقة</span>
+                      </label>
                       <input
                         type="date"
                         value={buyer.idIssueDate}
                         onChange={(e) => handleBuyerChange(index, 'idIssueDate', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                       />
                     </div>
                   </>
@@ -3789,31 +4075,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Capacity to Marry */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة الكفاءة للزواج</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="w-4 h-4 text-emerald-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة الكفاءة للزواج</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلمة من السفارة</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.capacityCertificateIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من السفارة</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.capacityCertificateIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={buyer.capacityCertificateDate || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.capacityCertificateDate || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">تنبيه: مؤشر عليها من وزارة الشؤون الخارجية و التعاون بالرباط في</label>
-                          <input type="date" className="w-full p-2 border rounded" value={buyer.capacityCertificateEndorsementDate || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateEndorsementDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-amber-800 mb-2"><span>⚠️</span>تنبيه: مؤشر عليها من وزارة الشؤون الخارجية و التعاون بالرباط في</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.capacityCertificateEndorsementDate || ''} onChange={(e) => handleBuyerChange(index, 'capacityCertificateEndorsementDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'capacityCertificateImage', e.target.files?.[0] || null)} />
                         {buyer.capacityCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.capacityCertificateImage as any)?.name || 'شهادة الأهلية'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleBuyerChange(index, 'capacityCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -3826,40 +4115,43 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
                     {/* Residence & Status */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">دولة السكنى</label>
-                      <input type="text" className="w-full p-3 border rounded-lg" value={buyer.residenceCountry || ''} onChange={(e) => handleBuyerChange(index, 'residenceCountry', e.target.value)} />
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-emerald-600" />دولة السكنى</label>
+                      <input type="text" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.residenceCountry || ''} onChange={(e) => handleBuyerChange(index, 'residenceCountry', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">الحال وقت الاشهاد</label>
-                      <input type="text" className="w-full p-3 border rounded-lg" value={buyer.currentStatus || ''} onChange={(e) => handleBuyerChange(index, 'currentStatus', e.target.value)} />
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-emerald-600" />الحال وقت الاشهاد</label>
+                      <input type="text" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.currentStatus || ''} onChange={(e) => handleBuyerChange(index, 'currentStatus', e.target.value)} />
                     </div>
 
                     {/* Passport */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">جواز السفر</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                        <h6 className="font-black text-xs text-slate-800">جواز السفر</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلم من</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.passportIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'passportIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلم من</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.passportIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'passportIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.passportNumber || ''} onChange={(e) => handleBuyerChange(index, 'passportNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.passportNumber || ''} onChange={(e) => handleBuyerChange(index, 'passportNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">صالح الى غاية</label>
-                          <input type="date" className="w-full p-2 border rounded" value={buyer.passportValidUntil || ''} onChange={(e) => handleBuyerChange(index, 'passportValidUntil', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />صالح الى غاية</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.passportValidUntil || ''} onChange={(e) => handleBuyerChange(index, 'passportValidUntil', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة من جواز السفر</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'passportImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة من جواز السفر</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'passportImage', e.target.files?.[0] || null)} />
                         {buyer.passportImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.passportImage as any)?.name || 'جواز السفر'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.passportImage as any)?.name || 'جواز السفر'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleBuyerChange(index, 'passportImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -3868,15 +4160,15 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         )}
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة من الصفحة التي تثبت الدخول الى المغرب</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'entryStampImage', e.target.files?.[0] || null)} />
                         {buyer.entryStampImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.entryStampImage as any)?.name || 'ختم الدخول'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.entryStampImage as any)?.name || 'ختم الدخول'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleBuyerChange(index, 'entryStampImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -3888,27 +4180,30 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Central Criminal Record */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة السجل العدلي المركزي من المصلحة المختصة بوزارة العدل</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileCheck className="w-4 h-4 text-emerald-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة السجل العدلي المركزي من المصلحة المختصة بوزارة العدل</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.centralCriminalRecordNumber || ''} onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.centralCriminalRecordNumber || ''} onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={buyer.centralCriminalRecordDate || ''} onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.centralCriminalRecordDate || ''} onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'centralCriminalRecordImage', e.target.files?.[0] || null)} />
                         {buyer.centralCriminalRecordImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.centralCriminalRecordImage as any)?.name || 'السجل العدلي المركزي'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleBuyerChange(index, 'centralCriminalRecordImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -3920,31 +4215,34 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
 
                     {/* Medical Certificate 2 */}
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h6 className="font-semibold mb-3">شهادة طبية (تكميلية)</h6>
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity className="w-4 h-4 text-emerald-600" />
+                        <h6 className="font-black text-xs text-slate-800">شهادة طبية (تكميلية)</h6>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">رقم</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.medicalCertificateNumber || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateNumber', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.medicalCertificateNumber || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateNumber', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">مسلمة من</label>
-                          <input type="text" className="w-full p-2 border rounded" value={buyer.medicalCertificateIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateIssuedBy', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />مسلمة من</label>
+                          <input type="text" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.medicalCertificateIssuedBy || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateIssuedBy', e.target.value)} />
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-600 mb-1">تاريخ الاصدار</label>
-                          <input type="date" className="w-full p-2 border rounded" value={buyer.medicalCertificateDate || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateDate', e.target.value)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الاصدار</label>
+                          <input type="date" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium" value={buyer.medicalCertificateDate || ''} onChange={(e) => handleBuyerChange(index, 'medicalCertificateDate', e.target.value)} />
                         </div>
                         <div className="col-span-1 md:col-span-3">
-                          <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                          <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                          <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'supplementaryMedicalCertificateImage', e.target.files?.[0] || null)} />
                         {buyer.supplementaryMedicalCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span>
+                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                            <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.supplementaryMedicalCertificateImage as any)?.name || 'شهادة طبية تكميلية'}</span></span>
                             <button
                               type="button"
                               onClick={() => handleBuyerChange(index, 'supplementaryMedicalCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                               title="حذف المرفق"
                             >
                               ✕
@@ -3957,22 +4255,29 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </>
                 )}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مهنتها</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Briefcase className="w-3.5 h-3.5 text-teal-600" />
+                    <span>مهنتها</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.profession || ''}
                     onChange={(e) => handleBuyerChange(index, 'profession', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
+                    placeholder="مثال: موظفة، تاجرة، ربة بيت..."
                   />
                 </div>
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife') && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الازدياد</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>تاريخ الازدياد</span>
+                  </label>
                   <input
                     type="date"
                     value={buyer.dateOfBirth || ''}
                     onChange={(e) => handleBuyerChange(index, 'dateOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                   />
                   {buyer.dateOfBirth && calculateAge(buyer.dateOfBirth) < 18 && (
                     <>
@@ -4038,43 +4343,46 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       )}
 
                       {(state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') && (
-                        <div className="mt-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                          <h5 className="font-semibold text-gray-800 mb-3">اذن زواج القاصر</h5>
+                        <div className="mt-3 p-4 bg-amber-50/80 rounded-2xl border border-amber-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Scale className="w-4 h-4 text-amber-600" />
+                            <h5 className="font-black text-xs text-amber-900">اذن زواج القاصر</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلم من</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />مسلم من</label>
                               <input
                                 type="text"
                                 value={buyer.underagePermissionIssuedBy || ''}
                                 onChange={(e) => handleBuyerChange(index, 'underagePermissionIssuedBy', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                               <input
                                 type="text"
                                 value={buyer.underagePermissionNumber || ''}
                                 onChange={(e) => handleBuyerChange(index, 'underagePermissionNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={buyer.underagePermissionDate || ''}
                                 onChange={(e) => handleBuyerChange(index, 'underagePermissionDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">محكمة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Scale className="w-3.5 h-3.5 text-slate-400" />محكمة</label>
                               <input
                                 type="text"
                                 value={buyer.underagePermissionCourt || ''}
                                 onChange={(e) => handleBuyerChange(index, 'underagePermissionCourt', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                           </div>
@@ -4085,204 +4393,215 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 </div>
                 )}
                 {(state.documentType === 'زواج' || state.documentType === 'زواج_مختلط' || (state.documentType as string) === 'بيع_وشراء_طور_انجاز_ابتدائي' || (state.documentType as string) === 'بيع_وشراء_طور_انجاز_نهائي' || state.documentType === 'بيع_وشراء_ملكية_مشتركة') && (
-                  <div className="col-span-1 md:col-span-2 bg-green-50 p-4 rounded-lg border border-green-200 mt-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">الحالة العائلية</label>
-                    <div className="flex gap-4 mb-3">
-                      {['عزباء', 'ارملة', 'مطلقة'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            value={option}
-                            checked={buyer.maritalStatus === option}
-                            onChange={(e) => handleBuyerChange(index, 'maritalStatus', e.target.value)}
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
+                  <div className="col-span-1 md:col-span-2 bg-gradient-to-r from-emerald-50/70 to-teal-50/40 p-4 sm:p-5 rounded-2xl border border-emerald-100/80 mt-2">
+                    <label className="flex items-center gap-2 text-xs font-black text-slate-800 mb-3">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span>الحالة العائلية</span>
+                    </label>
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      {['عزباء', 'ارملة', 'مطلقة'].map((option) => {
+                        const isSelected = buyer.maritalStatus === option;
+                        return (
+                          <label key={option} className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black cursor-pointer transition-all border shadow-2xs ${isSelected ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-500/20' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                            <input
+                              type="radio"
+                              value={option}
+                              checked={isSelected}
+                              onChange={(e) => handleBuyerChange(index, 'maritalStatus', e.target.value)}
+                              className="sr-only"
+                            />
+                            <span>{isSelected ? '✓' : '○'}</span>
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {buyer.maritalStatus === ('ارملة' as any) && (
-                      <div className="mt-3">
-                        <h5 className="font-semibold text-gray-800 mb-3">حسب شهادة الوفاة المسلمة من</h5>
+                      <div className="mt-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="w-4 h-4 text-emerald-600" />
+                          <h5 className="font-black text-xs text-slate-800">حسب شهادة الوفاة المسلمة من</h5>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">المسلمة من</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />المسلمة من</label>
                             <input
                               type="text"
                               value={buyer.deathCertificateIssuedBy || ''}
                               onChange={(e) => handleBuyerChange(index, 'deathCertificateIssuedBy', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">تحت عدد</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />تحت عدد</label>
                             <input
                               type="text"
                               value={buyer.deathCertificateNumber || ''}
                               onChange={(e) => handleBuyerChange(index, 'deathCertificateNumber', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                             <input
                               type="date"
                               value={buyer.deathCertificateDate || ''}
                               onChange={(e) => handleBuyerChange(index, 'deathCertificateDate', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg"
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                             />
                           </div>
                           <div className="col-span-1 md:col-span-3">
-                            <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                            <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
-                        {buyer.deathCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleBuyerChange(index, 'deathCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                            <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'deathCertificateImage', e.target.files?.[0] || null)} />
+                            {buyer.deathCertificateImage && (
+                              <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.deathCertificateImage as any)?.name || 'شهادة الوفاة'}</span></span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleBuyerChange(index, 'deathCertificateImage', null)}
+                                  className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                  title="حذف المرفق"
+                                >✕</button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     )}
 
                     {buyer.maritalStatus === ('مطلقة' as any) && (
-                      <div className="mt-3">
+                      <div className="mt-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
                         {state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife' ? (
                           <>
                             <div className="mb-4">
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">نوع وثيقة الطلاق</label>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    value="رسم"
-                                    checked={buyer.divorceSource === 'رسم' || !buyer.divorceSource}
-                                    onChange={(e) => handleBuyerChange(index, 'divorceSource', 'رسم')}
-                                  />
-                                  <span>حسب رسم الطلاق المضمن بدفتر</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    value="حكم"
-                                    checked={buyer.divorceSource === 'حكم'}
-                                    onChange={(e) => handleBuyerChange(index, 'divorceSource', 'حكم')}
-                                  />
-                                  <span>حسب الحكم</span>
-                                </label>
+                              <label className="block text-xs font-bold text-slate-700 mb-2">نوع وثيقة الطلاق</label>
+                              <div className="flex gap-2">
+                                {[
+                                  { value: 'رسم', label: 'حسب رسم الطلاق المضمن بدفتر' },
+                                  { value: 'حكم', label: 'حسب الحكم' }
+                                ].map((tab) => {
+                                  const isSelected = (buyer.divorceSource || 'رسم') === tab.value;
+                                  return (
+                                    <button
+                                      key={tab.value}
+                                      type="button"
+                                      onClick={() => handleBuyerChange(index, 'divorceSource', tab.value)}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                        isSelected
+                                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                      }`}
+                                    >
+                                      {tab.label}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
 
                             {buyer.divorceSource === 'حكم' ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-slate-200">
                                 <div className="col-span-1 md:col-span-2">
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">حكم بالطلاق الصادر عن محكمة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Scale className="w-3.5 h-3.5 text-slate-400" />حكم بالطلاق الصادر عن محكمة</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceCourt || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceCourt', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ اصدار الطلاق</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ اصدار الطلاق</label>
                                   <input
                                     type="date"
                                     value={buyer.divorceJudgmentDate || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceJudgmentDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">دولة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Globe className="w-3.5 h-3.5 text-slate-400" />دولة</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceCountry || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceCountry', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">صيغة تنفيذية</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />صيغة تنفيذية</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceExecutiveFormula || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceExecutiveFormula', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                   <input
                                     type="date"
                                     value={buyer.divorceExecutiveDate || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceExecutiveDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceDeedNumber || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedNumber', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">حرف</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />حرف</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceDeedLetter || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedLetter', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceDeedPage || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedPage', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />عدد</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceDeedCount || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedCount', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                   <input
                                     type="date"
                                     value={buyer.divorceDeedDate || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedDate', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
+                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
                                   <input
                                     type="text"
                                     value={buyer.divorceDeedNotary || ''}
                                     onChange={(e) => handleBuyerChange(index, 'divorceDeedNotary', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                   />
                                 </div>
                               </div>
@@ -4290,60 +4609,63 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           </>
                         ) : (
                           <>
-                            <h5 className="font-semibold text-gray-800 mb-3">حسب رسم الطلاق المضمن بدفتر</h5>
+                            <div className="flex items-center gap-2 mb-3">
+                              <FileText className="w-4 h-4 text-emerald-600" />
+                              <h5 className="font-black text-xs text-slate-800">حسب رسم الطلاق المضمن بدفتر</h5>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                                 <input
                                   type="text"
                                   value={buyer.divorceDeedNumber || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedNumber', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">حرف</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />حرف</label>
                                 <input
                                   type="text"
                                   value={buyer.divorceDeedLetter || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedLetter', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
                                 <input
                                   type="text"
                                   value={buyer.divorceDeedPage || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedPage', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />عدد</label>
                                 <input
                                   type="text"
                                   value={buyer.divorceDeedCount || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedCount', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                                 <input
                                   type="date"
                                   value={buyer.divorceDeedDate || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedDate', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
                                 <input
                                   type="text"
                                   value={buyer.divorceDeedNotary || ''}
                                   onChange={(e) => handleBuyerChange(index, 'divorceDeedNotary', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                                 />
                               </div>
                             </div>
@@ -4358,360 +4680,378 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   <>
                     {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife') && (
                       <>
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات ولادة الزوجة</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BookOpen className="w-4 h-4 text-emerald-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات ولادة الزوجة</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم رسم الولادة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم رسم الولادة</label>
                               <input
                                 type="text"
                                 value={buyer.birthCertificateNumber || ''}
                                 onChange={(e) => handleBuyerChange(index, 'birthCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">سنة رسم الولادة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />سنة رسم الولادة</label>
                               <input
                                 type="text"
                                 value={buyer.birthCertificateYear || ''}
                                 onChange={(e) => handleBuyerChange(index, 'birthCertificateYear', e.target.value)}
                                 placeholder="مثال: 1995"
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={buyer.birthCertificateDate || ''}
                                 onChange={(e) => handleBuyerChange(index, 'birthCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من جماعة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من جماعة</label>
                               <input
                                 type="text"
                                 value={buyer.birthCertificateCommune || ''}
                                 onChange={(e) => handleBuyerChange(index, 'birthCertificateCommune', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={buyer.birthCertificateCity || ''}
                                 onChange={(e) => handleBuyerChange(index, 'birthCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                           </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات الشهادة الادارية المتعلقة بالخطوبة</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <FileCheck className="w-4 h-4 text-emerald-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات الشهادة الادارية المتعلقة بالخطوبة</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                               <input
                                 type="text"
                                 value={buyer.engagementCertificateNumber || ''}
                                 onChange={(e) => handleBuyerChange(index, 'engagementCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={buyer.engagementCertificateDate || ''}
                                 onChange={(e) => handleBuyerChange(index, 'engagementCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من جماعة</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building className="w-3.5 h-3.5 text-slate-400" />مسلمة من جماعة</label>
                               <input
                                 type="text"
                                 value={buyer.engagementCertificateCommune || ''}
                                 onChange={(e) => handleBuyerChange(index, 'engagementCertificateCommune', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={buyer.engagementCertificateCity || ''}
                                 onChange={(e) => handleBuyerChange(index, 'engagementCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                              <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
-                        {buyer.engagementCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleBuyerChange(index, 'engagementCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                              <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'engagementCertificateImage', e.target.files?.[0] || null)} />
+                              {buyer.engagementCertificateImage && (
+                                <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                  <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.engagementCertificateImage as any)?.name || 'شهادة الخطوبة'}</span></span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBuyerChange(index, 'engagementCertificateImage', null)}
+                                    className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                    title="حذف المرفق"
+                                  >✕</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                          <h5 className="font-semibold text-gray-800 mb-3">بيانات شهادة الطبيب تثبت الخلو من الامراض المعدية</h5>
+                        <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Activity className="w-4 h-4 text-emerald-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات شهادة الطبيب تثبت الخلو من الامراض المعدية</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
                               <input
                                 type="text"
                                 value={buyer.medicalCertificateNumber || ''}
                                 onChange={(e) => handleBuyerChange(index, 'medicalCertificateNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
                               <input
                                 type="date"
                                 value={buyer.medicalCertificateDate || ''}
                                 onChange={(e) => handleBuyerChange(index, 'medicalCertificateDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مسلمة من</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-slate-400" />مسلمة من</label>
                               <input
                                 type="text"
                                 value={buyer.medicalCertificateIssuedBy || ''}
                                 onChange={(e) => handleBuyerChange(index, 'medicalCertificateIssuedBy', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مدينة/اقليم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />مدينة/اقليم</label>
                               <input
                                 type="text"
                                 value={buyer.medicalCertificateCity || ''}
                                 onChange={(e) => handleBuyerChange(index, 'medicalCertificateCity', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div className="col-span-1 md:col-span-2">
-                              <label className="block text-sm text-gray-600 mb-1">رفع صورة الشهادة</label>
-                              <input type="file" accept="image/*,application/pdf" className="w-full p-2 border rounded" onChange={(e) => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
-                        {buyer.infectiousDiseaseCertificateImage && (
-                          <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                            <span className="truncate font-medium">📎 تم إرفاق: {(buyer.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', null)}
-                              className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                              title="حذف المرفق"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />رفع صورة الشهادة</label>
+                              <input type="file" accept="image/*,application/pdf" className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all" onChange={(e) => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', e.target.files?.[0] || null)} />
+                              {buyer.infectiousDiseaseCertificateImage && (
+                                <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                                  <span className="truncate font-bold flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /><span>تم إرفاق: {(buyer.infectiousDiseaseCertificateImage as any)?.name || 'شهادة الخلو من الأمراض المعدية'}</span></span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBuyerChange(index, 'infectiousDiseaseCertificateImage', null)}
+                                    className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
+                                    title="حذف المرفق"
+                                  >✕</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       </>
                     )}
 
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">هل للزوجة وكالة خاصة لهذا الزواج؟</label>
-                      <div className="flex gap-4 mb-3">
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 mt-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-2">هل للزوجة وكالة خاصة لهذا الزواج؟</label>
+                      <div className="flex gap-2 mb-3">
                         {['نعم', 'لا'].map((option) => (
-                          <label key={option} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              value={option}
-                              checked={buyer.hasSpecialProxy === option}
-                              onChange={(e) => handleBuyerChange(index, 'hasSpecialProxy', e.target.value)}
-                            />
-                            <span className="font-semibold">{option}</span>
-                          </label>
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleBuyerChange(index, 'hasSpecialProxy', option)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              buyer.hasSpecialProxy === option
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {option}
+                          </button>
                         ))}
                       </div>
 
                       {buyer.hasSpecialProxy === 'نعم' && (
                         <div className="mt-3 space-y-4">
                           {state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife' && (
-                            <div className="bg-yellow-50 border-r-4 border-yellow-400 p-4 mb-4 rounded-lg">
-                              <div className="flex">
-                                <div className="flex-shrink-0 ml-3">
-                                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
+                            <div className="bg-amber-50/80 border border-amber-200/80 p-4 mb-4 rounded-2xl">
+                              <div className="flex items-start gap-3">
+                                <span className="text-xl">⚠️</span>
                                 <div>
-                                  <h3 className="text-sm font-bold text-yellow-800">تنبيه</h3>
-                                  <div className="mt-1 text-sm text-yellow-700">
-                                    <p>
-                                      اذا كان الموكل مقيما خارج المغرب يجب ان تحرر وكالة الزواج لدى القنصلية او السفارة المغربية ببلد الاقامة وان تكون مصادقا عليها وفق المتطلبات القانونية المعمول بها
-                                    </p>
-                                  </div>
+                                  <h3 className="text-xs font-black text-amber-800">تنبيه</h3>
+                                  <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                                    اذا كان الموكل مقيما خارج المغرب يجب ان تحرر وكالة الزواج لدى القنصلية او السفارة المغربية ببلد الاقامة وان تكون مصادقا عليها وفق المتطلبات القانونية المعمول بها
+                                  </p>
                                 </div>
                               </div>
                             </div>
                           )}
-                          <h5 className="font-semibold text-gray-800">بيانات الوكيل</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">الاسم الكامل</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyName || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                          <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                            <div className="flex items-center gap-2 mb-3">
+                              <User className="w-4 h-4 text-emerald-600" />
+                              <h5 className="font-black text-xs text-slate-800">بيانات الوكيل</h5>
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ الازدياد</label>
-                              <input
-                                type="date"
-                                value={buyer.proxyDOB || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDOB', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم البطاقة الوطنية</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyNationalID || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyNationalID', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">العنوان</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyAddress || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyAddress', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأب</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyFatherName || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyFatherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأم</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyMotherName || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyMotherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />الاسم الكامل</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyName || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyName', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الازدياد</label>
+                                <input
+                                  type="date"
+                                  value={buyer.proxyDOB || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDOB', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><CreditCard className="w-3.5 h-3.5 text-slate-400" />رقم البطاقة الوطنية</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyNationalID || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyNationalID', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />العنوان</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyAddress || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyAddress', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأب</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyFatherName || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyFatherName', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأم</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyMotherName || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyMotherName', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
                             </div>
                           </div>
 
-                          <h5 className="font-semibold text-gray-800 mt-4">رسم الوكالة  </h5>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">  مضمن بدفتر</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyDeedBook || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedBook', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                          <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Book className="w-4 h-4 text-emerald-600" />
+                              <h5 className="font-black text-xs text-slate-800">رسم الوكالة</h5>
                             </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyDeedNumber || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedNumber', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">عدد</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyDeedCount || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedCount', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">صحيفة</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyDeedPage || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedPage', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">بتاريخ</label>
-                              <input
-                                type="date"
-                                value={buyer.proxyDeedDate || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedDate', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">توثيق</label>
-                              <input
-                                type="text"
-                                value={buyer.proxyDeedNotary || ''}
-                                onChange={(e) => handleBuyerChange(index, 'proxyDeedNotary', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
-                              />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />مضمن بدفتر</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyDeedBook || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedBook', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />رقم</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyDeedNumber || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedNumber', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Hash className="w-3.5 h-3.5 text-slate-400" />عدد</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyDeedCount || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedCount', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-slate-400" />صحيفة</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyDeedPage || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedPage', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />بتاريخ</label>
+                                <input
+                                  type="date"
+                                  value={buyer.proxyDeedDate || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedDate', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
+                              <div>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
+                                <input
+                                  type="text"
+                                  value={buyer.proxyDeedNotary || ''}
+                                  onChange={(e) => handleBuyerChange(index, 'proxyDeedNotary', e.target.value)}
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    <div className="col-span-1 md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">هل تعقد المخطوبة زواجها دون حاجة لولي؟</label>
-                      <div className="flex gap-4 mb-3">
+                    <div className="col-span-1 md:col-span-2 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 mt-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-2">هل تعقد المخطوبة زواجها دون حاجة لولي؟</label>
+                      <div className="flex gap-2 mb-3">
                         {['نعم', 'لا'].map((option) => (
-                          <label key={option} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              value={option}
-                              checked={buyer.contractsWithoutGuardian === option}
-                              onChange={(e) => handleBuyerChange(index, 'contractsWithoutGuardian', e.target.value)}
-                            />
-                            <span className="font-semibold">{option}</span>
-                          </label>
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleBuyerChange(index, 'contractsWithoutGuardian', option)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              buyer.contractsWithoutGuardian === option
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {option}
+                          </button>
                         ))}
                       </div>
 
                       {buyer.contractsWithoutGuardian === 'لا' && (
-                        <div className="mt-3 space-y-4">
-                          <h5 className="font-semibold text-gray-800">بيانات الولي</h5>
+                        <div className="mt-3 p-4 bg-white rounded-2xl border border-slate-200 space-y-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Shield className="w-4 h-4 text-emerald-600" />
+                            <h5 className="font-black text-xs text-slate-800">بيانات الولي</h5>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">صفة الولي</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><UserCheck className="w-3.5 h-3.5 text-slate-400" />صفة الولي</label>
                               <select
                                 value={buyer.guardianRelationship || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianRelationship', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               >
                                 <option value="">اختر الصفة</option>
                                 <option value="أب">أب</option>
@@ -4724,73 +5064,73 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                                   type="text"
                                   value={buyer.guardianRelationshipCustom || ''}
                                   onChange={(e) => handleBuyerChange(index, 'guardianRelationshipCustom', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-lg mt-2"
+                                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium mt-2"
                                   placeholder="أدخل الصفة"
                                 />
                               )}
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">الاسم الكامل</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />الاسم الكامل</label>
                               <input
                                 type="text"
                                 value={buyer.guardianName || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ الازدياد</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ الازدياد</label>
                               <input
                                 type="date"
                                 value={buyer.guardianDOB || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianDOB', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">رقم البطاقة الوطنية</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><CreditCard className="w-3.5 h-3.5 text-slate-400" />رقم البطاقة الوطنية</label>
                               <input
                                 type="text"
                                 value={buyer.guardianNationalID || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianNationalID', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">العنوان</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><MapPin className="w-3.5 h-3.5 text-slate-400" />العنوان</label>
                               <input
                                 type="text"
                                 value={buyer.guardianAddress || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianAddress', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأب</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأب</label>
                               <input
                                 type="text"
                                 value={buyer.guardianFatherName || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianFatherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">مهنة الولي</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Briefcase className="w-3.5 h-3.5 text-slate-400" />مهنة الولي</label>
                               <input
                                 type="text"
                                 value={buyer.guardianProfession || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianProfession', e.target.value)}
                                 placeholder="مثال: تاجر / متقاعد"
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأم</label>
+                              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-slate-400" />اسم الأم</label>
                               <input
                                 type="text"
                                 value={buyer.guardianMotherName || ''}
                                 onChange={(e) => handleBuyerChange(index, 'guardianMotherName', e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-xs font-medium"
                               />
                             </div>
                           </div>
@@ -4801,31 +5141,40 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 )}
                 {state.documentType !== 'زواج' && state.documentType !== 'زواج_مختلط' && (
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">نسبة التملك</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Award className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>نسبة التملك</span>
+                  </label>
                   <input
                     type="text"
                     value={buyer.share || (tempBuyers.length > 0 ? `${(100/tempBuyers.length).toFixed(2)}%` : '')}
                     readOnly
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-sm font-bold cursor-not-allowed"
                     placeholder="استخدم زر توزيع الحصص لتعديل النسبة"
                   />
                 </div>
                 )}
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">صورة البطاقة (اختياري)</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>صورة البطاقة الوطنية (اختياري)</span>
+                  </label>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
                     onChange={(e) => handleBuyerChange(index, 'idImage', e.target.files?.[0] || null)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all"
                   />
                   {buyer.idImage && (
-                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                      <span className="truncate font-medium">📎 تم إرفاق: {(buyer.idImage as any)?.name || 'صورة البطاقة'}</span>
+                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
+                      <span className="truncate font-bold flex items-center gap-1.5">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>تم إرفاق: {(buyer.idImage as any)?.name || 'صورة البطاقة'}</span>
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleBuyerChange(index, 'idImage', null)}
-                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
+                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
                         title="حذف المرفق"
                       >
                         ✕

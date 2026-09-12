@@ -41,7 +41,8 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar
+  MapPin, XCircle, Printer, Upload, Calendar,
+  Coins, Scale, Heart, Sparkles, Building2
 } from 'lucide-react';
 
 
@@ -169,32 +170,44 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
           </p>
         </div>
 
-        <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-slate-200 space-y-6">
-          <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات الصداق</h3>
+        <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <div className="bg-gradient-to-r from-amber-500 to-yellow-500 p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-sm">
+              <Coins className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-black text-base">بيانات الصداق</h3>
+              <p className="text-white/80 text-xs font-medium">توثيق مقدار الصداق وطريقة أدائه</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-1 md:col-span-2">
-               <label className="block text-sm font-semibold text-gray-700 mb-2">هل تم قبض الصداق؟</label>
-               <div className="flex gap-4">
+               <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-3"><Coins className="w-3.5 h-3.5 text-amber-500" />هل تم قبض الصداق؟</label>
+               <div className="flex gap-2 flex-wrap">
                  {['كاملا', 'جزئي', 'غير مقبوض'].map(opt => (
-                   <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                     <input 
-                       type="radio" 
-                       name="isDowryReceived"
-                       value={opt}
-                       checked={details.isDowryReceived === opt}
-                       onChange={(e) => handleChange('isDowryReceived', e.target.value)}
-                     />
-                     <span className="font-semibold">{opt}</span>
-                   </label>
+                   <button
+                     key={opt}
+                     type="button"
+                     onClick={() => handleChange('isDowryReceived', opt)}
+                     className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                       details.isDowryReceived === opt
+                         ? 'bg-amber-500 text-white shadow-sm'
+                         : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                     }`}
+                   >
+                     {details.isDowryReceived === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                     {opt}
+                   </button>
                  ))}
                </div>
             </div>
 
             {details.isDowryReceived === 'غير مقبوض' && (
-              <div className="col-span-1 md:col-span-2 mt-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">⚠️</span>
-                  <p className="text-yellow-800 font-semibold">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-amber-800 font-semibold text-sm">
                     تنبيه: ان مبلغ الصداق يبقى في ذمة الزوج لا يبرئه إلا الأداء متى طالبته الزوجة بذلك
                   </p>
                 </div>
@@ -204,7 +217,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
             {(details.isDowryReceived === 'كاملا' || details.isDowryReceived === 'جزئي' || details.isDowryReceived === 'غير مقبوض') && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مبلغ الصداق *</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Coins className="w-3.5 h-3.5 text-amber-500" />مبلغ الصداق *</label>
                   <input
                     type="number"
                     value={details.dowryAmount || ''}
@@ -218,16 +231,16 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
                          handleChange('dowryDeferredInWords', convertNumberToArabicWords(deferred));
                       }
                     }}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مبلغ الصداق بالحروف</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />مبلغ الصداق بالحروف</label>
                   <input
                     type="text"
                     value={details.dowryAmountInWords}
                     readOnly
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 text-sm font-medium"
                   />
                 </div>
               </>
@@ -236,49 +249,55 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
             {details.isDowryReceived === 'كاملا' && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">طريقة القبض</label>
-                  <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-3"><Shield className="w-3.5 h-3.5 text-amber-500" />طريقة القبض</label>
+                  <div className="flex gap-2 flex-wrap">
                     {['عيانا', 'اعترافا'].map(opt => (
-                      <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="dowryPaymentMethod"
-                          value={opt}
-                          checked={details.dowryPaymentMethod === opt}
-                          onChange={(e) => handleChange('dowryPaymentMethod', e.target.value)}
-                        />
-                        <span>{opt}</span>
-                      </label>
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => handleChange('dowryPaymentMethod', opt)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                          details.dowryPaymentMethod === opt
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                        }`}
+                      >
+                        {details.dowryPaymentMethod === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                        {opt}
+                      </button>
                     ))}
                   </div>
                 </div>
                 
-                <div className="col-span-1 md:col-span-2 mt-4 border-t pt-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مشتملات اخرى للصداق ان وجدت</label>
-                  <div className="flex gap-4 mb-2">
+                <div className="col-span-1 md:col-span-2 pt-4 border-t border-slate-100">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-3"><Sparkles className="w-3.5 h-3.5 text-amber-500" />مشتملات اخرى للصداق ان وجدت</label>
+                  <div className="flex gap-2 mb-3 flex-wrap">
                     {['نعم', 'لا'].map(opt => (
-                      <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="hasOtherDowryItems"
-                          value={opt}
-                          checked={details.hasOtherDowryItems === opt}
-                          onChange={(e) => handleChange('hasOtherDowryItems', e.target.value)}
-                        />
-                        <span>{opt}</span>
-                      </label>
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => handleChange('hasOtherDowryItems', opt)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                          details.hasOtherDowryItems === opt
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                        }`}
+                      >
+                        {details.hasOtherDowryItems === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                        {opt}
+                      </button>
                     ))}
                   </div>
 
                   {details.hasOtherDowryItems === 'نعم' && (
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">تفاصيل المشتملات</label>
+                    <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-100 mt-2">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-3"><Clipboard className="w-3.5 h-3.5 text-amber-500" />تفاصيل المشتملات</label>
                       
                       {details.otherDowryItems && details.otherDowryItems.length > 0 && (
-                        <ul className="list-disc list-inside mb-3 space-y-1">
+                        <ul className="mb-3 space-y-1.5">
                           {details.otherDowryItems.map((item, idx) => (
-                            <li key={idx} className="flex justify-between items-center bg-white p-2 rounded border">
-                              <span>{item}</span>
+                            <li key={idx} className="flex justify-between items-center bg-white px-3.5 py-2 rounded-xl border border-amber-200 text-sm">
+                              <span className="font-medium text-slate-700">{item}</span>
                               <button 
                                 type="button"
                                 onClick={() => {
@@ -286,7 +305,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
                                   newItems.splice(idx, 1);
                                   handleChange('otherDowryItems', newItems);
                                 }}
-                                className="text-red-500 hover:text-red-700 text-sm px-2"
+                                className="text-rose-500 hover:text-rose-700 font-black text-xs px-2 py-1 rounded-lg hover:bg-rose-50 transition"
                               >
                                 حذف
                               </button>
@@ -299,7 +318,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
                         <input
                           type="text"
                           id="newItemInput"
-                          className="flex-1 p-2 border border-gray-300 rounded-lg"
+                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                           placeholder="أدخل وصف الشيء..."
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -321,8 +340,9 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
                               input.value = '';
                             }
                           }}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all"
                         >
+                          <Plus className="w-3.5 h-3.5" />
                           إضافة
                         </button>
                       </div>
@@ -334,19 +354,16 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
 
             {details.isDowryReceived === 'جزئي' && (
               <>
-                <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
-                  <h5 className="font-semibold text-gray-800 mb-3">تفاصيل الأداء</h5>
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⚠️</span>
-                      <p className="text-yellow-800 font-semibold">
-                        تنبيه: ان كالئ الصداق يبقى في ذمة الزوج لا يبرئه إلا الأداء متى طالبته الزوجة بذلك
-                      </p>
-                    </div>
+                <div className="col-span-1 md:col-span-2 pt-4 border-t border-slate-100">
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-amber-800 font-semibold text-sm">
+                      تنبيه: ان كالئ الصداق يبقى في ذمة الزوج لا يبرئه إلا الأداء متى طالبته الزوجة بذلك
+                    </p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مقدم الصداق</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Coins className="w-3.5 h-3.5 text-amber-500" />مقدم الصداق</label>
                   <input
                     type="number"
                     value={details.dowryAdvance || ''}
@@ -364,118 +381,135 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
                         handleChange('dowryDeferredInWords', convertNumberToArabicWords(deferred));
                       }
                     }}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مقدم الصداق بالحروف</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />مقدم الصداق بالحروف</label>
                   <input
                     type="text"
                     value={details.dowryAdvanceInWords || ''}
                     readOnly
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مؤخر الصداق (كالئ)</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clock className="w-3.5 h-3.5 text-slate-400" />مؤخر الصداق (كالئ)</label>
                   <input
                     type="number"
                     value={details.dowryDeferred || ''}
                     readOnly
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">مؤخر الصداق بالحروف</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />مؤخر الصداق بالحروف</label>
                   <input
                     type="text"
                     value={details.dowryDeferredInWords || ''}
                     readOnly
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 text-sm font-medium"
                   />
                 </div>
               </>
             )}
 
-            <div className="col-span-1 md:col-span-2 border-t pt-6 mt-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">تدبير الأموال المكتسبة</h3>
+            <div className="col-span-1 md:col-span-2 pt-6 border-t border-slate-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <Building2 className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="text-base font-black text-slate-900">تدبير الأموال المكتسبة</h3>
+              </div>
               <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 leading-relaxed">
+                <label className="block text-xs font-bold text-slate-700 leading-relaxed">
                   هل يرغب الطرفان في ابرام اتفاق مستقل لتنظيم و تدبير و استثمار الاموال التي سيتم اكتسابها اثناء قيام العلاقة الزوجية و ذلك طبقا لمقتضيات المادة 49 من مدونة الاسرة؟
                 </label>
-                <div className="flex gap-4">
+                <div className="flex gap-2 flex-wrap">
                   {['نعم', 'لا'].map(opt => (
-                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="hasAssetManagementAgreement"
-                        value={opt}
-                        checked={details.hasAssetManagementAgreement === opt}
-                        onChange={(e) => handleChange('hasAssetManagementAgreement', e.target.value)}
-                      />
-                      <span className="font-semibold">{opt}</span>
-                    </label>
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleChange('hasAssetManagementAgreement', opt)}
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                        details.hasAssetManagementAgreement === opt
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                      }`}
+                    >
+                      {details.hasAssetManagementAgreement === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                      {opt}
+                    </button>
                   ))}
                 </div>
 
                 {details.hasAssetManagementAgreement === 'نعم' && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">ℹ️</span>
-                      <p className="text-blue-800 font-semibold">
-                        تنبيه: طبقا للمادة 49 من مدونة الاسرة يجب تحرير اتفاق مكتوب مستقل عن عقد الزواج لتنظيم تدبير الاموال المكتسبة اثناء للزوجية
-                      </p>
-                    </div>
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+                    <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-blue-800 font-semibold text-sm">
+                      تنبيه: طبقا للمادة 49 من مدونة الاسرة يجب تحرير اتفاق مكتوب مستقل عن عقد الزواج لتنظيم تدبير الاموال المكتسبة اثناء للزوجية
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="col-span-1 md:col-span-2 border-t pt-6 mt-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">الشروط الخاصة</h3>
+            <div className="col-span-1 md:col-span-2 pt-6 border-t border-slate-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-sm">
+                  <Heart className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="text-base font-black text-slate-900">الشروط الخاصة</h3>
+              </div>
               <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700">هل توجد اشتراطات خاصة ضمن عقد الزواج ؟</label>
-                <div className="flex gap-4">
+                <label className="block text-xs font-bold text-slate-700">هل توجد اشتراطات خاصة ضمن عقد الزواج ؟</label>
+                <div className="flex gap-2 flex-wrap">
                   {['نعم', 'لا'].map(opt => (
-                    <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="hasSpecialConditions"
-                        value={opt}
-                        checked={details.hasSpecialConditions === opt}
-                        onChange={(e) => handleChange('hasSpecialConditions', e.target.value)}
-                      />
-                      <span className="font-semibold">{opt}</span>
-                    </label>
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleChange('hasSpecialConditions', opt)}
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                        details.hasSpecialConditions === opt
+                          ? 'bg-rose-500 text-white shadow-sm'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-700'
+                      }`}
+                    >
+                      {details.hasSpecialConditions === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                      {opt}
+                    </button>
                   ))}
                 </div>
 
                 {details.hasSpecialConditions === 'نعم' && (
-                  <div className="space-y-4 mt-4 border-t pt-4">
+                  <div className="space-y-4 mt-2 p-4 bg-rose-50/50 rounded-2xl border border-rose-100">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">صاحب الاشتراط</label>
-                      <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-3"><Shield className="w-3.5 h-3.5 text-rose-500" />صاحب الاشتراط</label>
+                      <div className="flex gap-2 flex-wrap">
                         {['الزوج', 'الزوجة', 'كلاهما معا'].map(opt => (
-                          <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                            <input 
-                              type="radio" 
-                              name="specialConditionsOwner"
-                              value={opt}
-                              checked={details.specialConditionsOwner === opt}
-                              onChange={(e) => handleChange('specialConditionsOwner', e.target.value)}
-                            />
-                            <span>{opt}</span>
-                          </label>
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => handleChange('specialConditionsOwner', opt)}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                              details.specialConditionsOwner === opt
+                                ? 'bg-rose-500 text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-700'
+                            }`}
+                          >
+                            {details.specialConditionsOwner === opt && <CheckCircle className="w-3.5 h-3.5" />}
+                            {opt}
+                          </button>
                         ))}
                       </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">تحدد الاشتراطات المتفق عليها كما يلي</label>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />تحدد الاشتراطات المتفق عليها كما يلي</label>
                       <textarea
                         value={details.specialConditionsText || ''}
                         onChange={(e) => handleChange('specialConditionsText', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg h-32"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-white focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 outline-none transition-all text-slate-800 text-sm font-medium h-32 resize-none"
                         placeholder="أدخل نص الشروط..."
                       />
                     </div>
@@ -484,31 +518,41 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               </div>
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
-          <div className="flex flex-wrap items-center justify-between border-b pb-2 gap-2">
-            <h3 className="text-xl font-bold text-gray-800">بيانات الإذن بالزواج والمحكمة</h3>
+        <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-5 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-sm">
+                <Scale className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-black text-base">بيانات الإذن بالزواج والمحكمة</h3>
+                <p className="text-white/80 text-xs font-medium">مراجع قضاء الأسرة والإذن بالزواج</p>
+              </div>
+            </div>
             {(notaryAppellateCourt || notaryPrimaryCourt) && (
-              <div className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full font-medium shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+              <div className="flex items-center gap-1.5 text-xs bg-white/20 text-white border border-white/30 px-3 py-1 rounded-full font-bold shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-300 inline-block animate-pulse"></span>
                 <span>تم استرجاع المحكمة تلقائياً من بيانات حساب العدل</span>
               </div>
             )}
           </div>
 
+          <div className="p-6 space-y-6">
           {(notaryAppellateCourt || notaryPrimaryCourt) && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {notaryAppellateCourt && (
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">دائرة محكمة الاستئناف (الجهة القضائية):</span>
-                  <span className="font-bold text-slate-800">{notaryAppellateCourt}</span>
+                  <span className="font-semibold text-slate-500">دائرة محكمة الاستئناف:</span>
+                  <span className="font-black text-slate-800">{notaryAppellateCourt}</span>
                 </div>
               )}
               {notaryPrimaryCourt && (
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">المحكمة الابتدائية المسجل بها:</span>
-                  <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">{notaryPrimaryCourt}</span>
+                  <span className="font-semibold text-slate-500">المحكمة الابتدائية:</span>
+                  <span className="font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">{notaryPrimaryCourt}</span>
                 </div>
               )}
             </div>
@@ -516,139 +560,151 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">المحكمة الابتدائية</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Scale className="w-3.5 h-3.5 text-indigo-500" />المحكمة الابتدائية</label>
               <input
                 type="text"
                 value={details.courtName || ''}
                 onChange={(e) => handleChange('courtName', e.target.value)}
                 placeholder={notaryPrimaryCourt || "مثال: تطوان"}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">القسم القضائي</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-indigo-500" />القسم القضائي</label>
               <input
                 type="text"
                 value={details.courtSection || ''}
                 onChange={(e) => handleChange('courtSection', e.target.value)}
                 placeholder="مثال: قسم التوثيق وقضاء الأسرة"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم ملف إذن قاضي الأسرة المكلف بالزواج</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-indigo-500" />رقم ملف إذن قاضي الأسرة المكلف بالزواج</label>
               <input
                 type="text"
                 value={details.authorizationNumber || ''}
                 onChange={(e) => handleChange('authorizationNumber', e.target.value)}
                 placeholder="مثال: 1308 /10"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الإذن بالزواج</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-indigo-500" />تاريخ الإذن بالزواج</label>
               <input
                 type="date"
                 value={details.authorizationDate || ''}
                 onChange={(e) => handleChange('authorizationDate', e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
-          <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات التضمين بكناش الأنكحة ومذكرة الحفظ</h3>
+        <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-sm">
+              <Book className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-black text-base">بيانات التضمين بكناش الأنكحة ومذكرة الحفظ</h3>
+              <p className="text-white/80 text-xs font-medium">مراجع التسجيل الرسمية ومحضر الإشهاد</p>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم كناش الأنكحة</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-emerald-500" />رقم كناش الأنكحة</label>
               <input
                 type="text"
                 value={details.registryNumber || ''}
                 onChange={(e) => handleChange('registryNumber', e.target.value)}
                 placeholder="مثال: 15"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">صحيفة الكناش</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة الكناش</label>
               <input
                 type="text"
                 value={details.registryPage || ''}
                 onChange={(e) => handleChange('registryPage', e.target.value)}
                 placeholder="مثال: 45"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد الكناش</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد الكناش</label>
               <input
                 type="text"
                 value={details.registryCount || ''}
                 onChange={(e) => handleChange('registryCount', e.target.value)}
                 placeholder="مثال: 120"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ التسجيل بالكناش</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-emerald-500" />تاريخ التسجيل بالكناش</label>
               <input
                 type="date"
                 value={details.registryDate || ''}
                 onChange={(e) => handleChange('registryDate', e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم مذكرة الحفظ للعدل الأول</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clipboard className="w-3.5 h-3.5 text-emerald-500" />رقم مذكرة الحفظ للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumNumber || ''}
                 onChange={(e) => handleChange('memorandumNumber', e.target.value)}
                 placeholder="مثال: 07"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد مذكرة الحفظ</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد مذكرة الحفظ</label>
               <input
                 type="text"
                 value={details.memorandumRecordNumber || ''}
                 onChange={(e) => handleChange('memorandumRecordNumber', e.target.value)}
                 placeholder="مثال: 13"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">صفحة مذكرة الحفظ</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صفحة مذكرة الحفظ</label>
               <input
                 type="text"
                 value={details.memorandumPage || ''}
                 onChange={(e) => handleChange('memorandumPage', e.target.value)}
                 placeholder="مثال: 10"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">وقت الإشهاد بالحروف</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clock className="w-3.5 h-3.5 text-emerald-500" />وقت الإشهاد بالحروف</label>
               <input
                 type="text"
                 value={details.sessionTimeWords || ''}
                 onChange={(e) => handleChange('sessionTimeWords', e.target.value)}
                 placeholder="مثال: على الساعة الحادية عشرة صباحا"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الإشهاد بالحروف</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-emerald-500" />تاريخ الإشهاد بالحروف</label>
               <input
                 type="text"
                 value={details.sessionDateWords || ''}
                 onChange={(e) => handleChange('sessionDateWords', e.target.value)}
                 placeholder="مثال: يوم فاتح ربيع الأول 1448 هـ"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
               />
             </div>
+          </div>
           </div>
         </div>
 
