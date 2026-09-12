@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import type { DocumentWizardProps } from '../../types';
 import { Step1_PartiesDefinition } from '../../steps/Step1_PartiesDefinition';
 import { Step6_Dates } from '../../steps/Step6_Dates';
+import { SmartMarriageClassificationGate } from './SmartMarriageClassificationGate';
+import { NationalMarriageStatsModal } from './NationalMarriageStatsModal';
 import { useAuth } from '../../../../contexts/AuthContext';
 import type {
   PaymentMethod, PropertyType, ValidationSeverity, Party, Applicant,
@@ -662,11 +664,124 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
 
 
 export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
+  const [showGateOverride, setShowGateOverride] = useState<boolean>(false);
+  const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+
+  const isGateOpen = showGateOverride || !state.marriageClassification?.confirmedAt;
+
+  if (isGateOpen) {
+    return (
+      <div className="w-full">
+        <SmartMarriageClassificationGate
+          state={state}
+          setState={setState}
+          onConfirm={() => setShowGateOverride(false)}
+          onCancel={state.marriageClassification?.confirmedAt ? () => setShowGateOverride(false) : onBack}
+        />
+      </div>
+    );
+  }
+
+  // Active classification summary for persistent header
+  const classification = state.marriageClassification;
+  const classificationLabels: Record<string, { title: string; badge: string; color: string }> = {
+    adult_marriage: {
+      title: 'زواج الراشد',
+      badge: 'مسار عادي',
+      color: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+    },
+    minor_marriage: {
+      title: 'زواج القاصر',
+      badge:
+        classification?.minorParty === 'husband'
+          ? 'الزوج قاصر'
+          : classification?.minorParty === 'wife'
+          ? 'الزوجة قاصرة'
+          : 'كلاهما قاصران',
+      color: 'bg-amber-100 text-amber-800 border-amber-300'
+    },
+    self_contracting_female: {
+      title: 'زواج الراشدة التي زوجت نفسها',
+      badge: 'المادة 25',
+      color: 'bg-purple-100 text-purple-800 border-purple-300'
+    },
+    mental_disability: {
+      title: 'زواج ذي إعاقة ذهنية',
+      badge: 'المادة 23 - إذن قاضي',
+      color: 'bg-rose-100 text-rose-800 border-rose-300'
+    },
+    revocable_reconciliation: {
+      title: 'الزواج الرجعي',
+      badge: 'إرجاع مطلقة',
+      color: 'bg-blue-100 text-blue-800 border-blue-300'
+    },
+    stipulated_conditions: {
+      title: 'زواج بشروط اتفاقية',
+      badge: `${classification?.stipulatedConditions?.length || 0} شروط`,
+      color: 'bg-amber-100 text-amber-900 border-amber-300'
+    },
+    contract_renewal: {
+      title: 'تجديد أو تصحيح عقد زواج',
+      badge: 'مسار الإلحاق',
+      color: 'bg-slate-100 text-slate-800 border-slate-300'
+    }
+  };
+
+  const currentInfo = classification?.primaryType
+    ? classificationLabels[classification.primaryType]
+    : classificationLabels.adult_marriage;
+
   return (
-    <>
+    <div className="space-y-4" dir="rtl">
+      {/* Persistent Classification & Pathway Bar */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-lg border border-blue-200">
+            ⚖️
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-semibold">المسار المعتمد للرسم:</span>
+              <span className="text-sm font-bold text-gray-900">{currentInfo?.title}</span>
+              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${currentInfo?.color}`}>
+                {currentInfo?.badge}
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-500 mt-0.5">
+              {classification?.judgePermission?.permissionNumber && (
+                <span>إذن قاضي التوثيق رقم: {classification.judgePermission.permissionNumber} • </span>
+              )}
+              <span>تم اعتماد هذا التصنيف رسمياً في الإحصائيات الوطنية للزواج</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowStatsModal(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+          >
+            <span>📊 الإحصائيات الوطنية للزواج</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowGateOverride(true)}
+            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <span>⚙️ تعديل مسار الزواج</span>
+          </button>
+        </div>
+      </div>
+
       {state.step === 1 && <Step1_PartiesDefinition state={state} setState={setState} />}
       {state.step === 2 && <Step2_MarriageDetails state={state} setState={setState} />}
       {state.step === 6 && <Step6_Dates state={state} setState={setState} />}
-    </>
+
+      <NationalMarriageStatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+      />
+    </div>
   );
 };

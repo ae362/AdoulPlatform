@@ -1486,6 +1486,63 @@ export interface MarriageContinuityDeed {
   };
 }
 
+export type MarriageClassificationType =
+  | 'adult_marriage'          // 👤 زواج الراشد
+  | 'minor_marriage'          // 👦 زواج القاصر
+  | 'self_contracting_female' // 👩 زواج الراشدة التي زوجت نفسها
+  | 'mental_disability'       // 🧠 زواج ذي إعاقة ذهنية
+  | 'revocable_reconciliation'// 🔄 الزواج الرجعي
+  | 'stipulated_conditions'   // 📜 زواج مقترن بشروط اتفاقية
+  | 'contract_renewal';       // 🔁 مراجعة أو تجديد عقد زواج
+
+export type MinorMarriageParty = 'husband' | 'wife' | 'both';
+
+export interface PreviousMarriageContractDetails {
+  husbandName?: string;
+  wifeName?: string;
+  deedNumber?: string;
+  inclusionRef?: string;
+  deedDate?: string;
+  courtName?: string;
+  isLinked?: boolean;
+}
+
+export interface SmartMarriageClassificationData {
+  primaryType: MarriageClassificationType;
+  minorParty?: MinorMarriageParty;
+  judgePermission?: JudgePermissionDetails & {
+    status?: 'verified' | 'pending' | 'unverified' | 'blocked';
+    courtName?: string;
+    judgeName?: string;
+  };
+  medicalReport?: {
+    reportNumber?: string;
+    doctorName?: string;
+    clinicName?: string;
+    reportDate?: string;
+    isVerified?: boolean;
+  };
+  stipulatedConditions?: string[];
+  previousContract?: PreviousMarriageContractDetails;
+  isSelfContracting?: boolean;
+  reconciliationDetails?: {
+    divorceDeedNumber?: string;
+    divorceDate?: string;
+    revocationDate?: string;
+    divorceCourt?: string;
+    isIddahValid?: boolean;
+  };
+  readinessStatus?: {
+    isTypeSelected: boolean;
+    isSpecialPathResolved: boolean;
+    isJudgePermissionValid: boolean;
+    isConditionsRecorded: boolean;
+    isPreviousContractLinked: boolean;
+    isReadyToDraft: boolean;
+  };
+  confirmedAt?: string;
+}
+
 export interface MarriageDetails {
   dowryAmount?: number;
   dowryAmountInWords?: string;
@@ -1528,6 +1585,7 @@ export interface MarriageDetails {
     notary?: string;
   };
   isMinorParty?: boolean;
+  marriageClassification?: SmartMarriageClassificationData;
 }
 
 export interface DowryDetails {
@@ -2168,6 +2226,7 @@ export interface FeesAgentState {
   selectedHeaderId?: string;
   manualRasmFile?: File | null;
   preReceptionVerification?: PreReceptionVerificationData;
+  marriageClassification?: SmartMarriageClassificationData;
   [key: string]: any;
 }
 

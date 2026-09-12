@@ -1969,6 +1969,41 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         </div>
                       </div>
 
+                      {state.documentType === 'زواج' && state.marriageClassification?.primaryType === 'adult_marriage' && (
+                        <div className="mt-3 p-4 bg-red-600 text-white rounded-xl shadow-lg border-2 border-red-700 space-y-2.5">
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl">⚠️</span>
+                            <div>
+                              <h4 className="font-bold text-sm sm:text-base">
+                                تعارض في تصنيف الزواج: الزوج قاصر (العمر: {calculateAge(seller.dateOfBirth)} سنة)
+                              </h4>
+                              <p className="text-xs text-red-100 mt-1 leading-relaxed">
+                                تم تحديد مسار الزواج الحالي كـ «زواج الراشد»، بينما عمر الزوج يقل عن 18 سنة شمسية. يتطلب القانون إذن قاضي التوثيق (المادة 20 من مدونة الأسرة).
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setState((prev) => ({
+                                ...prev,
+                                marriageClassification: {
+                                  ...(prev.marriageClassification || { primaryType: 'minor_marriage' }),
+                                  primaryType: 'minor_marriage',
+                                  minorParty:
+                                    prev.buyers?.[0]?.dateOfBirth && calculateAge(prev.buyers[0].dateOfBirth) < 18
+                                      ? 'both'
+                                      : 'husband'
+                                }
+                              }));
+                            }}
+                            className="w-full sm:w-auto px-4 py-2 bg-white text-red-700 hover:bg-red-50 font-bold text-xs rounded-lg shadow transition-all flex items-center justify-center gap-2"
+                          >
+                            <span>⚡ تحويل المسار تلقائيًا إلى «زواج القاصر» وتفعيل متطلبات إذن القاضي</span>
+                          </button>
+                        </div>
+                      )}
+
                       {(state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') && (
                         <div className="mt-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                           <h5 className="font-semibold text-gray-800 mb-3">اذن زواج القاصر</h5>
@@ -3938,6 +3973,41 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           </div>
                         </div>
                       </div>
+
+                      {state.documentType === 'زواج' && state.marriageClassification?.primaryType === 'adult_marriage' && (
+                        <div className="mt-3 p-4 bg-red-600 text-white rounded-xl shadow-lg border-2 border-red-700 space-y-2.5">
+                          <div className="flex items-start gap-3">
+                            <span className="text-2xl">⚠️</span>
+                            <div>
+                              <h4 className="font-bold text-sm sm:text-base">
+                                تعارض في تصنيف الزواج: الزوجة قاصرة (العمر: {calculateAge(buyer.dateOfBirth)} سنة)
+                              </h4>
+                              <p className="text-xs text-red-100 mt-1 leading-relaxed">
+                                تم تحديد مسار الزواج الحالي كـ «زواج الراشد»، بينما عمر الزوجة يقل عن 18 سنة شمسية. يتطلب القانون إذن قاضي التوثيق (المادة 20 من مدونة الأسرة).
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setState((prev) => ({
+                                ...prev,
+                                marriageClassification: {
+                                  ...(prev.marriageClassification || { primaryType: 'minor_marriage' }),
+                                  primaryType: 'minor_marriage',
+                                  minorParty:
+                                    prev.sellers?.[0]?.dateOfBirth && calculateAge(prev.sellers[0].dateOfBirth) < 18
+                                      ? 'both'
+                                      : 'wife'
+                                }
+                              }));
+                            }}
+                            className="w-full sm:w-auto px-4 py-2 bg-white text-red-700 hover:bg-red-50 font-bold text-xs rounded-lg shadow transition-all flex items-center justify-center gap-2"
+                          >
+                            <span>⚡ تحويل المسار تلقائيًا إلى «زواج القاصر» وتفعيل متطلبات إذن القاضي</span>
+                          </button>
+                        </div>
+                      )}
 
                       {(state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') && (
                         <div className="mt-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
