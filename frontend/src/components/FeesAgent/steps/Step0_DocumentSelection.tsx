@@ -2932,7 +2932,7 @@ export const Step0_DocumentSelection: React.FC<Step0Props> = ({ state, setState,
 
   return (
     <div className="space-y-6">
-      <Step0_DocumentTypeSelection />
+      {Step0_DocumentTypeSelection()}
     </div>
   );
 };

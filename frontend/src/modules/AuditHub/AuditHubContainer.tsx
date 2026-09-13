@@ -59,6 +59,7 @@ import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from '../../components/common/ToastNotification';
 import type { FeesAgentState } from '../FeesAgent';
+import { getPartyLabels } from '../../constants/feesAgentLocales';
 import { generateDocxBlobFromTemplate } from '../../utils/docxTemplate';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -81,6 +82,62 @@ import { SaveCategoryModal } from './modals/SaveCategoryModal';
 import { DecisionModal } from './modals/DecisionModal';
 import { ImageViewerModal } from './modals/ImageViewerModal';
 
+export const MOROCCAN_CITIES = [
+  'الرباط', 'شفشاون', 'طنجة', 'تطوان', 'الدار البيضاء', 'فاس', 'مكناس', 'مراكش',
+  'أكادير', 'وجدة', 'القنيطرة', 'سلا', 'الناظور', 'الحسيمة', 'العرائش', 'القصر الكبير',
+  'وزان', 'سيدي قاسم', 'خريبكة', 'بني ملال', 'سطات', 'الجديدة', 'آسفي', 'الصويرة',
+  'العيون', 'الداخلة', 'كلميم', 'تارودانت', 'ورزازات', 'الرشيدية', 'تازة', 'بركان', 'خنيفرة'
+];
+
+export const getNotaryCity = (profile: any, userObj: any): string => {
+  const raw = String(
+    profile?.primary_court ||
+    profile?.court_name ||
+    profile?.jurisdiction ||
+    profile?.office_address ||
+    userObj?.court_name ||
+    ''
+  ).trim();
+
+  if (!raw) return 'الرباط';
+
+  const cleaned = raw
+    .replace(/^المحكمة\s+الابتدائية\s+(بـ|ب)?/i, '')
+    .replace(/^محكمة\s+الاستئناف\s+(بـ|ب)?/i, '')
+    .replace(/^قسم\s+قضاء\s+الأسرة\s+(بـ|ب)?/i, '')
+    .replace(/^ابتدائية\s+(بـ|ب)?/i, '')
+    .replace(/^استئنافية\s+(بـ|ب)?/i, '')
+    .trim();
+
+  return cleaned || raw;
+};
+
+export const deriveUniqueSerial = (rasmData: any, stateObj: any): string => {
+  const currentYear = new Date().getFullYear();
+  const fromAudit = rasmData?.payload?.auditHubInclusion?.serial || stateObj?.auditHubInclusion?.serial;
+  if (fromAudit && typeof fromAudit === 'string' && fromAudit.trim() && fromAudit.trim() !== '2026/001') {
+    return fromAudit.trim();
+  }
+  const fileNo = rasmData?.fileNumber || stateObj?.meta?.fileNumber || stateObj?.fileNumber;
+  if (fileNo && typeof fileNo === 'string' && fileNo.trim()) {
+    if (/^\d{4}\/\d+$/.test(fileNo.trim())) {
+      return fileNo.trim();
+    }
+    const cleanNum = fileNo.replace(/[^\d]/g, '');
+    if (cleanNum) {
+      return `${currentYear}/${cleanNum.padStart(3, '0')}`;
+    }
+    return `${currentYear}/${fileNo.trim()}`;
+  }
+  const idStr = String(rasmData?.id || stateObj?.id || '');
+  if (idStr && idStr.length >= 4) {
+    const hexPart = idStr.replace(/[^0-9a-f]/gi, '').slice(0, 4);
+    const intSeq = (parseInt(hexPart, 16) % 900) + 100;
+    return `${currentYear}/${intSeq}`;
+  }
+  return `${currentYear}/001`;
+};
+
 export const AuditHubContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState('data');
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
@@ -91,6 +148,23 @@ export const AuditHubContainer: React.FC = () => {
   const params = new URLSearchParams(location.search);
   const rasmId = params.get('id') || params.get('rasmId');
   const shouldForceRefetch = params.get('refetch') === 'true' || Boolean(params.get('cb'));
+
+  // Get notary partners for auto-filling the secondary notary / العدل العاطف
+  const notaryPartnersQuery = (trpc as any).auth.getNotaryPartners.useQuery(
+    { sessionToken: sessionToken || '' },
+    { enabled: !!sessionToken, staleTime: 60000 }
+  );
+  const notaryPartners: any[] = notaryPartnersQuery.data || [];
+
+  // Determine active partner based on availability toggle in Notary Partners
+  const activePartner = useMemo(() => {
+    if (!notaryPartners || notaryPartners.length === 0) return null;
+    const available = notaryPartners.find((p: any) => p.is_available);
+    return available ? available.partner_name : (notaryPartners[0]?.partner_name || null);
+  }, [notaryPartners]);
+
+  // Automatically determine the city of the notary from profile data
+  const notaryCity = useMemo(() => getNotaryCity(notaryProfile, user), [notaryProfile, user]);
 
   const [state, setState] = useState<FeesAgentState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -136,15 +210,15 @@ export const AuditHubContainer: React.FC = () => {
     source: 'audit_hub_pre_signing_review',
   }), [preSaveChecks]);
 
-  // Get the current notary's primary court for auto-population
-  const defaultCourt = notaryProfile?.primary_court || 'الرباط';
+  // Get the current notary's primary court / city for auto-population
+  const defaultCourt = notaryCity || notaryProfile?.primary_court || 'الرباط';
 
   // Property Units System
   const [propertyUnits, setPropertyUnits] = useState<any[]>([
     { 
         id: crypto.randomUUID(), 
         type: 'unregistered', 
-        unregisteredData: { bookType: 'أملاك', bookNumber: '', count: '', page: '', date: '', authority: defaultCourt, notes: '' },
+        unregisteredData: { bookType: 'أملاك', bookNumber: '', bookLetter: '', count: '', page: '', date: '', authority: defaultCourt, notes: '' },
         registeredData: { deedNumber: '', issueDate: '', registryOffice: defaultCourt, applicationNumber: '', notes: '' }
     }
   ]);
@@ -153,7 +227,7 @@ export const AuditHubContainer: React.FC = () => {
     setPropertyUnits([...propertyUnits, { 
         id: crypto.randomUUID(), 
         type: 'unregistered',
-        unregisteredData: { bookType: 'أملاك', bookNumber: '', count: '', page: '', date: '', authority: defaultCourt, notes: '' },
+        unregisteredData: { bookType: 'أملاك', bookNumber: '', bookLetter: '', count: '', page: '', date: '', authority: defaultCourt, notes: '' },
         registeredData: { deedNumber: '', issueDate: '', registryOffice: defaultCourt, applicationNumber: '', notes: '' }
     }]);
   };
@@ -394,40 +468,70 @@ export const AuditHubContainer: React.FC = () => {
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const viewerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Section Collapse State
+  // Section Collapse State - starts collapsed
   const [isUnitsCollapsed, setIsUnitsCollapsed] = useState(true);
   const [isFinancialCollapsed, setIsFinancialCollapsed] = useState(true);
 
-  // Availability State
-  const [isUnitsAvailable, setIsUnitsAvailable] = useState(true);
-  const [isFinancialAvailable, setIsFinancialAvailable] = useState(true);
+  // Availability State - starts as not available (false) by default
+  const [isUnitsAvailable, setIsUnitsAvailable] = useState(false);
+  const [isFinancialAvailable, setIsFinancialAvailable] = useState(false);
 
-  const initialFinalRecord = React.useMemo(() => ({
-    serial: '2026/001',
-    certificateType: 'مطابق للفئة المحددة',
-    register: '',
-    number: '',
-    page: '',
-    count: '',
-    date: '2026-02-18',
-    registrationDate: '',
-    authority: defaultCourt,
-    notes: '',
-    firstPartyName: 'test',
-    firstPartyId: '66676678',
-    secondPartyName: '',
-    secondPartyId: '',
-    deedBook: 'أملاك العقارية',
-    deedNumber: 'REF-9920-R',
-    deedPage: '124',
-    deedCount: '15',
-    depositNumber: 'DEP-2026-9921',
-    taxOrder: 'TAX-88201-9B',
-    notaryName: '',
-    optionalParties: [] as Array<{ id: string; name: string; nationalId: string }>,
-  }), [defaultCourt]);
+  const initialFinalRecord = React.useMemo(() => {
+    const defaultPartner =
+      activePartner ||
+      (notaryProfile as any)?.designated_partner ||
+      (notaryProfile as any)?.partner_name ||
+      (notaryProfile as any)?.secondary_adoul_name ||
+      notaryPartners?.[0]?.partner_name ||
+      '';
+    return {
+      serial: '',
+      certificateType: 'رسم عدلي',
+      register: '',
+      number: '',
+      page: '',
+      count: '',
+      date: new Date().toISOString().split('T')[0],
+      registrationDate: new Date().toISOString().split('T')[0],
+      authority: defaultCourt,
+      notes: '',
+      firstPartyName: '',
+      firstPartyId: '',
+      secondPartyName: '',
+      secondPartyId: '',
+      deedBook: '',
+      deedNumber: '',
+      deedPage: '',
+      deedCount: '',
+      depositNumber: '',
+      taxOrder: '',
+      judgeName: defaultPartner,
+      notaryName: user?.full_name || '',
+      optionalParties: [] as Array<{ id: string; name: string; nationalId: string }>,
+    };
+  }, [defaultCourt, activePartner, notaryPartners, notaryProfile, user]);
 
   const [finalRecord, setFinalRecord] = useState(initialFinalRecord);
+
+  // Synchronize judgeName when active partner changes or is resolved from database
+  useEffect(() => {
+    if (activePartner) {
+      setFinalRecord(prev => {
+        const isCurrentInactive = notaryPartners.some(
+          (p: any) => p.partner_name === prev.judgeName && !p.is_available
+        );
+        if (!prev.judgeName || isCurrentInactive) {
+          return { ...prev, judgeName: activePartner };
+        }
+        return prev;
+      });
+    }
+  }, [activePartner, notaryPartners]);
+
+  const partyLabels = useMemo(
+    () => getPartyLabels((state as any)?.documentType || finalRecord.certificateType || ''),
+    [(state as any)?.documentType, finalRecord.certificateType]
+  );
 
   const [onlyOfficeOpen, setOnlyOfficeOpen] = useState(false);
   const [onlyOfficeDsUrl, setOnlyOfficeDsUrl] = useState<string | null>(null);
@@ -1101,6 +1205,92 @@ export const AuditHubContainer: React.FC = () => {
       totalTrackedFields,
     };
   }, [finalRecord, isUnitsAvailable, isFinancialAvailable, propertyUnits, rasmQuery.data]);
+
+  const validateAuditHubForSigning = useCallback(() => {
+    const errors: string[] = [];
+
+    // 1. Certificate Type & Authority
+    if (!String(finalRecord.certificateType || '').trim()) {
+      errors.push('نوع الشهادة / العقد مطلوب');
+    }
+    if (!String(finalRecord.authority || '').trim()) {
+      errors.push('جهة التوثيق (المكتب) مطلوبة');
+    }
+
+    // 2. Serial & Dates
+    if (!String(finalRecord.serial || '').trim()) {
+      errors.push('الرقم المسلسل (Reference) مطلوب');
+    }
+    if (!String(finalRecord.register || '').trim()) {
+      errors.push('الرقم مطلوب');
+    }
+    if (!String(finalRecord.page || '').trim()) {
+      errors.push('رقم الصحيفة مطلوب');
+    }
+    if (!String(finalRecord.count || '').trim()) {
+      errors.push('العدد مطلوب');
+    }
+    if (!String(finalRecord.date || finalRecord.registrationDate || '').trim()) {
+      errors.push('تاريخ التلقي مطلوب');
+    }
+
+    // 3. Parties with dynamic labels
+    const partyLabels = getPartyLabels(state?.documentType || finalRecord.certificateType);
+    if (!String(finalRecord.firstPartyName || '').trim()) {
+      errors.push(`اسم الطرف الأول (${partyLabels.sellerSingle}) مطلوب`);
+    }
+    if (!String(finalRecord.firstPartyId || '').trim()) {
+      errors.push(`رقم البطاقة الوطنية للطرف الأول (${partyLabels.sellerSingle}) مطلوب`);
+    }
+    if (!String(finalRecord.secondPartyName || '').trim()) {
+      errors.push(`اسم الطرف الثاني (${partyLabels.buyerSingle}) مطلوب`);
+    }
+    if (!String(finalRecord.secondPartyId || '').trim()) {
+      errors.push(`رقم البطاقة الوطنية للطرف الثاني (${partyLabels.buyerSingle}) مطلوب`);
+    }
+
+    // 4. Property Units (if Available)
+    if (isUnitsAvailable) {
+      if (!propertyUnits || propertyUnits.length === 0) {
+        errors.push('مراجع سند الشهادة/العقد متوفرة ولكن لم يتم إدخال أي عقار/سند');
+      } else {
+        propertyUnits.forEach((u, i) => {
+          if (u.type === 'unregistered') {
+            if (!String(u.unregisteredData?.bookNumber || '').trim()) {
+              errors.push(`رقم الدفتر في السند رقم ${i + 1} مطلوب`);
+            }
+            if (!String(u.unregisteredData?.count || '').trim()) {
+              errors.push(`العدد في السند رقم ${i + 1} مطلوب`);
+            }
+            if (!String(u.unregisteredData?.page || '').trim()) {
+              errors.push(`الصحيفة في السند رقم ${i + 1} مطلوبة`);
+            }
+          } else {
+            if (!String(u.registeredData?.deedNumber || '').trim()) {
+              errors.push(`رقم الرسم العقاري في السند رقم ${i + 1} مطلوب`);
+            }
+          }
+        });
+      }
+    }
+
+    // 5. Financial Data (if Available)
+    if (isFinancialAvailable) {
+      if (!String(finalRecord.taxOrder || '').trim()) {
+        errors.push('البيانات المالية متوفرة ولكن خانة أمر المطالبة فارغة');
+      }
+    }
+
+    // 6. Notary Data (اسم العدل العاطف)
+    if (!String((finalRecord as any).judgeName || '').trim()) {
+      errors.push('اسم العدل العاطف مطلوب');
+    }
+
+    return errors;
+  }, [finalRecord, isUnitsAvailable, propertyUnits, isFinancialAvailable, state?.documentType]);
+
+  const validationErrors = useMemo(() => validateAuditHubForSigning(), [validateAuditHubForSigning]);
+  const isFormComplete = validationErrors.length === 0;
 
   const finalizeMutation = (trpc as any).feesAgent.documents.finalizeAudit.useMutation();
   const addPrimaryAttachmentMutation = (trpc as any).feesAgent.documents.addSavedRasmAttachment.useMutation();
@@ -1913,7 +2103,41 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         propertyUnits, // include the enhanced unit list
         isUnitsAvailable,
         isFinancialAvailable,
+        firstPartyName: finalRecord.firstPartyName,
+        firstPartyId: finalRecord.firstPartyId,
+        secondPartyName: finalRecord.secondPartyName,
+        secondPartyId: finalRecord.secondPartyId,
         optionalParties: Array.isArray((finalRecord as any).optionalParties) ? (finalRecord as any).optionalParties : [],
+        deedBook: finalRecord.deedBook,
+        taxOrder: finalRecord.taxOrder,
+        serial: finalRecord.serial,
+        judgeName: (finalRecord as any).judgeName,
+        registerNumber: finalRecord.register,
+        certificateNumber: finalRecord.count,
+        registryPage: finalRecord.page,
+        inclusionDate: finalRecord.registrationDate || finalRecord.date,
+        court: finalRecord.authority,
+        auditHubInclusion: {
+          registerNumber: finalRecord.register,
+          certificateNumber: finalRecord.count,
+          registryPage: finalRecord.page,
+          inclusionDate: finalRecord.registrationDate || finalRecord.date,
+          court: finalRecord.authority,
+          serial: finalRecord.serial,
+          certificateType: finalRecord.certificateType,
+          registrationDate: finalRecord.registrationDate || null,
+          documentDate: finalRecord.date || null,
+          firstPartyName: finalRecord.firstPartyName,
+          firstPartyId: finalRecord.firstPartyId,
+          secondPartyName: finalRecord.secondPartyName,
+          secondPartyId: finalRecord.secondPartyId,
+          optionalParties: (finalRecord as any).optionalParties || [],
+          deedBook: finalRecord.deedBook,
+          taxOrder: finalRecord.taxOrder,
+          isUnitsAvailable,
+          isFinancialAvailable,
+          judgeName: (finalRecord as any).judgeName,
+        },
         finalReviewChecklist: buildFinalReviewChecklist(),
     };
 
@@ -2139,30 +2363,108 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       if (!s || typeof s !== 'object') return;
 
       setState(s);
-      setIsUnitsAvailable(s.isUnitsAvailable ?? true);
-      setIsFinancialAvailable(s.isFinancialAvailable ?? true);
-      
+
+      const auditHub = (s as any)?.auditHubInclusion && typeof (s as any).auditHubInclusion === 'object'
+        ? (s as any).auditHubInclusion
+        : ((s as any)?.audit_hub_inclusion && typeof (s as any).audit_hub_inclusion === 'object' ? (s as any).audit_hub_inclusion : null);
+
+      const uniqueSerial = deriveUniqueSerial(rasmQuery.data, s);
+
+      // Determine parties dynamically from payload or previous auditHub entry
+      let party1Name = auditHub?.firstPartyName || s.firstPartyName || '';
+      let party1Id = auditHub?.firstPartyId || s.firstPartyId || '';
+      let party2Name = auditHub?.secondPartyName || s.secondPartyName || '';
+      let party2Id = auditHub?.secondPartyId || s.secondPartyId || '';
+
+      if (!party1Name && !party1Id) {
+        // If marriage: husband is party 1, wife is party 2
+        if (s.husband?.name || s.parties?.husband?.name) {
+          party1Name = s.husband?.name || s.parties?.husband?.name || '';
+          party1Id = s.husband?.idNumber || s.husband?.cin || s.parties?.husband?.idNumber || '';
+        } else if (s.sellers?.[0]?.name) {
+          party1Name = s.sellers[0].name;
+          party1Id = s.sellers[0].idNumber || s.sellers[0].cin || '';
+        } else if (s.applicants?.[0]?.name) {
+          party1Name = s.applicants[0].name;
+          party1Id = s.applicants[0].idNumber || s.applicants[0].cin || '';
+        } else if (Array.isArray(s.parties) && s.parties[0]?.name) {
+          party1Name = s.parties[0].name;
+          party1Id = s.parties[0].idNumber || s.parties[0].cin || '';
+        }
+      }
+
+      if (!party2Name && !party2Id) {
+        if (s.wife?.name || s.parties?.wife?.name) {
+          party2Name = s.wife?.name || s.parties?.wife?.name || '';
+          party2Id = s.wife?.idNumber || s.wife?.cin || s.parties?.wife?.idNumber || '';
+        } else if (s.buyers?.[0]?.name) {
+          party2Name = s.buyers[0].name;
+          party2Id = s.buyers[0].idNumber || s.buyers[0].cin || '';
+        } else if (s.applicants?.[1]?.name) {
+          party2Name = s.applicants[1].name;
+          party2Id = s.applicants[1].idNumber || s.applicants[1].cin || '';
+        } else if (Array.isArray(s.parties) && s.parties[1]?.name) {
+          party2Name = s.parties[1].name;
+          party2Id = s.parties[1].idNumber || s.parties[1].cin || '';
+        }
+      }
+
+      const rawPartner =
+        activePartner ||
+        (notaryProfile as any)?.designated_partner ||
+        (notaryProfile as any)?.partner_name ||
+        (notaryProfile as any)?.secondary_adoul_name ||
+        notaryPartners?.[0]?.partner_name ||
+        auditHub?.notary2Name ||
+        auditHub?.judgeName ||
+        s.notary2Name ||
+        s.judgeName ||
+        (s as any)?.notaries?.secondary ||
+        (s as any)?.meta?.notarySecondary ||
+        '';
+
+      const initialUnitsAvail = s.isUnitsAvailable ?? auditHub?.isUnitsAvailable ?? false;
+      const initialFinAvail = s.isFinancialAvailable ?? auditHub?.isFinancialAvailable ?? false;
+
+      setIsUnitsAvailable(initialUnitsAvail);
+      setIsFinancialAvailable(initialFinAvail);
+
+      // If available, auto-open; if not available, remain collapsed
+      if (initialUnitsAvail) setIsUnitsCollapsed(false);
+      if (initialFinAvail) setIsFinancialCollapsed(false);
+
+      if (Array.isArray(s.propertyUnits) && s.propertyUnits.length > 0) {
+        setPropertyUnits(s.propertyUnits);
+      }
+
       // Auto-fill final record from payload
       setFinalRecord(prev => ({
         ...prev,
-        register: (s as any).witnessesData?.notaryRegister || '',
-        number: (s as any).meta?.fileNumber || (rasmQuery.data as any)?.fileNumber || '',
-        page: s.properties?.[0]?.titleDocuments?.[0]?.page || '',
-        count: s.properties?.[0]?.titleDocuments?.[0]?.count || '',
-        date: (s as any).meta?.dateGregorian || new Date().toISOString().split('T')[0],
-        certificateType: s.documentType || 'رسم بيع',
-        firstPartyName: s.sellers?.[0]?.name || '',
-        firstPartyId: s.sellers?.[0]?.idNumber || '',
-        secondPartyName: s.buyers?.[0]?.name || '',
-        secondPartyId: s.buyers?.[0]?.idNumber || '',
-        notaryName: s.notaryPrimary || 'الأستاذ المصطفى العلوي',
-        optionalParties: Array.isArray((s as any).optionalParties)
-          ? (s as any).optionalParties.map((party: any) => ({
-              id: String(party?.id || crypto.randomUUID()),
-              name: String(party?.name || ''),
-              nationalId: String(party?.nationalId || party?.idNumber || ''),
-            }))
-          : [],
+        serial: uniqueSerial,
+        authority: auditHub?.court || s.court || prev.authority || notaryCity,
+        registrationDate: auditHub?.registrationDate || s.registrationDate || (s as any).meta?.dateGregorian || new Date().toISOString().split('T')[0],
+        date: auditHub?.documentDate || s.documentDate || (s as any).meta?.dateGregorian || new Date().toISOString().split('T')[0],
+        register: auditHub?.registerNumber || s.registerNumber || (s as any).witnessesData?.notaryRegister || prev.register || '',
+        page: auditHub?.registryPage || s.registryPage || s.properties?.[0]?.titleDocuments?.[0]?.page || prev.page || '',
+        count: auditHub?.certificateNumber || s.certificateNumber || s.properties?.[0]?.titleDocuments?.[0]?.count || prev.count || '',
+        certificateType: auditHub?.certificateType || s.documentType || (rasmQuery.data as any)?.documentType || prev.certificateType || 'رسم عدلي',
+        firstPartyName: party1Name,
+        firstPartyId: party1Id,
+        secondPartyName: party2Name,
+        secondPartyId: party2Id,
+        deedBook: auditHub?.deedBook || s.deedBook || prev.deedBook || '',
+        taxOrder: auditHub?.taxOrder || s.taxOrder || prev.taxOrder || '',
+        judgeName: rawPartner,
+        notaryName: user?.full_name || s.notaryPrimary || (s as any).meta?.notaryPrimary || prev.notaryName || '',
+        optionalParties: Array.isArray(auditHub?.optionalParties)
+          ? auditHub.optionalParties
+          : (Array.isArray((s as any).optionalParties)
+            ? (s as any).optionalParties.map((party: any) => ({
+                id: String(party?.id || crypto.randomUUID()),
+                name: String(party?.name || ''),
+                nationalId: String(party?.nationalId || party?.idNumber || ''),
+              }))
+            : []),
       }));
 
       // Auto-select the most relevant document for viewing:
@@ -3209,6 +3511,14 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
   const openNotarySigningFromAuditHub = useCallback(async (opts?: { skipInitialSave?: boolean; targetDocType?: string }) => {
     if (!rasmId || !state) return;
+
+    // Strict validation guard: cannot skip to signing without filling all the information in audithub
+    const validationErrors = validateAuditHubForSigning();
+    if (validationErrors.length > 0) {
+      alert(`⚠️ لا يمكن الانتقال إلى التوقيع حتى استكمال جميع بيانات AuditHub الإلزامية:\n\n• ${validationErrors.join('\n• ')}`);
+      return;
+    }
+
     const clickStartedAtMs = Date.now();
     const fallbackDocumentType =
       opts?.targetDocType ||
@@ -3223,7 +3533,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         (state as any)?.draft ||
         (selectedVaultDoc?.isDraft ? selectedVaultDoc?.content : '') ||
         ''
-    ).trim();
+      ).trim();
     const finalReviewChecklist = buildFinalReviewChecklist();
     const generatedForceSaveRequestId =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -3258,6 +3568,41 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
             propertyUnits,
             isUnitsAvailable,
             isFinancialAvailable,
+            firstPartyName: finalRecord.firstPartyName,
+            firstPartyId: finalRecord.firstPartyId,
+            secondPartyName: finalRecord.secondPartyName,
+            secondPartyId: finalRecord.secondPartyId,
+            optionalParties: Array.isArray((finalRecord as any).optionalParties) ? (finalRecord as any).optionalParties : [],
+            deedBook: finalRecord.deedBook,
+            taxOrder: finalRecord.taxOrder,
+            serial: finalRecord.serial,
+            judgeName: (finalRecord as any).judgeName,
+            registerNumber: finalRecord.register,
+            certificateNumber: finalRecord.count,
+            registryPage: finalRecord.page,
+            inclusionDate: finalRecord.registrationDate || finalRecord.date,
+            court: finalRecord.authority,
+            auditHubInclusion: {
+              registerNumber: finalRecord.register,
+              certificateNumber: finalRecord.count,
+              registryPage: finalRecord.page,
+              inclusionDate: finalRecord.registrationDate || finalRecord.date,
+              court: finalRecord.authority,
+              serial: finalRecord.serial,
+              certificateType: finalRecord.certificateType,
+              registrationDate: finalRecord.registrationDate || null,
+              documentDate: finalRecord.date || null,
+              firstPartyName: finalRecord.firstPartyName,
+              firstPartyId: finalRecord.firstPartyId,
+              secondPartyName: finalRecord.secondPartyName,
+              secondPartyId: finalRecord.secondPartyId,
+              optionalParties: (finalRecord as any).optionalParties || [],
+              deedBook: finalRecord.deedBook,
+              taxOrder: finalRecord.taxOrder,
+              isUnitsAvailable,
+              isFinancialAvailable,
+              judgeName: (finalRecord as any).judgeName,
+            },
             finalReviewChecklist,
           },
           files: undefined,
@@ -3536,18 +3881,37 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       (stateAny?.meta?.notaryPrimary as string | undefined) ||
       (user?.full_name ?? null);
     const secondaryNotaryName =
+      (finalRecord as any).judgeName ||
       (stateAny?.notaries?.secondary as string | undefined) ||
       (stateAny?.notaries?.notary2Name as string | undefined) ||
       (stateAny?.meta?.notarySecondary as string | undefined) ||
       null;
 
+    const isSigningIntent = saveCategoryIntent === 'signing';
+
+    if (isSigningIntent) {
+      const validationErrors = validateAuditHubForSigning();
+      if (validationErrors.length > 0) {
+        alert('يرجى استكمال البيانات الإلزامية في استمارة التدقيق قبل الانتقال إلى رواق التوقيع:\n• ' + validationErrors.join('\n• '));
+        return;
+      }
+    }
+
     const finalPayload = {
       ...state,
       draft: currentDocContent,
-      propertyUnits,
+      propertyUnits: isUnitsAvailable ? propertyUnits : [],
       isUnitsAvailable,
       isFinancialAvailable,
+      firstPartyName: (finalRecord as any).firstPartyName || (state as any)?.firstPartyName || null,
+      firstPartyId: (finalRecord as any).firstPartyId || (state as any)?.firstPartyId || null,
+      secondPartyName: (finalRecord as any).secondPartyName || (state as any)?.secondPartyName || null,
+      secondPartyId: (finalRecord as any).secondPartyId || (state as any)?.secondPartyId || null,
       optionalParties: Array.isArray((finalRecord as any).optionalParties) ? (finalRecord as any).optionalParties : [],
+      deedBook: (finalRecord as any).deedBook || null,
+      taxOrder: (finalRecord as any).taxOrder || null,
+      serial: finalRecord.serial,
+      judgeName: (finalRecord as any).judgeName || secondaryNotaryName,
       finalReviewChecklist: buildFinalReviewChecklist(),
       // Persist inclusion refs entered in AuditHub so downstream (signature + signed viewer)
       // can gather them automatically from saved_rasms.payload.
@@ -3558,7 +3922,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       court: finalRecord.authority,
       // Persist notary identity from logged-in user + known meta.
       notary1Name: primaryNotaryName,
-      notary2Name: secondaryNotaryName,
+      notary2Name: (finalRecord as any).judgeName || secondaryNotaryName,
       phone: notaryProfile?.phone || null,
       email: user?.email || null,
       auditHubInclusion: {
@@ -3571,8 +3935,19 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         certificateType: finalRecord.certificateType,
         registrationDate: finalRecord.registrationDate || null,
         documentDate: finalRecord.date || null,
+        firstPartyName: (finalRecord as any).firstPartyName || null,
+        firstPartyId: (finalRecord as any).firstPartyId || null,
+        secondPartyName: (finalRecord as any).secondPartyName || null,
+        secondPartyId: (finalRecord as any).secondPartyId || null,
+        optionalParties: Array.isArray((finalRecord as any).optionalParties) ? (finalRecord as any).optionalParties : [],
+        propertyUnits: isUnitsAvailable ? propertyUnits : [],
+        isUnitsAvailable,
+        isFinancialAvailable,
+        deedBook: (finalRecord as any).deedBook || null,
+        taxOrder: (finalRecord as any).taxOrder || null,
+        judgeName: (finalRecord as any).judgeName || secondaryNotaryName,
         notary1Name: primaryNotaryName,
-        notary2Name: secondaryNotaryName,
+        notary2Name: (finalRecord as any).judgeName || secondaryNotaryName,
         phone: notaryProfile?.phone || null,
         email: user?.email || null,
       },
@@ -3586,8 +3961,6 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       auditedAt: new Date().toISOString(),
       isAudited: true,
     };
-
-    const isSigningIntent = saveCategoryIntent === 'signing';
 
     // ⚡ INSTANT RESPONSE:
     // When moving to signing, immediately dismiss modal and activate high-fidelity signing transition screen
@@ -4202,10 +4575,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                     {/* Action 1: Save directly to Saved Documents Library (without signing) */}
                                     <button 
                                       onClick={() => {
-                                        if (!state) {
-                                          alert('خطأ: لم يتم تحميل بيانات الرسم بعد. يرجى الانتظار قليلاً ثم المحاولة مجدداً.');
-                                          return;
-                                        }
+                                        if (!state || !isFormComplete) return;
                                         if (primaryTextEditorOpen) {
                                           const finalContent = editedPlainTextGetterRef.current?.();
                                           if (finalContent) {
@@ -4216,13 +4586,13 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                         setPreSaveReviewIntent('library');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
-                                      disabled={!state || isRedirecting}
+                                      disabled={!state || !isFormComplete || isRedirecting}
                                       className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
-                                        state && !isRedirecting
+                                        state && isFormComplete && !isRedirecting
                                           ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 cursor-pointer shadow-emerald-700/20'
-                                          : 'bg-emerald-400 cursor-not-allowed opacity-60'
+                                          : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
                                       }`}
-                                      title="حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً"
+                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً'}
                                     >
                                         <ShieldCheck className="w-3.5 h-3.5" />
                                         <span>حفظ في مكتبة الوثائق 📚</span>
@@ -4231,10 +4601,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                     {/* Action 2: Save & Proceed Directly to Notary Signing Portal */}
                                     <button 
                                       onClick={() => {
-                                        if (!state) {
-                                          alert('خطأ: لم يتم تحميل بيانات الرسم بعد. يرجى الانتظار قليلاً ثم المحاولة مجدداً.');
-                                          return;
-                                        }
+                                        if (!state || !isFormComplete) return;
                                         if (primaryTextEditorOpen) {
                                           const finalContent = editedPlainTextGetterRef.current?.();
                                           if (finalContent) {
@@ -4245,13 +4612,13 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                         setPreSaveReviewIntent('signing');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
-                                      disabled={!state || isRedirecting}
+                                      disabled={!state || !isFormComplete || isRedirecting}
                                       className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
-                                        state && !isRedirecting
+                                        state && isFormComplete && !isRedirecting
                                           ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:brightness-110 cursor-pointer shadow-blue-700/20'
-                                          : 'bg-blue-400 cursor-not-allowed opacity-60'
+                                          : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
                                       }`}
-                                      title="اعتماد الرسم والانتقال الفوري إلى رواق التوقيع"
+                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال الفوري إلى رواق التوقيع'}
                                     >
                                         <FileSignature className="w-3.5 h-3.5" />
                                         <span>رواق التوقيع 🖋️</span>
@@ -4457,235 +4824,232 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                     {/* Right Panel in RTL: Validation Cards & Registration References */}
                     <div className="w-[340px] xl:w-[370px] 2xl:w-[400px] bg-white h-full overflow-y-auto p-4 shadow-sm border-r border-slate-200 flex flex-col shrink-0">
                         {activeTab === 'data' ? (
-                          <div className="space-y-5 pb-16">
-                                <h3 className="text-base font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <FileText className="w-4 h-4 text-blue-600" />
-                                    مراجع تضمين الشهادة/العقد
-                                </h3>
+                          <div className="space-y-4 pb-16">
+                                <div className="flex items-center justify-between border-b border-slate-200/90 pb-2.5">
+                                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-emerald-700" />
+                                        <span>مراجع تضمين الشهادة/العقد</span>
+                                    </h3>
+                                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        معتمد
+                                    </span>
+                                </div>
 
-                                {/* Level 1: Deed Identity */}
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    
-                                    {/* New Added Fields from Requirements */}
+                                {/* Level 1: Deed Identity & Registration Data */}
+                                <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                                    {/* نوع الشهادة */}
                                     <div className="mb-3">
-                                        <label className="block text-xs font-bold text-slate-500 mb-1.5">نوع الشهادة</label>
-                                        <div className="flex items-center gap-2">
-                                            <input 
-                                                type="radio" 
-                                                checked={true} readOnly
-                                                className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.certificateType}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, certificateType: e.target.value}))}
-                                                className="flex-1 text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none"
-                                                placeholder="أدخل نوع الشهادة..."
-                                            />
-                                        </div>
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-1">نوع الشهادة / العقد</label>
+                                        <input 
+                                            type="text" 
+                                            value={finalRecord.certificateType}
+                                            onChange={(e) => setFinalRecord(prev => ({...prev, certificateType: e.target.value}))}
+                                            className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-800 transition-all"
+                                            placeholder="أدخل نوع الشهادة..."
+                                        />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="grid grid-cols-2 gap-2.5 mb-3">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">جهة التوثيق (المكتب)</label>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
+                                                <span>جهة التوثيق (المكتب)</span>
+                                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">تلقائي</span>
+                                            </label>
                                             <select 
                                                 value={finalRecord.authority}
                                                 onChange={(e) => setFinalRecord(prev => ({...prev, authority: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white"
+                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-800 transition-all"
                                             >
-                                                <option value="الرباط">مكتب التوثيق - الرباط</option>
-                                                <option value="الدار البيضاء">مكتب التوثيق - الدار البيضاء</option>
-                                                <option value="طنجة">مكتب التوثيق - طنجة</option>
-                                                <option value="مراكش">مكتب التوثيق - مراكش</option>
+                                                {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
+                                                    <option value={notaryCity}>مكتب التوثيق - {notaryCity}</option>
+                                                )}
+                                                {MOROCCAN_CITIES.map(city => (
+                                                    <option key={city} value={city}>مكتب التوثيق - {city}</option>
+                                                ))}
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">تاريخ التقييد</label>
-                                            <input 
-                                                type="date" 
-                                                value={finalRecord.registrationDate || finalRecord.date}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, registrationDate: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            />
-                                        </div>
-                                    </div>
 
-                                    <div className="h-px bg-slate-200 my-4"></div>
-
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">الرقم المسلسل (Reference)</label>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
+                                                <span>الرقم المسلسل</span>
+                                                <span className="text-[9px] font-mono text-slate-400">فريد وتلقائي</span>
+                                            </label>
                                             <div className="relative">
                                                 <input 
                                                     type="text" 
                                                     value={finalRecord.serial}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, serial: e.target.value}))}
-                                                    className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono pl-8"
+                                                    readOnly
+                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 outline-none font-mono font-bold cursor-not-allowed select-all pl-7"
+                                                    title="رقم تسلسلي فريد يتم توليده تلقائياً للرسم"
                                                 />
-                                                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                </div>
                                             </div>
                                         </div>
-                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">تاريخ التوثيق</label>
-                                            <input 
-                                                type="date" 
-                                                value={finalRecord.date}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, date: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            />
-                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">السجل</label>
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.register}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, register: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            />
+
+                                    {/* سجل البيانات (Small Header + 4 fields) */}
+                                    <div className="mt-3 pt-3 border-t border-slate-100">
+                                        <div className="flex items-center gap-1.5 mb-2.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                                            <h5 className="text-xs font-bold text-slate-700">سجل البيانات</h5>
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">الصحيفة</label>
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.page}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, page: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">العدد</label>
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.count}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, count: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                                            />
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">رقم</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="#"
+                                                    value={finalRecord.register}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, register: e.target.value}))}
+                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">الصحيفة</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="#"
+                                                    value={finalRecord.page}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, page: e.target.value}))}
+                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">العدد</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="#"
+                                                    value={finalRecord.count}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, count: e.target.value}))}
+                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">تاريخ التلقي</label>
+                                                <input 
+                                                    type="date" 
+                                                    value={finalRecord.date}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, date: e.target.value}))}
+                                                    className="w-full text-[10px] p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-medium text-slate-800 transition-all"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Level 2: Parties Smart Cards */}
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div className="mb-4 flex items-center justify-between gap-3">
-                                        <h4 className="font-bold text-slate-700 text-sm flex justify-between items-center">
-                                            بيانات اطراف الشهادة/العقد
-                                            <span className="mr-2 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Smart Verify Active</span>
+                                {/* Level 2: Parties Cards */}
+                                <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                                    <div className="mb-3.5 flex items-center justify-between gap-3">
+                                        <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                            <Users className="w-3.5 h-3.5 text-slate-600" />
+                                            <span>بيانات أطراف الشهادة / العقد</span>
                                         </h4>
                                         <button
                                           type="button"
                                           onClick={addOptionalParty}
-                                          className="rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-1.5 text-[11px] font-black text-white shadow-md transition-all hover:brightness-110"
+                                          className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 text-[10px] font-bold transition-all flex items-center gap-1"
                                         >
-                                          + إضافة طرف اختياري
+                                          <Plus className="w-3 h-3" />
+                                          إضافة طرف
                                         </button>
                                     </div>
                                     
-                                    <div className="mb-4 relative group">
-                                        <div className="flex justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">الطرف الأول (البائع)</span>
-                                                <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 border border-emerald-200">
-                                                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                                                </span>
-                                            </div>
-                                             <div className="flex items-center gap-1 opacity-50">
-                                                <ShieldCheck className="w-4 h-4 text-slate-400" />
-                                                <span className="text-[10px] font-mono text-slate-400">BIO-SECURE</span>
-                                            </div>
+                                    {/* الطرف الأول */}
+                                    <div className="mb-3 p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                                                الطرف الأول ({partyLabels.sellerSingle || 'الطرف الأول'})
+                                            </span>
                                         </div>
-                                        <div className="relative">
-                                            <input 
-                                                type="text" 
-                                                placeholder="الاسم الثلاثي"
-                                                value={finalRecord.firstPartyName}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyName: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 mb-2 focus:ring-2 focus:ring-blue-100 outline-none pl-10"
-                                            />
-                                            <UserCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-1">
+                                        <div className="space-y-2">
+                                            <div className="relative">
                                                 <input 
                                                     type="text" 
-                                                    placeholder="الرقم القومي"
-                                                    value={finalRecord.firstPartyId}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyId: e.target.value}))}
-                                                    className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none font-mono text-left"
-                                                    dir="ltr"
+                                                    placeholder="الاسم الكامل"
+                                                    value={finalRecord.firstPartyName}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyName: e.target.value}))}
+                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none pr-8 text-slate-800 font-bold transition-all"
                                                 />
-                                                <div className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded border border-emerald-100">%IDD 98%</div>
+                                                <UserCheck className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-slate-200 my-4 border-dashed"></div>
-
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded">الطرف الثاني (المشتري)</span>
-                                                 <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 border border-emerald-200">
-                                                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <input 
-                                            type="text" 
-                                            placeholder="الاسم الثلاثي"
-                                            value={finalRecord.secondPartyName}
-                                            onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyName: e.target.value}))}
-                                            className="w-full text-sm p-2.5 rounded-lg border border-slate-300 mb-2 focus:ring-2 focus:ring-blue-100 outline-none"
-                                        />
-                                        <div className="relative">
                                             <input 
                                                 type="text" 
-                                                placeholder="الرقم القومي"
-                                                value={finalRecord.secondPartyId}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyId: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none font-mono text-left"
+                                                placeholder="رقم البطاقة الوطنية (CNIE)"
+                                                value={finalRecord.firstPartyId}
+                                                onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyId: e.target.value}))}
+                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-mono text-left uppercase transition-all"
                                                 dir="ltr"
                                             />
-                                             <div className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded border border-emerald-100">%IDD 95%</div>
                                         </div>
                                     </div>
 
+                                    {/* الطرف الثاني */}
+                                    <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
+                                                الطرف الثاني ({partyLabels.buyerSingle || 'الطرف الثاني'})
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="relative">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="الاسم الكامل"
+                                                    value={finalRecord.secondPartyName}
+                                                    onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyName: e.target.value}))}
+                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none pr-8 text-slate-800 font-bold transition-all"
+                                                />
+                                                <UserCheck className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
+                                            </div>
+                                            <input 
+                                                type="text" 
+                                                placeholder="رقم البطاقة الوطنية (CNIE)"
+                                                value={finalRecord.secondPartyId}
+                                                onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyId: e.target.value}))}
+                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-mono text-left uppercase transition-all"
+                                                dir="ltr"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* الأطراف الاختيارية */}
                                     {Array.isArray((finalRecord as any).optionalParties) && (finalRecord as any).optionalParties.length > 0 && (
-                                      <>
-                                        <div className="border-t border-slate-200 my-4 border-dashed"></div>
-                                        <div className="space-y-3">
-                                          {(finalRecord as any).optionalParties.map((party: any, index: number) => (
-                                            <div key={party.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                                              <div className="mb-2 flex items-center justify-between gap-3">
-                                                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">طرف اختياري {index + 1}</span>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => removeOptionalParty(party.id)}
-                                                  className="text-[11px] font-black text-red-600 hover:text-red-700"
-                                                >
-                                                  حذف
-                                                </button>
-                                              </div>
+                                      <div className="mt-3 space-y-2.5 pt-2.5 border-t border-slate-100">
+                                        {(finalRecord as any).optionalParties.map((party: any, index: number) => (
+                                          <div key={party.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                                            <div className="mb-2 flex items-center justify-between gap-3">
+                                              <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">طرف اختياري {index + 1}</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => removeOptionalParty(party.id)}
+                                                className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                                              >
+                                                <Trash2 className="w-3 h-3" />
+                                                حذف
+                                              </button>
+                                            </div>
+                                            <div className="space-y-2">
                                               <input
                                                 type="text"
-                                                placeholder="الاسم الثلاثي"
+                                                placeholder="الاسم الكامل"
                                                 value={party.name}
                                                 onChange={(e) => updateOptionalParty(party.id, 'name', e.target.value)}
-                                                className="mb-2 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-100"
+                                                className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 font-bold text-slate-800"
                                               />
                                               <input
                                                 type="text"
-                                                placeholder="الرقم القومي"
+                                                placeholder="رقم البطاقة الوطنية (CNIE)"
                                                 value={party.nationalId}
                                                 onChange={(e) => updateOptionalParty(party.id, 'nationalId', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-300 p-2.5 text-left font-mono text-sm outline-none focus:ring-2 focus:ring-blue-100"
+                                                className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-left font-mono text-xs outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 uppercase"
                                                 dir="ltr"
                                               />
                                             </div>
-                                          ))}
-                                        </div>
-                                      </>
+                                          </div>
+                                        ))}
+                                      </div>
                                     )}
                                 </div>
 
@@ -4710,7 +5074,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                 <input 
                                                     type="radio" 
                                                     checked={isUnitsAvailable} 
-                                                    onChange={() => setIsUnitsAvailable(true)}
+                                                    onChange={() => {
+                                                        setIsUnitsAvailable(true);
+                                                        setIsUnitsCollapsed(false);
+                                                    }}
                                                     className="w-3 h-3 text-blue-600 focus:ring-blue-500"
                                                 />
                                                 <span className={`text-[10px] font-bold ${isUnitsAvailable ? 'text-blue-600' : 'text-slate-400'}`}>متوفر</span>
@@ -4750,10 +5117,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                             return (
                                             <div key={unit.id} className={`p-4 bg-white rounded-xl border relative group transition-all ${isDuplicate ? 'border-red-300 shadow-red-100 shadow-md' : 'border-slate-200 hover:shadow-md'}`}>
                                                 <div className="absolute top-3 left-3 flex gap-2">
-                                                     <span className="text-[10px] font-bold text-slate-300 bg-slate-100 px-2 py-1 rounded-full">Unit {idx + 1}</span>
+                                                     <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Unit {idx + 1}</span>
                                                     <button 
                                                         onClick={() => removePropertyUnit(unit.id)}
-                                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full p-1 transition-all"
+                                                        className="text-red-400 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all"
                                                         title="Remove Unit"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -4783,52 +5150,111 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                         </div>
 
                                                         <div>
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">نوع الدفتر</label>
+                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">نوع الدفتر / نوع المحرر</label>
                                                             <select 
                                                                 value={unit.unregisteredData.bookType}
                                                                 onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookType')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 bg-white outline-none"
+                                                                className="w-full text-xs p-2 rounded border border-slate-200 bg-white outline-none font-bold text-slate-700"
                                                             >
-                                                                <option value="أملاك">أملاك</option>
-                                                                <option value="زواج">زواج</option>
-                                                                <option value="تركات">تركات</option>
-                                                                <option value="وصايا">وصايا</option>
-                                                                <option value="كفالات">كفالات</option>
-                                                                <option value="هبات">هبات</option>
-                                                                <option value="أوقاف">أوقاف</option>
-                                                                <option value="مختلفة">سجلات مختلفة</option>
+                                                                <optgroup label="سجلات التوثيق الرسمية (Official Registers)">
+                                                                    <option value="أملاك">سجل الأملاك</option>
+                                                                    <option value="تركات">سجل التركات والمخلفات</option>
+                                                                    <option value="وصايا">سجل الوصايا</option>
+                                                                    <option value="كفالات">سجل الرهون والكفالات</option>
+                                                                    <option value="هبات">سجل الهبات والصدقات</option>
+                                                                    <option value="زواج">سجل الزواج ومستنداته</option>
+                                                                    <option value="طلاق">سجل الطلاق والرجعة</option>
+                                                                    <option value="أوقاف">سجل الأوقاف والتحبيس</option>
+                                                                    <option value="معاوضات">سجل المعاوضات والمناقلات</option>
+                                                                    <option value="توكيلات">سجل التوكيلات والإنابات</option>
+                                                                    <option value="ديون">سجل الديون والإقرارات</option>
+                                                                    <option value="مختلفة">سجلات مختلفة</option>
+                                                                </optgroup>
+                                                                <optgroup label="أنواع المعاملات والرسوم (FeesAgent Document Types)">
+                                                                    <option value="بيع_وشراء">بيع وشراء عقار</option>
+                                                                    <option value="بيع_وشراء_معنوي">بيع وشراء معنوي (أصل تجاري)</option>
+                                                                    <option value="بيع_وشراء_طور_انجاز_ابتدائي">بيع في طور الإنجاز (ابتدائي)</option>
+                                                                    <option value="بيع_وشراء_طور_انجاز_نهائي">بيع في طور الإنجاز (نهائي)</option>
+                                                                    <option value="بيع_وشراء_ملكية_مشتركة">بيع وشراء في الملكية المشتركة</option>
+                                                                    <option value="عقد_ايجار_المفضي_الى_تملك">عقد إيجار مفضي إلى تملك</option>
+                                                                    <option value="عقد_تفويت_حق_السطحية">عقد تفويت حق السطحية</option>
+                                                                    <option value="عقد_بيع_حق_الهواء_والتعلية">عقد بيع حق الهواء والتعلية</option>
+                                                                    <option value="كراء_طويل_الامد">عقد كراء طويل الأمد</option>
+                                                                    <option value="عقد_تحبيس">عقد تحبيس (وقف)</option>
+                                                                    <option value="عقد_العمري">عقد العمرى</option>
+                                                                    <option value="هبة">رسم هبة</option>
+                                                                    <option value="صدقة">رسم صدقة</option>
+                                                                    <option value="مقاسمة">عقد مقاسمة</option>
+                                                                    <option value="مناقلة">عقد مناقلة معاوضة</option>
+                                                                    <option value="رهن">رسم رهن رسمي</option>
+                                                                    <option value="رهن_حيازي">رسم رهن حيازي</option>
+                                                                    <option value="اراثة">رسم إراثة</option>
+                                                                    <option value="بيان_فريضة">بيان فريضة</option>
+                                                                    <option value="احصاء_متروك">إحصاء متروك</option>
+                                                                    <option value="ثبوت_مخلف">ثبوت مخلف</option>
+                                                                    <option value="وصية">رسم وصية</option>
+                                                                    <option value="ملكية">رسم ملكية</option>
+                                                                    <option value="حيازة">رسم حيازة</option>
+                                                                    <option value="ثبوت_بناء">رسم ثبوت بناء</option>
+                                                                    <option value="ثبوت_زينة_عقار">ثبوت زينة عقار</option>
+                                                                    <option value="ثبوت_مرفق">ثبوت مرفق</option>
+                                                                    <option value="زواج">رسم زواج</option>
+                                                                    <option value="زواج_مختلط">رسم زواج مختلط</option>
+                                                                    <option value="رسم_استمرار_زواج">رسم استمرار زواج</option>
+                                                                    <option value="الاشهاد_على_الطلاق_الاتفاقي">إشهاد على طلاق اتفاقي</option>
+                                                                    <option value="اتفاق_تدبير_اموال_زوجية">اتفاق تدبير أموال زوجية</option>
+                                                                    <option value="توكيل_رسمي">توكيل رسمي</option>
+                                                                    <option value="رسم_اقرار_واعتراف">رسم إقرار واعتراف</option>
+                                                                    <option value="رسم_اقرار_بدين">رسم إقرار بدين</option>
+                                                                    <option value="رسم_إبراء_من_دين">رسم إبراء من دين</option>
+                                                                    <option value="رسم_تسليم_بعوض">رسم تسليم بعوض</option>
+                                                                    <option value="رسم_الاقرار_ببنوة">رسم إقرار ببنوة</option>
+                                                                    <option value="ثبوت_نسب_ببينة_السماع">ثبوت نسب ببينة السماع</option>
+                                                                    <option value="وعد_بالبيع">وعد بالبيع</option>
+                                                                    <option value="أخرى">محرر / رسم عدلي آخر</option>
+                                                                </optgroup>
                                                             </select>
                                                         </div>
 
-                                                        <div className="grid grid-cols-3 gap-2">
+                                                        <div className="grid grid-cols-4 gap-2">
                                                             <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">رقم الدفتر</label>
+                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">رقم الدفتر</label>
                                                                 <input 
                                                                     type="text" 
                                                                     placeholder="#"
                                                                     value={unit.unregisteredData.bookNumber}
                                                                     onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookNumber')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-mono text-center"
+                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">العدد</label>
+                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">حرف (اختياري)</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="أ / ب"
+                                                                    value={unit.unregisteredData.bookLetter || ''}
+                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookLetter')}
+                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">العدد</label>
                                                                 <input 
                                                                     type="text" 
                                                                     placeholder="#"
                                                                     value={unit.unregisteredData.count}
                                                                     onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'count')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-mono text-center"
+                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">الصحيفة</label>
+                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">الصحيفة</label>
                                                                 <input 
                                                                     type="text" 
                                                                     placeholder="#"
                                                                     value={unit.unregisteredData.page}
                                                                     onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'page')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-mono text-center"
+                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
                                                                 />
                                                             </div>
                                                         </div>
@@ -4848,15 +5274,14 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                                 <select 
                                                                     value={unit.unregisteredData.authority}
                                                                     onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'authority')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none"
+                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-bold text-slate-700"
                                                                 >
-                                                                    <option value="الرباط">الرباط</option>
-                                                                    <option value="الدار البيضاء">الدار البيضاء</option>
-                                                                    <option value="طنجة">طنجة</option>
-                                                                    <option value="فاس">فاس</option>
-                                                                    <option value="مراكش">مراكش</option>
-                                                                    <option value="أكادير">أكادير</option>
-                                                                    <option value="وجدة">وجدة</option>
+                                                                    {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
+                                                                        <option value={notaryCity}>{notaryCity}</option>
+                                                                    )}
+                                                                    {MOROCCAN_CITIES.map(city => (
+                                                                        <option key={city} value={city}>{city}</option>
+                                                                    ))}
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -4974,7 +5399,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                 <input 
                                                     type="radio" 
                                                     checked={isFinancialAvailable} 
-                                                    onChange={() => setIsFinancialAvailable(true)}
+                                                    onChange={() => {
+                                                        setIsFinancialAvailable(true);
+                                                        setIsFinancialCollapsed(false);
+                                                    }}
                                                     className="w-3 h-3 text-emerald-600 focus:ring-emerald-500"
                                                 />
                                                 <span className={`text-[10px] font-bold ${isFinancialAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>متوفر</span>
@@ -5005,7 +5433,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                 type="text" 
                                                 value={finalRecord.deedBook}
                                                 onChange={(e) => setFinalRecord(prev => ({...prev, deedBook: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none bg-slate-100" // readonly look maybe?
+                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none bg-slate-100 font-bold"
                                             />
                                         </div>
                                          <div>
@@ -5014,7 +5442,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                                 type="text" 
                                                 value={finalRecord.taxOrder}
                                                 onChange={(e) => setFinalRecord(prev => ({...prev, taxOrder: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none font-mono"
+                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none font-mono font-bold"
                                             />
                                         </div>
                                     </div>
@@ -5024,43 +5452,106 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
                                 {/* Level 5: Notary Vital Data */}
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <h4 className="font-bold text-slate-700 mb-4 text-sm">بيانات العدل(ة)</h4>
-                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1.5">اسم العدل العاطف</label>
+                                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center justify-between">
+                                        <span>بيانات هيئة التوثيق العدلي</span>
+                                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">طبقاً للقانون 16.03</span>
+                                    </h4>
+
+                                    {/* Primary Notary (Logged in Adoul) */}
+                                    <div className="mb-2.5 p-3 rounded-lg bg-white border border-slate-200">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-bold text-slate-700">العدل المتلقي الأول (الأصيل)</span>
+                                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">الملف الشخصي</span>
+                                        </div>
+                                        <div className="text-sm font-black text-slate-900">
+                                            الأستاذ(ة): {user?.full_name || 'العدل الموثق'}
+                                        </div>
+                                        {notaryCity && (
+                                            <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                                دائرة التوثيق: {notaryCity}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Secondary Notary (العدل العاطف) - Automatically pre-filled from active partner */}
+                                    <div className="p-3 rounded-lg bg-white border border-slate-200">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-bold text-slate-700">اسم العدل العاطف (المتلقي الثاني)</span>
+                                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                <span>الشريك النشط حالياً</span>
+                                            </span>
+                                        </div>
                                         <input 
                                             type="text" 
-                                            placeholder="الاسم الرباعي"
+                                            placeholder="أدخل اسم العدل العاطف..."
                                             value={(finalRecord as any).judgeName || ''}
                                             onChange={(e) => setFinalRecord(prev => ({...prev, judgeName: e.target.value}))}
-                                            className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none"
+                                            className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-900 transition-all"
                                         />
+
+                                        {notaryPartners && notaryPartners.length > 1 && (
+                                          <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+                                            <span className="text-[10px] text-slate-400 font-medium">الشركاء المسجلون:</span>
+                                            {notaryPartners.map((partner: any) => {
+                                              const isSelected = (finalRecord as any).judgeName === partner.partner_name;
+                                              const isAvailable = Boolean(partner.is_available);
+                                              return (
+                                                <button
+                                                  key={partner.id}
+                                                  type="button"
+                                                  onClick={() => setFinalRecord(prev => ({ ...prev, judgeName: partner.partner_name }))}
+                                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all border ${
+                                                    isSelected
+                                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-xs'
+                                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                                                  }`}
+                                                >
+                                                  <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                  <span>{partner.partner_name}</span>
+                                                  {isAvailable && <span className="text-[9px] text-emerald-700 font-normal">(نشط)</span>}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="rounded-[2rem] border border-slate-800 bg-gradient-to-b from-slate-950 to-[#101828] p-4 shadow-[0_25px_60px_rgba(15,23,42,0.35)]">
-                                  <div className="mb-4 flex items-center gap-3 text-white">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 border border-white/10">
-                                      <FolderArchive className="w-5 h-5 text-slate-200" />
+                                {/* Bottom Action Card */}
+                                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-xl">
+                                  <div className="mb-3.5 flex items-center gap-3 text-white">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 border border-slate-700">
+                                      <FolderArchive className="w-4 h-4 text-emerald-400" />
                                     </div>
                                     <div>
-                                      <div className="text-sm font-black">إجراءات الوثيقة</div>
-                                      <div className="text-[11px] font-bold text-slate-400">الإجراءات النهائية بعد استكمال جميع البيانات</div>
+                                      <div className="text-xs font-black text-slate-100">إجراءات الوثيقة</div>
+                                      <div className="text-[10px] text-slate-400">الإجراءات الرسمية للرسم العدلي بعد استكمال التدقيق</div>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-3">
+                                  <div className="space-y-2.5">
+                                    {!isFormComplete && (
+                                      <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/50 text-amber-200 text-[11px] font-bold flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                                        <span>يرجى استكمال البيانات أعلاه للمتابعة ({validationErrors.length} متبقي)</span>
+                                      </div>
+                                    )}
+
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        if (!isFormComplete) return;
                                         setPreSaveReviewIntent('library');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
-                                      disabled={!rasmId}
-                                      className={`w-full rounded-xl px-4 py-3 text-sm font-black text-white transition-all flex items-center justify-center gap-2 border ${
-                                        rasmId
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 border-emerald-500/30 hover:brightness-110 shadow-lg shadow-emerald-900/20'
-                                        : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'
+                                      disabled={!rasmId || !isFormComplete || isRedirecting}
+                                      className={`w-full rounded-xl px-4 py-2.5 text-xs font-black text-white transition-all flex items-center justify-center gap-2 border ${
+                                        rasmId && isFormComplete && !isRedirecting
+                                        ? 'bg-emerald-700 hover:bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-950/40 cursor-pointer'
+                                        : 'bg-slate-900 border-slate-800 opacity-40 cursor-not-allowed text-slate-500'
                                       }`}
+                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ في مكتبة الوثائق 📚'}
                                     >
                                       <ShieldCheck className="w-4 h-4" />
                                       حفظ في مكتبة الوثائق 📚
@@ -5069,55 +5560,59 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        if (!isFormComplete) return;
                                         setPreSaveReviewIntent('signing');
                                         setIsPreSaveReviewModalOpen(true);
                                       }}
-                                      disabled={!rasmId}
-                                      className={`w-full rounded-xl px-4 py-3 text-sm font-black text-white transition-all flex items-center justify-center gap-2 border ${
-                                        rasmId
-                                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500/30 hover:brightness-110'
-                                        : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'
+                                      disabled={!rasmId || !isFormComplete || isRedirecting}
+                                      className={`w-full rounded-xl px-4 py-2.5 text-xs font-black text-white transition-all flex items-center justify-center gap-2 border ${
+                                        rasmId && isFormComplete && !isRedirecting
+                                        ? 'bg-blue-700 hover:bg-blue-600 border-blue-600 shadow-md shadow-blue-950/40 cursor-pointer'
+                                        : 'bg-slate-900 border-slate-800 opacity-40 cursor-not-allowed text-slate-500'
                                       }`}
+                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'رواق التوقيع العدلي 🖋️'}
                                     >
                                       <FileSignature className="w-4 h-4" />
                                       رواق التوقيع العدلي 🖋️
                                     </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => void shareSelectedDocument()}
-                                      disabled={!selectedDocumentUrl}
-                                      className={`w-full rounded-xl px-4 py-3 text-sm font-black transition-all flex items-center justify-center gap-2 border ${
-                                        selectedDocumentUrl
-                                        ? 'bg-slate-800 text-slate-100 border-slate-700 hover:bg-slate-700'
-                                        : 'bg-slate-800/60 text-slate-500 border-slate-800 cursor-not-allowed'
-                                      }`}
-                                    >
-                                      <Share2 className="w-4 h-4" />
-                                      مشاركة
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => void shareSelectedDocument()}
+                                        disabled={!selectedDocumentUrl}
+                                        className={`rounded-lg px-3 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                                          selectedDocumentUrl
+                                          ? 'bg-slate-900 text-slate-200 border-slate-800 hover:bg-slate-800'
+                                          : 'bg-slate-900/60 text-slate-600 border-slate-900 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        <Share2 className="w-3.5 h-3.5" />
+                                        مشاركة
+                                      </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={printSelectedDocument}
-                                      className="w-full rounded-xl px-4 py-3 text-sm font-black text-slate-100 bg-slate-800 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border border-slate-700"
-                                    >
-                                      <Printer className="w-4 h-4" />
-                                      طباعة
-                                    </button>
+                                      <button
+                                        type="button"
+                                        onClick={printSelectedDocument}
+                                        className="rounded-lg px-3 py-2 text-xs font-bold text-slate-200 bg-slate-900 hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 border border-slate-800"
+                                      >
+                                        <Printer className="w-3.5 h-3.5" />
+                                        طباعة
+                                      </button>
+                                    </div>
 
                                     <button
                                       type="button"
                                       onClick={() => void deleteCurrentRasm()}
                                       disabled={!rasmId || deleteSavedRasmMutation.isPending}
-                                      className={`w-full rounded-xl px-4 py-3 text-sm font-black transition-all flex items-center justify-center gap-2 border ${
+                                      className={`w-full rounded-lg px-3 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
                                         !rasmId || deleteSavedRasmMutation.isPending
-                                        ? 'bg-red-950/40 text-red-300/50 border-red-900/40 cursor-not-allowed'
-                                        : 'bg-red-950/80 text-red-300 border-red-900/60 hover:bg-red-900/80'
+                                        ? 'bg-red-950/20 text-red-500/40 border-red-950/30 cursor-not-allowed'
+                                        : 'bg-red-950/40 text-red-400 border-red-900/40 hover:bg-red-950/70 hover:text-red-300'
                                       }`}
                                     >
-                                      <Trash2 className="w-4 h-4" />
-                                      حذف
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      حذف الرسم
                                     </button>
                                   </div>
                                 </div>
@@ -5189,23 +5684,27 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                 </div>
                 
                 <div className="flex items-center gap-3">
+                    {!isFormComplete && (
+                      <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>يرجى استكمال بيانات الاستمارة أعلاه ({validationErrors.length} متبقي)</span>
+                      </span>
+                    )}
+
                     <button 
                         type="button"
                         onClick={() => {
-                          if (!state) {
-                            alert('خطأ: لم يتم تحميل بيانات الرسم بعد.');
-                            return;
-                          }
+                          if (!state || !isFormComplete) return;
                           setPreSaveReviewIntent('library');
                           setIsPreSaveReviewModalOpen(true);
                         }}
-                        disabled={!state || isRedirecting}
+                        disabled={!state || !isFormComplete || isRedirecting}
                         className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
-                          state && !isRedirecting
+                          state && isFormComplete && !isRedirecting
                             ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:brightness-110 shadow-emerald-600/20 cursor-pointer'
-                            : 'bg-emerald-300 text-white cursor-not-allowed opacity-60'
+                            : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
                         }`}
-                        title="حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً"
+                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً'}
                     >
                         <ShieldCheck className="w-4 h-4" />
                         <span>حفظ في مكتبة الوثائق 📚</span>
@@ -5214,20 +5713,17 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                     <button 
                         type="button"
                         onClick={() => {
-                          if (!state) {
-                            alert('خطأ: لم يتم تحميل بيانات الرسم بعد.');
-                            return;
-                          }
+                          if (!state || !isFormComplete) return;
                           setPreSaveReviewIntent('signing');
                           setIsPreSaveReviewModalOpen(true);
                         }}
-                        disabled={!state || isRedirecting}
+                        disabled={!state || !isFormComplete || isRedirecting}
                         className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
-                          state && !isRedirecting
+                          state && isFormComplete && !isRedirecting
                             ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:brightness-110 shadow-blue-600/20 cursor-pointer'
-                            : 'bg-blue-300 text-white cursor-not-allowed opacity-60'
+                            : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
                         }`}
-                        title="اعتماد الرسم والانتقال المباشر للتوقيع"
+                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال المباشر للتوقيع'}
                     >
                         <FileSignature className="w-4 h-4" />
                         <span>اعتماد ورواق التوقيع 🖋️</span>
@@ -5298,12 +5794,12 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
       {/* Success Animation Overlay */}
       {isRedirecting && (
-        <div className="fixed inset-0 z-[2000] bg-blue-900/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-500">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl animate-bounce">
-                <CheckCircle2 className="w-14 h-14 text-blue-600" />
+        <div className="fixed inset-0 z-[2000] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-500">
+            <div className="w-24 h-24 bg-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse">
+                <CheckCircle2 className="w-14 h-14 text-white" />
             </div>
             <h2 className="text-3xl font-black text-white mb-2 font-amiri text-center">تم اعتماد الرسم بنجاح</h2>
-            <p className="text-blue-200 text-xl font-bold">أصبح الرسم جاهزاً الآن لتوقيع السادة العدول...</p>
+            <p className="text-emerald-300 text-xl font-bold">أصبح الرسم جاهزاً الآن لتوقيع السادة العدول...</p>
         </div>
       )}
     </div>

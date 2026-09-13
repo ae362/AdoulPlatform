@@ -20,11 +20,20 @@ import {
   Check,
   Building2,
   Calendar,
-  Lock
+  Lock,
+  BookOpen,
+  Hash
 } from 'lucide-react';
 import type { FeesAgentState, PreReceptionVerificationData } from '../../../types/feesAgentTypes';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import {
+  convertGregorianToHijri,
+  convertGregorianDateToWords,
+  convertHijriDateToWords,
+  convertTimeToWords,
+} from '../../../utils/feesAgentUtils';
+import { formatCourtName } from '../../../templates/feesAgentTemplates';
 
 interface PreReceptionVerificationGateProps {
   state: FeesAgentState;
@@ -68,7 +77,21 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   const defaultOfficeLocation = profileAny?.office_address || profileAny?.city || 'مقر المكتب العدلي المعتمد';
   const defaultRegionalCouncil = profileAny?.regional_council || 'المجلس الجهوي لعدول استئنافية الدائرة';
 
+  const notaryPrimaryCourt = formatCourtName(
+    notaryProfile?.primary_court ||
+    (notaryProfile?.court_type === 'first_instance' ? notaryProfile?.court_name : null) ||
+    notaryProfile?.court_name ||
+    notaryProfile?.appellate_court ||
+    user?.court_name
+  );
+  const notaryAppellateCourt = formatCourtName(notaryProfile?.appellate_court);
+
   // Document Type Classification for contextual stepper & instructions
+  const isMarriage = useMemo(() => {
+    const docType = String(state.documentType || '');
+    return docType === 'زواج' || docType === 'زواج_مختلط' || docType === 'رسم_استمرار_زواج';
+  }, [state.documentType]);
+
   const isSale = useMemo(() => {
     const docType = String(state.documentType || '');
     return (
@@ -87,6 +110,51 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   }, [state.documentType]);
 
   const stages = useMemo(() => {
+    if (isMarriage) {
+      return [
+        {
+          num: '①',
+          index: 1,
+          title: 'شروط التلقي والإذن',
+          desc: 'التاريخ ومراجع الإذن وقضاء الأسرة',
+          active: true,
+          icon: ShieldCheck,
+        },
+        {
+          num: '②',
+          index: 2,
+          title: 'بيانات الزوجين',
+          desc: 'الزوج والزوجة والشهود',
+          active: false,
+          icon: Users,
+        },
+        {
+          num: '③',
+          index: 3,
+          title: 'الصداق والشروط',
+          desc: 'المهر والشروط الاتفاقية',
+          active: false,
+          icon: Scale,
+        },
+        {
+          num: '④',
+          index: 4,
+          title: 'التحرير والتدقيق',
+          desc: 'الصياغة ومراجعة العقد',
+          active: false,
+          icon: FileText,
+        },
+        {
+          num: '⑤',
+          index: 5,
+          title: 'التأشير القضائي',
+          desc: 'خطاب القاضي والحفظ',
+          active: false,
+          icon: Lock,
+        },
+      ];
+    }
+
     if (isSale) {
       return [
         {
@@ -206,11 +274,11 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
         icon: Lock,
       },
     ];
-  }, [isSale]);
+  }, [isMarriage, isSale]);
 
   // State initialization with backward-compatible state hydration
   const initialVerification: PreReceptionVerificationData = state.preReceptionVerification || {
-    isSimultaneousCouncil: undefined,
+    isSimultaneousCouncil: isMarriage ? true : undefined,
     notary1Name: defaultNotary1,
     notary2Name: defaultNotary2,
     receptionDate: state.meta?.dateGregorian || getTodayDate(),
@@ -230,7 +298,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
       isVerified: false,
       verificationSource: 'manual',
     },
-    isWithinJurisdiction: undefined,
+    isWithinJurisdiction: isMarriage ? true : undefined,
     appealCourt: defaultAppealCourt,
     primaryCourt: defaultCourt,
     officeLocation: defaultOfficeLocation,
@@ -249,6 +317,12 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
       regionalCouncil: defaultRegionalCouncil,
       attachment: null,
     },
+    registryRecord: state.preReceptionVerification?.registryRecord || {
+      number: state.meta?.registryNumber || state.marriageDetails?.registryNumber || '15',
+      count: state.meta?.registryCount || state.marriageDetails?.registryCount || '45',
+      page: state.meta?.registryPage || state.marriageDetails?.registryPage || '120',
+      receptionDate: state.meta?.receptionDate || state.marriageDetails?.registryDate || state.meta?.dateGregorian || getTodayDate(),
+    },
   };
 
   const [verification, setVerification] = useState<PreReceptionVerificationData>(initialVerification);
@@ -256,6 +330,195 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   const [timeline, setTimeline] = useState<TimelineEntry[]>(() => [
     { id: '1', time: getNowTime(), title: 'فتح بوابة التحقق القبلي للتلقي', type: 'info' },
   ]);
+
+  // Sync date and time words into state.meta if not present
+  useEffect(() => {
+    if (state.meta?.dateGregorian && !state.meta.dateGregorianInWords) {
+      setState(prev => ({
+        ...prev,
+        meta: {
+          ...prev.meta,
+          dateGregorianInWords: convertGregorianDateToWords(prev.meta.dateGregorian),
+          dateHijri: prev.meta.dateHijri || convertGregorianToHijri(prev.meta.dateGregorian),
+          dateHijriInWords: prev.meta.dateHijriInWords || convertHijriDateToWords(prev.meta.dateGregorian),
+        }
+      }));
+    }
+    if (state.meta?.time && !state.meta.hourInWords) {
+      const [hours, minutes] = state.meta.time.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      const hourInWords = convertTimeToWords(date);
+      setState(prev => ({
+        ...prev,
+        meta: {
+          ...prev.meta,
+          hourInWords,
+        }
+      }));
+    }
+  }, [state.meta?.dateGregorian, state.meta?.time]);
+
+  // Sync default marriage details once if needed
+  useEffect(() => {
+    if (isMarriage && (!state.marriageDetails || !state.marriageDetails.courtName)) {
+      const defaultCourtVal = state.marriageDetails?.courtName || state.meta?.court || notaryPrimaryCourt || defaultCourt;
+      setState(prev => {
+        if (prev.marriageDetails?.courtName) return prev;
+        return {
+          ...prev,
+          marriageDetails: {
+            dowryAmount: 0,
+            dowryAmountInWords: '',
+            isDowryReceived: 'كاملا',
+            dowryPaymentMethod: 'اعترافا',
+            hasOtherDowryItems: 'لا',
+            otherDowryItems: [],
+            dowryAdvance: 0,
+            dowryAdvanceInWords: '',
+            dowryDeferred: 0,
+            dowryDeferredInWords: '',
+            hasAssetManagementAgreement: 'لا',
+            hasSpecialConditions: 'لا',
+            specialConditionsOwner: '',
+            specialConditionsText: '',
+            courtSection: 'قسم التوثيق وقضاء الأسرة',
+            authorizationNumber: '',
+            authorizationDate: prev.meta?.dateGregorian || getTodayDate(),
+            hijriDate: prev.meta?.dateHijri || '',
+            registryBookType: 'كناش الأنكحة',
+            registryNumber: '',
+            registryPage: '',
+            registryCount: '',
+            registryDate: prev.meta?.dateGregorian || '',
+            memorandumNumber: '',
+            memorandumRecordNumber: '',
+            memorandumPage: '',
+            sessionTimeWords: prev.meta?.hourInWords || '',
+            sessionDateWords: prev.meta?.dateGregorianInWords ? `يوم ${prev.meta.dateGregorianInWords}` : '',
+            mixedMarriageForeignParty: '',
+            husbandConvertedToIslam: '',
+            ...(prev.marriageDetails || {}),
+            courtName: prev.marriageDetails?.courtName || defaultCourtVal,
+          },
+        };
+      });
+    }
+  }, [isMarriage, notaryPrimaryCourt, defaultCourt, state.marriageDetails]);
+
+  const handleDateChange = (dateVal: string) => {
+    const hijri = convertGregorianToHijri(dateVal);
+    const gregWords = convertGregorianDateToWords(dateVal);
+    const hijriWords = convertHijriDateToWords(dateVal);
+    setVerification(prev => ({
+      ...prev,
+      receptionDate: dateVal,
+      registryRecord: {
+        ...(prev.registryRecord || {}),
+        receptionDate: dateVal,
+      }
+    }));
+    setState(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        dateGregorian: dateVal,
+        dateHijri: hijri,
+        dateGregorianInWords: gregWords,
+        dateHijriInWords: hijriWords,
+        receptionDate: dateVal,
+      },
+      marriageDetails: prev.marriageDetails ? {
+        ...prev.marriageDetails,
+        registryDate: dateVal,
+      } : undefined,
+    }));
+  };
+
+  const handleRegistryChange = (
+    field: 'number' | 'count' | 'page' | 'receptionDate',
+    val: string
+  ) => {
+    setVerification(prev => ({
+      ...prev,
+      registryRecord: {
+        number: field === 'number' ? val : (prev.registryRecord?.number || state.meta?.registryNumber || '15'),
+        count: field === 'count' ? val : (prev.registryRecord?.count || state.meta?.registryCount || '45'),
+        page: field === 'page' ? val : (prev.registryRecord?.page || state.meta?.registryPage || '120'),
+        receptionDate: field === 'receptionDate' ? val : (prev.registryRecord?.receptionDate || state.meta?.dateGregorian || getTodayDate()),
+      },
+      ...(field === 'receptionDate' ? { receptionDate: val } : {}),
+    }));
+
+    setState(prev => {
+      const nextMeta = {
+        ...prev.meta,
+        ...(field === 'number' ? { registryNumber: val } : {}),
+        ...(field === 'count' ? { registryCount: val } : {}),
+        ...(field === 'page' ? { registryPage: val } : {}),
+        ...(field === 'receptionDate' ? { receptionDate: val, dateGregorian: val } : {}),
+      };
+
+      const nextMarriage = prev.marriageDetails ? {
+        ...prev.marriageDetails,
+        ...(field === 'number' ? { registryNumber: val, memorandumNumber: val } : {}),
+        ...(field === 'count' ? { registryCount: val, memorandumRecordNumber: val } : {}),
+        ...(field === 'page' ? { registryPage: val, memorandumPage: val } : {}),
+        ...(field === 'receptionDate' ? { registryDate: val } : {}),
+      } : undefined;
+
+      return {
+        ...prev,
+        meta: nextMeta,
+        marriageDetails: nextMarriage,
+      };
+    });
+  };
+
+  const handleTimeChange = (timeVal: string) => {
+    let hourInWords = '';
+    if (timeVal) {
+      const [hours, minutes] = timeVal.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      hourInWords = convertTimeToWords(date);
+    }
+    setVerification(prev => ({ ...prev, receptionTime: timeVal }));
+    setState(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        time: timeVal,
+        hourInWords,
+      }
+    }));
+  };
+
+  const handleCourtDetailChange = (field: string, value: string) => {
+    setState(prev => {
+      const nextMeta = {
+        ...prev.meta,
+        ...(field === 'courtName' ? { court: value } : {}),
+        ...(field === 'courtSection' ? { courtSection: value } : {}),
+        ...(field === 'authorizationNumber' ? { authorizationNumber: value } : {}),
+        ...(field === 'authorizationDate' ? { authorizationDate: value } : {}),
+      };
+      const nextMarriage = prev.marriageDetails ? {
+        ...prev.marriageDetails,
+        [field]: value,
+      } : (isMarriage ? {
+        [field]: value,
+      } : undefined);
+
+      return {
+        ...prev,
+        meta: nextMeta,
+        marriageDetails: nextMarriage as any,
+      };
+    });
+  };
+
+  const handleMarriageDetailChange = handleCourtDetailChange;
 
   const addTimelineEvent = (title: string, type: 'info' | 'success' | 'warning' | 'error') => {
     setTimeline((prev) => [
@@ -456,19 +719,63 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
         newValue: t.title,
       }));
 
+      const activeDateGregorian = prev.meta?.dateGregorian || verification.receptionDate || getTodayDate();
+      const activeTime = prev.meta?.time || verification.receptionTime || getNowTime();
+      const registryNum = prev.meta?.registryNumber || prev.marriageDetails?.registryNumber || verification.registryRecord?.number || '15';
+      const registryCnt = prev.meta?.registryCount || prev.marriageDetails?.registryCount || verification.registryRecord?.count || '45';
+      const registryPg = prev.meta?.registryPage || prev.marriageDetails?.registryPage || verification.registryRecord?.page || '120';
+      const registryDt = prev.meta?.receptionDate || verification.registryRecord?.receptionDate || activeDateGregorian;
+      const courtVal = prev.marriageDetails?.courtName || prev.meta?.court || verification.primaryCourt || notaryPrimaryCourt || '';
+      const courtSecVal = prev.marriageDetails?.courtSection || prev.meta?.courtSection || (isMarriage ? 'قسم التوثيق وقضاء الأسرة' : 'قسم قضاء التوثيق');
+      const authNumVal = prev.marriageDetails?.authorizationNumber || prev.meta?.authorizationNumber || '';
+      const authDateVal = prev.marriageDetails?.authorizationDate || prev.meta?.authorizationDate || '';
+
       return {
         ...prev,
         meta: {
           ...prev.meta,
-          notaryPrimary: verification.notary1Name || prev.meta?.notaryPrimary || '',
-          notarySecondary: verification.notary2Name || prev.meta?.notarySecondary || '',
-          court: verification.primaryCourt || prev.meta?.court || '',
-          dateGregorian: verification.receptionDate || prev.meta?.dateGregorian || getTodayDate(),
-          time: verification.receptionTime || prev.meta?.time || getNowTime(),
-          fileNumber: verification.operationNumber || prev.meta?.fileNumber || '',
+          notaryPrimary: prev.meta?.notaryPrimary || verification.notary1Name || defaultNotary1,
+          notarySecondary: prev.meta?.notarySecondary || verification.notary2Name || defaultNotary2,
+          court: courtVal,
+          courtSection: courtSecVal,
+          authorizationNumber: authNumVal,
+          authorizationDate: authDateVal,
+          dateGregorian: activeDateGregorian,
+          dateHijri: prev.meta?.dateHijri || convertGregorianToHijri(activeDateGregorian),
+          dateGregorianInWords: prev.meta?.dateGregorianInWords || convertGregorianDateToWords(activeDateGregorian),
+          dateHijriInWords: prev.meta?.dateHijriInWords || convertHijriDateToWords(activeDateGregorian),
+          time: activeTime,
+          hourInWords: prev.meta?.hourInWords || '',
+          fileNumber: prev.meta?.fileNumber || verification.operationNumber || '',
+          registryNumber: registryNum,
+          registryCount: registryCnt,
+          registryPage: registryPg,
+          receptionDate: registryDt,
         },
+        marriageDetails: isMarriage ? {
+          ...(prev.marriageDetails || {}),
+          courtName: courtVal,
+          courtSection: courtSecVal,
+          authorizationNumber: authNumVal,
+          authorizationDate: authDateVal || activeDateGregorian,
+          sessionTimeWords: prev.meta?.hourInWords || '',
+          sessionDateWords: prev.meta?.dateGregorianInWords ? `يوم ${prev.meta.dateGregorianInWords}` : '',
+          registryNumber: registryNum,
+          registryCount: registryCnt,
+          registryPage: registryPg,
+          registryDate: registryDt,
+          memorandumNumber: registryNum,
+          memorandumRecordNumber: registryCnt,
+          memorandumPage: registryPg,
+        } : prev.marriageDetails,
         preReceptionVerification: {
           ...verification,
+          registryRecord: {
+            number: registryNum,
+            count: registryCnt,
+            page: registryPg,
+            receptionDate: registryDt,
+          },
           complianceStatus: 'compliant',
           complianceCompletedAt: new Date().toISOString(),
           timeline: timeline.map((t) => ({
@@ -612,60 +919,6 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* 2. Permanent Sticky / Alert Status Banner */}
-      <div
-        className={`flex items-center justify-between rounded-2xl border px-6 py-4 transition-all shadow-sm ${
-          compliance.overallStatus === 'compliant'
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
-            : compliance.overallStatus === 'blocked'
-            ? 'border-rose-300 bg-rose-50 text-rose-950'
-            : 'border-amber-300 bg-amber-50 text-amber-950'
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-9 w-9 items-center justify-center rounded-xl font-black ${
-              compliance.overallStatus === 'compliant'
-                ? 'bg-emerald-600 text-white'
-                : compliance.overallStatus === 'blocked'
-                ? 'bg-rose-600 text-white'
-                : 'bg-amber-600 text-white'
-            }`}
-          >
-            {compliance.overallStatus === 'compliant' ? (
-              <Check className="h-5 w-5" />
-            ) : compliance.overallStatus === 'blocked' ? (
-              <XCircle className="h-5 w-5" />
-            ) : (
-              <AlertTriangle className="h-5 w-5" />
-            )}
-          </div>
-          <div>
-            <div className="text-xs font-black uppercase tracking-wider">
-              مركز التنبيهات والوضع القانوني:
-            </div>
-            <div className="text-sm font-black">
-              {compliance.overallStatus === 'compliant' && '🟢 مستوفٍ لكافة المتطلبات الإجرائية والشكلية'}
-              {compliance.overallStatus === 'blocked' && '🔴 غير قابل للمتابعة حالياً — يتطلب إذناً قضائياً'}
-              {compliance.overallStatus === 'pending' && '🟠 يحتاج إلى استكمال الإجراءات والبيانات الإلزامية'}
-            </div>
-          </div>
-        </div>
-
-        <div className="text-left text-xs font-bold opacity-80">
-          نوع الشهادة:{' '}
-          <span className="font-black text-slate-900 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
-            {state.documentType === 'بيع_وشراء'
-              ? 'رسم شراء (شخص ذاتي)'
-              : state.documentType === 'بيع_وشراء_معنوي'
-              ? 'رسم شراء (شخص معنوي)'
-              : state.documentType === 'بيع_وشراء_ملكية_مشتركة'
-              ? 'شراء في الملكية المشتركة'
-              : state.documentType || 'عام'}
-          </span>
         </div>
       </div>
 
@@ -1363,7 +1616,352 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
             </tbody>
           </table>
         </div>
+      </section>
 
+      {/* 2. Permanent Sticky / Alert Status Banner */}
+      <div
+        className={`flex items-center justify-between rounded-2xl border px-6 py-4 transition-all shadow-sm ${
+          compliance.overallStatus === 'compliant'
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+            : compliance.overallStatus === 'blocked'
+            ? 'border-rose-300 bg-rose-50 text-rose-950'
+            : 'border-amber-300 bg-amber-50 text-amber-950'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-xl font-black ${
+              compliance.overallStatus === 'compliant'
+                ? 'bg-emerald-600 text-white'
+                : compliance.overallStatus === 'blocked'
+                ? 'bg-rose-600 text-white'
+                : 'bg-amber-600 text-white'
+            }`}
+          >
+            {compliance.overallStatus === 'compliant' ? (
+              <Check className="h-5 w-5" />
+            ) : compliance.overallStatus === 'blocked' ? (
+              <XCircle className="h-5 w-5" />
+            ) : (
+              <AlertTriangle className="h-5 w-5" />
+            )}
+          </div>
+          <div>
+            <div className="text-xs font-black uppercase tracking-wider">
+              مركز التنبيهات والوضع القانوني:
+            </div>
+            <div className="text-sm font-black">
+              {compliance.overallStatus === 'compliant' && '🟢 مستوفٍ لكافة المتطلبات الإجرائية والشكلية'}
+              {compliance.overallStatus === 'blocked' && '🔴 غير قابل للمتابعة حالياً — يتطلب إذناً قضائياً'}
+              {compliance.overallStatus === 'pending' && '🟠 يحتاج إلى استكمال الإجراءات والبيانات الإلزامية'}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-left text-xs font-bold opacity-80">
+          نوع الشهادة:{' '}
+          <span className="font-black text-slate-900 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
+            {state.documentType === 'بيع_وشراء'
+              ? 'رسم شراء (شخص ذاتي)'
+              : state.documentType === 'بيع_وشراء_معنوي'
+              ? 'رسم شراء (شخص معنوي)'
+              : state.documentType === 'بيع_وشراء_ملكية_مشتركة'
+              ? 'شراء في الملكية المشتركة'
+              : state.documentType || 'عام'}
+          </span>
+        </div>
+      </div>
+
+      {/* Card 1: التواريخ ومجلس الإشهاد والتلقي */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">التاريخ الميلادي *</label>
+            <input
+              type="date"
+              value={state.meta?.dateGregorian || ''}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">التاريخ الهجري (تلقائي)</label>
+            <input
+              type="text"
+              value={state.meta?.dateHijri || ''}
+              readOnly
+              className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-slate-800 font-semibold"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">التاريخ الميلادي بالحروف</label>
+            <input
+              type="text"
+              value={state.meta?.dateGregorianInWords || ''}
+              onChange={(e) =>
+                setState((prev) => ({
+                  ...prev,
+                  meta: {
+                    ...prev.meta,
+                    dateGregorianInWords: e.target.value,
+                  },
+                }))
+              }
+              placeholder="مثال: في اليوم الخامس من شهر..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">التاريخ الهجري بالحروف</label>
+            <input
+              type="text"
+              value={state.meta?.dateHijriInWords || ''}
+              onChange={(e) =>
+                setState((prev) => ({
+                  ...prev,
+                  meta: {
+                    ...prev.meta,
+                    dateHijriInWords: e.target.value,
+                  },
+                }))
+              }
+              placeholder="مثال: في اليوم الخامس من شهر..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">الساعة *</label>
+            <input
+              type="time"
+              value={state.meta?.time || ''}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">الساعة بالحروف</label>
+            <input
+              type="text"
+              value={state.meta?.hourInWords || ''}
+              onChange={(e) =>
+                setState((prev) => ({
+                  ...prev,
+                  meta: {
+                    ...prev.meta,
+                    hourInWords: e.target.value,
+                  },
+                }))
+              }
+              placeholder="مثال: على الساعة العاشرة صباحاً"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">رقم الرسم التسلسلي</label>
+          <input
+            type="text"
+            value={state.meta?.fileNumber || ''}
+            readOnly
+            className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-slate-800 font-semibold"
+          />
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-xl border border-slate-100">
+          <p className="text-sm font-semibold text-gray-800 mb-2">العدول:</p>
+          <p className="text-gray-700 font-medium">المتلقي: {state.meta?.notaryPrimary || defaultNotary1}</p>
+          <p className="text-gray-700 font-medium">الرفيق: {state.meta?.notarySecondary || defaultNotary2 || 'لا يوجد شريك مفعل حالياً'}</p>
+        </div>
+      </div>
+
+      {/* Card 2: بيانات المحكمة والاختصاص / الإذن القضائي */}
+      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs space-y-6 animate-in fade-in duration-200">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+              <Scale className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">
+                {isMarriage ? 'بيانات الإذن بالزواج والمحكمة' : 'بيانات المحكمة والاختصاص / الإذن القضائي'}
+              </h3>
+              <p className="text-xs text-blue-100 font-normal">
+                {isMarriage ? 'مراجع قضاء الأسرة والإذن بالزواج' : 'دائرة الاختصاص القضائي ومراجع الإذن أو السند القضائي'}
+              </p>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>تم استرجاع المحكمة تلقائياً من بيانات حساب العدل</span>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7 pt-0 space-y-5">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between text-xs text-slate-700 gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500">دائرة محكمة الاستئناف:</span>
+              <span className="font-black text-slate-900">{notaryAppellateCourt || 'تطوان'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500">المحكمة الابتدائية:</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-black border border-blue-200">
+                {state.marriageDetails?.courtName || state.meta?.court || notaryPrimaryCourt || defaultCourt || 'شفشاون'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <Scale className="w-3.5 h-3.5 text-indigo-500" />
+                <span>المحكمة الابتدائية</span>
+              </label>
+              <input
+                type="text"
+                value={state.marriageDetails?.courtName || state.meta?.court || notaryPrimaryCourt || defaultCourt || ''}
+                onChange={(e) => handleCourtDetailChange('courtName', e.target.value)}
+                placeholder={`المحكمة الابتدائية ${notaryPrimaryCourt ? `ب${notaryPrimaryCourt}` : 'بشفشاون'}`}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <Building2 className="w-3.5 h-3.5 text-blue-500" />
+                <span>القسم القضائي</span>
+              </label>
+              <input
+                type="text"
+                value={state.marriageDetails?.courtSection || state.meta?.courtSection || (isMarriage ? 'قسم التوثيق وقضاء الأسرة' : 'قسم قضاء التوثيق')}
+                onChange={(e) => handleCourtDetailChange('courtSection', e.target.value)}
+                placeholder={isMarriage ? 'قسم التوثيق وقضاء الأسرة' : 'قسم قضاء التوثيق'}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-500" />
+                <span>{isMarriage ? 'رقم ملف إذن قاضي الأسرة المكلف بالزواج' : 'رقم ملف الإذن القضائي / المرجع (إن وجد)'}</span>
+              </label>
+              <input
+                type="text"
+                value={state.marriageDetails?.authorizationNumber || state.meta?.authorizationNumber || ''}
+                onChange={(e) => handleCourtDetailChange('authorizationNumber', e.target.value)}
+                placeholder={isMarriage ? 'مثال: 10/ 1308' : 'مثال: 2026/ 104'}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span>{isMarriage ? 'تاريخ الإذن بالزواج' : 'تاريخ الإذن / المرجع القضائي'}</span>
+              </label>
+              <input
+                type="date"
+                value={state.marriageDetails?.authorizationDate || state.meta?.authorizationDate || ''}
+                onChange={(e) => handleCourtDetailChange('authorizationDate', e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2.6 سجل البيانات (رقم، عدد، صحيفة، تاريخ التلقي) */}
+      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs space-y-6 animate-in fade-in duration-200">
+        <div className="bg-gradient-to-r from-teal-800 via-emerald-800 to-slate-900 text-white p-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+              <BookOpen className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">سجل البيانات</h3>
+              <p className="text-xs text-emerald-100 font-normal">
+                بيانات التضمين بسجل التلقي ومذكرة الحفظ — تُملأ تلقائياً وقابلة للتعديل اليدوي
+              </p>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>تعبئة تلقائية ذكية قابلة للتعديل</span>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                <span>رقم (رقم السجل / الكناش) *</span>
+              </label>
+              <input
+                type="text"
+                value={state.meta?.registryNumber || state.marriageDetails?.registryNumber || verification.registryRecord?.number || '15'}
+                onChange={(e) => handleRegistryChange('number', e.target.value)}
+                placeholder="مثال: 15"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white font-semibold text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <Hash className="w-3.5 h-3.5 text-emerald-600" />
+                <span>عدد (العدد الترتيبي للرسم) *</span>
+              </label>
+              <input
+                type="text"
+                value={state.meta?.registryCount || state.marriageDetails?.registryCount || verification.registryRecord?.count || '45'}
+                onChange={(e) => handleRegistryChange('count', e.target.value)}
+                placeholder="مثال: 45"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white font-semibold text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>صحيفة (رقم الصحيفة) *</span>
+              </label>
+              <input
+                type="text"
+                value={state.meta?.registryPage || state.marriageDetails?.registryPage || verification.registryRecord?.page || '120'}
+                onChange={(e) => handleRegistryChange('page', e.target.value)}
+                placeholder="مثال: 120"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white font-semibold text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <span>تاريخ التلقي *</span>
+              </label>
+              <input
+                type="date"
+                value={state.meta?.receptionDate || state.meta?.dateGregorian || verification.registryRecord?.receptionDate || verification.receptionDate || getTodayDate()}
+                onChange={(e) => handleRegistryChange('receptionDate', e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white font-semibold text-slate-800"
+              />
+              <span className="text-[10px] text-slate-500 mt-1 block">مطابق لتاريخ الإشهاد تلقائياً</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Timeline Audit Trail & Action Buttons */}
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 space-y-6">
         {/* 6. Timeline Audit Trail */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-black text-slate-500">

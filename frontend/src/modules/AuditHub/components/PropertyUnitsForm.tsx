@@ -31,6 +31,7 @@ export const PropertyUnitsForm: React.FC<PropertyUnitsFormProps> = ({
       unregisteredData: {
         bookType: 'أملاك',
         bookNumber: '',
+        bookLetter: '',
         count: '',
         page: '',
         date: '',
@@ -132,10 +133,10 @@ export const PropertyUnitsForm: React.FC<PropertyUnitsFormProps> = ({
                                             return (
                                             <div key={unit.id} className={`p-4 bg-white rounded-xl border relative group transition-all ${isDuplicate ? 'border-red-300 shadow-red-100 shadow-md' : 'border-slate-200 hover:shadow-md'}`}>
                                                 <div className="absolute top-3 left-3 flex gap-2">
-                                                     <span className="text-[10px] font-bold text-slate-300 bg-slate-100 px-2 py-1 rounded-full">Unit {idx + 1}</span>
+                                                     <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Unit {idx + 1}</span>
                                                     <button 
                                                         onClick={() => removePropertyUnit(unit.id)}
-                                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full p-1 transition-all"
+                                                        className="text-red-400 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all"
                                                         title="Remove Unit"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -165,24 +166,73 @@ export const PropertyUnitsForm: React.FC<PropertyUnitsFormProps> = ({
                                                         </div>
 
                                                         <div>
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">نوع الدفتر</label>
+                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">نوع الدفتر / نوع المحرر</label>
                                                             <select 
                                                                 value={unit.unregisteredData.bookType}
                                                                 onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookType')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 bg-white outline-none"
+                                                                className="w-full text-xs p-2 rounded border border-slate-200 bg-white outline-none font-bold text-slate-700"
                                                             >
-                                                                <option value="أملاك">أملاك</option>
-                                                                <option value="زواج">زواج</option>
-                                                                <option value="تركات">تركات</option>
-                                                                <option value="وصايا">وصايا</option>
-                                                                <option value="كفالات">كفالات</option>
-                                                                <option value="هبات">هبات</option>
-                                                                <option value="أوقاف">أوقاف</option>
-                                                                <option value="مختلفة">سجلات مختلفة</option>
+                                                                <optgroup label="سجلات التوثيق الرسمية (Official Registers)">
+                                                                    <option value="أملاك">سجل الأملاك</option>
+                                                                    <option value="تركات">سجل التركات والمخلفات</option>
+                                                                    <option value="وصايا">سجل الوصايا</option>
+                                                                    <option value="كفالات">سجل الرهون والكفالات</option>
+                                                                    <option value="هبات">سجل الهبات والصدقات</option>
+                                                                    <option value="زواج">سجل الزواج ومستنداته</option>
+                                                                    <option value="طلاق">سجل الطلاق والرجعة</option>
+                                                                    <option value="أوقاف">سجل الأوقاف والتحبيس</option>
+                                                                    <option value="معاوضات">سجل المعاوضات والمناقلات</option>
+                                                                    <option value="توكيلات">سجل التوكيلات والإنابات</option>
+                                                                    <option value="ديون">سجل الديون والإقرارات</option>
+                                                                    <option value="مختلفة">سجلات مختلفة</option>
+                                                                </optgroup>
+                                                                <optgroup label="أنواع المعاملات والرسوم (FeesAgent Document Types)">
+                                                                    <option value="بيع_وشراء">بيع وشراء عقار</option>
+                                                                    <option value="بيع_وشراء_معنوي">بيع وشراء معنوي (أصل تجاري)</option>
+                                                                    <option value="بيع_وشراء_طور_انجاز_ابتدائي">بيع في طور الإنجاز (ابتدائي)</option>
+                                                                    <option value="بيع_وشراء_طور_انجاز_نهائي">بيع في طور الإنجاز (نهائي)</option>
+                                                                    <option value="قسمة_رضائية">قسمة رضائية</option>
+                                                                    <option value="قسمة_تصفية">قسمة تصفية</option>
+                                                                    <option value="هبة">هبة عقارية أو منقولة</option>
+                                                                    <option value="صدقة">صدقة لوجه الله</option>
+                                                                    <option value="عقد_معاوضة">عقد معاوضة عقارية</option>
+                                                                    <option value="عقد_شفعة">عقد شفعة</option>
+                                                                    <option value="صلح">عقد صلح وتراضٍ</option>
+                                                                    <option value="وكالة_عامة">وكالة عامة مفوضة</option>
+                                                                    <option value="وكالة_خاصة">وكالة خاصة محددة</option>
+                                                                    <option value="عزل_وكالة">عزل أو إلغاء وكالة</option>
+                                                                    <option value="اعتراف_بدين">اعتراف بدين</option>
+                                                                    <option value="ابراء_ذمة">إبراء ذمة وخلاص</option>
+                                                                    <option value="عقد_رهن_حيازي">عقد رهن حيازي</option>
+                                                                    <option value="عقد_رهن_رسمي">عقد رهن رسمي</option>
+                                                                    <option value="عقد_كفالة_شخصية">عقد كفالة شخصية</option>
+                                                                    <option value="عقد_ايجار">عقد إيجار / كراء</option>
+                                                                    <option value="استمرار_ملك">رسم استمرار ملكية (إحاطة)</option>
+                                                                    <option value="ملك_عقاري">رسم ملكية عقارية</option>
+                                                                    <option value="احصاء_متروك">إحصاء متروك / تركة</option>
+                                                                    <option value="وصية">رسم وصية شرعية</option>
+                                                                    <option value="رجوع_عن_وصية">رجوع عن وصية</option>
+                                                                    <option value="عقد_تحبيس">عقد تحبيس / وقف</option>
+                                                                    <option value="عقد_زواج">عقد زواج شرعي</option>
+                                                                    <option value="عقد_طلاق">إشهاد طلاق اتفاقي أو رجعي</option>
+                                                                    <option value="رجعة">إشهاد رجعة زوجية</option>
+                                                                    <option value="ثبوت_زوجية">دعوى / إشهاد ثبوت زوجية</option>
+                                                                    <option value="مخالعة">عقد مخالعة شرعية</option>
+                                                                    <option value="تنازل_عن_حق_كراء">تنازل عن حق كراء / متجر</option>
+                                                                    <option value="تنازل_عن_حق_انتفاع">تنازل عن حق انتفاع / ارتفاق</option>
+                                                                    <option value="تاسيس_شركة">تأسيس شركة مدنية أو تجارية</option>
+                                                                    <option value="تعديل_نظام_اساسي">تعديل نظام أساسي</option>
+                                                                    <option value="حل_شركة">حل وتصفية شركة</option>
+                                                                    <option value="اقرار_بنسب">إقرار بنسب أو استلحاق</option>
+                                                                    <option value="شهادة_وفاة">إشهاد وفاة شرعي</option>
+                                                                    <option value="شهادة_عزوبة">شهادة خطوبة / عزوبة</option>
+                                                                    <option value="شهادة_حسن_سيرة">شهادة تصرف وحسن سيرة</option>
+                                                                    <option value="أخرى">محرر أو رسم رسمي آخر</option>
+                                                                </optgroup>
                                                             </select>
                                                         </div>
 
-                                                        <div className="grid grid-cols-3 gap-2">
+                                                        <div className="grid grid-cols-4 gap-2">
                                                             <div>
                                                                 <label className="block text-[10px] font-bold text-slate-400 mb-1">رقم الدفتر</label>
                                                                 <input 
@@ -191,6 +241,16 @@ export const PropertyUnitsForm: React.FC<PropertyUnitsFormProps> = ({
                                                                     value={unit.unregisteredData.bookNumber}
                                                                     onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookNumber')}
                                                                     className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-mono text-center"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">حرف (اختياري)</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="أ / ب"
+                                                                    value={unit.unregisteredData.bookLetter || ''}
+                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookLetter')}
+                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none text-center"
                                                                 />
                                                             </div>
                                                             <div>

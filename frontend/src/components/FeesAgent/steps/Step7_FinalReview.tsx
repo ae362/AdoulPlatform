@@ -1441,31 +1441,49 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                   <span>⚖️</span>
                   <span>تنبيه مهني راقٍ: الصياغة المقترحة ذات طابع مساعد، وتبقى خاضعة لمراجعتكم وتقديركم الكامل.</span>
                 </div>
-                <button
-                  onClick={() => {
-                    const content = `
-                      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                      <head><meta charset='utf-8'><title>Document</title></head>
-                      <body style="font-family: 'Amiri', 'Times New Roman', serif; text-align: justify; direction: rtl;">
-                        <p>${state.draft || ''}</p>
-                      </body>
-                      </html>
-                    `;
-                    const blob = new Blob(['\ufeff', content], {
-                      type: 'application/msword'
-                    });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `rasm_${state.meta.fileNumber || 'draft'}.doc`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
-                >
-                  <span>💾</span> تحميل بصيغة Word
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const freshDraft = generateDocumentDraft(state);
+                      const freshHtml = generateRasmHtml(state);
+                      setState(prev => ({
+                        ...prev,
+                        draft: freshDraft.replace(/\s+/g, ' ').trim(),
+                        rasmHtml: freshHtml,
+                      }));
+                    }}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 flex items-center gap-2 shadow-sm transition-all"
+                    title="إعادة تحديث الصياغة وتضمين كافة البيانات المدخلة في المراحل السابقة"
+                  >
+                    <span>🔄</span> تحديث الصياغة وتضمين البيانات
+                  </button>
+                  <button
+                    onClick={() => {
+                      const content = `
+                        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                        <head><meta charset='utf-8'><title>Document</title></head>
+                        <body style="font-family: 'Amiri', 'Times New Roman', serif; text-align: justify; direction: rtl;">
+                          <p>${state.draft || ''}</p>
+                        </body>
+                        </html>
+                      `;
+                      const blob = new Blob(['\ufeff', content], {
+                        type: 'application/msword'
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `rasm_${state.meta.fileNumber || 'draft'}.doc`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+                  >
+                    <span>💾</span> تحميل بصيغة Word
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -680,13 +680,13 @@ export const Step2_PropertyDetails: React.FC<DocumentWizardProps> = ({ state, se
                             />
                           </div>
                           <div>
-                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />موافق</label>
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />توثيق</label>
                             <input
                               type="text"
                               value={doc.correspondingDate || ''}
                               onChange={(e) => handleTitleDocumentChange(index, docIndex, 'correspondingDate', e.target.value)}
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-400 outline-none transition-all text-slate-800 text-sm font-medium"
-                              placeholder="التاريخ الموافق"
+                              placeholder="توثيق"
                             />
                           </div>
                         </div>

@@ -1,434 +1,438 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { DocumentWizardProps } from '../types';
 import type { Witness } from '../../../types/feesAgentTypes';
-import { createEmptyWitness } from '../../../utils/feesAgentUtils';
 import {
-  X, Plus, Minus, Download, Search, FileText, CheckCircle,
-  AlertTriangle, Paperclip, Shield, Database, Activity,
-  Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar, Users
+  Users, Scale, FileText, UserCheck, ShieldCheck, AlertTriangle,
+  CheckCircle2, ArrowRight, ArrowLeft, Info, HelpCircle, XCircle
 } from 'lucide-react';
+import {
+  type EvidenceMethod,
+  getEvidenceRuleForDocument,
+  evaluateWitnessCompleteness,
+  EVIDENCE_METHODS_CONFIG,
+} from '../services/evidenceRulesEngine';
+import { EvidenceMethodSelector } from './evidence/EvidenceMethodSelector';
+import { LafifWitnessManager } from './evidence/LafifWitnessManager';
+import { ScientificTestimonyForm } from './evidence/ScientificTestimonyForm';
+import { MithliyaTestimonyForm } from './evidence/MithliyaTestimonyForm';
+import { WhyLegalModal } from './evidence/WhyLegalModal';
 
-export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState }) => {
-    const witnesses = state.witnesses || [];
-    const isAra = (state.documentType as string) === 'ara' || state.documentType === 'اراثة';
-    const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
-    const isMarriage = state.documentType === 'زواج' || state.documentType === 'زواج_مختلط';
+export const Step5_Witnesses: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
+  const documentType = state.documentType || '';
+  const rule = useMemo(() => getEvidenceRuleForDocument(documentType), [documentType]);
 
-    const handleWitnessChange = (index: number, field: keyof Witness, value: any) => {
-      if (value instanceof File) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const b64 = String(reader.result || '').split(',').pop() || '';
-          const fileObj = {
-            name: value.name,
-            size: value.size,
-            type: value.type || 'application/octet-stream',
-            base64: b64,
-            file: value,
-          };
-          const updatedWitnesses = [...witnesses];
-          updatedWitnesses[index] = { ...updatedWitnesses[index], [field]: fileObj };
-          setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
-        };
-        reader.readAsDataURL(value);
-        return;
-      }
-      const updatedWitnesses = [...witnesses];
-      updatedWitnesses[index] = { ...updatedWitnesses[index], [field]: value };
-      setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
-    };
+  // الطريقة المحددة حالياً
+  const selectedMethod: EvidenceMethod = (state.evidenceMethod as EvidenceMethod) || rule.defaultMethod;
 
-    const addWitness = () => {
-      if (witnesses.length >= 12) {
-        alert('لا يمكن إضافة أكثر من 12 شاهد');
-        return;
-      }
+  // حالة النافذة التفسيرية «لماذا يطلب النظام ذلك؟»
+  const [isWhyModalOpen, setIsWhyModalOpen] = useState(false);
+
+  // تحديث طريقة الإثبات في حالة التطبيق العامة
+  const handleSelectMethod = (method: EvidenceMethod) => {
+    setState((prev) => ({
+      ...prev,
+      evidenceMethod: method,
+    }));
+  };
+
+  // المزامنة الأولية إذا لم تكن طريقة الإثبات محددة
+  useEffect(() => {
+    if (!state.evidenceMethod) {
       setState((prev) => ({
         ...prev,
-        witnesses: [...(prev.witnesses || []), createEmptyWitness()],
+        evidenceMethod: rule.defaultMethod,
       }));
-    };
+    }
+  }, [state.evidenceMethod, rule.defaultMethod, setState]);
 
-    const removeWitness = (index: number) => {
-      const updatedWitnesses = witnesses.filter((_, i) => i !== index);
-      setState((prev) => ({ ...prev, witnesses: updatedWitnesses }));
-    };
+  const witnesses = state.witnesses || [];
 
-    return (
-      <div className="space-y-8" dir="rtl">
-        <div className="relative overflow-hidden rounded-3xl border border-cyan-100 bg-gradient-to-r from-cyan-50/90 via-blue-50/50 to-white p-6 sm:p-7 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 px-3 py-1 text-xs font-black text-cyan-800 border border-cyan-200">
-              <Users className="h-3.5 w-3.5 text-cyan-600" />
-              <span>{isSale ? 'المرحلة 6 من 8' : isMarriage ? 'شهود عقد الزواج' : 'مجلس الإشهاد والشهود'}</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
-              {state.documentType || 'مجلس الإشهاد'}
+  // تقييم الجاهزية الإجمالية للمرحلة (Overall Stage Readiness & Validation Gating)
+  const validationSummary = useMemo(() => {
+    const errors: string[] = [];
+    let ageOk = true;
+    let kinshipOk = true;
+    let inquestOk = true;
+    let countOk = true;
+
+    if (selectedMethod === 'none') {
+      return {
+        isReady: true,
+        errors: [],
+        countOk: true,
+        ageOk: true,
+        kinshipOk: true,
+        inquestOk: true,
+        summaryText: 'مستوفٍ تلقائياً — هذا الرسم لا يستلزم شهادة خاصة',
+      };
+    }
+
+    if (selectedMethod === 'lafif') {
+      const minReq = rule.minimumWitnesses || 12;
+      if (witnesses.length < minReq) {
+        countOk = false;
+        errors.push(`نصاب الشهود غير مكتمل (${witnesses.length} من ${minReq} على الأقل)`);
+      }
+
+      let ageBlockers = 0;
+      let kinshipBlockers = 0;
+      let incompleteCount = 0;
+
+      witnesses.forEach((w, idx) => {
+        const evaluation = evaluateWitnessCompleteness(w, rule);
+        if (!w.name?.trim()) {
+          errors.push(`اسم الشاهد رقم ${idx + 1} غير مدخل`);
+          incompleteCount++;
+        }
+        if (!w.idNumber?.trim()) {
+          errors.push(`رقم تعريف الشاهد رقم ${idx + 1} غير مدخل`);
+          incompleteCount++;
+        }
+        if (evaluation.ageCheck.overallStatus === 'invalid') {
+          ageBlockers++;
+          errors.push(`مانع في سن الشاهد رقم ${idx + 1} (${evaluation.ageCheck.reason})`);
+        }
+        if (evaluation.kinshipCheck.isForbidden) {
+          kinshipBlockers++;
+          errors.push(`مانع قرابة في الشاهد رقم ${idx + 1} (${evaluation.kinshipCheck.reason})`);
+        }
+        if (evaluation.inquestResult === 'incomplete') {
+          incompleteCount++;
+        }
+      });
+
+      if (ageBlockers > 0) ageOk = false;
+      if (kinshipBlockers > 0) kinshipOk = false;
+      if (incompleteCount > 0) inquestOk = false;
+
+      return {
+        isReady: countOk && ageOk && kinshipOk && errors.length === 0,
+        errors,
+        countOk,
+        ageOk,
+        kinshipOk,
+        inquestOk,
+        summaryText: errors.length === 0
+          ? 'اكتملت جميع المتطلبات الآلية لشهادة اللفيف بنجاح'
+          : `توجد ${errors.length} متطلبات لم تستوفَ بعد`,
+      };
+    }
+
+    if (selectedMethod === 'scientific') {
+      const sciData = state.scientificTestimony || {};
+      if (!sciData.permissionNumber?.trim()) {
+        errors.push('رقم الإذن القضائي مطلوب');
+      }
+      if (!sciData.permissionDate?.trim()) {
+        errors.push('تاريخ الإذن القضائي مطلوب');
+      }
+      if (!sciData.courtName?.trim()) {
+        errors.push('المحكمة المختصة مطلوبة');
+      }
+      return {
+        isReady: errors.length === 0,
+        errors,
+        countOk: true,
+        ageOk: true,
+        kinshipOk: true,
+        inquestOk: true,
+        summaryText: errors.length === 0
+          ? 'اكتملت مراجع الإذن القضائي والعدلين'
+          : `يرجى استكمال بيانات الإذن القضائي (${errors.length} متبقي)`,
+      };
+    }
+
+    if (selectedMethod === 'mithliya') {
+      const mithData = state.mithliyaTestimony || {};
+      if (witnesses.length < 6) {
+        countOk = false;
+        errors.push(`نصاب شهادة المثلية غير مكتمل (${witnesses.length} من 6 شهود)`);
+      }
+      if (!mithData.permissionNumber?.trim()) {
+        errors.push('رقم إذن قاضي التوثيق للعدل الأساسي مطلوب');
+      }
+      if (!mithData.permissionDate?.trim()) {
+        errors.push('تاريخ إذن قاضي التوثيق مطلوب');
+      }
+      if (!mithData.courtName?.trim() && !state.meta?.court?.trim()) {
+        errors.push('المحكمة المختصة مطلوبة');
+      }
+
+      // التحقق من أهلية سن الشهود الستة
+      let ageBlockers = 0;
+      witnesses.forEach((w, idx) => {
+        if (!w.name?.trim()) {
+          errors.push(`اسم الشاهد رقم ${idx + 1} غير مدخل`);
+        }
+        if (w.bearingStatus === 'invalid') {
+          ageBlockers++;
+          errors.push(`مانع في سن الشاهد رقم ${idx + 1} (دون سن التمييز 12 سنة وقت الواقعة)`);
+        }
+        if (w.performanceStatus === 'invalid') {
+          ageBlockers++;
+          errors.push(`مانع في سن الشاهد رقم ${idx + 1} (دون سن الرشد 18 سنة وقت الأداء)`);
+        }
+      });
+      if (ageBlockers > 0) ageOk = false;
+
+      return {
+        isReady: countOk && ageOk && errors.length === 0,
+        errors,
+        countOk,
+        ageOk,
+        kinshipOk: true,
+        inquestOk: true,
+        summaryText: errors.length === 0
+          ? 'اكتمل نصاب الشهادة بالمثلية ومراجع إذن القاضي (6 شهود مؤهلين + إذن معتمد)'
+          : `يرجى استكمال متطلبات الشهادة بالمثلية (${errors.length} متبقي)`,
+      };
+    }
+
+    return {
+      isReady: true,
+      errors: [],
+      countOk: true,
+      ageOk: true,
+      kinshipOk: true,
+      inquestOk: true,
+      summaryText: 'جاهز للمتابعة',
+    };
+  }, [selectedMethod, rule, witnesses, state.scientificTestimony, state.mithliyaTestimony, state.evidenceSubjectMatter]);
+
+  const handlePrevStep = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      step: prev.documentType === 'ثبوت_نسب_ببينة_السماع' ? 3 : 4,
+    }));
+  };
+
+  const handleNextStep = () => {
+    if (!validationSummary.isReady) return;
+    if (onNext) {
+      onNext();
+      return;
+    }
+    setState((prev) => ({ ...prev, step: 6 }));
+  };
+
+  return (
+    <div className="space-y-8" dir="rtl">
+      {/* 1. Main Stage Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-7 text-white shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/30 px-3.5 py-1 text-xs font-black text-indigo-200 border border-indigo-400/30">
+            <Scale className="h-3.5 w-3.5 text-indigo-300" />
+            <span>المرحلة السادسة (06)</span>
+          </span>
+          <span className="text-xs font-bold text-slate-300 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+            نوع الرسم: {rule.arabicName}
+          </span>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-black font-amiri text-white mb-2 flex items-center gap-2.5">
+          <span>⑥ طريقة الإثبات والشهادة والتحري</span>
+        </h2>
+
+        <p className="text-sm font-medium text-slate-300 max-w-3xl leading-relaxed">
+          حدد طريقة الإثبات المعتمدة لهذا الرسم. سيعرض النظام فقط الأشخاص والوثائق والبيانات التي ترتبط بالطريقة المختارة، مع إجراء التنبيهات والتحققات اللازمة قبل الانتقال إلى المرحلة التالية.
+        </p>
+      </div>
+
+      {/* 2. Smart Status Bar (الحادية والعشرون: شريط حالة ذكي) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Method pill */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 font-bold border border-slate-200">
+              <span className="text-slate-500">طريقة الإثبات:</span>
+              <strong className="text-indigo-900 font-black">{EVIDENCE_METHODS_CONFIG[selectedMethod].title}</strong>
+            </div>
+
+            {/* Witnesses Count pill */}
+            {selectedMethod === 'lafif' && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold border ${
+                validationSummary.countOk
+                  ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                  : 'bg-amber-50 text-amber-900 border-amber-200'
+              }`}>
+                <span>عدد الشهود:</span>
+                <strong className="font-mono font-black">{witnesses.length} / {rule.minimumWitnesses || 12}</strong>
+              </div>
+            )}
+
+            {selectedMethod === 'mithliya' && (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold border ${
+                validationSummary.countOk
+                  ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                  : 'bg-amber-50 text-amber-900 border-amber-200'
+              }`}>
+                <span>عدد الشهود:</span>
+                <strong className="font-mono font-black">{witnesses.length} / 6</strong>
+              </div>
+            )}
+
+            {/* Age indicator */}
+            {selectedMethod === 'lafif' && (
+              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold ${
+                validationSummary.ageOk ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+              }`}>
+                <span>السن:</span>
+                <span>{validationSummary.ageOk ? '✓ مستوفٍ' : '🔴 مانع'}</span>
+              </div>
+            )}
+
+            {/* Kinship indicator */}
+            {selectedMethod === 'lafif' && (
+              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold ${
+                validationSummary.kinshipOk ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+              }`}>
+                <span>القرابة:</span>
+                <span>{validationSummary.kinshipOk ? '✓ لا مانع' : '🔴 مانع'}</span>
+              </div>
+            )}
+
+            {/* Inquest indicator */}
+            {selectedMethod === 'lafif' && (
+              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold ${
+                validationSummary.inquestOk ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+              }`}>
+                <span>التحري:</span>
+                <span>{validationSummary.inquestOk ? '✓ مكتمل' : '⚠️ استكمال'}</span>
+              </div>
+            )}
+
+            {/* Scientific permission indicator */}
+            {selectedMethod === 'scientific' && (
+              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold ${
+                validationSummary.isReady ? 'bg-emerald-50 text-emerald-800' : 'bg-purple-50 text-purple-800'
+              }`}>
+                <span>الإذن القضائي:</span>
+                <span>{validationSummary.isReady ? '✓ مكتمل' : '⚠️ مطلوب'}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Overall Status indicator */}
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 border ${
+              validationSummary.isReady
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                : 'bg-amber-50 text-amber-900 border-amber-300'
+            }`}>
+              {validationSummary.isReady ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>الحالة: جاهز للانتقال</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <span>الحالة: {validationSummary.summaryText}</span>
+                </>
+              )}
             </span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-1.5 flex items-center gap-2">
-            <span>👥</span>
-            <span>{isSale ? 'الخطوة السادسة: بيانات الشهود ومجلس التلقي' : 'الخطوة الخامسة: بيانات الشهود ومجلس العقد'}</span>
-          </h2>
-          <p className="text-sm font-medium text-slate-600">
-            {isMarriage
-              ? 'إدخال بيانات الشاهدين العدلين أو شهود العقد مع التحقق من الهويات والأهلية الشرعية.'
-              : 'أدخل بيانات الشهود المستمعين أو شهود العقد (الحد الأدنى حسب مقتضيات رسم المعاملة).'}
-          </p>
         </div>
+      </div>
 
-        <div className="space-y-6">
-          {witnesses.map((witness, index) => (
-            <div key={index} className="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 hover:border-slate-300 transition-all relative space-y-4">
-              {witnesses.length > 1 && (
-                <button
-                  onClick={() => removeWitness(index)}
-                  className="absolute top-4 left-4 inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition"
-                >
-                  ✕ حذف
-                </button>
-              )}
-              
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-cyan-800 text-xs font-black">
-                  {index + 1}
-                </span>
-                <h4 className="text-base font-black text-slate-800">بيانات الشاهد رقم {index + 1}</h4>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">الاسم الكامل</label>
-                  <input
-                    type="text"
-                    value={witness.name}
-                    onChange={(e) => handleWitnessChange(index, 'name', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="الاسم الكامل"
-                  />
-                </div>
+      {/* 3. Section 1: Method Selector (The 4 Cards & Smart Suggestion) */}
+      <EvidenceMethodSelector
+        selectedMethod={selectedMethod}
+        onSelectMethod={handleSelectMethod}
+        rule={rule}
+        onOpenWhyModal={() => setIsWhyModalOpen(true)}
+      />
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأب</label>
-                  <input
-                    type="text"
-                    value={witness.fatherName}
-                    onChange={(e) => handleWitnessChange(index, 'fatherName', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">اسم الأم</label>
-                  <input
-                    type="text"
-                    value={witness.motherName}
-                    onChange={(e) => handleWitnessChange(index, 'motherName', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ الازدياد</label>
-                  <input
-                    type="date"
-                    value={witness.dateOfBirth}
-                    onChange={(e) => handleWitnessChange(index, 'dateOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">مكان الازدياد</label>
-                  <input
-                    type="text"
-                    value={witness.placeOfBirth || ''}
-                    onChange={(e) => handleWitnessChange(index, 'placeOfBirth', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">رقم البطاقة الوطنية</label>
-                  <input
-                    type="text"
-                    value={witness.idNumber}
-                    onChange={(e) => handleWitnessChange(index, 'idNumber', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="AB123456"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ إصدار البطاقة</label>
-                  <input
-                    type="date"
-                    value={witness.idIssueDate}
-                    onChange={(e) => handleWitnessChange(index, 'idIssueDate', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">الجنسية</label>
-                  <select
-                    value={witness.nationality || ''}
-                    onChange={(e) => handleWitnessChange(index, 'nationality', e.target.value as any)}
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-                  >
-                    <option value="">—</option>
-                    <option value="مغربي">مغربي</option>
-                    <option value="اجنبي">أجنبي</option>
-                  </select>
-                </div>
-
-                {witness.nationality === 'اجنبي' && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      الاسم الكامل (بالأحرف اللاتينية)
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={witness.nameLatin || ''}
-                      onChange={(e) => handleWitnessChange(index, 'nameLatin', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      placeholder="Full name in Latin alphabet"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">صورة البطاقة الوطنية</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleWitnessChange(index, 'idImage', file);
-                      }
-                    }}
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-                  />
-                  {witness.idImage && (
-                    <div className="mt-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 px-3 py-1.5 rounded-md">
-                      <span className="truncate font-medium">📎 تم إرفاق: {(witness.idImage as any)?.name || 'صورة البطاقة'}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleWitnessChange(index, 'idImage', null)}
-                        className="text-red-500 hover:text-red-700 font-bold ml-2 text-sm"
-                        title="حذف المرفق"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">العنوان</label>
-                  <input
-                    type="text"
-                    value={witness.address}
-                    onChange={(e) => handleWitnessChange(index, 'address', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="العنوان الكامل"
-                  />
-                </div>
-              </div>
-
-              {/* Lineage Proof Specific Questions */}
-              {state.documentType === 'ثبوت_نسب_ببينة_السماع' && (
-                <div className="mt-6 space-y-4 bg-yellow-50 p-6 rounded-lg border-2 border-yellow-300">
-                  <h5 className="text-lg font-bold text-yellow-900 mb-4">أسئلة السماع الفاشي المستفيض</h5>
-                  
-                  {/* Q1: Do you know the applicant well? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س1: هل تعرف طالبة الشهادة معرفة تامة؟</label>
-                    <div className="flex gap-4">
-                      {['نعم', 'لا'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.knowsApplicantWell === option}
-                            onChange={() => handleWitnessChange(index, 'knowsApplicantWell', option)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q2: How long have you known the family? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س2: منذ متى تعرف الأسرة؟</label>
-                    <div className="flex flex-col gap-2">
-                      {[
-                        { value: 'أقل من 5 سنوات', label: 'أقل من 5 سنوات' },
-                        { value: '5-10 سنوات', label: '5–10 سنوات' },
-                        { value: 'أكثر من 10 سنوات', label: 'أكثر من 10 سنوات (مفضل فقهياً وقضائياً)' }
-                      ].map((option) => (
-                        <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.yearsOfKnowledge === option.value}
-                            onChange={() => handleWitnessChange(index, 'yearsOfKnowledge', option.value)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className={option.value === 'أكثر من 10 سنوات' ? 'font-bold text-green-700' : 'font-semibold'}>{option.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q3: Source of your knowledge of lineage? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س3: مصدر معرفتك بالنسب؟</label>
-                    <div className="flex flex-col gap-2">
-                      {['معاشرة', 'جوار', 'قرابة', 'مصاهرة', 'مخالطة اجتماعية'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.sourceOfKnowledge === option}
-                            onChange={() => handleWitnessChange(index, 'sourceOfKnowledge', option)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q4: Have you heard the widespread public rumor? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س4: هل سمعت بالسماع الفاشي المستفيض؟</label>
-                    <div className="flex gap-4">
-                      {['نعم', 'لا'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.heardPublicRumor === option}
-                            onChange={() => handleWitnessChange(index, 'heardPublicRumor', option)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q5: Did the father recognize her practically? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س5: هل كان الأب يعترف بها عملياً؟</label>
-                    <div className="flex flex-col gap-2">
-                      {[
-                        { value: 'يضنّها', label: 'يضنّها' },
-                        { value: 'يجالسها', label: 'يجالسها' },
-                        { value: 'يعولها', label: 'يعولها' },
-                        { value: 'يذكرها كبنته', label: 'يذكرها كبنته' },
-                        { value: 'لا يعرف', label: 'لا يعرف' }
-                      ].map((option) => (
-                        <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={witness.fatherPracticalRecognition?.includes(option.value) || false}
-                            onChange={(e) => {
-                              const current = witness.fatherPracticalRecognition || '';
-                              const values = current ? current.split(',').map(v => v.trim()) : [];
-                              let newValues: string[];
-                              
-                              if (e.target.checked) {
-                                newValues = [...values.filter(v => v), option.value];
-                              } else {
-                                newValues = values.filter(v => v !== option.value);
-                              }
-                              
-                              handleWitnessChange(index, 'fatherPracticalRecognition', newValues.join(', '));
-                            }}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q6: Is there public fame of the lineage? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س6: هل وجود شهرة بين الناس بالنسب؟</label>
-                    <div className="flex gap-4">
-                      {['نعم', 'لا'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.publicFameOfLineage === option}
-                            onChange={() => handleWitnessChange(index, 'publicFameOfLineage', option)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Q7: Did anyone oppose the lineage? */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">س7: هل عارض أحد النسب؟</label>
-                    <div className="flex gap-4">
-                      {['نعم', 'لا'].map((option) => (
-                        <label key={option} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            checked={witness.anyoneOpposedLineage === option}
-                            onChange={() => handleWitnessChange(index, 'anyoneOpposedLineage', option)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+      {/* 4. Section 2: Method-Specific Body (Conditional Rendering) */}
+      <div className="pt-2">
+        {selectedMethod === 'none' && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 text-center space-y-3 shadow-xs">
+            <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto shadow-xs">
+              <FileText className="w-6 h-6" />
             </div>
-          ))}
+            <h4 className="text-base font-black text-emerald-950">
+              هذا الرسم لا يستلزم شهادة خاصة
+            </h4>
+            <p className="text-xs text-emerald-900 max-w-lg mx-auto leading-relaxed">
+              وفقاً للطبيعة القانونية لهذا الرسم، يتم التلقي والإشهاد مباشرة بين أطراف العقد أمام العدلين، دون الحاجة إلى مسار شهادة اللفيف أو الشهادة العلمية أو المثلية.
+            </p>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>جاهز للمرور المباشر إلى مرحلة التواريخ والمراجع ومجلس الإشهاد</span>
+            </div>
+          </div>
+        )}
 
-          {witnesses.length < 12 && (
-            <button
-              onClick={addWitness}
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-400 transition"
-            >
-              + إضافة شاهد آخر
-            </button>
+        {selectedMethod === 'lafif' && (
+          <LafifWitnessManager
+            state={state}
+            setState={setState}
+            rule={rule}
+            onOpenWhyModal={() => setIsWhyModalOpen(true)}
+          />
+        )}
+
+        {selectedMethod === 'scientific' && (
+          <ScientificTestimonyForm
+            state={state}
+            setState={setState}
+          />
+        )}
+
+        {selectedMethod === 'mithliya' && (
+          <MithliyaTestimonyForm
+            state={state}
+            setState={setState}
+          />
+        )}
+      </div>
+
+      {/* 5. Navigation Footer with Strict Validation Gating */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
+        <button
+          type="button"
+          onClick={handlePrevStep}
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs active:scale-95 cursor-pointer"
+        >
+          <ArrowRight className="w-4 h-4" />
+          <span>السابق</span>
+        </button>
+
+        <div className="flex items-center gap-3">
+          {!validationSummary.isReady && (
+            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{validationSummary.errors[0] || 'يرجى استكمال شروط المرحلة للمتابعة'}</span>
+            </span>
           )}
-        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
-            onClick={() => setState((prev) => ({
-              ...prev,
-              step: prev.documentType === 'ثبوت_نسب_ببينة_السماع' ? 3 : 4
-            }))}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
-          >
-            <span>← السابق</span>
-          </button>
-          <button
-            onClick={() => setState((prev) => ({ ...prev, step: 6 }))}
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+            type="button"
+            onClick={handleNextStep}
+            disabled={!validationSummary.isReady}
+            className={`inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-black transition shadow-md ${
+              validationSummary.isReady
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-blue-700/20 active:scale-95 cursor-pointer'
+                : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
+            }`}
+            title={!validationSummary.isReady ? validationSummary.errors[0] : 'الانتقال إلى الخطوة التالية'}
           >
             <span>التالي: التواريخ والمراجع ومجلس الإشهاد</span>
-            <span>→</span>
+            <ArrowLeft className="w-4 h-4" />
           </button>
         </div>
       </div>
-    );
-  };
 
-  // ============================================================================
-  // خطوة 6: التواريخ والمراجع
-  // ============================================================================
-
+      {/* 6. Legal "Why?" Modal */}
+      <WhyLegalModal
+        isOpen={isWhyModalOpen}
+        onClose={() => setIsWhyModalOpen(false)}
+        rule={rule}
+      />
+    </div>
+  );
+};

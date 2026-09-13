@@ -489,7 +489,7 @@ export const SignedRasmViewer: React.FC = () => {
         }
       `}</style>
 
-      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 signed-rasm-no-print">
+      <div className="bg-white border-b border-slate-200 shadow-sm signed-rasm-no-print">
         <div className="w-full px-4 md:px-8 py-6">
           <button
             onClick={handleBack}

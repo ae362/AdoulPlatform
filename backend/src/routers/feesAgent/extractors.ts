@@ -126,10 +126,10 @@ export function extractInclusionFromPayload(payload: any) {
     || pickFirstString(meta, ['notaryPrimary', 'notary_primary'])
     || pickFirstString(auditHub, ['notary1Name', 'notary_1_name', 'adoul1Name', 'adoul1_name', 'notaryPrimary', 'notary_primary'])
     || pickFirstString(auditHubNotaries, ['primary', 'notary1Name', 'notary_1_name', 'adoul1Name', 'adoul1_name']);
-  const notary2Name = pickFirstString(p, ['notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'notarySecondary', 'notary_secondary', 'partnerName', 'partner_name', 'partner'])
+  const notary2Name = pickFirstString(p, ['notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'notarySecondary', 'notary_secondary', 'partnerName', 'partner_name', 'partner', 'judgeName'])
     || pickFirstString(notaries, ['secondary', 'notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'partnerName', 'partner_name'])
     || pickFirstString(meta, ['notarySecondary', 'notary_secondary', 'partnerName', 'partner_name', 'partner'])
-    || pickFirstString(auditHub, ['notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'notarySecondary', 'notary_secondary', 'partnerName', 'partner_name', 'partner'])
+    || pickFirstString(auditHub, ['notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'notarySecondary', 'notary_secondary', 'partnerName', 'partner_name', 'partner', 'judgeName'])
     || pickFirstString(auditHubNotaries, ['secondary', 'notary2Name', 'notary_2_name', 'adoul2Name', 'adoul2_name', 'partnerName', 'partner_name']);
 
   return {
@@ -245,21 +245,39 @@ export function extractPartiesFromPayload(payload: any): Array<{ role: string | 
   pushFromArray((p as any).buyers, 'buyer');
   pushFromArray((p as any).applicants, 'applicant');
 
-  const husbandName = pickFirstString(p, ['husband_name', 'husbandName', 'husband']);
-  const wifeName = pickFirstString(p, ['wife_name', 'wifeName', 'wife']);
+  const auditHub = (p as any)?.auditHubInclusion && typeof (p as any).auditHubInclusion === 'object'
+    ? (p as any).auditHubInclusion
+    : ((p as any)?.audit_hub_inclusion && typeof (p as any).audit_hub_inclusion === 'object' ? (p as any).audit_hub_inclusion : null);
+
+  const husbandObj = typeof p.husband === 'object' && p.husband ? p.husband : null;
+  const wifeObj = typeof p.wife === 'object' && p.wife ? p.wife : null;
+
+  const husbandName = pickFirstString(p, ['husband_name', 'husbandName']) || pickFirstString(husbandObj, ['name', 'fullName', 'full_name']);
+  const wifeName = pickFirstString(p, ['wife_name', 'wifeName']) || pickFirstString(wifeObj, ['name', 'fullName', 'full_name']);
   if (husbandName) {
-    const idNumber = pickFirstString(p, ['husband_id', 'husbandId', 'husband_id_number', 'husbandIdNumber']);
+    const idNumber = pickFirstString(p, ['husband_id', 'husbandId', 'husband_id_number', 'husbandIdNumber']) || pickFirstString(husbandObj, ['idNumber', 'id_number', 'cin', 'CIN', 'nationalId']);
     parties.push({ role: 'husband', fullName: husbandName, idNumber, phone: null });
   }
   if (wifeName) {
-    const idNumber = pickFirstString(p, ['wife_id', 'wifeId', 'wife_id_number', 'wifeIdNumber']);
+    const idNumber = pickFirstString(p, ['wife_id', 'wifeId', 'wife_id_number', 'wifeIdNumber']) || pickFirstString(wifeObj, ['idNumber', 'id_number', 'cin', 'CIN', 'nationalId']);
     parties.push({ role: 'wife', fullName: wifeName, idNumber, phone: null });
   }
 
-  const party1Name = pickFirstString(p, ['party1Name', 'party_1_name', 'firstPartyName']);
-  const party2Name = pickFirstString(p, ['party2Name', 'party_2_name', 'secondPartyName']);
-  if (party1Name) parties.push({ role: 'party_1', fullName: party1Name, idNumber: null, phone: null });
-  if (party2Name) parties.push({ role: 'party_2', fullName: party2Name, idNumber: null, phone: null });
+  const party1Name = pickFirstString(p, ['party1Name', 'party_1_name', 'firstPartyName']) || pickFirstString(auditHub, ['firstPartyName', 'first_party_name']);
+  const party1Id = pickFirstString(p, ['party1Id', 'firstPartyId', 'first_party_id']) || pickFirstString(auditHub, ['firstPartyId', 'first_party_id']);
+  const party2Name = pickFirstString(p, ['party2Name', 'party_2_name', 'secondPartyName']) || pickFirstString(auditHub, ['secondPartyName', 'second_party_name']);
+  const party2Id = pickFirstString(p, ['party2Id', 'secondPartyId', 'second_party_id']) || pickFirstString(auditHub, ['secondPartyId', 'second_party_id']);
+  if (party1Name) parties.push({ role: 'party_1', fullName: party1Name, idNumber: party1Id, phone: null });
+  if (party2Name) parties.push({ role: 'party_2', fullName: party2Name, idNumber: party2Id, phone: null });
+
+  const optionalParties = Array.isArray(p.optionalParties) ? p.optionalParties : (Array.isArray(auditHub?.optionalParties) ? auditHub.optionalParties : []);
+  for (const opt of optionalParties) {
+    const name = pickFirstString(opt, ['name', 'fullName', 'full_name']);
+    if (name) {
+      const idNumber = pickFirstString(opt, ['nationalId', 'national_id', 'idNumber', 'id_number', 'cin']);
+      parties.push({ role: 'optional_party', fullName: name, idNumber, phone: null });
+    }
+  }
 
   const partiesNames = pickFirstString(p, [
     'parties_names',

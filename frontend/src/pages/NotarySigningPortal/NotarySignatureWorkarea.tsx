@@ -1542,19 +1542,28 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
-  const handleShowDocumentOnTablet = async () => {
+  const refreshTabletDisplay = async () => {
+    if (!tabletRef.current || !isWacomConnected) return;
     try {
       setIsSendingPreviewToTablet(true);
       setHardwareError(null);
+      const wgss = (window as any).WacomGSS;
+      if (wgss?.STU?.Protocol && tabletRef.current) {
+        const p = new wgss.STU.Protocol();
+        await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_Off).catch(() => {});
+      }
       await pushPreviewToTablet(tabletSigningViewModeRef.current);
       await startTabletNavigationMode();
       setStuStatus('CONNECTED');
     } catch (err: any) {
-      setHardwareError(err?.message || 'تعذر إرسال معاينة الوثيقة إلى شاشة اللوحة.');
-      setStuStatus('ERROR');
+      console.warn('Failed to refresh tablet display:', err);
     } finally {
       setIsSendingPreviewToTablet(false);
     }
+  };
+
+  const handleShowDocumentOnTablet = async () => {
+    await refreshTabletDisplay();
   };
 
   const adjustTabletPreviewZoom = async (delta: number) => {
@@ -1634,22 +1643,26 @@ export const NotarySignatureWorkarea: React.FC = () => {
     clearSignatureCanvas();
     penDataRef.current = [];
     if (tabletRef.current) {
+      try {
+        const wgss = (window as any).WacomGSS;
+        const p = new wgss.STU.Protocol();
+        await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_Off).catch(() => {});
+        await pushPreviewToTablet(tabletSigningViewModeRef.current);
+        await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_On);
+      } catch {
         try {
-            const wgss = (window as any).WacomGSS;
-            
-            // From demobuttons-2 implementation: specific hardware reset calls
-            if (typeof tabletRef.current.setClearScreen === 'function') {
-                await tabletRef.current.setClearScreen();
-            } else if (typeof tabletRef.current.clearScreen === 'function') {
-                await tabletRef.current.clearScreen();
-            }
-            
-            // Re-draw inking mode
-            const p = new wgss.STU.Protocol();
-            await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_On);
-          } catch {
-            // ignore
+          if (typeof tabletRef.current.setClearScreen === 'function') {
+            await tabletRef.current.setClearScreen();
+          } else if (typeof tabletRef.current.clearScreen === 'function') {
+            await tabletRef.current.clearScreen();
+          }
+          const wgss = (window as any).WacomGSS;
+          const p = new wgss.STU.Protocol();
+          await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_On);
+        } catch {
+          // ignore
         }
+      }
     }
   };
 
@@ -1824,7 +1837,34 @@ export const NotarySignatureWorkarea: React.FC = () => {
   }, []);
   // --- WACOM SDK LOGIC END ---
 
-  const clearSignatures = () => {
+  const handleRepositionSignature = (targetAdoul?: 1 | 2) => {
+    const adoul = targetAdoul || activeAdoul;
+    const sigImg = (adoul === 2 ? adoul2Signature : adoul1Signature) || adoul1Signature || adoul2Signature;
+    
+    // Revert PDF to original so old signature layer is discarded
+    if (originalPdfUrl) {
+      setCurrentPdfUrl(originalPdfUrl);
+    }
+    setEditedPdfBytes(null);
+    setPlacedSignatures([]);
+
+    if (sigImg) {
+      // Put directly into placement mode so user can select where to sign on document!
+      setPendingPlacement({ img: sigImg, adoul });
+      setStuStatus('CONNECTED');
+    }
+
+    // Refresh tablet so it shows clean document and never stays blank
+    void refreshTabletDisplay();
+  };
+
+  const clearSignatures = (forceWipe = false) => {
+    const existingSig = (activeAdoul === 2 ? adoul2Signature : adoul1Signature) || adoul1Signature || adoul2Signature;
+    if (!forceWipe && existingSig) {
+      handleRepositionSignature();
+      return;
+    }
+
     setPlacedSignatures([]);
     if (originalPdfUrl) {
       setCurrentPdfUrl(originalPdfUrl);
@@ -1846,7 +1886,20 @@ export const NotarySignatureWorkarea: React.FC = () => {
     
     // Clear the on-screen preview canvas
     clearSignatureCanvas();
+
+    // Prevent tablet from showing blank screen
+    void refreshTabletDisplay();
   };
+
+  // Auto-sync document page on tablet upon connection or page switch
+  useEffect(() => {
+    if (isWacomConnected && tabletRef.current && !isCapturing && (currentPdfUrl || originalPdfUrl)) {
+      const timer = window.setTimeout(() => {
+        void refreshTabletDisplay();
+      }, 300);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isWacomConnected, page]);
 
   const undoLastSignature = async () => {
     if (isPDF) {
@@ -2521,8 +2574,9 @@ export const NotarySignatureWorkarea: React.FC = () => {
                 {/* Floating Pending Indicator */}
                 {pendingPlacement && (
                   <div className="absolute inset-0 flex items-center justify-center z-[99] pointer-events-none">
-                    <div className="bg-blue-600 text-white px-8 py-3 rounded-full font-black text-sm shadow-2xl animate-bounce">
-                      اضغط في أي مكان لوضع التوقيع
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm shadow-2xl animate-bounce flex items-center gap-3 border border-white/30 backdrop-blur-sm">
+                      <Pen className="w-5 h-5 animate-pulse text-amber-300" />
+                      <span>انقر بالماوس على الوثيقة لتحديد موضع توقيع {pendingPlacement.adoul === 1 ? 'العدل الأول' : 'العدل الثاني'}</span>
                     </div>
                   </div>
                 )}
@@ -2794,186 +2848,214 @@ export const NotarySignatureWorkarea: React.FC = () => {
                </div>
 
                {isWacomConnected ? (
-                 <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="space-y-3 rounded-[1.7rem] border border-[#e5dac5] bg-white p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-                       <div className="flex justify-between items-center text-[10px] font-black">
-                         <span className="text-slate-500 uppercase">Hardware Status</span>
-                         <span className={`px-2 py-0.5 rounded text-[8px] ${
-                           stuStatus === 'CONNECTED' ? 'bg-blue-100 text-blue-700' :
-                           stuStatus === 'CAPTURING' ? 'bg-rose-100 text-rose-700 animate-pulse' :
-                           stuStatus === 'SAVED' ? 'bg-emerald-100 text-emerald-700' :
-                           'bg-slate-100 text-slate-500'
-                         }`}>
-                           {stuStatus}
-                         </span>
-                       </div>
-                       <div className="flex justify-between items-center text-[10px] font-black border-t border-[#efe5d2] pt-2">
-                         <span className="text-slate-500 uppercase">Device S/N</span>
-                         <span className="font-mono tracking-wider text-slate-900">{deviceInfo.serial}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[10px] font-black border-t border-[#efe5d2] pt-2">
-                         <span className="text-slate-500 uppercase">DPI / Precision</span>
-                         <span className="font-mono text-[#12388A]">{deviceInfo.resolution}</span>
-                       </div>
+                  <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                    {/* Compact Hardware Status Pill */}
+                    <div className="flex items-center justify-between rounded-2xl border border-[#e5dac5] bg-white px-4 py-2.5 shadow-sm text-xs font-bold">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                        <span className="font-black text-slate-800">STU-540 متصلة</span>
+                        <span className="text-[10px] text-slate-400 font-mono">({deviceInfo.resolution})</span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+                        stuStatus === 'CAPTURING' ? 'bg-rose-100 text-rose-700 animate-pulse' :
+                        stuStatus === 'SAVED' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-blue-50 text-blue-700'
+                      }`}>
+                        {stuStatus === 'CAPTURING' ? 'قيد التوقيع' : stuStatus === 'SAVED' ? 'تم الحفظ' : 'جاهزة'}
+                      </span>
                     </div>
 
-                    <div className="relative group">
-                       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-                       <div className="relative aspect-[4/2.5] bg-[#f8fafc] rounded-2xl border border-white/20 flex flex-col items-center justify-center p-0.5 overflow-hidden shadow-2xl">
-                          {/* Live Signature Canvas (Like demobuttons sample) */}
-                          <canvas 
-                            ref={sigCanvasRef}
-                            width={800}
-                            height={480}
-                            className={`w-full h-full rounded-2xl bg-white ${stuStatus === 'CAPTURING' ? 'block' : 'hidden'}`}
+                    {/* Live Signature Canvas (Only shown when capturing or previewing signed signature) */}
+                    {stuStatus === 'CAPTURING' ? (
+                      <div className="relative rounded-2xl border-2 border-blue-500/50 bg-white p-2 overflow-hidden shadow-lg animate-in zoom-in-95">
+                        <div className="flex items-center justify-between mb-1 px-1">
+                          <span className="text-[11px] font-black text-blue-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                            بث حي للتوقيع من اللوحة
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">العدل {activeAdoul === 1 ? 'الأول' : 'الثاني'}</span>
+                        </div>
+                        <canvas 
+                          ref={sigCanvasRef}
+                          width={800}
+                          height={480}
+                          className="w-full aspect-[4/2.5] rounded-xl bg-white border border-slate-200"
+                        />
+                      </div>
+                    ) : (adoul1Signature || adoul2Signature) ? (
+                      <div className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm text-center">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            التوقيع المسجل ({activeAdoul === 2 && adoul2Signature ? 'العدل الثاني' : 'العدل الأول'})
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">جاهز للتثبيت</span>
+                        </div>
+                        <div className="h-20 flex items-center justify-center bg-slate-50/70 rounded-xl border border-dashed border-slate-200 p-2">
+                          <img 
+                            src={(activeAdoul === 2 ? adoul2Signature : adoul1Signature) || adoul1Signature || adoul2Signature || ''} 
+                            alt="Signature Preview" 
+                            className="max-h-full object-contain"
                           />
+                        </div>
+                      </div>
+                    ) : null}
 
-                          {stuStatus !== 'CAPTURING' && (
-                            <div className="w-full h-full flex items-center justify-center relative bg-slate-900">
-                               {adoul1Signature || adoul2Signature ? (
-                                  <img 
-                                    src={adoul1Signature || adoul2Signature || ''} 
-                                    alt="Signature Preview" 
-                                    className="max-h-[85%] object-contain"
-                                  />
-                               ) : (
-                                  <div className="flex flex-col items-center opacity-30">
-                                    <Monitor className="w-8 h-8 mb-2" />
-                                    <p className="text-[8px] font-black uppercase tracking-[0.2em]">AES-256 Secure Tunnel</p>
-                                  </div>
-                               )}
+                    {/* Controls & Actions */}
+                    <div className="space-y-3">
+                      {stuStatus === 'CAPTURING' ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setIsCapturing(false);
+                              setStuStatus('CONNECTED');
+                              clearSignatureCanvas();
+                              void refreshTabletDisplay();
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl transition-all text-xs font-black"
+                            title="إلغاء التوقيع"
+                          >
+                            إلغاء
+                          </button>
+                          
+                          <button 
+                            type="button"
+                            onClick={handleClearSTU}
+                            className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl transition-all text-xs font-black"
+                            title="مسح وإعادة الرسم"
+                          >
+                            <RefreshCcw className="w-3.5 h-3.5" />
+                            مسح
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => handleSaveSignature(activeAdoul)}
+                            className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all text-xs font-black shadow-md shadow-emerald-600/20"
+                            title="اعتماد وحفظ التوقيع"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            اعتماد
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Streamlined Mode & Zoom controls */}
+                          <div className="space-y-2 rounded-2xl border border-[#e5dac5] bg-white p-3.5 shadow-sm">
+                            <div className="flex items-center justify-between text-xs font-black text-slate-700">
+                              <span>شاشة اللوحة</span>
+                              <div className="flex items-center gap-1 text-[11px] text-slate-600">
+                                <button
+                                  type="button"
+                                  onClick={() => void adjustTabletPreviewZoom(-0.12)}
+                                  disabled={isSendingPreviewToTablet}
+                                  className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 font-black text-slate-800"
+                                  title="تصغير"
+                                >
+                                  −
+                                </button>
+                                <span className="font-mono px-1.5 text-[10px] font-bold">{Math.round(tabletPreviewZoom * 100)}%</span>
+                                <button
+                                  type="button"
+                                  onClick={() => void adjustTabletPreviewZoom(0.12)}
+                                  disabled={isSendingPreviewToTablet}
+                                  className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 font-black text-slate-800"
+                                  title="تكبير"
+                                >
+                                  +
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void refreshTabletDisplay()}
+                                  disabled={isSendingPreviewToTablet}
+                                  className="mr-1 w-6 h-6 flex items-center justify-center rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50"
+                                  title="إعادة مزامنة شاشة اللوحة"
+                                >
+                                  <RefreshCcw className={`w-3 h-3 ${isSendingPreviewToTablet ? 'animate-spin' : ''}`} />
+                                </button>
+                              </div>
                             </div>
-                          )}
-                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                       {stuStatus === 'CAPTURING' ? (
-                         <div className="grid grid-cols-3 gap-3">
-                           <button 
-                              onClick={() => {
-                                 setIsCapturing(false);
-                                 setStuStatus('CONNECTED');
-                                 clearSignatureCanvas();
-                              }}
-                              className="flex items-center justify-center gap-2 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-500 rounded-xl transition-all"
-                              title="إيقاف"
-                           >
-                              <span className="text-[10px] font-black">إلغاء</span>
-                           </button>
-                           
-                           <button 
-                              onClick={handleClearSTU}
-                              className="flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-white/5"
-                              title="مسح الشاشة"
-                           >
-                              <RefreshCcw className="w-4 h-4" />
-                              <span className="text-[10px] font-black">مسح</span>
-                           </button>
-
-                           <button 
-                              onClick={() => handleSaveSignature(activeAdoul)}
-                              className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-                           >
-                              <ShieldCheck className="w-4 h-4" />
-                              <span className="text-[10px] font-black">حفظ التوقيع</span>
-                           </button>
-                         </div>
-                       ) : (
-                         <div className="space-y-3">
-                         <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
                                 onClick={() => setTabletSigningViewMode('full')}
                                 className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
                                   tabletSigningViewMode === 'full'
-                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                 }`}
                               >
-                                التوقيع فوق الصفحة الحالية
+                                عرض الصفحة كاملة
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setTabletSigningViewMode('signing-zone')}
                                 className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
                                   tabletSigningViewMode === 'signing-zone'
-                                    ? 'border-red-700 bg-red-50 text-red-700'
+                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                 }`}
                               >
-                                التوقيع فوق منطقة التوقيع
+                                تكبير منطقة التوقيع
                               </button>
-                           </div>
+                            </div>
+                          </div>
 
-                           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void adjustTabletPreviewZoom(-0.12)}
-                                disabled={isSendingPreviewToTablet}
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 transition-all hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
-                              >
-                                تصغير على اللوحة
-                              </button>
-                              <div className="rounded-xl bg-slate-100 px-3 py-2 text-center text-[11px] font-black text-slate-700">
-                                {Math.round(tabletPreviewZoom * 100)}%
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => void adjustTabletPreviewZoom(0.12)}
-                                disabled={isSendingPreviewToTablet}
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 transition-all hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
-                              >
-                                تكبير على اللوحة
-                              </button>
-                           </div>
+                          {/* Primary Signing Trigger Button */}
+                          <button 
+                            type="button"
+                            onClick={async () => {
+                              clearSignatureCanvas();
+                              await handleCaptureStart(activeAdoul);
+                            }}
+                            disabled={activeAdoul === 1 ? !!adoul1Signature : !!adoul2Signature}
+                            className={`w-full flex items-center justify-center gap-3 py-3.5 ${
+                              activeAdoul === 1 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-700 hover:bg-emerald-800'
+                            } disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl transition-all shadow-lg font-black text-sm group`}
+                          >
+                            <Pen className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                            <div className="text-right">
+                              <p className="text-sm font-black">
+                                {activeAdoul === 1
+                                  ? (adoul1Signature ? 'تم توقيع العدل الأول' : 'توقيع العدل الأول بالقلم')
+                                  : (adoul2Signature ? 'تم توقيع العدل الثاني' : 'توقيع العدل الثاني بالقلم')}
+                              </p>
+                              <p className="text-[10px] font-bold opacity-80">
+                                {tabletSigningViewMode === 'full' ? 'التوقيع أثناء عرض الصفحة' : 'التوقيع داخل منطقة مكبرة'}
+                              </p>
+                            </div>
+                          </button>
 
-                           <button 
-                              onClick={() => void handleShowDocumentOnTablet()}
-                              disabled={isSendingPreviewToTablet}
-                              className="w-full flex items-center justify-center gap-3 py-3 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-200 disabled:text-slate-400 text-slate-800 rounded-2xl transition-all border border-slate-300"
-                           >
-                              <Monitor className={`w-4 h-4 ${isSendingPreviewToTablet ? 'animate-pulse' : ''}`} />
-                              <div className="text-right">
-                                 <p className="text-sm font-black">عرض الصفحة الحالية على شاشة اللوحة</p>
-                                 <p className="text-[10px] font-bold opacity-70">Preview current document page on STU-540</p>
-                              </div>
-                           </button>
-
-                           <button 
-                              onClick={async () => {
-                                 clearSignatureCanvas();
-                                 await handleCaptureStart(activeAdoul);
-                              }}
-                              disabled={activeAdoul === 1 ? !!adoul1Signature : !!adoul2Signature}
-                              className={`w-full flex items-center justify-center gap-3 py-4 ${
-                                activeAdoul === 1 ? 'bg-blue-600 hover:bg-blue-700 shadow-black/40' : 'bg-red-800 hover:bg-red-900 shadow-black/40'
-                              } disabled:bg-slate-800 disabled:text-slate-500 rounded-2xl transition-all shadow-xl group`}
-                           >
-                              <Pen className="w-5 h-5 group-hover:rotate-12 transition-transform text-white" />
-                              <div className="text-right text-white">
-                                 <p className="text-sm font-black">توقيع {activeAdoul === 1 ? 'العدل الأول' : 'العدل الثاني'}</p>
-                                 <p className="text-[10px] font-bold opacity-70">
-                                   {tabletSigningViewMode === 'full'
-                                     ? 'التوقيع أثناء عرض الصفحة الحالية'
-                                     : 'التوقيع داخل منطقة التوقيع المكبرة'}
-                                 </p>
-                              </div>
-                           </button>
-
-                           { (placedSignatures.length > 0 || currentPdfUrl !== originalPdfUrl || adoul1Signature || adoul2Signature) && (
+                          {/* Signature reposition and management buttons */}
+                          {(placedSignatures.length > 0 || currentPdfUrl !== originalPdfUrl || adoul1Signature || adoul2Signature) && (
+                            <div className="space-y-2 pt-1 animate-in fade-in duration-200">
                               <button 
-                                onClick={clearSignatures}
-                                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-red-900/30 border border-white/5 hover:border-red-500/50 text-slate-400 hover:text-red-500 rounded-xl transition-all"
+                                type="button"
+                                onClick={() => handleRepositionSignature(activeAdoul)}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl transition-all text-xs font-black shadow-sm"
+                                title="إعادة النقر على الوثيقة لتغيير مكان وضع التوقيع"
                               >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="text-xs font-black">حذف جميع التوقيعات</span>
+                                <Pen className="w-3.5 h-3.5" />
+                                <span>تغيير موضع التوقيع على الوثيقة</span>
                               </button>
-                           )}
-                         </div>
-                       )}
+                              
+                              <button 
+                                type="button"
+                                onClick={() => clearSignatures(true)}
+                                className="w-full flex items-center justify-center gap-2 py-2 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-500 hover:text-rose-600 rounded-xl transition-all text-xs font-bold"
+                                title="حذف التوقيع بالكامل وإعادة الرسم من جديد"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>مسح التوقيع وإعادة الرسم بالقلم</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                 </div>
+                  </div>
                ) : (
                  <div className="animate-in zoom-in-95 space-y-5 rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-center shadow-lg duration-500">
                     <div className="relative w-16 h-16 mx-auto mb-4">

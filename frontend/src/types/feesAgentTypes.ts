@@ -209,7 +209,7 @@ export interface TitleDocumentDetails {
   page?: string; // صحيفة
   count?: string; // عدد
   date?: string; // بتاريخ
-  correspondingDate?: string; // موافق
+  correspondingDate?: string; // توثيق
   
   // Registration & Stamp References
   hasRegistrationReferences: 'نعم' | 'لا' | '';
@@ -289,6 +289,14 @@ export interface DocumentMeta {
   notaryPartnerId?: string;
   additionalDocuments: File[];
   court?: string;
+  appellateCourt?: string;
+  courtSection?: string;
+  authorizationNumber?: string;
+  authorizationDate?: string;
+  registryNumber?: string;
+  registryCount?: string;
+  registryPage?: string;
+  receptionDate?: string;
 }
 
 export interface ValidationAlert {
@@ -332,8 +340,63 @@ export interface InheritanceDeed {
   notary: string;
 }
 
+export type WitnessAgeStatus = 'valid' | 'invalid' | 'pending';
+export type WitnessKinshipRelation = 'none' | 'kinship' | 'affinity' | 'unsure';
+export type WitnessInquestResult = 'valid' | 'warning' | 'invalid' | 'incomplete';
+
 export interface Witness extends Party {
   dateOfBirth: string;
+  // Dual dates and ages (المادة 67 من القانون 51.26 وقواعد اللفيف)
+  hearingDate?: string; // تاريخ تحمّل الشهادة
+  testimonyDate?: string; // تاريخ أداء الشهادة
+  bearingAge?: number; // السن عند التحمل
+  performanceAge?: number; // السن عند الأداء
+  bearingStatus?: WitnessAgeStatus; // بلوغ سن التمييز (12 سنة)
+  performanceStatus?: WitnessAgeStatus; // بلوغ سن الرشد (18 سنة)
+
+  // محرك أهليّة الشاهد وقواعد الإثبات الزمني (التحمل المرن ومصادر العلم)
+  bearingMode?: 'exact_date' | 'year_only' | 'relative_years'; // نمط تحديد زمن التحمل
+  bearingYear?: number; // سنة المعاينة أو العلم (مثال: 2010)
+  bearingRelativeYears?: number; // مدة تقريبية بالسنوات (مثال: منذ 15 سنة)
+  effectiveBearingDate?: string; // التاريخ الفعلي المحسوب للتحمل
+  bearingSource?: 'inspection' | 'hearing' | 'fame'; // معاينة شخصية ومجاورة / سماع فاشٍ ومستفيض / شهرة
+  coverageYears?: number; // عدد سنوات التغطية التي يشهد بها
+  coversClaimedStart?: boolean; // هل يغطي بداية الفترة المدعى بها
+  coverageNote?: string; // تنبيه قانوني حول تغطية المدة
+  
+  // التحري في القرابة والمصاهرة
+  kinshipRelation?: WitnessKinshipRelation; // صلة القرابة أو المصاهرة
+  kinshipType?: string; // نوع القرابة (أب، ابن، أخ، عم...)
+  kinshipDegree?: number | string; // درجة القرابة
+  kinshipStatus?: 'valid' | 'invalid' | 'warning'; // نتيجة فحص القرابة
+
+  // توثيق التحري والأثر الرقمي (Audit Trail)
+  inquestResult?: WitnessInquestResult; // نتيجة التحري
+  inquestDate?: string; // تاريخ التحري
+  inquestNotary?: string; // العدل القائم بالتحري
+  inquestMethod?: string; // طريقة التحقق (تصريح طالب الشهادة، تصريح الشاهد، وثيقة...)
+  inquestNotes?: string; // ملاحظات التحري
+  inquestBlockReason?: string; // سبب المنع إن وجد
+}
+
+// موضوع الواقعة والمدى الزمني للإثبات
+export type SubjectMatterCategory = 
+  | 'possession_acquisition' // حيازة مكسبة للملك (10 سنوات لغير الشريك / 40 سنة بين الأقارب)
+  | 'possession_hearing'     // شهادة السماع في الملك (20 سنة مع الشروط التوثيقية)
+  | 'continuous_enjoyment'   // استمرار الحيازة والتصرف
+  | 'material_fact'          // واقعة مادية محددة (ولادة، بناء، اعتداء، وفاة)
+  | 'custom_period';         // فترة مخصصة يحددها الأطراف
+
+export interface EvidenceSubjectMatter {
+  category: SubjectMatterCategory;
+  title?: string;
+  depositionDate: string; // تاريخ أداء الشهادة (YYYY-MM-DD)
+  periodType: 'duration_years' | 'exact_start_date' | 'approx_year';
+  claimedDurationYears?: number; // مثلاً 20 سنة
+  exactStartDate?: string; // مثلاً 2006-09-13
+  approxStartYear?: number; // مثلاً 2006
+  calculatedStartDate: string; // YYYY-MM-DD
+  notes?: string;
 }
 
 export interface PartitionBeneficiary {
@@ -1781,6 +1844,33 @@ export interface FeesAgentState {
   applicants?: Applicant[];
   inheritanceDeeds?: InheritanceDeed[];
   witnesses?: Witness[];
+  // Evidence Method & Investigation (طريقة الإثبات والشهادة والتحري)
+  evidenceMethod?: 'none' | 'lafif' | 'scientific' | 'mithliya' | '';
+  evidenceSubjectMatter?: EvidenceSubjectMatter; // موضوع الواقعة والمدى الزمني المحسوب
+  scientificTestimony?: {
+    permissionNumber?: string;
+    permissionDate?: string;
+    courtName?: string;
+    judgeName?: string;
+    issueDate?: string;
+    electronicDoc?: File | { name: string; size: number; base64?: string; type?: string } | null;
+    electronicVerification?: boolean;
+    primaryNotary?: string;
+    secondaryNotary?: string;
+  };
+  mithliyaTestimony?: {
+    primaryNotary?: string;
+    notaryName?: string;
+    witnessesCount?: number;
+    completed?: boolean;
+    permissionNumber?: string;
+    permissionDate?: string;
+    courtName?: string;
+    judgeName?: string;
+    issueDate?: string;
+    electronicDoc?: File | { name: string; size: number; base64?: string; type?: string } | null;
+    electronicVerification?: boolean;
+  };
   partitionDivisions?: PartitionDivision[];
   commonFacilities?: CommonFacilities;
   inheritanceDescription?: string;
@@ -2372,6 +2462,12 @@ export interface PreReceptionVerificationData {
     title: string;
     status: 'info' | 'success' | 'warning' | 'error';
   }>;
+  registryRecord?: {
+    number?: string;
+    count?: string;
+    page?: string;
+    receptionDate?: string;
+  };
 }
 
 export interface FeesAgentProps {

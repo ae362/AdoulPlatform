@@ -1112,121 +1112,6 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
     return (
       <div className="space-y-8">
-        {/* New Reception Status Section */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span className="text-blue-600">⚙️</span>
-            صيغة تقنية ذكية
-          </h3>
-          
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">وضعية التلقي:</label>
-            <div className="flex flex-col gap-3">
-              <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${state.receptionStatus === 'joint' ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`}>
-                <input 
-                  type="radio" 
-                  name="receptionStatus"
-                  value="joint"
-                  checked={state.receptionStatus === 'joint'}
-                  onChange={() => setState(prev => ({ ...prev, receptionStatus: 'joint' }))}
-                  className="w-5 h-5 text-blue-600"
-                />
-                <span className="font-medium">تلقي مشترك</span>
-              </label>
-              
-              <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${state.receptionStatus === 'individual' ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`}>
-                <input 
-                  type="radio" 
-                  name="receptionStatus"
-                  value="individual"
-                  checked={state.receptionStatus === 'individual'}
-                  onChange={() => setState(prev => ({ ...prev, receptionStatus: 'individual' }))}
-                  className="w-5 h-5 text-blue-600"
-                />
-                <span className="font-medium">تلقي منفرد بإشعار/إذن قانوني</span>
-              </label>
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800 space-y-2">
-              <p>يُفعَّل هذا الخيار عند تعذر التلقي في آن واحد، وفقًا للقانون المنظم لخطة العدالة.</p>
-              <div className="flex items-start gap-2 mt-2 font-medium">
-                <span>⚠️</span>
-                <p>تنبيه قانوني خفي (غير مباشر – مناسب للتطبيق): يخضع التلقي المنفرد لمقتضيات قانون خطة العدالة، ولا يُفعّل إلا عند استيفاء الإشعار أو الإذن اللازم.</p>
-              </div>
-            </div>
-
-            {state.receptionStatus === 'individual' && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 animate-fadeIn">
-                <p className="text-sm font-medium text-gray-700 mb-4">
-                  في حالة الجواب تلقي منفرد، يرجى تحديد نوع الإشعار أو الإذن والجهة الصادرة عنه والمدينة/الاقليم
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">نوع الإشعار/الإذن</label>
-                    <input 
-                      type="text"
-                      className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={state.individualReceptionDetails?.noticeType || ''}
-                      onChange={(e) => setState(prev => ({
-                        ...prev,
-                        individualReceptionDetails: {
-                          ...(prev.individualReceptionDetails || { noticeType: '', noticeNumber: '', authority: '', city: '' }),
-                          noticeType: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">رقم الاشعار/الاذن</label>
-                    <input 
-                      type="text"
-                      className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={state.individualReceptionDetails?.noticeNumber || ''}
-                      onChange={(e) => setState(prev => ({
-                        ...prev,
-                        individualReceptionDetails: {
-                          ...(prev.individualReceptionDetails || { noticeType: '', noticeNumber: '', authority: '', city: '' }),
-                          noticeNumber: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">الجهة الصادرة عنه</label>
-                    <input 
-                      type="text"
-                      className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={state.individualReceptionDetails?.authority || ''}
-                      onChange={(e) => setState(prev => ({
-                        ...prev,
-                        individualReceptionDetails: {
-                          ...(prev.individualReceptionDetails || { noticeType: '', noticeNumber: '', authority: '', city: '' }),
-                          authority: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">المدينة/الاقليم</label>
-                    <input 
-                      type="text"
-                      className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={state.individualReceptionDetails?.city || ''}
-                      onChange={(e) => setState(prev => ({
-                        ...prev,
-                        individualReceptionDetails: {
-                          ...(prev.individualReceptionDetails || { noticeType: '', noticeNumber: '', authority: '', city: '' }),
-                          city: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         <ShareDistributionModal 
           isOpen={showBuyerShareModal}
           onClose={() => setShowBuyerShareModal(false)}
@@ -1468,7 +1353,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-lg font-black text-slate-800">{labels.sellerSingle} رقم {index + 1}</h4>
+                      <h4 className="text-lg font-black text-slate-800">{labels.sellerSingle === 'الزوج' ? labels.sellerSingle : `${labels.sellerSingle} رقم ${index + 1}`}</h4>
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">الطرف الأول</span>
                     </div>
                     <p className="text-xs font-semibold text-slate-400">البيانات الشخصية ووثائق إثبات الهوية</p>
@@ -1735,7 +1620,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     <div>
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
                         <Calendar className="w-3.5 h-3.5 text-slate-600" />
-                        <span>تاريخ إصدار البطاقة</span>
+                        <span>تاريخ صلاحية البطاقة</span>
                       </label>
                       <input
                         type="date"
@@ -3068,7 +2953,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         {errors[`applicant_${index}_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_id`]}</p>}
                       </div>
                       <div>
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ إصدار البطاقة</label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ صلاحية البطاقة</label>
                         <input
                           type="date"
                           value={app.idIssueDate}
@@ -3325,7 +3210,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   {errors[`applicant_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_id`]}</p>}
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ إصدار البطاقة</label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ صلاحية البطاقة</label>
                   <input
                     type="date"
                     value={tempApplicant.idIssueDate}
@@ -3639,7 +3524,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-lg font-black text-slate-800">{labels.buyerSingle} رقم {index + 1}</h4>
+                      <h4 className="text-lg font-black text-slate-800">{labels.buyerSingle === 'الزوج' ? labels.buyerSingle : (labels.buyerSingle === 'الزوجة' && tempBuyers.length === 1) ? labels.buyerSingle : `${labels.buyerSingle} رقم ${index + 1}`}</h4>
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">الطرف الثاني</span>
                     </div>
                     <p className="text-xs font-semibold text-slate-400">البيانات الشخصية ووثائق إثبات الهوية</p>
@@ -3944,7 +3829,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     <div>
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
                         <Calendar className="w-3.5 h-3.5 text-slate-600" />
-                        <span>تاريخ إصدار البطاقة</span>
+                        <span>تاريخ صلاحية البطاقة</span>
                       </label>
                       <input
                         type="date"

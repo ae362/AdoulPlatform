@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { AIChatAssistant } from '../components/AIChatAssistant';
 import { DOCUMENT_WIZARD_REGISTRY } from '../components/FeesAgent/documentRegistry';
 import { Step0_DocumentSelection } from '../components/FeesAgent/steps/Step0_DocumentSelection';
+import { PreReceptionVerificationGate } from '../components/FeesAgent/steps/PreReceptionVerificationGate';
 import { LegalEntityWizard } from '../components/FeesAgent/documents/property/LegalEntityWizard';
 import { Step7_FinalReview } from '../components/FeesAgent/steps/Step7_FinalReview';
 import { Step8_PostRegistration } from '../components/FeesAgent/steps/Step8_PostRegistration';
@@ -164,12 +165,27 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
     }
   }, [state.step]);
 
+  // Ensure view scrolls to the very top whenever moving between steps
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      if (document.body) {
+        document.body.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [state.step]);
+
   const handleNext = useCallback(() => {
     setState((prev) => ({ ...prev, step: (prev.step || 0) + 1 }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleBack = useCallback(() => {
     setState((prev) => ({ ...prev, step: Math.max(0, (prev.step || 0) - 1) }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   return (
@@ -177,8 +193,8 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
       <div className="max-w-7xl mx-auto">
         <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
           <div className="bg-white rounded-lg shadow-lg p-6">
-            {/* Step 0 & Intake Gateways */}
-            {(state.step === 0 || state.step === undefined || state.step === null || (state.step > 0 && state.step < 0.5)) && (
+            {/* Step 0 & Intake Gateways (Excluding 0.25 which is rendered directly) */}
+            {(state.step === 0 || state.step === undefined || state.step === null || (state.step > 0 && state.step < 0.5 && state.step !== 0.25)) && (
               state.step === 0.35 ? (
                 (() => {
                   const WizardComponent = DOCUMENT_WIZARD_REGISTRY[state.documentType || 'بيع_وشراء_معنوي'];
@@ -191,6 +207,26 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
               ) : (
                 <Step0_DocumentSelection state={state} setState={setState} onNext={handleNext} onBack={handleBack} startMode={startMode} />
               )
+            )}
+
+            {/* Step 0.25: Pre-Reception Verification Gate (قسم «التلقي العدلي» — بوابة التحقق القبلي) */}
+            {state.step === 0.25 && (
+              <PreReceptionVerificationGate
+                state={state}
+                setState={setState}
+                onProceed={() => {
+                  setState(prev => {
+                    const isLegalEntity = prev.documentType === 'بيع_وشراء_معنوي';
+                    const isMixedMarriage = prev.documentType === 'زواج_مختلط';
+                    return {
+                      ...prev,
+                      step: isMixedMarriage ? 0.5 : 1,
+                      legalEntitySetupStep: isLegalEntity ? 1 : 0
+                    };
+                  });
+                }}
+                onBack={() => setState(prev => ({ ...prev, step: 0.1 }))}
+              />
             )}
 
             {/* Steps 1 - 6: Dynamic Registry Lookup */}
