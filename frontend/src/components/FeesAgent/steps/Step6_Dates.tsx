@@ -11,10 +11,10 @@ import {
 import { generateDocumentDraft, generateRasmHtml } from '../../../templates/feesAgentTemplates';
 import { Calendar } from 'lucide-react';
 
-export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) => {
+export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
     const { user } = useAuth();
-    const currentNotary = user?.full_name || 'عدول متلقي';
-    const secondaryNotaryName = '';
+    const currentNotary = state.meta?.notaryPrimary || state.preReceptionVerification?.notary1Name || user?.full_name || 'عدول متلقي';
+    const secondaryNotaryName = state.meta?.notarySecondary || state.preReceptionVerification?.notary2Name || '';
     const isInheritanceType = ['ara', 'fari', 'ihsa', 'اراثة', 'بيان_فريضة', 'احصاء_متروك', 'مقاسمة', 'ملكية'].includes(state.documentType);
     const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
     const isMarriage = state.documentType === 'زواج' || state.documentType === 'زواج_مختلط';
@@ -69,6 +69,42 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
             تحديد التواريخ الميلادية والهجرية وتفقيطها بالحروف، وتوثيق مجلس الإشهاد ومراجع الاستناد قبل الانتقال إلى التحرير والصياغة.
           </p>
         </div>
+
+        {state.preReceptionVerification?.complianceStatus === 'compliant' && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">✅</span>
+              <div>
+                <p className="text-sm font-black text-emerald-900">
+                  تم استيفاء وتوثيق شروط التلقي ومجلس العقد مسبقاً في قسم التلقي العدلي (0.25)
+                </p>
+                <p className="text-xs font-semibold text-emerald-700 mt-0.5">
+                  البيانات أدناه معبأة ومفقطة تلقائياً وفق محضر التلقي العدلي. يمكنك التحقق منها والتعديل إذا لزم، أو المتابعة مباشرة للصياغة.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const draft = generateDocumentDraft(state);
+                const alerts = performValidationChecks(state);
+                const rasmHtml = generateRasmHtml(state);
+                setState((prev) => ({
+                  ...prev,
+                  draft,
+                  rasmHtml,
+                  validationAlerts: alerts,
+                  step: 7,
+                }));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>متابعة مباشرة للصياغة والمراجعة (الخطوة 7)</span>
+              <span>←</span>
+            </button>
+          </div>
+        )}
 
         <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-slate-200 space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -282,27 +318,35 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
 
         <div className="flex gap-4 justify-between">
           <button
-            onClick={() => setState((prev) => {
-              // Marriage Types: Return to Step 2 (Marriage Details)
-              if (state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') {
-                return { ...prev, step: 2 };
+            type="button"
+            onClick={() => {
+              if (onBack) {
+                onBack();
+                return;
               }
-              // Marital Assets Agreement and Tawkil: Return to Step 3
-              if (state.documentType === 'اتفاق_تدبير_اموال_زوجية' || state.documentType === 'توكيل_رسمي') {
-                return { ...prev, step: 3 };
-              }
-              // Divorce: Return to Step 4 (Divorce Summary)
-              if (state.documentType === 'الاشهاد_على_الطلاق_الاتفاقي') {
-                return { ...prev, step: 4 };
-              }
-              // Default for all other deeds with witnesses: Return to Step 5
-              return { ...prev, step: 5 };
-            })}
+              setState((prev) => {
+                // Marriage Types: Return to Step 2 (Marriage Details)
+                if (state.documentType === 'زواج' || state.documentType === 'زواج_مختلط') {
+                  return { ...prev, step: 2 };
+                }
+                // Marital Assets Agreement and Tawkil: Return to Step 3
+                if (state.documentType === 'اتفاق_تدبير_اموال_زوجية' || state.documentType === 'توكيل_رسمي') {
+                  return { ...prev, step: 3 };
+                }
+                // Divorce: Return to Step 4 (Divorce Summary)
+                if (state.documentType === 'الاشهاد_على_الطلاق_الاتفاقي') {
+                  return { ...prev, step: 4 };
+                }
+                // Default for all other deeds with witnesses: Return to Step 5
+                return { ...prev, step: 5 };
+              });
+            }}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
             <span>← السابق</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               const draft = generateDocumentDraft(state);
               const alerts = performValidationChecks(state);
@@ -314,10 +358,11 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState }) 
                 validationAlerts: alerts,
                 step: 7,
               }));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            <span>متابعة إلى التحرير والمراجعة النهائية</span>
+            <span>متابعة إلى التحرير والمراجعة النهائية (الخطوة 7)</span>
             <span>→</span>
           </button>
         </div>

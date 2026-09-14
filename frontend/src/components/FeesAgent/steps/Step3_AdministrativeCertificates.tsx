@@ -8,7 +8,7 @@ import {
   MapPin, XCircle, Printer, Upload, Calendar
 } from 'lucide-react';
 
-export const Step3_AdministrativeCertificates: React.FC<DocumentWizardProps> = ({ state, setState }) => {
+export const Step3_AdministrativeCertificates: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
     const isInheritanceType = ['ara', 'fari', 'ihsa', 'اراثة', 'بيان_فريضة', 'احصاء_متروك', 'مقاسمة', 'ملكية'].includes(state.documentType);
     const [law2590, setLaw2590] = useState(state.law2590 || false);
     const [certificates, setCertificates] = useState<AdministrativeCertificate[]>(() => {
@@ -338,7 +338,13 @@ export const Step3_AdministrativeCertificates: React.FC<DocumentWizardProps> = (
 
         <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
-            onClick={() => setState((prev) => ({ ...prev, step: 2 }))}
+            onClick={() => {
+              if (onBack) {
+                onBack();
+              } else {
+                setState((prev) => ({ ...prev, step: 2 }));
+              }
+            }}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
             <span>← السابق</span>
@@ -349,8 +355,9 @@ export const Step3_AdministrativeCertificates: React.FC<DocumentWizardProps> = (
                 ...prev,
                 certificates,
                 law2590,
-                step: state.documentType === 'مقاسمة' ? 3.5 : 4,
+                ...(onNext ? {} : { step: state.documentType === 'مقاسمة' ? 3.5 : 4 }),
               }));
+              if (onNext) onNext();
             }}
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >

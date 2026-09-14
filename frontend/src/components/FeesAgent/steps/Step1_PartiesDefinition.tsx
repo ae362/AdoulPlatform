@@ -1063,6 +1063,12 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
 
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
+        setTimeout(() => {
+          const firstErrEl = document.querySelector('.text-rose-500, .border-rose-500, .border-red-500, .text-red-500');
+          if (firstErrEl) {
+            firstErrEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
         return;
       }
 
@@ -5072,6 +5078,12 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           ))}
         </div>
         )}
+        {Object.keys(errors).length > 0 && (
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <span>⚠️</span>
+            <span>يرجى استكمال الحقول الإلزامية المطلوبة لكافة أطراف العقد (البائع والمشتري) المحددة باللون الأحمر للمتابعة للخطوة التالية.</span>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => {
@@ -5082,7 +5094,8 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 // Go back to Wizard Step 6 (Seller Type Selection)
                 setState((prev) => ({ ...prev, legalEntitySetupStep: 6, isEnteringNaturalPartySecond: false }));
               } else {
-                setState((prev) => ({ ...prev, step: prev.documentType === 'زواج_مختلط' ? 0.5 : 0 }));
+                const hasPreReception = !!state.preReceptionVerification || state.documentType === 'زواج' || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
+                setState((prev) => ({ ...prev, step: prev.documentType === 'زواج_مختلط' ? 0.5 : hasPreReception ? 0.25 : 0 }));
               }
             }}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"

@@ -9,7 +9,7 @@ import {
   MapPin, XCircle, Printer, Upload, Calendar, Scale
 } from 'lucide-react';
 
-export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }) => {
+export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
     const isInheritanceType = ['ara', 'fari', 'ihsa', 'اراثة', 'بيان_فريضة', 'احصاء_متروك', 'مقاسمة', 'ملكية'].includes(state.documentType);
     const isMunakala = state.documentType === 'مناقلة';
     const isSale = ['بيع_وشراء', 'بيع_وشراء_معنوي', 'بيع_وشراء_ملكية_مشتركة', 'بيع_وشراء_طور_انجاز_ابتدائي', 'بيع_وشراء_طور_انجاز_نهائي'].includes(state.documentType) || (state.documentType || '').includes('بيع') || (state.documentType || '').includes('شراء');
@@ -194,7 +194,13 @@ export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }
 
         <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
-            onClick={() => setState((prev) => ({ ...prev, step: state.documentType === 'مقاسمة' ? 3.5 : 3 }))}
+            onClick={() => {
+              if (onBack) {
+                onBack();
+              } else {
+                setState((prev) => ({ ...prev, step: state.documentType === 'مقاسمة' ? 3.5 : 3 }));
+              }
+            }}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
           >
             <span>← السابق</span>
@@ -204,8 +210,9 @@ export const Step4_Finance: React.FC<DocumentWizardProps> = ({ state, setState }
               setState((prev) => ({
                 ...prev,
                 finance: tempFinance,
-                step: 5,
+                ...(onNext ? {} : { step: 5 }),
               }));
+              if (onNext) onNext();
             }}
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >

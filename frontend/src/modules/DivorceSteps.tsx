@@ -4,9 +4,11 @@ import type { FeesAgentState } from '../types/feesAgentTypes';
 interface StepProps {
   state: FeesAgentState;
   setState: React.Dispatch<React.SetStateAction<FeesAgentState>>;
+  onNext?: () => void;
+  onBack?: () => void;
 }
 
-export const Step1_Divorce_JudicialDetails: React.FC<StepProps> = ({ state, setState }) => {
+export const Step1_Divorce_JudicialDetails: React.FC<StepProps> = ({ state, setState, onNext, onBack }) => {
   const updateDivorceState = (updates: Partial<NonNullable<FeesAgentState['divorceCertification']>>) => {
     setState(prev => ({
       ...prev,
@@ -208,7 +210,7 @@ export const Step1_Divorce_JudicialDetails: React.FC<StepProps> = ({ state, setS
 
       <div className="flex justify-end pt-6">
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 2 }))}
+          onClick={() => onNext ? onNext() : setState(prev => ({ ...prev, step: 2 }))}
           disabled={divorceState.hasJudicialPermission !== 'yes'}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
@@ -219,7 +221,7 @@ export const Step1_Divorce_JudicialDetails: React.FC<StepProps> = ({ state, setS
   );
 };
 
-export const Step2_Divorce_Spouses: React.FC<StepProps> = ({ state, setState }) => {
+export const Step2_Divorce_Spouses: React.FC<StepProps> = ({ state, setState, onNext, onBack }) => {
   const updateDivorceState = (updates: Partial<NonNullable<FeesAgentState['divorceCertification']>>) => {
     setState(prev => ({
       ...prev,
@@ -506,13 +508,13 @@ export const Step2_Divorce_Spouses: React.FC<StepProps> = ({ state, setState }) 
 
       <div className="flex justify-between pt-6">
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 1 }))}
+          onClick={() => onBack ? onBack() : setState(prev => ({ ...prev, step: 1 }))}
           className="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
         >
           السابق
         </button>
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 3 }))}
+          onClick={() => onNext ? onNext() : setState(prev => ({ ...prev, step: 3 }))}
           disabled={!divorceState.husband?.name || !divorceState.wife?.name}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
@@ -523,7 +525,7 @@ export const Step2_Divorce_Spouses: React.FC<StepProps> = ({ state, setState }) 
   );
 };
 
-export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setState }) => {
+export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setState, onNext, onBack }) => {
   const updateDivorceState = (updates: Partial<NonNullable<FeesAgentState['divorceCertification']>>) => {
     setState(prev => ({
       ...prev,
@@ -818,13 +820,13 @@ export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setS
 
       <div className="flex justify-between pt-6">
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 2 }))}
+          onClick={() => onBack ? onBack() : setState(prev => ({ ...prev, step: 2 }))}
           className="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
         >
           السابق
         </button>
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 4 }))}
+          onClick={() => onNext ? onNext() : setState(prev => ({ ...prev, step: 4 }))}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           التالي: منطوق الحكم
@@ -834,7 +836,7 @@ export const Step3_Divorce_MarriageDetails: React.FC<StepProps> = ({ state, setS
   );
 };
 
-export const Step4_Divorce_Summary: React.FC<StepProps> = ({ state, setState }) => {
+export const Step4_Divorce_Summary: React.FC<StepProps> = ({ state, setState, onNext, onBack }) => {
   const updateDivorceState = (updates: Partial<NonNullable<FeesAgentState['divorceCertification']>>) => {
     setState(prev => ({
       ...prev,
@@ -863,16 +865,16 @@ export const Step4_Divorce_Summary: React.FC<StepProps> = ({ state, setState }) 
 
       <div className="flex justify-between pt-6">
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 3 }))}
+          onClick={() => onBack ? onBack() : setState(prev => ({ ...prev, step: 3 }))}
           className="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
         >
           السابق
         </button>
         <button
-          onClick={() => setState(prev => ({ ...prev, step: 6 }))}
+          onClick={() => onNext ? onNext() : setState(prev => ({ ...prev, step: 6 }))}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          التالي: التواريخ
+          التالي: التواريخ والمراجع
         </button>
       </div>
     </div>

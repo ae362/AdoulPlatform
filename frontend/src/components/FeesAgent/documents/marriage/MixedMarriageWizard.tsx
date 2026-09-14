@@ -533,13 +533,11 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
             ...(prev.meta || {}),
             court: details.courtName || prev.meta?.court || notaryPrimaryCourt || '',
           } as any,
-          step: 7,
+          step: 6,
         };
         return {
           ...nextState,
-          draft: generateDocumentDraft(nextState),
-          rasmHtml: generateRasmHtml(nextState),
-          validationAlerts: performValidationChecks(nextState),
+          rasmHtml: generateRasmHtml(nextState)
         };
       });
     };
@@ -868,6 +866,172 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
           </div>
         </div>
 
+        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+          <div className="flex flex-wrap items-center justify-between border-b pb-2 gap-2">
+            <h3 className="text-xl font-bold text-gray-800">بيانات الإذن بالزواج والمحكمة</h3>
+            {(notaryAppellateCourt || notaryPrimaryCourt) && (
+              <div className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full font-medium shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                <span>تم استرجاع المحكمة تلقائياً من بيانات حساب العدل</span>
+              </div>
+            )}
+          </div>
+
+          {(notaryAppellateCourt || notaryPrimaryCourt) && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {notaryAppellateCourt && (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-500">دائرة محكمة الاستئناف (الجهة القضائية):</span>
+                  <span className="font-bold text-slate-800">{notaryAppellateCourt}</span>
+                </div>
+              )}
+              {notaryPrimaryCourt && (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-500">المحكمة الابتدائية المسجل بها:</span>
+                  <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">{notaryPrimaryCourt}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">المحكمة الابتدائية</label>
+              <input
+                type="text"
+                value={details.courtName || ''}
+                onChange={(e) => handleChange('courtName', e.target.value)}
+                placeholder={notaryPrimaryCourt || "مثال: تطوان"}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">القسم القضائي</label>
+              <input
+                type="text"
+                value={details.courtSection || ''}
+                onChange={(e) => handleChange('courtSection', e.target.value)}
+                placeholder="مثال: قسم التوثيق وقضاء الأسرة"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم ملف إذن قاضي الأسرة المكلف بالزواج</label>
+              <input
+                type="text"
+                value={details.authorizationNumber || ''}
+                onChange={(e) => handleChange('authorizationNumber', e.target.value)}
+                placeholder="مثال: 1308 /10"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الإذن بالزواج</label>
+              <input
+                type="date"
+                value={details.authorizationDate || ''}
+                onChange={(e) => handleChange('authorizationDate', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+          <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات التضمين بكناش الأنكحة ومذكرة الحفظ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم كناش الأنكحة</label>
+              <input
+                type="text"
+                value={details.registryNumber || ''}
+                onChange={(e) => handleChange('registryNumber', e.target.value)}
+                placeholder="مثال: 15"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">صحيفة الكناش</label>
+              <input
+                type="text"
+                value={details.registryPage || ''}
+                onChange={(e) => handleChange('registryPage', e.target.value)}
+                placeholder="مثال: 45"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد الكناش</label>
+              <input
+                type="text"
+                value={details.registryCount || ''}
+                onChange={(e) => handleChange('registryCount', e.target.value)}
+                placeholder="مثال: 120"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ التسجيل بالكناش</label>
+              <input
+                type="date"
+                value={details.registryDate || ''}
+                onChange={(e) => handleChange('registryDate', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم مذكرة الحفظ للعدل الأول</label>
+              <input
+                type="text"
+                value={details.memorandumNumber || ''}
+                onChange={(e) => handleChange('memorandumNumber', e.target.value)}
+                placeholder="مثال: 07"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد مذكرة الحفظ</label>
+              <input
+                type="text"
+                value={details.memorandumRecordNumber || ''}
+                onChange={(e) => handleChange('memorandumRecordNumber', e.target.value)}
+                placeholder="مثال: 13"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">صفحة مذكرة الحفظ</label>
+              <input
+                type="text"
+                value={details.memorandumPage || ''}
+                onChange={(e) => handleChange('memorandumPage', e.target.value)}
+                placeholder="مثال: 10"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">وقت الإشهاد بالحروف</label>
+              <input
+                type="text"
+                value={details.sessionTimeWords || ''}
+                onChange={(e) => handleChange('sessionTimeWords', e.target.value)}
+                placeholder="مثال: على الساعة الحادية عشرة صباحا"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">تاريخ الإشهاد بالحروف</label>
+              <input
+                type="text"
+                value={details.sessionDateWords || ''}
+                onChange={(e) => handleChange('sessionDateWords', e.target.value)}
+                placeholder="مثال: يوم فاتح ربيع الأول 1448 هـ"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex gap-4 justify-between">
           <button
             onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
@@ -879,7 +1043,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
             onClick={handleNext}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
           >
-            التالي: التحرير والمراجعة النهائية
+            التالي: التواريخ
           </button>
         </div>
       </div>

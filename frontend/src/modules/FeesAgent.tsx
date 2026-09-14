@@ -5,10 +5,10 @@ import { AIChatAssistant } from '../components/AIChatAssistant';
 import { DOCUMENT_WIZARD_REGISTRY } from '../components/FeesAgent/documentRegistry';
 import { Step0_DocumentSelection } from '../components/FeesAgent/steps/Step0_DocumentSelection';
 import { PreReceptionVerificationGate } from '../components/FeesAgent/steps/PreReceptionVerificationGate';
-import { LegalEntityWizard } from '../components/FeesAgent/documents/property/LegalEntityWizard';
 import { Step7_FinalReview } from '../components/FeesAgent/steps/Step7_FinalReview';
 import { Step8_PostRegistration } from '../components/FeesAgent/steps/Step8_PostRegistration';
 import { AISidePanel } from '../components/FeesAgent/components/AISidePanel';
+import { DocumentWorkflowStepper } from '../components/FeesAgent/components/DocumentWorkflowStepper';
 
 import type { FeesAgentState, FeesAgentProps } from '../types/feesAgentTypes';
 import {
@@ -226,6 +226,18 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
                   });
                 }}
                 onBack={() => setState(prev => ({ ...prev, step: 0.1 }))}
+              />
+            )}
+
+            {/* Universal Stages Stepper Roadmap for each document type (Steps 0.5 to 8) */}
+            {state.step >= 0.5 && state.step <= 8 && state.documentType && (
+              <DocumentWorkflowStepper
+                documentType={state.documentType}
+                currentStep={state.step}
+                onStepClick={(targetStep) => {
+                  setState(prev => ({ ...prev, step: targetStep }));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
               />
             )}
 

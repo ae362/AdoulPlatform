@@ -40,7 +40,7 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar, Users
+  MapPin, XCircle, Printer, Upload, Calendar
 } from 'lucide-react';
 
   export const Step3_MarriageContinuityDeed: React.FC<DocumentWizardProps> = ({ state, setState }) => {
@@ -227,19 +227,15 @@ import {
     ) => deed.spouses?.[spouse]?.[script]?.[field] || '';
 
     const handleNext = () => {
-      // مزامنة شهود استمرار الزواج بسلاسة مع منظومة الإثبات والشهود العامة إن وجدت
-      const deedWitnesses = deed.witnesses || [];
-      if (deedWitnesses.length > 0 && (!state.witnesses || state.witnesses.length === 0)) {
-        const mappedWitnesses = deedWitnesses.map((w) => ({
-          ...createEmptyWitness(),
-          name: w.name || '',
-          idNumber: w.cin || '',
-          address: w.address || '',
-          dateOfBirth: '',
-          kinshipRelation: (w.relation ? 'kinship' : 'none') as any,
-          kinshipType: w.relation || '',
-        }));
-        setState((prev) => ({ ...prev, witnesses: mappedWitnesses }));
+      const witnesses = deed.witnesses || [];
+      if (witnesses.length < 2) {
+        alert('يرجى إدراج ما بين شاهدين وأربعة شهود لاستمرار الزواج.');
+        return;
+      }
+      const hasEmptyCoreFields = witnesses.some((w) => !w.name?.trim() || !w.cin?.trim());
+      if (hasEmptyCoreFields) {
+        alert('يرجى إتمام اسم و CIN لكل شاهد.');
+        return;
       }
 
       if (!deed.continuityStatement?.trim()) {
@@ -559,20 +555,103 @@ import {
           />
         </div>
 
-        {/* 6. Continuity witnesses notice */}
-        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2 font-amiri">
-              <Users className="w-4 h-4 text-emerald-700" />
-              <span>الشهود في استمرار الزواج وطريقة الإثبات والتحري</span>
-            </h3>
-            <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs self-start sm:self-center">
-              المرحلة المخصصة: طريقة الإثبات والشهادة والتحري
-            </span>
+        {/* 6. Continuity witnesses */}
+        <div className="bg-indigo-50 p-6 rounded-lg border-l-4 border-indigo-300 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h3 className="text-lg font-bold text-gray-800">6. الشهود في استمرار الزواج</h3>
+            <button
+              type="button"
+              onClick={addContinuityWitness}
+              disabled={(deed.witnesses || []).length >= 4}
+              className="text-sm bg-indigo-600 disabled:bg-indigo-300 text-white px-3 py-2 rounded hover:bg-indigo-700"
+            >
+              + إضافة شاهد
+            </button>
           </div>
-          <p className="text-xs text-slate-700 leading-relaxed">
-            تمت ترقية مسار الشهود إلى منظومة <strong>«طريقة الإثبات والشهادة والتحري»</strong> المتوافقة مع القانون 51.26، والتي تتيح خياري شهادة اللفيف أو بينة الشهود، مع الفحص الآلي المستقل لسن التمييز وسن الرشد وإجراء التحري الرقمي في القرابة والمصاهرة.
-          </p>
+          <p className="text-xs text-gray-600">قائمة من 2 إلى 4 شهود (مع اقتراح فحص أهلية الشهادة).</p>
+
+          <div className="space-y-3">
+            {(deed.witnesses || []).map((w, idx) => (
+              <div key={idx} className="bg-white p-4 rounded border space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-semibold text-gray-800">شاهد {idx + 1}</h4>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
+                      onClick={() => updateContinuityWitness(idx, { aiEligibilityCheck: true })}
+                    >
+                      {w.aiEligibilityCheck ? '✓ تم الفحص' : 'فحص أهلية الشهادة (AI)'}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-red-600 font-semibold"
+                      onClick={() => removeContinuityWitness(idx)}
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-3">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">الاسم</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.name}
+                      onChange={(e) => updateContinuityWitness(idx, { name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">CIN</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.cin}
+                      onChange={(e) => updateContinuityWitness(idx, { cin: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">السن</label>
+                    <input
+                      type="number"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.age ?? ''}
+                      onChange={(e) => updateContinuityWitness(idx, { age: e.target.value ? Number(e.target.value) : undefined })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">القرابة (اختياري)</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.relation || ''}
+                      onChange={(e) => updateContinuityWitness(idx, { relation: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">المهنة</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.occupation || ''}
+                      onChange={(e) => updateContinuityWitness(idx, { occupation: e.target.value })}
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700">العنوان</label>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border-gray-300 shadow-sm"
+                      value={w.address || ''}
+                      onChange={(e) => updateContinuityWitness(idx, { address: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 7. Children (Birth Linker) */}
