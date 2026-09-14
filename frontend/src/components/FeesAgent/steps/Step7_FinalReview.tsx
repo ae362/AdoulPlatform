@@ -1205,20 +1205,51 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   const handleGenerateAIDraft = async () => {
     setIsGenerating(true);
     try {
-      const partiesDescription = `
-        البائعون: ${state.sellers.map((s) => `${s.name} (رقم البطاقة: ${s.idNumber})${s.share ? ` - الحصة: ${s.share}` : ''}`).join(', ')}
-        المشترون: ${state.buyers.map((b) => `${b.name} (رقم البطاقة: ${b.idNumber})${b.share ? ` - الحصة: ${b.share}` : ''}${b.nationality ? ` - الجنسية: ${b.nationality}` : ''}`).join(', ')}
-      `.trim();
-      const detailsDescription = "..."; // Simplified for brevity in this call
+      const isMarriage = state.documentType?.includes('زواج') || state.documentType?.includes('نكاح');
+      
+      let partiesDescription = '';
+      if (isMarriage) {
+        const husband = state.sellers[0] || ({} as any);
+        const wife = state.buyers[0] || ({} as any);
+        partiesDescription = [
+          `الزوج: ${husband.name || '---'} (ب.ت.و: ${husband.idNumber || '---'}${husband.idIssueDate ? ` صالحة إلى ${husband.idIssueDate}` : ''}، العنوان: ${husband.address || '---'}، المهنة: ${husband.profession || '---'}، الازدياد: ${husband.placeOfBirth || '---'} في ${husband.dateOfBirth || '---'}، الأب: ${husband.fatherName || '---'}${husband.fatherProfession ? ` مهنته ${husband.fatherProfession}` : ''}، الأم: ${husband.motherName || '---'}${husband.motherProfession ? ` مهنتها ${husband.motherProfession}` : ''})`,
+          `الزوجة: ${wife.name || '---'} (ب.ت.و: ${wife.idNumber || '---'}${wife.idIssueDate ? ` صالحة إلى ${wife.idIssueDate}` : ''}، العنوان: ${wife.address || '---'}، المهنة: ${wife.profession || 'بدون مهنة'}، الازدياد: ${wife.placeOfBirth || '---'} في ${wife.dateOfBirth || '---'}، الأب: ${wife.fatherName || '---'}${wife.fatherProfession ? ` مهنته ${wife.fatherProfession}` : ''}، الأم: ${wife.motherName || '---'}${wife.motherProfession ? ` مهنتها ${wife.motherProfession}` : ''})`,
+          state.witnesses && state.witnesses.length > 0 ? `الشهود: ${state.witnesses.map((w: any) => `${w.name} (ب.ت.و: ${w.idNumber || '---'})`).join('، ')}` : '',
+        ].filter(Boolean).join('\n');
+      } else {
+        partiesDescription = `
+          الطرف الأول: ${state.sellers.map((s) => `${s.name} (رقم البطاقة: ${s.idNumber || '---'})${s.share ? ` - الحصة: ${s.share}` : ''}`).join(', ')}
+          الطرف الثاني: ${state.buyers.map((b) => `${b.name} (رقم البطاقة: ${b.idNumber || '---'})${b.share ? ` - الحصة: ${b.share}` : ''}${b.nationality ? ` - الجنسية: ${b.nationality}` : ''}`).join(', ')}
+        `.trim();
+      }
+
+      const detailsPayload = {
+        meta: state.meta,
+        marriageDetails: state.marriageDetails,
+        dowry: state.dowry,
+        finance: state.finance,
+        preReceptionVerification: state.preReceptionVerification,
+        sellers: state.sellers,
+        buyers: state.buyers,
+        witnesses: state.witnesses,
+      };
+
       const result = await generateDraftMutation.mutateAsync({
         contractType: state.documentType,
         parties: partiesDescription,
-        details: detailsDescription,
+        details: JSON.stringify(detailsPayload),
       });
-      setState((prev) => ({ ...prev, draft: result.text.replace(/\s+/g, ' ').trim() }));
+
+      if (result?.text && !result.text.includes('تعذر الاتصال بنموذج الذكاء الاصطناعي')) {
+        setState((prev) => ({ ...prev, draft: result.text.replace(/\s+/g, ' ').trim() }));
+      } else {
+        const localDraft = generateDocumentDraft(state);
+        setState((prev) => ({ ...prev, draft: localDraft.replace(/\s+/g, ' ').trim() }));
+      }
     } catch (error) {
-      console.error('Failed to generate draft:', error);
-      alert('حدث خطأ أثناء إنشاء المسودة');
+      console.warn('AI generation failed, using legal drafting engine:', error);
+      const localDraft = generateDocumentDraft(state);
+      setState((prev) => ({ ...prev, draft: localDraft.replace(/\s+/g, ' ').trim() }));
     } finally {
       setIsGenerating(false);
     }
@@ -1253,7 +1284,7 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
     });
     requestAnimationFrame(() => {
       const el = document.getElementById('ai-drafting');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el) el.scrollIntoView({ behavior: 'auto', block: 'start' });
     });
   }, [startMode]);
 

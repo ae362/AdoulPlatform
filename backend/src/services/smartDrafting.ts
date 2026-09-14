@@ -28,11 +28,32 @@ export const IMMUTABLE_TEMPLATES = {
 وبهذا تم الإشهاد، وحرر في {{DATE_HIJRI}} الموافق لـ {{DATE_GREGORIAN}}.
   `.trim(),
 
+  TEMPLATE_RASM_MALAKIYA: `
+ضمن بدفتر الأملاك رقم {{REGISTRY_NUMBER}} حرف {{REGISTRY_LETTER}} عدد {{REGISTRY_COUNT}} بتاريخ {{REGISTRY_DATE}}
+محكمة الاستئناف بـ {{COURT_CITY}}
+المحكمة الابتدائية بـ {{PRIMARY_COURT}}
+قسم التوثيق
+
+الحمد لله وحده وعلى الساعة {{TIME}} من يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} وفاق {{DATE_GREGORIAN_TEXT}} ({{DATE_HIJRI}} هـ ق {{DATE_GREGORIAN}} م) تلقى العدلان أمنهما الله {{ADUL_1_NAME}} و {{ADUL_2_NAME}} المنتصبان للإشهاد بدائرة استئنافية {{COURT_CITY}} قسم التوثيق بالمحكمة الابتدائية بـ {{PRIMARY_COURT}} شهادة ملكية سجل ملخصها بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} تحت عدد {{NUMBER}} صحيفة {{PAGE}} وصل رقم {{RECEIPT_NUMBER}} نصها:
+شهوده الموضوعة أسماؤهم عقب تاريخه يعرفون {{OWNER_FULL_IDENTIFICATION}} المعرفة التامة الكافية شرعا بها ومعها يشهدون بأن لها وبيدها وفي حوزها واعتمارها وتصرفها وتحت ملكها مالا من مالها وملكا صحيحا خالصا لها من جملة أملاكها،
+وذلك جميع {{PROPERTY_DESCRIPTION}} الكائنة بـ {{PROPERTY_LOCATION}}،
+{{ADMINISTRATIVE_CERTIFICATE_CLAUSE}}
+وتحد: شرقا: {{BOUNDARY_EAST}}، غربا: {{BOUNDARY_WEST}}، شمالا: {{BOUNDARY_NORTH}}، جنوبا: {{BOUNDARY_SOUTH}}،
+مساحتها حوالي {{PROPERTY_AREA}}،
+قيمتها بذكر طالبة الإشهاد {{ESTIMATED_VALUE}}،
+وأنها تحوزها وتتصرف فيها تصرف المالك في ملكه بجميع أنواع التصرفات كلها وتنسب ذلك لنفسها والناس إليها كذلك مدة تزيد على {{DURATION_TEXT}} سلفت عن تاريخه من غير علم منازع لها في ذلك ولا معارض طول المدة المذكورة بحيث لا يعلمونها باعت ذلك ولا وهبته ولا صدقته ولا فوتته ولا خرج عن ملكها وتصرفها بناقل شرعي أو بسبب من أسبابه كلها إلى الآن وحتى الآن،
+هذا الذي في علمهم وصحة يقينهم وسند علمهم في ذلك المخالطة والمعاينة لما ذكر أعلاه وشدة الاطلاع على جل الأحوال وبمضمنه قيدت شهادتهم لسائلها طالبة الإشهاد أعلاه،
+شهد بذلك السادة:
+{{WITNESSES_LIST}}
+وتلي على الجميع نص الشهادة فأكدوه ووافقوا عليه بتوقيعهم عليه عقبه بسجل البيانات المشار إليه أعلاه عنهم بإذنهم وهم عارفون قدره وبأتمه.
+الحمد لله أشهد الفقيه الأجل القاضي المكلف بالتوثيق بالمحكمة الابتدائية بـ {{PRIMARY_COURT}} ودائرتها بثبوت الرسم أعلاه لديه الثبوت التام بواجبه وحرر الرسم في تاريخه وسجل إلكترونيا في {{ELECTRONIC_REG_DATE}} أمر بالاستخلاص {{RECOVERY_ORDER}} سجل المداخيل {{REVENUE_REGISTER}} عبد ربه تعالى وعبد ربه.
+  `.trim(),
+
   TEMPLATE_IHSA_MATRUK: `
 الحمد لله وحده،
 على الساعة {{TIME}} بعد زوال يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} الموافق لـ {{DATE_GREGORIAN}}،
 تلقى العدلان -أمنهما الله- {{ADUL_1_NAME}} و {{ADUL_2_NAME}}، المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ {{COURT_CITY}}، المحكمة الابتدائية بـ {{PRIMARY_COURT}}، قسم التوثيق،
-الشهادة المدرجة بمذكرة الحفظ رقم {{MEMO_NUMBER}} عدد {{NUMBER}} صحيفة {{PAGE}}، نصها:
+الشهادة المدرجة بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} عدد {{NUMBER}} صحيفة {{PAGE}}، نصها:
 "الحمد لله وحده،
 بطلب من السيدة {{REQUESTER_NAME}}، المولودة بتاريخ {{REQUESTER_DOB}}، الحاملة لبطاقة التعريف الوطنية رقم {{REQUESTER_CIN}}، الساكنة بـ {{REQUESTER_ADDRESS}}،
 يشهدون شهودها المذكورين أسفله بأنهم يعرفون المرحوم {{DECEASED_NAME}}، الساكن قيد حياته بـ {{DECEASED_ADDRESS}}، المعرفة التامة الكافية شرعا،
@@ -49,7 +70,7 @@ export const IMMUTABLE_TEMPLATES = {
 الحمد لله وحده،
 على الساعة {{TIME}} مساء يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} الموافق لـ {{DATE_GREGORIAN}}،
 تلقى العدلان {{ADUL_1_NAME}} و {{ADUL_2_NAME}}، المنتصبان للإشهاد بدائرة المحكمة الاستئنافية بـ {{COURT_CITY}}،
-الشهادة المدرجة بمذكرة الحفظ لأولهما رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
+الشهادة المدرجة بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
 "الحمد لله،
 اشترى بحول الله وقوته السيد {{BUYER_NAME}}، المولود في {{BUYER_DOB}}، الساكن بـ {{BUYER_ADDRESS}}، الحامل لبطاقة التعريف الوطنية رقم {{BUYER_CIN}}،
 من البائعين له الإخوة الأشقاء أبناء المرحوم {{DECEASED_FATHER_NAME}} وهم: {{SELLERS_LIST}}،
@@ -57,7 +78,7 @@ export const IMMUTABLE_TEMPLATES = {
 بثمن قدره {{PRICE}} درهم، قبض {{SELLER_REPRESENTATIVE}} حظه وقدره جميع {{SHARE_PRICE}} درهم نقدا،
 وباقي الشركاء بواسطة شيكات من البنك {{BANK_NAME}}،
 قبضا تاما معاينة به برئت ذمة المشتري المذكور وتملك مشتراه الموصوف وحل وتنزل في ذلك منزلة بائعيه على السنة في ذلك والمرجع بالدرك بعد النظر والرضى ومعرفة القدر كما يجب،
-مع إشهادهم أنهم في كامل الأهلية وقرئ عليهم نص العقد فوافقوا عليه مع توقيعهم عليه بمذكرة الحفظ أعلاه،
+مع إشهادهم أنهم في كامل الأهلية وقرئ عليهم نص العقد فوافقوا عليه مع توقيعهم عليه بسجل البيانات أعلاه،
 عرفوا قدره شهد به عليهم وبأتمه وعرف بهم بما ذكر وحرر في غد تلقيه وسجل الكترونيا بمالية {{FINANCE_CITY}} في {{REGISTRATION_DATE}} رقم الايداع {{DEPOSIT_NUMBER}} عبد ربه تعالى."
   `.trim(),
 
@@ -65,7 +86,7 @@ export const IMMUTABLE_TEMPLATES = {
 الحمد لله وحده،
 على الساعة {{TIME}} صباح يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} الموافق لـ {{DATE_GREGORIAN}}،
 تلقى العدلان {{ADUL_1_NAME}} و {{ADUL_2_NAME}}، المنتصبان للإشهاد بدائرة المحكمة الابتدائية بـ {{PRIMARY_COURT}}، قسم التوثيق،
-الشهادة المدرجة بمذكرة الحفظ للأول رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
+الشهادة المدرجة بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
 "حضرت لدى شهيديه السيدة {{DONOR_NAME}}، المغربية الجنسية، المزدادة بـ {{DONOR_POB}} بتاريخ {{DONOR_DOB}}، مهنتها {{DONOR_JOB}}، الحاملة لبطاقة التعريف الوطنية رقم {{DONOR_CIN}}، الساكنة بـ {{DONOR_ADDRESS}}،
 وأشهدت على نفسها أنها وهبت لشقيقها السيد {{DONEE_NAME}}، المغربي الجنسية، المزداد بـ {{DONEE_POB}} بتاريخ {{DONEE_DOB}}، الحامل لبطاقة التعريف الوطنية رقم {{DONEE_CIN}}، الساكن بـ {{DONEE_ADDRESS}}،
 وذلك جميع {{PROPERTY_DESCRIPTION}}،
@@ -79,7 +100,7 @@ export const IMMUTABLE_TEMPLATES = {
 الحمد لله وحده،
 على الساعة {{TIME}} مساء يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} الموافق لـ {{DATE_GREGORIAN}}،
 تلقى العدلان {{ADUL_1_NAME}} و {{ADUL_2_NAME}}، المنتصبان للإشهاد بدائرة المحكمة الاستئنافية بـ {{COURT_CITY}}،
-الشهادة المدرجة بمذكرة الحفظ لأولهما رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
+الشهادة المدرجة بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} صحيفة {{PAGE}} عدد {{NUMBER}} نصها:
 "الحمد لله،
 اشترى بحول الله وقوته السيد {{BUYER_NAME}}، المولود في {{BUYER_DOB}}، الساكن بـ {{BUYER_ADDRESS}}، الحامل لبطاقة التعريف الوطنية رقم {{BUYER_CIN}}،
 من البائعين له {{SELLERS_DESCRIPTION}} وهم: {{SELLERS_LIST}}،
@@ -87,18 +108,18 @@ export const IMMUTABLE_TEMPLATES = {
 بثمن قدره {{PRICE}} درهم، قبض {{SELLER_REPRESENTATIVE}} حظه وقدره جميع {{SHARE_PRICE}} درهم نقدا،
 وباقي الشركاء بواسطة شيكات من البنك {{BANK_NAME}}،
 قبضا تاما معاينة به برئت ذمة المشتري المذكور وتملك مشتراه الموصوف وحل وتنزل في ذلك منزلة بائعيه على السنة في ذلك والمرجع بالدرك بعد النظر والرضى ومعرفة القدر كما يجب،
-مع إشهادهم أنهم في كامل الأهلية وقرئ عليهم نص العقد فوافقوا عليه مع توقيعهم عليه بمذكرة الحفظ أعلاه،
+مع إشهادهم أنهم في كامل الأهلية وقرئ عليهم نص العقد فوافقوا عليه مع توقيعهم عليه بسجل البيانات أعلاه،
 عرفوا قدره شهد به عليهم وبأتمه وعرف بهم بما ذكر وحرر في غد تلقيه وسجل الكترونيا بمالية {{FINANCE_CITY}} في {{REGISTRATION_DATE}} رقم الايداع {{DEPOSIT_NUMBER}} عبد ربه تعالى."
   `.trim(),
 
   TEMPLATE_ZAWAJ_SULAIMAN_AMTIA3: `
-الحمد لله حق حمده و ما كل نعمة إلا من عنده و بعد على الساعة {{TIME}} من بعد زوال يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} موافق {{DATE_GREGORIAN}} تلقى العدلان {{ADUL_1_NAME}} و {{ADUL_2_NAME}} المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ {{COURT_CITY}} قسم قضاء الأسرة بالمحكمة الابتدائية بـ {{PRIMARY_COURT}} الشهادة المدرجة بمذكرة الحفظ للأول رقم {{MEMO_NUMBER}} عدد {{NUMBER}} صفحة {{PAGE}} نصها :
+الحمد لله حق حمده و ما كل نعمة إلا من عنده و بعد على الساعة {{TIME}} من بعد زوال يوم {{DAY_NAME}} {{DATE_HIJRI_TEXT}} موافق {{DATE_GREGORIAN}} تلقى العدلان {{ADUL_1_NAME}} و {{ADUL_2_NAME}} المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ {{COURT_CITY}} قسم قضاء الأسرة بالمحكمة الابتدائية بـ {{PRIMARY_COURT}} الشهادة المدرجة بسجل البيانات للعدل الأول رقم {{MEMO_NUMBER}} عدد {{NUMBER}} صفحة {{PAGE}} نصها :
 الحمد لله بعد إذن قاضي الأسرة المكلف بالزواج ملف رقم {{AUTH_FILE_NUMBER}} في {{AUTH_DATE}} :
 تزوج على بركـة الله وحسن عونــه وتوفيقــه الجميل الشاب : {{HUSBAND_NAME}} المزداد بـ {{HUSBAND_POB}} سنة {{HUSBAND_DOB_YEAR}} من والديه : {{HUSBAND_FATHER}} و {{HUSBAND_MOTHER}} حسب عقد ولادته رقم {{HUSBAND_BIRTH_CERT_NUM}} من جماعة {{HUSBAND_BIRTH_COMMUNE}} بطاقته الوطنية رقم {{HUSBAND_CIN}} جنسيته {{HUSBAND_NATIONALITY}} حالته العائلية {{HUSBAND_STATUS}} بتصريحه و حسب الشهادة الادارية للزواج ملف رقم {{HUSBAND_ADMIN_CERT_NUM}} من جماعة {{HUSBAND_ADMIN_CERT_COMMUNE}} اقليم {{HUSBAND_ADMIN_CERT_PROVINCE}} في {{HUSBAND_ADMIN_CERT_DATE}} الساكن بـ {{HUSBAND_ADDRESS}}
 زوجته المباركة عليه البنت المصونة الآنسة : {{WIFE_NAME}} المولودة بـ {{WIFE_POB}} بتاريخ {{WIFE_DOB}} من والديها : {{WIFE_FATHER}} و {{WIFE_MOTHER}} حسب عقد ولادتها رقم {{WIFE_BIRTH_CERT_NUM}} من جماعة {{WIFE_BIRTH_COMMUNE}} بطاقتها الوطنية رقم {{WIFE_CIN}} جنسيتها {{WIFE_NATIONALITY}} مهنتها {{WIFE_JOB}} حالتها العائلية {{WIFE_STATUS}} بتصريحها و حسب الشهادة الادارية للزواج ملف رقم {{WIFE_ADMIN_CERT_NUM}} من جماعة {{WIFE_ADMIN_CERT_COMMUNE}} في {{WIFE_ADMIN_CERT_DATE}} الساكنة بـ {{WIFE_ADDRESS}}
 الحل للزواج الخالية من موانعه على صداق مبارك قدره و نهايته {{DOWRY_AMOUNT}} درهم قبضت الزوجة من يد الزوج المذكور جميع الثمن المسطور قبضا تاما اعترافا و أبرأته من درك القبض أتم إبراء فبرئ تزوجها على الكتاب والسنة واليمن والأمان وما جاء في محكم القرآن من قوله عز وجل " فإمسـاك بمعـروف أو تسريح بإحسان "
 عقد زواجها وليها أبوها السيد : {{GUARDIAN_NAME}} المذكور متزوج فلاح الساكن معها بنفس العنوان سمع منهما شهيداه الايجاب و القبول و هما متمتعان بالأهلية و التمييز و الاختيار و لم يشترط الزوجان على بعضهما أية شروط و أشعرا بالمادة 149 من مدونة الأسرة بخصوص الأموال المكتسبة أثناء قيام الزوجية بحيث يجوز لهما في إطار تدبير الأموال التي ستكتسب أثناء قيام الزوجية الإتفاق على استثمارها و توزيعها في وثيقة مستقلة عن عقد الزواج
-وقبل الزوجان هذا الزواج وارتضياه والله يوفقهما لما يحبه ويرضاه عرفوا قدره شهد به عليهم بما فيه عنهم وهما باتمه وعرفهم بما ذكر أعلاه وتم الاشهاد دون قيد أو شرط وبتلاوة نص الاشهاد عليهم قبل توقيعهم بمذكرة الحفظ للعدل الأول و حرر الرسم بتاريخه عبدربه تعالى.
+وقبل الزوجان هذا الزواج وارتضياه والله يوفقهما لما يحبه ويرضاه عرفوا قدره شهد به عليهم بما فيه عنهم وهما باتمه وعرفهم بما ذكر أعلاه وتم الاشهاد دون قيد أو شرط وبتلاوة نص الاشهاد عليهم قبل توقيعهم بسجل البيانات للعدل الأول و حرر الرسم بتاريخه عبدربه تعالى.
   `.trim(),
 } as const;
 
@@ -137,6 +158,41 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     DATE_HIJRI: { source: 'AUTOMATIC', required: true, label: 'التاريخ الهجري' },
     DATE_GREGORIAN: { source: 'AUTOMATIC', required: true, label: 'التاريخ الميلادي' },
   },
+  TEMPLATE_RASM_MALAKIYA: {
+    REGISTRY_NUMBER: { source: 'ADUL_RECORD', required: false, label: 'رقم كناش الأملاك' },
+    REGISTRY_LETTER: { source: 'ADUL_RECORD', required: false, label: 'حرف كناش الأملاك' },
+    REGISTRY_COUNT: { source: 'ADUL_RECORD', required: false, label: 'عدد كناش الأملاك' },
+    REGISTRY_DATE: { source: 'AUTOMATIC', required: false, label: 'تاريخ كناش الأملاك' },
+    COURT_CITY: { source: 'ADUL_RECORD', required: true, label: 'مدينة محكمة الاستئناف' },
+    PRIMARY_COURT: { source: 'ADUL_RECORD', required: true, label: 'المحكمة الابتدائية' },
+    TIME: { source: 'AUTOMATIC', required: true, label: 'وقت التلقي' },
+    DAY_NAME: { source: 'AUTOMATIC', required: true, label: 'اسم اليوم' },
+    DATE_HIJRI_TEXT: { source: 'AUTOMATIC', required: true, label: 'التاريخ الهجري (نص)' },
+    DATE_GREGORIAN_TEXT: { source: 'AUTOMATIC', required: true, label: 'التاريخ الميلادي (نص)' },
+    DATE_HIJRI: { source: 'AUTOMATIC', required: true, label: 'التاريخ الهجري' },
+    DATE_GREGORIAN: { source: 'AUTOMATIC', required: true, label: 'التاريخ الميلادي' },
+    ADUL_1_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الأول' },
+    ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
+    NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
+    PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
+    RECEIPT_NUMBER: { source: 'ADUL_RECORD', required: false, label: 'رقم الوصل' },
+    OWNER_FULL_IDENTIFICATION: { source: 'MANUAL_INPUT', required: true, label: 'هوية طالب الإشهاد / المالك' },
+    PROPERTY_DESCRIPTION: { source: 'MANUAL_INPUT', required: true, label: 'وصف وتكوين العقار' },
+    PROPERTY_LOCATION: { source: 'MANUAL_INPUT', required: true, label: 'موقع العقار' },
+    ADMINISTRATIVE_CERTIFICATE_CLAUSE: { source: 'MANUAL_INPUT', required: false, label: 'مقتضى الشهادة الإدارية' },
+    BOUNDARY_EAST: { source: 'MANUAL_INPUT', required: true, label: 'الحد الشرقي' },
+    BOUNDARY_WEST: { source: 'MANUAL_INPUT', required: true, label: 'الحد الغربي' },
+    BOUNDARY_NORTH: { source: 'MANUAL_INPUT', required: true, label: 'الحد الشمالي' },
+    BOUNDARY_SOUTH: { source: 'MANUAL_INPUT', required: true, label: 'الحد الجنوبي' },
+    PROPERTY_AREA: { source: 'MANUAL_INPUT', required: false, label: 'مساحة العقار' },
+    ESTIMATED_VALUE: { source: 'MANUAL_INPUT', required: false, label: 'القيمة التقديرية' },
+    DURATION_TEXT: { source: 'MANUAL_INPUT', required: true, label: 'مدة الحيازة' },
+    WITNESSES_LIST: { source: 'MANUAL_INPUT', required: true, label: 'قائمة شهود اللفيف الاثني عشر' },
+    ELECTRONIC_REG_DATE: { source: 'AUTOMATIC', required: false, label: 'تاريخ التسجيل الإلكتروني' },
+    RECOVERY_ORDER: { source: 'AUTOMATIC', required: false, label: 'أمر بالاستخلاص' },
+    REVENUE_REGISTER: { source: 'AUTOMATIC', required: false, label: 'سجل المداخيل' },
+  },
   TEMPLATE_IHSA_MATRUK: {
     TIME: { source: 'AUTOMATIC', required: true, label: 'الساعة' },
     DAY_NAME: { source: 'AUTOMATIC', required: true, label: 'اسم اليوم' },
@@ -146,7 +202,7 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
     COURT_CITY: { source: 'ADUL_RECORD', required: true, label: 'مدينة محكمة الاستئناف' },
     PRIMARY_COURT: { source: 'ADUL_RECORD', required: true, label: 'المحكمة الابتدائية' },
-    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم مذكرة الحفظ' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
     NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
     PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
     REQUESTER_NAME: { source: 'MANUAL_INPUT', required: true, label: 'اسم الطالبة' },
@@ -168,7 +224,7 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     ADUL_1_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الأول' },
     ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
     COURT_CITY: { source: 'ADUL_RECORD', required: true, label: 'مدينة محكمة الاستئناف' },
-    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم مذكرة الحفظ' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
     NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
     PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
     BUYER_NAME: { source: 'MANUAL_INPUT', required: true, label: 'اسم المشتري' },
@@ -194,7 +250,7 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     ADUL_1_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الأول' },
     ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
     PRIMARY_COURT: { source: 'ADUL_RECORD', required: true, label: 'المحكمة الابتدائية' },
-    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم مذكرة الحفظ' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
     NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
     PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
     DONOR_NAME: { source: 'MANUAL_INPUT', required: true, label: 'اسم الواهبة' },
@@ -220,7 +276,7 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     ADUL_1_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الأول' },
     ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
     COURT_CITY: { source: 'ADUL_RECORD', required: true, label: 'مدينة محكمة الاستئناف' },
-    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم مذكرة الحفظ' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
     NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
     PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
     BUYER_NAME: { source: 'MANUAL_INPUT', required: true, label: 'اسم المشتري' },
@@ -249,7 +305,7 @@ export const JUDICIAL_VARIABLES_MAP: Record<TemplateId, Record<string, VariableD
     ADUL_2_NAME: { source: 'ADUL_RECORD', required: true, label: 'اسم العدل الثاني' },
     COURT_CITY: { source: 'ADUL_RECORD', required: true, label: 'مدينة محكمة الاستئناف' },
     PRIMARY_COURT: { source: 'ADUL_RECORD', required: true, label: 'المحكمة الابتدائية' },
-    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم مذكرة الحفظ' },
+    MEMO_NUMBER: { source: 'ADUL_RECORD', required: true, label: 'رقم سجل البيانات للعدل الأول' },
     NUMBER: { source: 'ADUL_RECORD', required: true, label: 'العدد' },
     PAGE: { source: 'ADUL_RECORD', required: true, label: 'الصحيفة' },
 

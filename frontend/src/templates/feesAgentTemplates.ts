@@ -208,7 +208,7 @@ export function generateMarriageRasmHtml(state: FeesAgentState): string {
 
   // Husband
   const husbandBirthCert = husband.birthCertificateNumber
-    ? `عقد ولادته رقم <strong>${husband.birthCertificateNumber}</strong> لسنة <strong>${husband.birthCertificateYear || '---'}</strong> جماعة/دائرة <strong>${husband.birthCertificateCommune || husband.birthCertificateCity || '---'}</strong>`
+    ? `عقد ولادته رقم <strong>${husband.birthCertificateNumber}</strong> لسنة <strong>${husband.birthCertificateYear || '---'}</strong> جماعة/دائرة <strong>${husband.birthCertificateCommune || husband.birthCertificateCity || '---'}</strong>${husband.birthCertificateDate ? ` المؤرخ في <strong>${husband.birthCertificateDate}</strong>` : ''}${husband.birthCertificateIssuedBy ? ` المسلم من <strong>${husband.birthCertificateIssuedBy}</strong>` : ''}${husband.birthCertificateCountry ? ` بدولة <strong>${husband.birthCertificateCountry}</strong>` : ''}`
     : '';
   const husbandIdClause = husband.idNumber
     ? `الحامل للبطاقة الوطنية للتعريف رقم <strong>${husband.idNumber}</strong>${(husband.idIssueDate || husband.idExpiryDate) ? ` صالحة إلى غاية <strong>${husband.idIssueDate || husband.idExpiryDate}</strong>` : ''}`
@@ -216,19 +216,37 @@ export function generateMarriageRasmHtml(state: FeesAgentState): string {
     ? `الحامل لجواز سفر رقم <strong>${husband.passportNumber}</strong>${husband.passportIssuedBy ? ` الصادر عن <strong>${husband.passportIssuedBy}</strong>` : ''}${husband.passportValidUntil ? ` صالح إلى <strong>${husband.passportValidUntil}</strong>` : ''}`
     : '';
   const husbandNatClause = husband.nationality ? `جنسيته <strong>${husband.nationality}</strong>` : '';
+  const husbandDivorceDetails = husband.maritalStatus === 'مطلق'
+    ? (husband.divorceSource === 'حكم' || husband.divorceCourt
+        ? ` بموجب حكم طلاق صادر عن <strong>${husband.divorceCourt || 'المحكمة'}</strong> بتاريخ <strong>${husband.divorceJudgmentDate || husband.divorceDeedDate || '---'}</strong>${husband.divorceExecutiveFormula ? ` مذيل بالصيغة التنفيذية بتاريخ <strong>${husband.divorceExecutiveDate || '---'}</strong>` : ''}${husband.divorceCountry ? ` بدولة <strong>${husband.divorceCountry}</strong>` : ''}`
+        : (husband.divorceDeedNumber ? ` بموجب رسم طلاق عدد <strong>${husband.divorceDeedNumber}</strong>${husband.divorceDeedBook ? ` كناش <strong>${husband.divorceDeedBook}</strong>` : ''}${husband.divorceDeedPage ? ` صحيفة <strong>${husband.divorceDeedPage}</strong>` : ''} بتاريخ <strong>${husband.divorceDeedDate || '---'}</strong>${husband.divorceDeedNotary ? ` توثيق <strong>${husband.divorceDeedNotary}</strong>` : ''}` : ''))
+    : '';
   const husbandMaritalStatusClause = husband.maritalStatus
-    ? `حالته العائلية <strong>${husband.maritalStatus === 'اعزب' ? 'أعزب' : husband.maritalStatus === 'مطلق' ? 'مطلق' : husband.maritalStatus === 'ارمل' ? 'أرمل' : husband.maritalStatus}</strong>${husband.divorceDeedNumber ? ` بموجب رسم طلاق عدد <strong>${husband.divorceDeedNumber}</strong> بتاريخ <strong>${husband.divorceDeedDate || '---'}</strong>` : ''}`
+    ? `حالته العائلية <strong>${husband.maritalStatus === 'اعزب' ? 'أعزب' : husband.maritalStatus === 'مطلق' ? 'مطلق' : husband.maritalStatus === 'ارمل' ? 'أرمل' : husband.maritalStatus}</strong>${husbandDivorceDetails}`
+    : '';
+  const husbandAdminCert = husband.engagementCertificateNumber
+    ? `وحسب الشهادة الإدارية للزواج رقم <strong>${husband.engagementCertificateNumber}</strong>${husband.engagementCertificateDate ? ` بتاريخ <strong>${husband.engagementCertificateDate}</strong>` : ''}${husband.engagementCertificateCommune || husband.engagementCertificateCity ? ` الصادرة عن جماعة <strong>${husband.engagementCertificateCommune || husband.engagementCertificateCity}</strong>` : ''}`
     : '';
   const husbandMedCert = husband.medicalCertificateNumber
-    ? `الشهادة الطبية لما قبل الزواج رقم <strong>${husband.medicalCertificateNumber}</strong>${husband.medicalCertificateDate ? ` بتاريخ <strong>${husband.medicalCertificateDate}</strong>` : ''}${husband.medicalCertificateIssuedBy ? ` المسلمة من <strong>${husband.medicalCertificateIssuedBy}</strong>` : ''}`
+    ? `الشهادة الطبية لما قبل الزواج رقم <strong>${husband.medicalCertificateNumber}</strong>${husband.medicalCertificateDate ? ` بتاريخ <strong>${husband.medicalCertificateDate}</strong>` : ''}${husband.medicalCertificateIssuedBy ? ` المسلمة من <strong>${husband.medicalCertificateIssuedBy}</strong>` : ''}${husband.medicalCertificateCity ? ` بـ <strong>${husband.medicalCertificateCity}</strong>` : ''}`
+    : '';
+  const husbandMinorClause = husband.underagePermissionNumber
+    ? `المأذون بزواجه دون سن الرشد بمقتضى مقرر قاضي الأسرة رقم <strong>${husband.underagePermissionNumber}</strong> بتاريخ <strong>${husband.underagePermissionDate || '---'}</strong> بالمحكمة الابتدائية بـ <strong>${husband.underagePermissionCourt || courtName}</strong>`
     : '';
   const husbandProxyClause = husband.hasSpecialProxy === 'نعم' && husband.proxyName
-    ? `وناب عنه بوكالة خاصة السيد <strong>${husband.proxyName}</strong> الحامل لـ ب.ت.و رقم <strong>${husband.proxyNationalID || '---'}</strong> بموجب رسم عدد <strong>${husband.proxyDeedNumber || '---'}</strong> وتاريخ <strong>${husband.proxyDeedDate || '---'}</strong>`
+    ? `وناب عنه بوكالة خاصة السيد <strong>${husband.proxyName}</strong>${husband.proxyFatherName ? ` بن <strong>${husband.proxyFatherName}</strong>` : ''}${husband.proxyDOB ? ` المزداد بتاريخ <strong>${husband.proxyDOB}</strong>` : ''}${husband.proxyAddress ? ` الساكن بـ <strong>${husband.proxyAddress}</strong>` : ''} الحامل لـ ب.ت.و رقم <strong>${husband.proxyNationalID || '---'}</strong> بموجب رسم توكيل عدد <strong>${husband.proxyDeedNumber || '---'}</strong>${husband.proxyDeedBook ? ` كناش <strong>${husband.proxyDeedBook}</strong>` : ''}${husband.proxyDeedPage ? ` صحيفة <strong>${husband.proxyDeedPage}</strong>` : ''} وتاريخ <strong>${husband.proxyDeedDate || '---'}</strong>${husband.proxyDeedNotary ? ` توثيق <strong>${husband.proxyDeedNotary}</strong>` : ''}`
     : '';
+  const husbandForeignExtra = [
+    husband.residenceCountry ? `المقيم بـ <strong>${husband.residenceCountry}</strong>` : '',
+    husband.nationalityCertificateIssuedBy ? `شهادة الجنسية المسلمة من <strong>${husband.nationalityCertificateIssuedBy}</strong>` : '',
+    husband.capacityCertificateIssuedBy ? `شهادة الأهلية للزواج الصادرة عن <strong>${husband.capacityCertificateIssuedBy}</strong> بتاريخ <strong>${husband.capacityCertificateDate || '---'}</strong>` : '',
+    husband.criminalRecordBirthplaceNumber ? `السجل العدلي لبلد المنشأ رقم <strong>${husband.criminalRecordBirthplaceNumber}</strong> بتاريخ <strong>${husband.criminalRecordBirthplaceDate || '---'}</strong>` : '',
+    husband.centralCriminalRecordNumber ? `السجل العدلي المركزي رقم <strong>${husband.centralCriminalRecordNumber}</strong> بتاريخ <strong>${husband.centralCriminalRecordDate || '---'}</strong>` : '',
+  ].filter(Boolean).join('، ');
 
   // Wife
   const wifeBirthCert = wife.birthCertificateNumber
-    ? `عقد ولادتها رقم <strong>${wife.birthCertificateNumber}</strong> لسنة <strong>${wife.birthCertificateYear || '---'}</strong> جماعة/دائرة <strong>${wife.birthCertificateCommune || wife.birthCertificateCity || '---'}</strong>`
+    ? `عقد ولادتها رقم <strong>${wife.birthCertificateNumber}</strong> لسنة <strong>${wife.birthCertificateYear || '---'}</strong> جماعة/دائرة <strong>${wife.birthCertificateCommune || wife.birthCertificateCity || '---'}</strong>${wife.birthCertificateDate ? ` المؤرخ في <strong>${wife.birthCertificateDate}</strong>` : ''}${wife.birthCertificateIssuedBy ? ` المسلم من <strong>${wife.birthCertificateIssuedBy}</strong>` : ''}${wife.birthCertificateCountry ? ` بدولة <strong>${wife.birthCertificateCountry}</strong>` : ''}`
     : '';
   const wifeIdClause = wife.idNumber
     ? `الحاملة للبطاقة الوطنية للتعريف رقم <strong>${wife.idNumber}</strong>${(wife.idIssueDate || wife.idExpiryDate) ? ` صالحة إلى غاية <strong>${wife.idIssueDate || wife.idExpiryDate}</strong>` : ''}`
@@ -236,21 +254,36 @@ export function generateMarriageRasmHtml(state: FeesAgentState): string {
     ? `الحاملة لجواز سفر رقم <strong>${wife.passportNumber}</strong>${wife.passportIssuedBy ? ` الصادر عن <strong>${wife.passportIssuedBy}</strong>` : ''}${wife.passportValidUntil ? ` صالح إلى <strong>${wife.passportValidUntil}</strong>` : ''}`
     : '';
   const wifeNatClause = wife.nationality ? `جنسيتها <strong>${wife.nationality}</strong>` : '';
+  const wifeDivorceDetails = wife.maritalStatus === 'مطلق'
+    ? (wife.divorceSource === 'حكم' || wife.divorceCourt
+        ? ` بموجب حكم طلاق صادر عن <strong>${wife.divorceCourt || 'المحكمة'}</strong> بتاريخ <strong>${wife.divorceJudgmentDate || wife.divorceDeedDate || '---'}</strong>${wife.divorceExecutiveFormula ? ` مذيل بالصيغة التنفيذية بتاريخ <strong>${wife.divorceExecutiveDate || '---'}</strong>` : ''}${wife.divorceCountry ? ` بدولة <strong>${wife.divorceCountry}</strong>` : ''}`
+        : (wife.divorceDeedNumber ? ` بموجب رسم طلاق عدد <strong>${wife.divorceDeedNumber}</strong>${wife.divorceDeedBook ? ` كناش <strong>${wife.divorceDeedBook}</strong>` : ''}${wife.divorceDeedPage ? ` صحيفة <strong>${wife.divorceDeedPage}</strong>` : ''} بتاريخ <strong>${wife.divorceDeedDate || '---'}</strong>${wife.divorceDeedNotary ? ` توثيق <strong>${wife.divorceDeedNotary}</strong>` : ''}` : ''))
+    : '';
   const wifeMaritalStatusClause = wife.maritalStatus
-    ? `حالتها العائلية <strong>${wife.maritalStatus === 'اعزب' ? 'بكر' : wife.maritalStatus === 'مطلق' ? 'مطلقة' : wife.maritalStatus === 'ارمل' ? 'أرملة' : wife.maritalStatus}</strong>${wife.divorceDeedNumber ? ` بموجب رسم طلاق عدد <strong>${wife.divorceDeedNumber}</strong> بتاريخ <strong>${wife.divorceDeedDate || '---'}</strong>` : ''}`
+    ? `حالتها العائلية <strong>${wife.maritalStatus === 'اعزب' ? 'بكر' : wife.maritalStatus === 'مطلق' ? 'مطلقة' : wife.maritalStatus === 'ارمل' ? 'أرملة' : wife.maritalStatus}</strong>${wifeDivorceDetails}`
+    : '';
+  const wifeAdminCert = wife.engagementCertificateNumber
+    ? `وحسب الشهادة الإدارية للزواج رقم <strong>${wife.engagementCertificateNumber}</strong>${wife.engagementCertificateDate ? ` بتاريخ <strong>${wife.engagementCertificateDate}</strong>` : ''}${wife.engagementCertificateCommune || wife.engagementCertificateCity ? ` الصادرة عن جماعة <strong>${wife.engagementCertificateCommune || wife.engagementCertificateCity}</strong>` : ''}`
     : '';
   const wifeMedCert = wife.medicalCertificateNumber
-    ? `الشهادة الطبية لما قبل الزواج رقم <strong>${wife.medicalCertificateNumber}</strong>${wife.medicalCertificateDate ? ` بتاريخ <strong>${wife.medicalCertificateDate}</strong>` : ''}${wife.medicalCertificateIssuedBy ? ` المسلمة من <strong>${wife.medicalCertificateIssuedBy}</strong>` : ''}`
+    ? `الشهادة الطبية لما قبل الزواج رقم <strong>${wife.medicalCertificateNumber}</strong>${wife.medicalCertificateDate ? ` بتاريخ <strong>${wife.medicalCertificateDate}</strong>` : ''}${wife.medicalCertificateIssuedBy ? ` المسلمة من <strong>${wife.medicalCertificateIssuedBy}</strong>` : ''}${wife.medicalCertificateCity ? ` بـ <strong>${wife.medicalCertificateCity}</strong>` : ''}`
     : '';
   const wifeMinorClause = wife.underagePermissionNumber
-    ? `المأذون بزواجها كقاصر بمقتضى مقرر قاضي الأسرة رقم <strong>${wife.underagePermissionNumber}</strong> بتاريخ <strong>${wife.underagePermissionDate || '---'}</strong> بالمحكمة الابتدائية بـ <strong>${wife.underagePermissionCourt || courtName}</strong>`
+    ? `المأذون بزواجها دون سن الرشد بمقتضى مقرر قاضي الأسرة رقم <strong>${wife.underagePermissionNumber}</strong> بتاريخ <strong>${wife.underagePermissionDate || '---'}</strong> بالمحكمة الابتدائية بـ <strong>${wife.underagePermissionCourt || courtName}</strong>`
     : '';
   const wifeProxyClause = wife.hasSpecialProxy === 'نعم' && wife.proxyName
-    ? `ونابت عنها بوكالة خاصة السيدة/السيد <strong>${wife.proxyName}</strong> الحامل لـ ب.ت.و رقم <strong>${wife.proxyNationalID || '---'}</strong>`
+    ? `ونابت عنها بوكالة خاصة السيدة/السيد <strong>${wife.proxyName}</strong>${wife.proxyFatherName ? ` بن(ت) <strong>${wife.proxyFatherName}</strong>` : ''}${wife.proxyDOB ? ` المزداد(ة) بتاريخ <strong>${wife.proxyDOB}</strong>` : ''}${wife.proxyAddress ? ` الساكن(ة) بـ <strong>${wife.proxyAddress}</strong>` : ''} الحامل(ة) لـ ب.ت.و رقم <strong>${wife.proxyNationalID || '---'}</strong> بموجب رسم توكيل عدد <strong>${wife.proxyDeedNumber || '---'}</strong>${wife.proxyDeedBook ? ` كناش <strong>${wife.proxyDeedBook}</strong>` : ''}${wife.proxyDeedPage ? ` صحيفة <strong>${wife.proxyDeedPage}</strong>` : ''} وتاريخ <strong>${wife.proxyDeedDate || '---'}</strong>${wife.proxyDeedNotary ? ` توثيق <strong>${wife.proxyDeedNotary}</strong>` : ''}`
     : '';
+  const wifeForeignExtra = [
+    wife.residenceCountry ? `المقيمة بـ <strong>${wife.residenceCountry}</strong>` : '',
+    wife.nationalityCertificateIssuedBy ? `شهادة الجنسية المسلمة من <strong>${wife.nationalityCertificateIssuedBy}</strong>` : '',
+    wife.capacityCertificateIssuedBy ? `شهادة الأهلية للزواج الصادرة عن <strong>${wife.capacityCertificateIssuedBy}</strong> بتاريخ <strong>${wife.capacityCertificateDate || '---'}</strong>` : '',
+    wife.criminalRecordBirthplaceNumber ? `السجل العدلي لبلد المنشأ رقم <strong>${wife.criminalRecordBirthplaceNumber}</strong> بتاريخ <strong>${wife.criminalRecordBirthplaceDate || '---'}</strong>` : '',
+    wife.centralCriminalRecordNumber ? `السجل العدلي المركزي رقم <strong>${wife.centralCriminalRecordNumber}</strong> بتاريخ <strong>${wife.centralCriminalRecordDate || '---'}</strong>` : '',
+  ].filter(Boolean).join('، ');
 
   const guardianClause = (wife.contractsWithoutGuardian === 'لا' || (!wife.contractsWithoutGuardian && wife.guardianName)) && wife.guardianName
-    ? `وعقد زواجها وليها ${wife.guardianRelationship || 'وليها'} السيد <strong>${wife.guardianName}</strong> مهنته <strong>${wife.guardianProfession || '---'}</strong> الساكن بـ <strong>${wife.guardianAddress || 'معها'}</strong> الحامل لبطاقة التعريف الوطنية رقم <strong>${wife.guardianNationalID || '---'}</strong>`
+    ? `وعقد زواجها وليها ${wife.guardianRelationship || 'وليها'}${wife.guardianRelationshipCustom ? ` (${wife.guardianRelationshipCustom})` : ''} السيد <strong>${wife.guardianName}</strong>${wife.guardianDOB ? ` المزداد بتاريخ <strong>${wife.guardianDOB}</strong>` : ''}${wife.guardianFatherName ? ` ابن <strong>${wife.guardianFatherName}</strong>` : ''} مهنته <strong>${wife.guardianProfession || '---'}</strong> الساكن بـ <strong>${wife.guardianAddress || 'معها'}</strong> الحامل لبطاقة التعريف الوطنية رقم <strong>${wife.guardianNationalID || '---'}</strong>`
     : 'وتولت الزوجة الرشيدة عقد زواجها بنفسها طبقا لمقتضيات المادة 25 من مدونة الأسرة';
 
   const conversionCertClause = md.mixedMarriageForeignParty === 'husband' && md.husbandConvertedToIslam === 'yes' && md.conversionCertificate?.number
@@ -269,40 +302,51 @@ export function generateMarriageRasmHtml(state: FeesAgentState): string {
     ? witnesses.map((w: any) => `السيد <strong>${w.name}</strong> بطاقته الوطنية رقم <strong>${w.idNumber || '---'}</strong>`).join(' و ')
     : 'شاهدين عدلين';
 
+  const husbandFatherInfo = husband.fatherProfession ? `${husband.fatherName || '---'} (مهنته ${husband.fatherProfession})` : (husband.fatherName || '---');
+  const husbandMotherInfo = husband.motherProfession ? `${husband.motherName || '---'} (مهنتها ${husband.motherProfession})` : (husband.motherName || '---');
+
   const husbandParts = [
     `السيد <strong>${husband.name || '---'}</strong>${husband.nameLatin ? ` (${husband.nameLatin})` : ''}`,
     `المزداد بـ <strong>${husband.placeOfBirth || '---'}</strong> بتاريخ <strong>${husband.dateOfBirth || '---'}</strong>`,
-    `من والديه السيد <strong>${husband.fatherName || '---'}</strong> والسيدة <strong>${husband.motherName || '---'}</strong>`,
+    `من والديه السيد <strong>${husbandFatherInfo}</strong> والسيدة <strong>${husbandMotherInfo}</strong>`,
     husbandBirthCert,
     `مهنته <strong>${husband.profession || '---'}</strong>`,
     `والساكن بـ <strong>${husband.address || '---'}</strong>`,
     husbandIdClause,
     husbandNatClause,
     husbandMaritalStatusClause,
+    husbandAdminCert,
     husbandMedCert,
+    husbandMinorClause,
     husbandProxyClause,
+    husbandForeignExtra,
   ].filter(Boolean).join(' ');
+
+  const wifeFatherInfo = wife.fatherProfession ? `${wife.fatherName || '---'} (مهنته ${wife.fatherProfession})` : (wife.fatherName || '---');
+  const wifeMotherInfo = wife.motherProfession ? `${wife.motherName || '---'} (مهنتها ${wife.motherProfession})` : (wife.motherName || '---');
 
   const wifeParts = [
     `البنت المصونة السيدة <strong>${wife.name || '---'}</strong>${wife.nameLatin ? ` (${wife.nameLatin})` : ''}`,
     `المولودة بـ <strong>${wife.placeOfBirth || '---'}</strong> بتاريخ <strong>${wife.dateOfBirth || '---'}</strong>`,
-    `من والديها السيد <strong>${wife.fatherName || '---'}</strong> والسيدة <strong>${wife.motherName || '---'}</strong>`,
+    `من والديها السيد <strong>${wifeFatherInfo}</strong> والسيدة <strong>${wifeMotherInfo}</strong>`,
     wifeBirthCert,
     `مهنتها <strong>${wife.profession || 'بدون مهنة'}</strong>`,
     `والساكنة بـ <strong>${wife.address || '---'}</strong>`,
     wifeIdClause,
     wifeNatClause,
     wifeMaritalStatusClause,
+    wifeAdminCert,
     wifeMedCert,
     wifeMinorClause,
     wifeProxyClause,
+    wifeForeignExtra,
   ].filter(Boolean).join(' ');
 
   const marriageNarrative = `
     الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
     على الساعة <strong>${sessionTime}</strong> من يوم <strong>${sessionDay}</strong> <strong>${sessionDateHijriWords}</strong> هجرية، موافق <strong>${sessionDateGregWords}</strong> ميلادية (<strong>${dateHijri}</strong> / <strong>${dateGreg}</strong>)،
     تلقى العدلان أمنهما الله <strong>${notary1}</strong> و <strong>${notary2}</strong> المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ <strong>${appellateCourt}</strong>، قسم التوثيق وقضاء الأسرة بالمحكمة الابتدائية بـ <strong>${courtName}</strong>،
-    الشهادة المدرجة بمذكرة حفظ العدل الأول رقم <strong>${memoNum}</strong> صحيفة <strong>${memoPage}</strong> عدد <strong>${memoCount}</strong>، والمضمنة بـ <strong>${regBook}</strong> رقم <strong>${regNum}</strong> صحيفة <strong>${regPage}</strong> عدد <strong>${regCount}</strong> بتاريخ <strong>${regDate}</strong>، نصها:
+    الشهادة المدرجة بسجل البيانات للعدل الأول رقم <strong>${memoNum}</strong> صحيفة <strong>${memoPage}</strong> عدد <strong>${memoCount}</strong>، والمضمنة بـ <strong>${regBook}</strong> رقم <strong>${regNum}</strong> صحيفة <strong>${regPage}</strong> عدد <strong>${regCount}</strong> بتاريخ <strong>${regDate}</strong>، نصها:
     الحمد لله، بعد الإذن الصادر عن السيد قاضي الأسرة المكلف بالزواج بالمحكمة الابتدائية بـ <strong>${authCourt}</strong> تحت رقم <strong>${authNum}</strong> بتاريخ <strong>${authDate}</strong>،
     تزوج على بركة الله وحسن توفيقه الجميل:
     الزوج: ${husbandParts}،
@@ -397,7 +441,7 @@ export function generateSaleRasmHtml(state: FeesAgentState): string {
   const dateGregorianWords = meta?.dateGregorianInWords || convertGregorianDateToWords(dateGregorian) || 'نونبر سنة أربعة وعشرين وألفين';
   const dateHijriWords = meta?.dateHijriInWords || convertHijriDateToWords(dateGregorian) || 'جمادى الأولى عام ستة وأربعين وأربعمائة وألف';
 
-  // Memorandum of Retention (مذكرة حفظ العدل الأول)
+  // Data Register (سجل البيانات للعدل الأول)
   const memoNumber = (meta as any)?.memoNumber || (meta as any)?.memorandumNumber || '08';
   const memoPage = (meta as any)?.memoPage || (meta as any)?.memorandumPage || '24';
   const memoCount = (meta as any)?.memoCount || (meta as any)?.memorandumRecordNumber || '156';
@@ -548,11 +592,11 @@ export function generateSaleRasmHtml(state: FeesAgentState): string {
   const regDate = postRegistration?.registrationDate || dateGregorian;
   const collectionOrder = postRegistration?.depositNumber || '624510/2024';
 
-  const closingClause = `وتلي على الجميع بالأصالة والنيابة فأكدوه بتوقيعاتهم عليه عقبه بمذكرة الحفظ أعلاه ${taxClause} عرفوا قدره شهد به عليهم وهم بأتمه وحرر في <strong>${draftDate}</strong> وسجل إلكترونياً بتاريخ <strong>${regDate}</strong> أمر بالاستخلاص رقم <strong>${collectionOrder}</strong> عبد ربه وعبد ربه.`;
+  const closingClause = `وتلي على الجميع بالأصالة والنيابة فأكدوه بتوقيعاتهم عليه عقبه بسجل البيانات أعلاه ${taxClause} عرفوا قدره شهد به عليهم وهم بأتمه وحرر في <strong>${draftDate}</strong> وسجل إلكترونياً بتاريخ <strong>${regDate}</strong> أمر بالاستخلاص رقم <strong>${collectionOrder}</strong> عبد ربه وعبد ربه.`;
 
   // Assemble continuous justified paragraph
   const continuousParagraph = `
-    الحمد لله وحده نحن <strong>${notary1}</strong> و <strong>${notary2}</strong> العدلان المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ <strong>${appellateCourt}</strong> قسم التوثيق بالمحكمة الابتدائية بـ <strong>${courtName}</strong> تلقينا على الساعة <strong>${sessionTime}</strong> يوم <strong>${sessionDay}</strong> <strong>${dateHijriWords}</strong> للهجرة موافق <strong>${dateGregorianWords}</strong> (<strong>${dateHijri}</strong> / <strong>${dateGregorian}</strong>) الشهادة المدرجة بمذكرة حفظ العدل الأول رقم <strong>${memoNumber}</strong> صحيفة <strong>${memoPage}</strong> عدد <strong>${memoCount}</strong> نصها: 
+    الحمد لله وحده نحن <strong>${notary1}</strong> و <strong>${notary2}</strong> العدلان المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ <strong>${appellateCourt}</strong> قسم التوثيق بالمحكمة الابتدائية بـ <strong>${courtName}</strong> تلقينا على الساعة <strong>${sessionTime}</strong> يوم <strong>${sessionDay}</strong> <strong>${dateHijriWords}</strong> للهجرة موافق <strong>${dateGregorianWords}</strong> (<strong>${dateHijri}</strong> / <strong>${dateGregorian}</strong>) الشهادة المدرجة بسجل البيانات للعدل الأول رقم <strong>${memoNumber}</strong> صحيفة <strong>${memoPage}</strong> عدد <strong>${memoCount}</strong> نصها: 
     ${buyersClause} 
     ${sellersClause} 
     ${propertyClause} 
@@ -573,7 +617,7 @@ export function generateSaleRasmHtml(state: FeesAgentState): string {
         <div style="font-size: 18px; font-weight: bold; color: #334155; margin-bottom: 4px;">وزارة العدل</div>
         <div style="font-size: 17px; font-weight: bold; color: #1e293b;">المحكمة الابتدائية بـ ${courtName} - قسم قضاء التوثيق</div>
         <div style="margin-top: 10px; font-size: 14px; color: #475569; background: #f8fafc; padding: 6px 12px; border-radius: 6px; display: inline-block; border: 1px solid #e2e8f0;">
-          رسم بيع عقار عدلي | مذكرة الحفظ رقم: <strong style="color: #0f172a;">${memoNumber}</strong> | صحيفة: <strong style="color: #0f172a;">${memoPage}</strong> | عدد: <strong style="color: #0f172a;">${memoCount}</strong> | بتاريخ: <strong style="color: #0f172a;">${dateGregorian}</strong>
+          رسم بيع عقار عدلي | سجل البيانات للعدل الأول رقم: <strong style="color: #0f172a;">${memoNumber}</strong> | صحيفة: <strong style="color: #0f172a;">${memoPage}</strong> | عدد: <strong style="color: #0f172a;">${memoCount}</strong> | بتاريخ: <strong style="color: #0f172a;">${dateGregorian}</strong>
         </div>
       </div>
 
@@ -624,12 +668,223 @@ export function generateSaleRasmHtml(state: FeesAgentState): string {
   `;
 }
 
+export function generateMalakiyaRasmHtml(state: FeesAgentState): string {
+  const { sellers = [], buyers = [], applicants = [], properties = [], finance, meta } = state;
+  const prop = properties[0] || ({} as any);
+
+  const courtName = formatCourtName(meta?.court || state.preReceptionVerification?.primaryCourt) || 'شفشاون';
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || 'تطوان';
+  const courtSection = (meta as any)?.courtSection || 'قسم التوثيق';
+  const notary1 = meta?.notaryPrimary || state.preReceptionVerification?.notary1Name || 'الحسن النوادري';
+  const notary2 = meta?.notarySecondary || state.preReceptionVerification?.notary2Name || 'محمد الخياط';
+
+  // Dates
+  const dateGregorian = meta?.dateGregorian || state.preReceptionVerification?.receptionDate || new Date().toISOString().split('T')[0];
+  const dateHijri = meta?.dateHijri || convertGregorianToHijri(dateGregorian);
+  const sessionDay = getArabicWeekdayName(dateGregorian) || 'الأربعاء';
+  const sessionTime = meta?.hourInWords || (meta?.time ? `على الساعة ${meta.time}` : 'على الساعة الثانية عشرة والنصف بعد زوال');
+  const dateGregorianWords = meta?.dateGregorianInWords || convertGregorianDateToWords(dateGregorian) || 'خامس وعشرين دجنبر سنة أربعة وعشرين وألفين';
+  const dateHijriWords = meta?.dateHijriInWords || convertHijriDateToWords(dateGregorian) || 'ثالث وعشرين جمادى الثانية عام ستة وأربعين وأربعمائة وألف';
+
+  // Registry & Memo references (سجل البيانات للعدل الأول ودفتر الأملاك)
+  const memoNumber = (meta as any)?.memoNumber || (meta as any)?.memorandumNumber || state.preReceptionVerification?.registryRecord?.number || '43';
+  const memoPage = (meta as any)?.memoPage || (meta as any)?.memorandumPage || state.preReceptionVerification?.registryRecord?.page || '---';
+  const memoCount = (meta as any)?.memoCount || (meta as any)?.memorandumRecordNumber || state.preReceptionVerification?.registryRecord?.count || '---';
+  const receiptNumber = (meta as any)?.receiptNumber || (meta as any)?.taxReceiptNumber || '---';
+
+  const regBook = (meta as any)?.registryBookType || 'دفتر الأملاك';
+  const regNum = meta?.registryNumber || '---';
+  const regLetter = (meta as any)?.registryLetter || 'أ';
+  const regCount = meta?.registryCount || '---';
+  const regDateGreg = meta?.receptionDate || dateGregorian;
+  const regDateHijri = meta?.dateHijri || dateHijri;
+
+  // Owners / Applicants identification
+  const rawOwners = (buyers && buyers.length > 0) ? buyers : (applicants && applicants.length > 0 ? applicants : sellers);
+  const owners = rawOwners.length > 0 ? rawOwners : [{ name: 'طالب الإشهاد' } as any];
+
+  const isSingle = owners.length === 1;
+  const firstOwner = owners[0];
+  const isFemale = isSingle && (
+    firstOwner.name?.includes('السيدة') ||
+    firstOwner.name?.includes('عائشة') ||
+    firstOwner.name?.includes('فاطمة') ||
+    firstOwner.name?.includes('خديجة') ||
+    firstOwner.name?.includes('مريم') ||
+    (firstOwner as any).gender === 'female'
+  );
+
+  const pronPrefix = isSingle ? (isFemale ? 'السيدة' : 'السيد') : 'السادة';
+  const pronPoss = isSingle ? (isFemale ? 'لها' : 'له') : 'لهم';
+  const pronHand = isSingle ? (isFemale ? 'بيدها' : 'بيده') : 'بيدهم';
+  const pronHuz = isSingle ? (isFemale ? 'في حوزها واعتمارها وتصرفها وتحت ملكها' : 'في حوزه واعتماره وتصرفه وتحت ملكه') : 'في حوزهم واعتمارهم وتصرفهم وتحت ملكهم';
+  const pronProp = isSingle ? (isFemale ? 'مالا من مالها وملكا صحيحا خالصا لها من جملة أملاكها' : 'مالا من ماله وملكا صحيحا خالصا له من جملة أملاكه') : 'مالا من مالهم وملكا صحيحا خالصا لهم من جملة أملاكهم';
+  const pronDispose = isSingle 
+    ? (isFemale ? 'تحوزها وتتصرف فيها تصرف المالك في ملكه بجميع أنواع التصرفات كلها وتنسب ذلك لنفسها والناس إليها كذلك' : 'يحوزها ويتصرف فيها تصرف المالك في ملكه بجميع أنواع التصرفات كلها وينسب ذلك لنفسه والناس إليه كذلك')
+    : 'يحوزونها ويتصرفون فيها تصرف المالك في ملكه بجميع أنواع التصرفات كلها وينسبون ذلك لأنفسهم والناس إليهم كذلك';
+  const pronAlienate = isSingle
+    ? (isFemale ? 'بحيث لا يعلمونها باعت ذلك ولا وهبته ولا صدقته ولا فوتته ولا خرج عن ملكها وتصرفها بناقل شرعي أو بسبب من أسبابه كلها إلى الآن وحتى الآن' : 'بحيث لا يعلمونه باع ذلك ولا وهبه ولا صدقه ولا فوته ولا خرج عن ملكه وتصرفه بناقل شرعي أو بسبب من أسبابه كلها إلى الآن وحتى الآن')
+    : 'بحيث لا يعلمونهم باعوا ذلك ولا وهبوه ولا صدقوه ولا فوتوه ولا خرج عن ملكهم وتصرفهم بناقل شرعي أو بسبب من أسبابه كلها إلى الآن وحتى الآن';
+  const pronApplicant = isSingle ? (isFemale ? 'طالبة الإشهاد' : 'طالب الإشهاد') : 'طالبي الإشهاد';
+  const pronHerHim = isSingle ? (isFemale ? 'بها ومعها' : 'به ومعه') : 'بهم ومعهم';
+
+  const ownersFormattedList = owners.map((o) => {
+    const p = o.name?.startsWith('السيد') || o.name?.startsWith('السيدة') ? '' : (isFemale ? 'السيدة' : 'السيد');
+    const dob = o.dateOfBirth ? (o.dateOfBirth.includes('-') || o.dateOfBirth.includes('/') ? `المزداد${isFemale ? 'ة' : ''} بتاريخ <strong>${o.dateOfBirth}</strong>` : `المزداد${isFemale ? 'ة' : ''} سنة <strong>${o.dateOfBirth}</strong>`) : '';
+    const parentPart = (o.fatherName || o.motherName) ? `من والديه${isFemale ? 'ا' : ''} ${o.fatherName ? `السيد <strong>${o.fatherName}</strong>` : ''} ${o.motherName ? `والسيدة <strong>${o.motherName}</strong>` : ''}` : '';
+    const cin = o.idNumber ? `بطاقت${isFemale ? 'ها' : 'ه'} الوطنية رقم <strong>${o.idNumber}</strong>` : '';
+    const addr = o.address ? `الساكن${isFemale ? 'ة' : ''} بـ <strong>${o.address}</strong>` : '';
+    const proxyPart = (o.capacity === 'بتوكيل' || o.hasSpecialProxy === 'نعم') && o.proxyDetails
+      ? `وناب عن${isFemale ? 'ها' : 'ه'} بوكالة خاصة السيد(ة) <strong>${o.proxyDetails.name || (o as any).proxyName || '---'}</strong> بموجب توكيل عدد <strong>${o.proxyDetails.number || '---'}</strong> كناش <strong>${o.proxyDetails.book || '---'}</strong> صحيفة <strong>${o.proxyDetails.page || '---'}</strong> وتاريخ <strong>${o.proxyDetails.date || '---'}</strong> توثيق <strong>${o.proxyDetails.notary || '---'}</strong>`
+      : '';
+    const sharePart = o.share ? `بحصة <strong>${o.share}</strong>` : '';
+    return `${p} <strong>${o.name || '---'}</strong> ${[dob, parentPart, cin, addr, proxyPart, sharePart].filter(Boolean).join(' ')}`.trim();
+  }).join(' و ');
+
+  // Property Details
+  const propType = prop.propertyName || prop.type || 'الدويرية';
+  const propBuild = prop.buildingStatus || (prop.description?.includes('قائمة البناء') ? '' : 'القائمة البناء');
+  const propDesc = prop.description ? `${prop.description}` : 'المتكونة من مرافق وسكنى بسطحها وهوائها ودخلتها';
+  const propLoc = prop.location || prop.address || 'بالمكان المذكور أعلاه';
+
+  // Administrative Certificate
+  const adminCerts = (state as any).certificates || prop.ownershipCertificates || prop.administrativeCertificates || [];
+  const cert = adminCerts[0] || (state.administrativeCertificates?.[0]) || ({} as any);
+  const certClause = (cert.number || cert.issuedBy || cert.authority)
+    ? `حسب الشهادة الإدارية الصادرة عن <strong>${cert.issuedBy || cert.authority || 'الجماعة المختصة'}</strong> تحت رقم <strong>${cert.number || '---'}</strong> بتاريخ <strong>${cert.date || '---'}</strong>`
+    : '';
+
+  // Boundaries
+  const eastBound = prop.boundaries?.east || '---';
+  const westBound = prop.boundaries?.west || '---';
+  const northBound = prop.boundaries?.north || '---';
+  const southBound = prop.boundaries?.south || '---';
+  const boundariesClause = `وتحد شرقا: <strong>${eastBound}</strong>، غربا: <strong>${westBound}</strong>، شمالا: <strong>${northBound}</strong>، جنوبا: <strong>${southBound}</strong>`;
+
+  // Area & Value
+  const areaClause = prop.area_m2 ? `مساحتها حوالي <strong>${convertNumberToArabicWords(prop.area_m2)} مترا (${prop.area_m2}م2)</strong>` : '';
+  const priceAmt = state.finance?.price || 0;
+  const priceWords = state.finance?.priceInWords || (priceAmt ? convertNumberToArabicWords(priceAmt) : '');
+  const priceClause = priceAmt ? `قيمتها بذكر ${pronApplicant} <strong>${priceWords} درهم (${priceAmt.toLocaleString()} درهم)</strong>` : '';
+
+  // Possession Duration
+  const durationYears = prop.ownershipDurationYears || 15;
+  const durationClause = `مدة تزيد على ${durationYears >= 15 ? 'خمس عشرة سنة' : durationYears >= 10 ? 'عشر سنوات' : `${durationYears} سنوات`} سلفت عن تاريخه من غير علم منازع ${pronPoss} في ذلك ولا معارض طول المدة المذكورة`;
+
+  // Witnesses (شهود اللفيف الشرعي)
+  const witnesses = state.witnesses || [];
+  let witnessesListHtml = '';
+  if (witnesses.length > 0) {
+    witnessesListHtml = witnesses.map((w: any) => {
+      const wDob = w.dateOfBirth ? `المزداد بتاريخ <strong>${w.dateOfBirth}</strong>` : (w.yearOfBirth ? `المزداد سنة <strong>${w.yearOfBirth}</strong>` : '');
+      const wCin = w.idNumber ? `بطاقته الوطنية رقم <strong>${w.idNumber}</strong>` : '';
+      const wAddr = w.address ? `الساكن بـ <strong>${w.address}</strong>` : '';
+      return `<div style="margin-bottom: 6px;">- السيد <strong>${w.name}</strong> ${[wDob, wCin, wAddr].filter(Boolean).join(' ')}</div>`;
+    }).join('');
+  } else {
+    witnessesListHtml = '<div>شهود اللفيف الشرعي باثني عشر شاهدا بتعاريفهم ومواطن سكناهم المقيدة بسجل البيانات.</div>';
+  }
+
+  const ownershipNarrative = `
+    الحمد لله وحده، وعلى الساعة <strong>${sessionTime}</strong> من يوم <strong>${sessionDay}</strong> <strong>${dateHijriWords}</strong> هجرية وفاق <strong>${dateGregorianWords}</strong> (<strong>${dateHijri} هـ ق ${dateGregorian} م</strong>)،
+    تلقى العدلان أمنهما الله <strong>${notary1}</strong> و <strong>${notary2}</strong> المنتصبان للإشهاد بدائرة استئنافية <strong>${appellateCourt}</strong>، <strong>${courtSection}</strong> بالمحكمة الابتدائية بـ <strong>${courtName}</strong>،
+    شهادة ملكية سجل ملخصها بسجل البيانات للعدل الأول رقم <strong>${memoNumber}</strong> تحت عدد <strong>${memoCount}</strong> صحيفة <strong>${memoPage}</strong> وصل رقم <strong>${receiptNumber}</strong>، نصها:
+    شهوده الموضوعة أسماؤهم عقب تاريخه يعرفون ${ownersFormattedList} المعرفة التامة الكافية شرعا ${pronHerHim}،
+    ومعها يشهدون بأن ${pronPoss} و${pronHand} و${pronHuz} ${pronProp}،
+    وذلك جميع <strong>${propType}</strong> ${propBuild ? `<strong>${propBuild}</strong>` : ''} <strong>${propDesc}</strong> الكائنة بـ <strong>${propLoc}</strong>،
+    ${certClause ? `${certClause}،` : ''}
+    ${boundariesClause}،
+    ${areaClause ? `${areaClause}،` : ''}
+    ${priceClause ? `${priceClause}،` : ''}
+    وأن${isSingle ? (isFemale ? 'ها' : 'ه') : 'هم'} ${pronDispose} ${durationClause}،
+    ${pronAlienate}،
+    هذا الذي في علمهم وصحة يقينهم، وسند علمهم في ذلك المخالطة والمعاينة لما ذكر أعلاه وشدة الاطلاع على جل الأحوال،
+    وبمضمنه قيدت شهادتهم لسائل${isSingle ? (isFemale ? 'ها' : 'ه') : 'هم'} ${pronApplicant} أعلاه.
+  `
+    .replace(/[،,]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+
+  return `
+    <div style="font-family: 'Traditional Arabic', 'Amiri', 'Segoe UI', Tahoma, serif; direction: rtl; text-align: justify; line-height: 2.2; font-size: 17px; color: #1a202c; padding: 25px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      
+      <!-- Top Official Moroccan Judicial Header -->
+      <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px;">
+        <div style="font-size: 22px; font-weight: bold; color: #1e3a8a; margin-bottom: 4px;">المملكة المغربية</div>
+        <div style="font-size: 18px; font-weight: bold; color: #334155; margin-bottom: 4px;">وزارة العدل</div>
+        <div style="font-size: 17px; font-weight: bold; color: #1e293b;">محكمة الاستئناف بـ ${appellateCourt} - المحكمة الابتدائية بـ ${courtName} (${courtSection})</div>
+        
+        <!-- Registry Box (دفتر الأملاك) -->
+        <div style="margin-top: 12px; font-size: 14px; color: #1e3a8a; background: #eff6ff; padding: 8px 16px; border-radius: 6px; display: inline-block; border: 1px solid #bfdbfe; font-weight: bold;">
+          ضمن بـ ${regBook} رقم: <strong style="color: #1d4ed8;">${regNum}</strong> | حرف: <strong style="color: #1d4ed8;">${regLetter}</strong> | عدد: <strong style="color: #1d4ed8;">${regCount}</strong> | بتاريخ: <strong style="color: #1d4ed8;">${regDateHijri} هـ</strong> وفاق <strong style="color: #1d4ed8;">${regDateGreg} م</strong>
+        </div>
+        
+        <div style="margin-top: 14px; font-size: 24px; font-weight: 900; color: #1e3a8a; letter-spacing: 1px;">
+          رسم ملكية (رسم الاستمرار)
+        </div>
+      </div>
+
+      <!-- Unified Continuous Legal Paragraph (Moroccan Rasm Format) -->
+      <div style="margin: 20px 0; padding: 22px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <p style="margin: 0; padding: 0; text-align: justify; text-justify: inter-word; line-height: 2.3; font-size: 18px; color: #0f172a; text-indent: 32px;">
+          ${ownershipNarrative}
+        </p>
+      </div>
+
+      <!-- Witnesses Section (شهود اللفيف الاثنا عشر) -->
+      <div style="margin: 20px 0; padding: 16px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <div style="font-weight: bold; color: #1e3a8a; font-size: 16px; margin-bottom: 10px;">شهد بذلك السادة (شهود اللفيف الشرعي):</div>
+        <div style="font-size: 15px; color: #334155; line-height: 2;">
+          ${witnessesListHtml}
+        </div>
+        <div style="margin-top: 12px; font-size: 15px; color: #1e293b; font-weight: 600; text-align: justify;">
+          وتلي على الجميع نص الشهادة فأكدوه ووافقوا عليه بتوقيعهم عليه عقبه بسجل البيانات المشار إليه أعلاه عنهم بإذنهم وهم عارفون قدره وبأتمه.
+        </div>
+      </div>
+
+      <!-- Signatures Box -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 25px; padding-top: 15px; border-top: 2px dashed #94a3b8; text-align: center;">
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <div style="font-weight: bold; color: #1e293b; margin-bottom: 25px; font-size: 15px;">توقيع طالب(ة) الإشهاد</div>
+          <div style="font-size: 13px; color: #64748b;">${owners.map(o => o.name).join(' - ') || 'طالب الإشهاد'}</div>
+        </div>
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <div style="font-weight: bold; color: #1e293b; margin-bottom: 25px; font-size: 15px;">شهود اللفيف</div>
+          <div style="font-size: 13px; color: #64748b;">توقيعات شهود اللفيف بسجل البيانات</div>
+        </div>
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <div style="font-weight: bold; color: #1e293b; margin-bottom: 25px; font-size: 15px;">توقيع العدلين المنتصبين</div>
+          <div style="font-size: 13px; color: #64748b;">${notary1} - ${notary2}</div>
+        </div>
+      </div>
+
+      <!-- Judge Attestation Section -->
+      <div style="margin-top: 20px; padding: 14px 18px; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 6px; text-align: center;">
+        <div style="font-weight: bold; color: #1e3a8a; font-size: 16px; margin-bottom: 6px;">خطاب القاضي المكلف بالتوثيق</div>
+        <p style="margin: 0; font-size: 14px; color: #52525b; line-height: 1.8;">
+          الحمد لله أشهد الفقيه الأجل القاضي المكلف بالتوثيق بالمحكمة الابتدائية بـ <strong>${courtName}</strong> ودائرتها وهو أعزه الله تعالى بعز طاعته وحرس ولايته بثبوت الرسم أعلاه لديه الثبوت التام بواجبه وهو حفظه الله بحيث يجب له ذلك من حيث ذكر، وحرر الرسم في نفس تاريخ تلقيه أعلاه، وسجل إلكترونيا في <strong>${(meta as any)?.electronicRegistryDate || '.....'}</strong> أمر بالاستخلاص <strong>${(meta as any)?.recoveryOrderNumber || '.....'}</strong> سجل المداخيل <strong>${(meta as any)?.revenueRegisterNumber || '.....'}</strong>، عبد ربه تعالى وعبد ربه.
+        </p>
+        <div style="margin-top: 14px; display: flex; justify-content: space-around; font-size: 13px; color: #71717a;">
+          <span>بتاريخ: ..................................</span>
+          <span>توقيع وخاتم القاضي المكلف بالتوثيق: ..................................</span>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
 export function generateRasmHtml(state: FeesAgentState): string {
   const { documentType, sellers, buyers, finance, meta } = state;
 
   // Marriage and marriage-related deeds
   if ((MARRIAGE_DOCUMENT_TYPES as readonly string[]).includes(documentType)) {
     return generateMarriageRasmHtml(state);
+  }
+
+  // Ownership deeds (ملكية / رسم استمرار / حيازة)
+  if (documentType === 'ملكية' || documentType === 'حيازة' || documentType.includes('ملكية') || documentType.includes('حيازة')) {
+    return generateMalakiyaRasmHtml(state);
   }
 
   // Real estate sale deeds (Screenshot 2 authentic Moroccan template)
@@ -818,7 +1073,7 @@ export function generateDocumentDraft(state: FeesAgentState): string {
 
     // Husband
     const husbandBirthCert = husband.birthCertificateNumber
-      ? `عقد ولادته رقم ${husband.birthCertificateNumber} لسنة ${husband.birthCertificateYear || '---'} جماعة ${husband.birthCertificateCommune || husband.birthCertificateCity || '---'}`
+      ? `عقد ولادته رقم ${husband.birthCertificateNumber} لسنة ${husband.birthCertificateYear || '---'} جماعة/دائرة ${husband.birthCertificateCommune || husband.birthCertificateCity || '---'}${husband.birthCertificateDate ? ` المؤرخ في ${husband.birthCertificateDate}` : ''}${husband.birthCertificateIssuedBy ? ` المسلم من ${husband.birthCertificateIssuedBy}` : ''}${husband.birthCertificateCountry ? ` بدولة ${husband.birthCertificateCountry}` : ''}`
       : '';
     const husbandIdClause = husband.idNumber
       ? `الحامل للبطاقة الوطنية للتعريف رقم ${husband.idNumber}${(husband.idIssueDate || husband.idExpiryDate) ? ` صالحة إلى غاية ${husband.idIssueDate || husband.idExpiryDate}` : ''}`
@@ -826,19 +1081,37 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       ? `الحامل لجواز سفر رقم ${husband.passportNumber}${husband.passportIssuedBy ? ` الصادر عن ${husband.passportIssuedBy}` : ''}${husband.passportValidUntil ? ` صالح إلى ${husband.passportValidUntil}` : ''}`
       : '';
     const husbandNatClause = husband.nationality ? `جنسيته ${husband.nationality}` : '';
+    const husbandDivorceDetails = husband.maritalStatus === 'مطلق'
+      ? (husband.divorceSource === 'حكم' || husband.divorceCourt
+          ? ` بموجب حكم طلاق صادر عن ${husband.divorceCourt || 'المحكمة'} بتاريخ ${husband.divorceJudgmentDate || husband.divorceDeedDate || '---'}${husband.divorceExecutiveFormula ? ` مذيل بالصيغة التنفيذية بتاريخ ${husband.divorceExecutiveDate || '---'}` : ''}${husband.divorceCountry ? ` بدولة ${husband.divorceCountry}` : ''}`
+          : (husband.divorceDeedNumber ? ` بموجب رسم طلاق عدد ${husband.divorceDeedNumber}${husband.divorceDeedBook ? ` كناش ${husband.divorceDeedBook}` : ''}${husband.divorceDeedPage ? ` صحيفة ${husband.divorceDeedPage}` : ''} بتاريخ ${husband.divorceDeedDate || '---'}${husband.divorceDeedNotary ? ` توثيق ${husband.divorceDeedNotary}` : ''}` : ''))
+      : '';
     const husbandMaritalStatusClause = husband.maritalStatus
-      ? `حالته العائلية ${husband.maritalStatus === 'اعزب' ? 'أعزب' : husband.maritalStatus === 'مطلق' ? 'مطلق' : husband.maritalStatus === 'ارمل' ? 'أرمل' : husband.maritalStatus}${husband.divorceDeedNumber ? ` بموجب رسم طلاق عدد ${husband.divorceDeedNumber} بتاريخ ${husband.divorceDeedDate || '---'}` : ''}`
+      ? `حالته العائلية ${husband.maritalStatus === 'اعزب' ? 'أعزب' : husband.maritalStatus === 'مطلق' ? 'مطلق' : husband.maritalStatus === 'ارمل' ? 'أرمل' : husband.maritalStatus}${husbandDivorceDetails}`
+      : '';
+    const husbandAdminCert = husband.engagementCertificateNumber
+      ? `وحسب الشهادة الإدارية للزواج رقم ${husband.engagementCertificateNumber}${husband.engagementCertificateDate ? ` بتاريخ ${husband.engagementCertificateDate}` : ''}${husband.engagementCertificateCommune || husband.engagementCertificateCity ? ` الصادرة عن جماعة ${husband.engagementCertificateCommune || husband.engagementCertificateCity}` : ''}`
       : '';
     const husbandMedCert = husband.medicalCertificateNumber
-      ? `الشهادة الطبية لما قبل الزواج رقم ${husband.medicalCertificateNumber}${husband.medicalCertificateDate ? ` بتاريخ ${husband.medicalCertificateDate}` : ''}${husband.medicalCertificateIssuedBy ? ` المسلمة من ${husband.medicalCertificateIssuedBy}` : ''}`
+      ? `الشهادة الطبية لما قبل الزواج رقم ${husband.medicalCertificateNumber}${husband.medicalCertificateDate ? ` بتاريخ ${husband.medicalCertificateDate}` : ''}${husband.medicalCertificateIssuedBy ? ` المسلمة من ${husband.medicalCertificateIssuedBy}` : ''}${husband.medicalCertificateCity ? ` بـ ${husband.medicalCertificateCity}` : ''}`
+      : '';
+    const husbandMinorClause = husband.underagePermissionNumber
+      ? `المأذون بزواجه دون سن الرشد بمقتضى مقرر قاضي الأسرة رقم ${husband.underagePermissionNumber} بتاريخ ${husband.underagePermissionDate || '---'} بالمحكمة الابتدائية بـ ${husband.underagePermissionCourt || courtName}`
       : '';
     const husbandProxyClause = husband.hasSpecialProxy === 'نعم' && husband.proxyName
-      ? `وناب عنه بوكالة خاصة السيد ${husband.proxyName} الحامل لـ ب.ت.و رقم ${husband.proxyNationalID || '---'} بموجب رسم عدد ${husband.proxyDeedNumber || '---'} وتاريخ ${husband.proxyDeedDate || '---'}`
+      ? `وناب عنه بوكالة خاصة السيد ${husband.proxyName}${husband.proxyFatherName ? ` بن ${husband.proxyFatherName}` : ''}${husband.proxyDOB ? ` المزداد بتاريخ ${husband.proxyDOB}` : ''}${husband.proxyAddress ? ` الساكن بـ ${husband.proxyAddress}` : ''} الحامل لـ ب.ت.و رقم ${husband.proxyNationalID || '---'} بموجب رسم توكيل عدد ${husband.proxyDeedNumber || '---'}${husband.proxyDeedBook ? ` كناش ${husband.proxyDeedBook}` : ''}${husband.proxyDeedPage ? ` صحيفة ${husband.proxyDeedPage}` : ''} وتاريخ ${husband.proxyDeedDate || '---'}${husband.proxyDeedNotary ? ` توثيق ${husband.proxyDeedNotary}` : ''}`
       : '';
+    const husbandForeignExtra = [
+      husband.residenceCountry ? `المقيم بـ ${husband.residenceCountry}` : '',
+      husband.nationalityCertificateIssuedBy ? `شهادة الجنسية المسلمة من ${husband.nationalityCertificateIssuedBy}` : '',
+      husband.capacityCertificateIssuedBy ? `شهادة الأهلية للزواج الصادرة عن ${husband.capacityCertificateIssuedBy} بتاريخ ${husband.capacityCertificateDate || '---'}` : '',
+      husband.criminalRecordBirthplaceNumber ? `السجل العدلي لبلد المنشأ رقم ${husband.criminalRecordBirthplaceNumber} بتاريخ ${husband.criminalRecordBirthplaceDate || '---'}` : '',
+      husband.centralCriminalRecordNumber ? `السجل العدلي المركزي رقم ${husband.centralCriminalRecordNumber} بتاريخ ${husband.centralCriminalRecordDate || '---'}` : '',
+    ].filter(Boolean).join('، ');
 
     // Wife
     const wifeBirthCert = wife.birthCertificateNumber
-      ? `عقد ولادتها رقم ${wife.birthCertificateNumber} لسنة ${wife.birthCertificateYear || '---'} جماعة ${wife.birthCertificateCommune || wife.birthCertificateCity || '---'}`
+      ? `عقد ولادتها رقم ${wife.birthCertificateNumber} لسنة ${wife.birthCertificateYear || '---'} جماعة/دائرة ${wife.birthCertificateCommune || wife.birthCertificateCity || '---'}${wife.birthCertificateDate ? ` المؤرخ في ${wife.birthCertificateDate}` : ''}${wife.birthCertificateIssuedBy ? ` المسلم من ${wife.birthCertificateIssuedBy}` : ''}${wife.birthCertificateCountry ? ` بدولة ${wife.birthCertificateCountry}` : ''}`
       : '';
     const wifeIdClause = wife.idNumber
       ? `الحاملة للبطاقة الوطنية للتعريف رقم ${wife.idNumber}${(wife.idIssueDate || wife.idExpiryDate) ? ` صالحة إلى غاية ${wife.idIssueDate || wife.idExpiryDate}` : ''}`
@@ -846,29 +1119,44 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       ? `الحاملة لجواز سفر رقم ${wife.passportNumber}${wife.passportIssuedBy ? ` الصادر عن ${wife.passportIssuedBy}` : ''}${wife.passportValidUntil ? ` صالح إلى ${wife.passportValidUntil}` : ''}`
       : '';
     const wifeNatClause = wife.nationality ? `جنسيتها ${wife.nationality}` : '';
+    const wifeDivorceDetails = wife.maritalStatus === 'مطلق'
+      ? (wife.divorceSource === 'حكم' || wife.divorceCourt
+          ? ` بموجب حكم طلاق صادر عن ${wife.divorceCourt || 'المحكمة'} بتاريخ ${wife.divorceJudgmentDate || wife.divorceDeedDate || '---'}${wife.divorceExecutiveFormula ? ` مذيل بالصيغة التنفيذية بتاريخ ${wife.divorceExecutiveDate || '---'}` : ''}${wife.divorceCountry ? ` بدولة ${wife.divorceCountry}` : ''}`
+          : (wife.divorceDeedNumber ? ` بموجب رسم طلاق عدد ${wife.divorceDeedNumber}${wife.divorceDeedBook ? ` كناش ${wife.divorceDeedBook}` : ''}${wife.divorceDeedPage ? ` صحيفة ${wife.divorceDeedPage}` : ''} بتاريخ ${wife.divorceDeedDate || '---'}${wife.divorceDeedNotary ? ` توثيق ${wife.divorceDeedNotary}` : ''}` : ''))
+      : '';
     const wifeMaritalStatusClause = wife.maritalStatus
-      ? `حالتها العائلية ${wife.maritalStatus === 'اعزب' ? 'بكر' : wife.maritalStatus === 'مطلق' ? 'مطلقة' : wife.maritalStatus === 'ارمل' ? 'أرملة' : wife.maritalStatus}${wife.divorceDeedNumber ? ` بموجب رسم طلاق عدد ${wife.divorceDeedNumber} بتاريخ ${wife.divorceDeedDate || '---'}` : ''}`
+      ? `حالتها العائلية ${wife.maritalStatus === 'اعزب' ? 'بكر' : wife.maritalStatus === 'مطلق' ? 'مطلقة' : wife.maritalStatus === 'ارمل' ? 'أرملة' : wife.maritalStatus}${wifeDivorceDetails}`
+      : '';
+    const wifeAdminCert = wife.engagementCertificateNumber
+      ? `وحسب الشهادة الإدارية للزواج رقم ${wife.engagementCertificateNumber}${wife.engagementCertificateDate ? ` بتاريخ ${wife.engagementCertificateDate}` : ''}${wife.engagementCertificateCommune || wife.engagementCertificateCity ? ` الصادرة عن جماعة ${wife.engagementCertificateCommune || wife.engagementCertificateCity}` : ''}`
       : '';
     const wifeMedCert = wife.medicalCertificateNumber
-      ? `الشهادة الطبية لما قبل الزواج رقم ${wife.medicalCertificateNumber}${wife.medicalCertificateDate ? ` بتاريخ ${wife.medicalCertificateDate}` : ''}${wife.medicalCertificateIssuedBy ? ` المسلمة من ${wife.medicalCertificateIssuedBy}` : ''}`
+      ? `الشهادة الطبية لما قبل الزواج رقم ${wife.medicalCertificateNumber}${wife.medicalCertificateDate ? ` بتاريخ ${wife.medicalCertificateDate}` : ''}${wife.medicalCertificateIssuedBy ? ` المسلمة من ${wife.medicalCertificateIssuedBy}` : ''}${wife.medicalCertificateCity ? ` بـ ${wife.medicalCertificateCity}` : ''}`
       : '';
     const wifeMinorClause = wife.underagePermissionNumber
-      ? `المأذون بزواجها كقاصر بمقتضى مقرر قاضي الأسرة رقم ${wife.underagePermissionNumber} بتاريخ ${wife.underagePermissionDate || '---'} بالمحكمة الابتدائية بـ ${wife.underagePermissionCourt || courtName}`
+      ? `المأذون بزواجها دون سن الرشد بمقتضى مقرر قاضي الأسرة رقم ${wife.underagePermissionNumber} بتاريخ ${wife.underagePermissionDate || '---'} بالمحكمة الابتدائية بـ ${wife.underagePermissionCourt || courtName}`
       : '';
     const wifeProxyClause = wife.hasSpecialProxy === 'نعم' && wife.proxyName
-      ? `ونابت عنها بوكالة خاصة السيدة/السيد ${wife.proxyName} الحامل لـ ب.ت.و رقم ${wife.proxyNationalID || '---'}`
+      ? `ونابت عنها بوكالة خاصة السيدة/السيد ${wife.proxyName}${wife.proxyFatherName ? ` بن(ت) ${wife.proxyFatherName}` : ''}${wife.proxyDOB ? ` المزداد(ة) بتاريخ ${wife.proxyDOB}` : ''}${wife.proxyAddress ? ` الساكن(ة) بـ ${wife.proxyAddress}` : ''} الحامل(ة) لـ ب.ت.و رقم ${wife.proxyNationalID || '---'} بموجب رسم توكيل عدد ${wife.proxyDeedNumber || '---'}${wife.proxyDeedBook ? ` كناش ${wife.proxyDeedBook}` : ''}${wife.proxyDeedPage ? ` صحيفة ${wife.proxyDeedPage}` : ''} وتاريخ ${wife.proxyDeedDate || '---'}${wife.proxyDeedNotary ? ` توثيق ${wife.proxyDeedNotary}` : ''}`
       : '';
+    const wifeForeignExtra = [
+      wife.residenceCountry ? `المقيمة بـ ${wife.residenceCountry}` : '',
+      wife.nationalityCertificateIssuedBy ? `شهادة الجنسية المسلمة من ${wife.nationalityCertificateIssuedBy}` : '',
+      wife.capacityCertificateIssuedBy ? `شهادة الأهلية للزواج الصادرة عن ${wife.capacityCertificateIssuedBy} بتاريخ ${wife.capacityCertificateDate || '---'}` : '',
+      wife.criminalRecordBirthplaceNumber ? `السجل العدلي لبلد المنشأ رقم ${wife.criminalRecordBirthplaceNumber} بتاريخ ${wife.criminalRecordBirthplaceDate || '---'}` : '',
+      wife.centralCriminalRecordNumber ? `السجل العدلي المركزي رقم ${wife.centralCriminalRecordNumber} بتاريخ ${wife.centralCriminalRecordDate || '---'}` : '',
+    ].filter(Boolean).join('، ');
 
     const guardianInfo = (wife.contractsWithoutGuardian === 'لا' || (!wife.contractsWithoutGuardian && wife.guardianName)) && wife.guardianName
-      ? `وعقد زواجها وليها ${wife.guardianRelationship || 'وليها'} السيد ${wife.guardianName} مهنته ${wife.guardianProfession || '---'} يسكن ${wife.guardianAddress || 'معها'} بطاقته الوطنية ${wife.guardianNationalID || '---'}`
-      : 'وتولت الزوجة الرشيدة عقد زواجها بنفسها طبقا للمادة 25 من مدونة الأسرة';
+      ? `وعقد زواجها وليها ${wife.guardianRelationship || 'وليها'}${wife.guardianRelationshipCustom ? ` (${wife.guardianRelationshipCustom})` : ''} السيد ${wife.guardianName}${wife.guardianDOB ? ` المزداد بتاريخ ${wife.guardianDOB}` : ''}${wife.guardianFatherName ? ` ابن ${wife.guardianFatherName}` : ''} مهنته ${wife.guardianProfession || '---'} الساكن بـ ${wife.guardianAddress || 'معها'} بطاقته الوطنية ${wife.guardianNationalID || '---'}`
+      : 'وتولت الزوجة الرشيدة عقد زواجها بنفسها طبقا لمقتضيات المادة 25 من مدونة الأسرة';
 
     const conversionCertClause = md.mixedMarriageForeignParty === 'husband' && md.husbandConvertedToIslam === 'yes' && md.conversionCertificate?.number
       ? ` وثبت إسلام الزوج الأجنبي بمقتضى وثيقة اعتناق الإسلام المضمنة بكناش ${md.conversionCertificate.book || '---'} صحيفة ${md.conversionCertificate.page || '---'} عدد ${md.conversionCertificate.count || '---'} رقم ${md.conversionCertificate.number || '---'} بتاريخ ${md.conversionCertificate.date || '---'} توثيق ${md.conversionCertificate.notary || '---'}`
       : '';
 
     const condInfo = md.hasSpecialConditions === 'نعم' && md.specialConditionsText
-      ? `واشترط${md.specialConditionsOwner ? ` (${md.specialConditionsOwner})` : ''} ما نصه ${md.specialConditionsText} طبقا للمادتين 47 و 48 من مدونة الأسرة`
+      ? `واشترط${md.specialConditionsOwner ? ` (${md.specialConditionsOwner})` : ''} في العقد ما نصه: « ${md.specialConditionsText} » طبقا للمادتين 47 و 48 من مدونة الأسرة`
       : 'ولم يشترط الزوجان أي شرط خاص طبقا للمادتين 47 و 48 من مدونة الأسرة';
 
     const art49Info = md.hasAssetManagementAgreement === 'نعم'
@@ -879,41 +1167,58 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       ? `بحضور الشاهدين: ${state.witnesses.map((w: any) => `السيد ${w.name} بطاقته الوطنية رقم ${w.idNumber || '---'}`).join(' و ')}`
       : 'سمع منهما العدلان الشاهدان الإيجاب والقبول الصريحين التامين الرضائيين';
 
+    const husbandFatherInfo = husband.fatherProfession ? `${husband.fatherName || '---'} (مهنته ${husband.fatherProfession})` : (husband.fatherName || '---');
+    const husbandMotherInfo = husband.motherProfession ? `${husband.motherName || '---'} (مهنتها ${husband.motherProfession})` : (husband.motherName || '---');
+
     const husbandParts = [
       `الزوج السيد ${husband.name || '---'}${husband.nameLatin ? ` (${husband.nameLatin})` : ''}`,
-      `ولد بـ ${husband.placeOfBirth || '---'} بتاريخ ${husband.dateOfBirth || '---'}`,
-      `من والديه السيد ${husband.fatherName || '---'} والسيدة ${husband.motherName || '---'}`,
+      `المزداد بـ ${husband.placeOfBirth || '---'} بتاريخ ${husband.dateOfBirth || '---'}`,
+      `من والديه السيد ${husbandFatherInfo} والسيدة ${husbandMotherInfo}`,
       husbandBirthCert,
       `مهنته ${husband.profession || '---'}`,
-      `يسكن بـ ${husband.address || '---'}`,
+      `والساكن بـ ${husband.address || '---'}`,
       husbandIdClause,
       husbandNatClause,
       husbandMaritalStatusClause,
+      husbandAdminCert,
       husbandMedCert,
+      husbandMinorClause,
       husbandProxyClause,
+      husbandForeignExtra,
     ].filter(Boolean).join(' ');
+
+    const wifeFatherInfo = wife.fatherProfession ? `${wife.fatherName || '---'} (مهنته ${wife.fatherProfession})` : (wife.fatherName || '---');
+    const wifeMotherInfo = wife.motherProfession ? `${wife.motherName || '---'} (مهنتها ${wife.motherProfession})` : (wife.motherName || '---');
 
     const wifeParts = [
       `وزوجته المباركة عليه البنت المصونة ${wife.name || '---'}${wife.nameLatin ? ` (${wife.nameLatin})` : ''}`,
-      `ولدت بـ ${wife.placeOfBirth || '---'} بتاريخ ${wife.dateOfBirth || '---'}`,
-      `من والديها السيد ${wife.fatherName || '---'} والسيدة ${wife.motherName || '---'}`,
+      `المولودة بـ ${wife.placeOfBirth || '---'} بتاريخ ${wife.dateOfBirth || '---'}`,
+      `من والديها السيد ${wifeFatherInfo} والسيدة ${wifeMotherInfo}`,
       wifeBirthCert,
       `مهنتها ${wife.profession || 'بدون مهنة'}`,
-      `تسكن بـ ${wife.address || '---'}`,
+      `والساكنة بـ ${wife.address || '---'}`,
       wifeIdClause,
       wifeNatClause,
       wifeMaritalStatusClause,
+      wifeAdminCert,
       wifeMedCert,
       wifeMinorClause,
       wifeProxyClause,
+      wifeForeignExtra,
     ].filter(Boolean).join(' ');
 
-    const narrative = `الحمد لله وحده وصلى الله وسلم على سيدنا محمد وآله وصحبه على الساعة ${sessionTime} من يوم ${sessionDay} ${sessionDateHijriWords} هجرية موافق ${sessionDateGregWords} ميلادية (${dateHijri} / ${dateGreg}) تلقى العدلان أمنهما الله ${notary1} و ${notary2} المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ ${appellateCourt} قسم التوثيق وقضاء الأسرة بالمحكمة الابتدائية بـ ${courtName} الشهادة المدرجة بمذكرة حفظ العدل الأول رقم ${memoNum} صحيفة ${memoPage} عدد ${memoCount} والمضمنة بـ ${regBook} رقم ${regNum} صحيفة ${regPage} عدد ${regCount} بتاريخ ${regDate} نصها الحمد لله بعد إذن السيد قاضي الأسرة المكلف بالزواج بالمحكمة الابتدائية بـ ${authCourt} ملف رقم ${authNum} بتاريخ ${authDate} تزوج على بركة الله وحسن عونه وتوفيقه الجميل ${husbandParts} ${conversionCertClause} ${wifeParts} ${guardianInfo} على صداق مبارك قدره ونهايته ${dowryWords} (${dowryAmt.toLocaleString()} درهم) ${dowryRecStatus}${otherDowryClause} تزوجها على كتاب الله وسنة رسوله المصطفى ﷺ وباليمن والبركة ${witnessesInfo} ${condInfo} ${art49Info} وقبل الزوجان هذا الزواج الشرعي وارتضياه وعقداه حسب المسطور وحفظ للعدل الأول وحرر الرسم بتاريخه المذكور عبد ربه تعالى وعبد ربه.`
+    const narrative = `الحمد لله وحده وصلى الله وسلم على سيدنا محمد وآله وصحبه على الساعة ${sessionTime} من يوم ${sessionDay} ${sessionDateHijriWords} هجرية موافق ${sessionDateGregWords} ميلادية (${dateHijri} / ${dateGreg}) تلقى العدلان أمنهما الله ${notary1} و ${notary2} المنتصبان للإشهاد بدائرة محكمة الاستئناف بـ ${appellateCourt} قسم التوثيق وقضاء الأسرة بالمحكمة الابتدائية بـ ${courtName} الشهادة المدرجة بسجل البيانات للعدل الأول رقم ${memoNum} صحيفة ${memoPage} عدد ${memoCount} والمضمنة بـ ${regBook} رقم ${regNum} صحيفة ${regPage} عدد ${regCount} بتاريخ ${regDate} نصها الحمد لله بعد إذن السيد قاضي الأسرة المكلف بالزواج بالمحكمة الابتدائية بـ ${authCourt} ملف رقم ${authNum} بتاريخ ${authDate} تزوج على بركة الله وحسن عونه وتوفيقه الجميل ${husbandParts} ${conversionCertClause} ${wifeParts} ${guardianInfo} على صداق مبارك قدره ونهايته ${dowryWords} (${dowryAmt.toLocaleString()} درهم) ${dowryRecStatus}${otherDowryClause} تزوجها على كتاب الله وسنة رسوله المصطفى ﷺ وباليمن والبركة ${witnessesInfo} ${condInfo} ${art49Info} وقبل الزوجان هذا الزواج الشرعي وارتضياه وعقداه حسب المسطور وحفظ للعدل الأول وحرر الرسم بتاريخه المذكور عبد ربه تعالى وعبد ربه.`
       .replace(/[،,]/g, '')
       .replace(/[ \t]+/g, ' ')
       .trim();
 
     return narrative;
+  }
+
+  // Ownership deeds (ملكية / رسم استمرار / حيازة)
+  if (documentType === 'ملكية' || documentType === 'حيازة' || documentType.includes('ملكية') || documentType.includes('حيازة')) {
+    const malakiyaHtml = generateMalakiyaRasmHtml(state);
+    return stripHtmlToPlainText(malakiyaHtml);
   }
 
   // Real estate sale deeds (Screenshot 2 authentic Moroccan template)
@@ -1188,7 +1493,7 @@ ${sellersBlock}
 المشترون:
 ${buyersBlock}
 
-${documentType === 'حيازة' ? 'تفاصيل الحيازة' : 'تفاصيل الملكية'}:
+${(documentType as string) === 'حيازة' ? 'تفاصيل الحيازة' : 'تفاصيل الملكية'}:
 ${propertiesBlock}
 
 تفاصيل الثمن:

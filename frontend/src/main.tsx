@@ -19,6 +19,7 @@ import { Unauthorized } from './components/Unauthorized';
 import { LandingPage } from './components/LandingPage';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { OrnateScrollBanner } from './components/common/OrnateScrollBanner';
+import { ZoomControl } from './components/common/ZoomControl';
 import { ToastContainer, toast } from './components/common/ToastNotification';
 import { getBackendHttpOrigin } from './utils/backendOrigin';
 
@@ -363,6 +364,10 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
 
   React.useEffect(() => {
     setMobileSidebarOpen(false);
+    const scrollContainer = document.getElementById('main-content-scroll-container');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
   }, [active, location.pathname, location.search]);
 
   React.useEffect(() => {
@@ -544,7 +549,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
   }, [active]);
 
   return (
-    <div className="flex h-screen w-full bg-slate-100 text-slate-900 overflow-hidden" dir="ltr">
+    <div className="flex h-full min-h-screen w-full bg-slate-100 text-slate-900 overflow-hidden" dir="ltr">
       {/* Mobile Drawer Backdrop */}
       {mobileSidebarOpen && (
         <div
@@ -947,11 +952,14 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
                 )}
               </div>
 
-              <div className="flex flex-col items-end gap-1 pr-4 border-r border-slate-300/50">
-                <div className="bg-white/90 px-3.5 py-1 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm text-xs">
-                   <div className="text-slate-700 font-bold">
-                     <DateWidget />
-                   </div>
+              <div className="flex flex-col items-end gap-1.5 pr-4 border-r border-slate-300/50">
+                <div className="flex items-center gap-2">
+                  <ZoomControl />
+                  <div className="bg-white/90 px-3.5 py-1 rounded-full border border-slate-200 shadow-sm backdrop-blur-sm text-xs">
+                     <div className="text-slate-700 font-bold">
+                       <DateWidget />
+                     </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
@@ -1000,7 +1008,10 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#5a0c0b] via-[#800020] to-[#5a0c0b] shadow-[0_2px_4px_rgba(0,0,0,0.1)]"></div>
         </header>
 
-        <div className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || (active as string) === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}>
+        <div
+          id="main-content-scroll-container"
+          className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || (active as string) === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}
+        >
           <Suspense fallback={<RouteLoader />}>{renderModule()}</Suspense>
         </div>
       </main>

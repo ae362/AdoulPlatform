@@ -2338,7 +2338,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           )}
 
           <button
-            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-5 py-3 text-xs font-black text-white shadow-lg shadow-blue-900/30 transition-all hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600 active:scale-95"
+            className="flex items-center gap-2 rounded-2xl bg-[#DC143C] px-5 py-3 text-xs font-black text-white shadow-lg shadow-[#DC143C]/40 border border-[#DC143C] transition-all hover:bg-[#b01030] active:scale-95 cursor-pointer"
             onClick={handleSaveDeed}
           >
             <ShieldCheck className="w-4 h-4" />
@@ -2530,7 +2530,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           </div>
         )}
         
-        <div className="relative flex h-full flex-[3] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,#0a0a0a_0%,#000000_100%)] shadow-[0_30px_70px_rgba(0,0,0,0.5)]">
+        <div className="relative flex h-full flex-[3] flex-col overflow-hidden rounded-[2rem] border border-blue-900/50 bg-[linear-gradient(135deg,#071426_0%,#0B254E_35%,#123E7E_70%,#1A56B0_100%)] shadow-[0_30px_70px_rgba(7,20,38,0.5)]">
           <div className="border-b border-white/10 px-5 py-4 lg:px-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-right">
@@ -2551,7 +2551,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-1 items-start justify-center overflow-auto overscroll-contain bg-black p-6">
+          <div className="flex flex-1 items-start justify-center overflow-auto overscroll-contain bg-[#071426]/75 backdrop-blur-xs p-6">
             <div 
               className="transition-all duration-200"
               style={{
@@ -2651,7 +2651,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           </div>
 
           <div className="flex justify-center px-6 pb-6 pt-2 shrink-0">
-            <div className="flex items-center gap-4 rounded-[1.6rem] border border-white/10 bg-black/35 px-4 py-2.5 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-4 rounded-[1.6rem] border border-white/15 bg-[#071426]/75 px-4 py-2.5 shadow-2xl backdrop-blur-md">
               <div className="flex items-center gap-2 border-l border-white/10 pr-2">
                 <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} className="p-1.5 hover:bg-slate-800 rounded transition-colors"><ZoomOut className="w-4 h-4" /></button>
                 <span className="text-xs font-black min-w-[3rem] text-center">{Math.round(zoom * 100)}%</span>
@@ -2786,14 +2786,14 @@ export const NotarySignatureWorkarea: React.FC = () => {
                     disabled={!!adoul1Signature}
                     className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-right ${
                       activeAdoul === 1 
-                        ? 'border-[#12388A] bg-blue-50 shadow-lg shadow-blue-100' 
+                        ? 'border-[#DC143C] bg-rose-50 shadow-lg shadow-rose-100' 
                         : adoul1Signature 
                           ? 'border-emerald-300 bg-emerald-50 opacity-100'
                           : 'border-[#e5dac5] bg-white opacity-75 hover:opacity-100'
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      adoul1Signature ? 'bg-emerald-600 text-white' : (activeAdoul === 1 ? 'bg-[#12388A] text-white' : 'bg-slate-100 text-slate-500')
+                      adoul1Signature ? 'bg-emerald-600 text-white' : (activeAdoul === 1 ? 'bg-[#DC143C] text-white' : 'bg-slate-100 text-slate-500')
                     }`}>
                       <Fingerprint className="w-5 h-5" />
                     </div>
@@ -2803,7 +2803,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
                         {adoul1Signature ? 'تم التوقيع بنجاح' : (activeAdoul === 1 ? 'محدد حالياً للتوقيع' : 'انقر للتحديد')}
                       </p>
                     </div>
-                    {adoul1Signature ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : activeAdoul === 1 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                    {adoul1Signature ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : activeAdoul === 1 && <div className="w-2 h-2 rounded-full bg-[#DC143C] animate-pulse" />}
                   </button>
 
                   <button 

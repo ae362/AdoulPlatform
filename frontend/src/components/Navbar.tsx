@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMessagingNotifications } from '../contexts/MessagingNotificationsContext';
 import { trpc } from '../trpc';
+import { ZoomControl } from './common/ZoomControl';
 
 type BellItem = {
   id: string;
@@ -356,6 +357,8 @@ export const Navbar: React.FC = () => {
               <span className="text-sm font-black tracking-tight text-[#E6BE8A]">{user.full_name}</span>
               <span className="text-[10px] uppercase font-bold text-white/50 tracking-widest">{user.email}</span>
             </div>
+
+            <ZoomControl compact className="hidden sm:inline-flex" />
             
             {/* Notification Indicators */}
             <div className="flex items-center gap-2">

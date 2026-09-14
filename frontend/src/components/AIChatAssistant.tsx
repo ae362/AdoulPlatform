@@ -281,7 +281,7 @@ export function AIChatAssistant({ onClose, context }: AIChatAssistantProps) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transform hover:scale-110 transition-all z-40 flex items-center justify-center text-2xl"
+          className="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transform hover:scale-110 transition-all z-40 flex items-center justify-center text-2xl"
           title="فتح المساعد الذكي"
         >
           🤖
@@ -290,7 +290,7 @@ export function AIChatAssistant({ onClose, context }: AIChatAssistantProps) {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 max-w-[500px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-gray-200">
+        <div className="fixed bottom-6 left-6 w-96 max-w-[500px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden border border-gray-200">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 flex items-center justify-between">
             <div>

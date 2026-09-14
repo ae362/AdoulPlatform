@@ -650,9 +650,15 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
   const currentCourtName = judgeProfileQuery.data?.primaryCourt || judgeProfileQuery.data?.courtName || judgeProfileQuery.data?.appellateCourt || 'المحكمة غير محددة بعد';
 
   return (
-    <div className="flex h-screen bg-slate-100 text-slate-900 overflow-hidden" dir="rtl">
+    <div className="flex h-full min-h-screen bg-slate-100 text-slate-900 overflow-hidden" dir="rtl">
       {/* Sidebar */}
       <aside className="w-72 bg-gradient-to-b from-[#023120] via-[#023120] to-[#011a11] text-white shadow-xl z-20 border-l-4 border-[#E6BE8A] flex flex-col h-full flex-shrink-0 transition-all duration-300 relative overflow-hidden font-kufi">
+        {/* Luxury Grand Moroccan Islamic Pattern Watermark */}
+        <div className="absolute inset-0 moroccan-luxury-pattern pointer-events-none z-0"></div>
+
+        {/* Decorative Top Border */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#E6BE8A] via-amber-400 to-[#E6BE8A] z-10"></div>
+
         <div className="p-4 bg-black/20 border-b border-[#E6BE8A]/30 relative z-10">
           <div className="flex items-center gap-2.5 mb-1">
             <div className="w-10 h-10 bg-gradient-to-br from-[#E6BE8A] to-[#c5a065] rounded-xl flex items-center justify-center text-[#023120] font-bold text-xl shadow-lg transform rotate-3">

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AIChatAssistant } from '../components/AIChatAssistant';
@@ -165,31 +165,54 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
     }
   }, [state.step]);
 
-  // Ensure view scrolls to the very top whenever moving between steps
-  useEffect(() => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = useCallback(() => {
     try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      if (containerRef.current) {
+        containerRef.current.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      const scrollContainer = document.getElementById('main-content-scroll-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+      const scrollables = document.querySelectorAll('.overflow-auto, .overflow-y-auto');
+      scrollables.forEach((el) => {
+        el.scrollTop = 0;
+      });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
       if (document.body) {
-        document.body.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        document.body.scrollTop = 0;
       }
     } catch {
       window.scrollTo(0, 0);
     }
-  }, [state.step]);
+  }, []);
+
+  // Ensure view immediately starts at the very top whenever moving between steps without scrolling animation
+  useLayoutEffect(() => {
+    scrollToTop();
+    const timer1 = setTimeout(scrollToTop, 0);
+    const timer2 = setTimeout(scrollToTop, 50);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [state.step, state.legalEntitySetupStep, scrollToTop]);
 
   const handleNext = useCallback(() => {
     setState((prev) => ({ ...prev, step: (prev.step || 0) + 1 }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+    scrollToTop();
+  }, [scrollToTop]);
 
   const handleBack = useCallback(() => {
     setState((prev) => ({ ...prev, step: Math.max(0, (prev.step || 0) - 1) }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+    scrollToTop();
+  }, [scrollToTop]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div ref={containerRef} className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -224,8 +247,12 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
                       legalEntitySetupStep: isLegalEntity ? 1 : 0
                     };
                   });
+                  scrollToTop();
                 }}
-                onBack={() => setState(prev => ({ ...prev, step: 0.1 }))}
+                onBack={() => {
+                  setState(prev => ({ ...prev, step: 0.1 }));
+                  scrollToTop();
+                }}
               />
             )}
 
@@ -236,7 +263,7 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
                 currentStep={state.step}
                 onStepClick={(targetStep) => {
                   setState(prev => ({ ...prev, step: targetStep }));
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  scrollToTop();
                 }}
               />
             )}

@@ -938,7 +938,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow space-y-6">
-          <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات التضمين بكناش الأنكحة ومذكرة الحفظ</h3>
+          <h3 className="text-xl font-bold text-gray-800 border-b pb-2">بيانات التضمين بكناش الأنكحة وسجل البيانات</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">رقم كناش الأنكحة</label>
@@ -980,7 +980,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم مذكرة الحفظ للعدل الأول</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">رقم سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumNumber || ''}
@@ -990,7 +990,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد مذكرة الحفظ</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">عدد سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumRecordNumber || ''}
@@ -1000,7 +1000,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">صفحة مذكرة الحفظ</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">صفحة سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumPage || ''}

@@ -608,7 +608,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               <Book className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-white font-black text-base">بيانات التضمين بكناش الأنكحة ومذكرة الحفظ</h3>
+              <h3 className="text-white font-black text-base">بيانات التضمين بكناش الأنكحة وسجل البيانات</h3>
               <p className="text-white/80 text-xs font-medium">مراجع التسجيل الرسمية ومحضر الإشهاد</p>
             </div>
           </div>
@@ -655,7 +655,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clipboard className="w-3.5 h-3.5 text-emerald-500" />رقم مذكرة الحفظ للعدل الأول</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clipboard className="w-3.5 h-3.5 text-emerald-500" />رقم سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumNumber || ''}
@@ -665,7 +665,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد مذكرة الحفظ</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumRecordNumber || ''}
@@ -675,7 +675,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
               />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صفحة مذكرة الحفظ</label>
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صفحة سجل البيانات للعدل الأول</label>
               <input
                 type="text"
                 value={details.memorandumPage || ''}

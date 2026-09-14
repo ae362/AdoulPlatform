@@ -925,11 +925,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="min-h-screen bg-white" dir="rtl">
       {/* Two-Row Header - Mahakim Style */}
-      <header
-        className={`${isBuilderPreview ? 'sticky top-0 z-40' : 'fixed top-0 left-0 right-0 z-50'} transition-all duration-300`}
-      >
-        {/* Top Row - Gray Navigation Bar */}
-        <div className="bg-gray-700 text-white">
+      <header className="sticky top-0 z-50 transition-all duration-300 shadow-md">
+        {/* Top Row - Slate Navigation Bar */}
+        <div className="bg-slate-900 text-white border-b border-slate-800">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex justify-between items-center h-10">
               {/* Right side - Navigation Menu */}
@@ -1062,7 +1060,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               {/* Center - Main Title */}
               <div className="hidden lg:block text-center flex-1">
-                <h2 className="text-5xl font-black text-gray-800 font-maghribi">مهنة العدول</h2>
+                <h2 className="text-3xl font-bold text-slate-800 font-amiri tracking-wide">مهنة العدول</h2>
               </div>
 
               {/* Left side - Search, Ministry Text, and Adoul Logo */}
@@ -1196,7 +1194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </header>
 
       {/* Hero Section with Video/Image Background */}
-      <section id="home" className="relative h-screen overflow-hidden group">
+      <section id="home" className="relative min-h-[calc(100vh-130px)] flex items-center justify-center overflow-hidden group py-12 md:py-16">
         {/* Background Logic */}
         <div className="absolute inset-0 z-0">
           <video 
@@ -1210,7 +1208,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <source src="/whatsapp_hero_video.mp4" type="video/mp4" />
             <source src="/WhatsApp Video 2026-09-01 at 5.44.00 PM.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/60 to-slate-950/80 pointer-events-none" />
         </div>
 
         {/* Hover-to-edit hero background (must sit above content) */}
@@ -1251,7 +1249,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 	            >
 	              <div>
 	            <h1
-	              className={`relative text-6xl md:text-7xl font-bold font-maghribi text-white mb-6 drop-shadow-2xl leading-tight ${
+	              className={`relative text-5xl sm:text-6xl md:text-7xl font-bold font-amiri text-white mb-6 drop-shadow-2xl leading-tight ${
 	                builderMode === 'edit' ? 'rounded-xl ring-1 ring-transparent hover:ring-yellow-400/70' : ''
 	              }`}
 	              data-builder="hero_title"
@@ -1271,7 +1269,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h1>
 
             <p
-              className={`relative text-xl md:text-2xl text-white/95 mb-12 max-w-3xl mx-auto drop-shadow-lg leading-relaxed whitespace-pre-line ${
+              className={`relative text-lg sm:text-xl md:text-2xl text-white/95 mb-10 max-w-3xl mx-auto drop-shadow-lg leading-relaxed whitespace-pre-line ${
                 builderMode === 'edit' ? 'rounded-xl ring-1 ring-transparent hover:ring-yellow-400/70' : ''
               }`}
               data-builder="hero_sub"
@@ -1306,7 +1304,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   e.stopPropagation();
                   builderDispatch?.({ type: 'SELECT', id: 'hero_btn_primary' });
                 }}
-                className={`px-10 py-5 bg-white text-gray-800 text-lg font-bold rounded-xl hover:bg-yellow-400 hover:text-gray-900 transition-all transform hover:scale-105 shadow-2xl ${
+                className={`px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-xl hover:shadow-emerald-600/30 transition-all transform hover:scale-105 ${
                   isEditing && builderSelectedId === 'hero_btn_primary' ? 'ring-2 ring-yellow-400' : ''
                 }`}
               >
@@ -1333,7 +1331,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   e.stopPropagation();
                   builderDispatch?.({ type: 'SELECT', id: 'hero_btn_secondary' });
                 }}
-                className={`px-10 py-5 bg-transparent border-2 border-white text-white text-lg font-bold rounded-xl hover:bg-white hover:text-gray-900 transition-all transform hover:scale-105 shadow-2xl ${
+                className={`px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/40 text-lg font-bold rounded-xl shadow-xl backdrop-blur-sm transition-all transform hover:scale-105 ${
                   isEditing && builderSelectedId === 'hero_btn_secondary' ? 'ring-2 ring-yellow-400' : ''
                 }`}
               >
@@ -1395,10 +1393,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 	            </BuilderDroppableBox>
 		          ) : (
 		            <div className="max-w-5xl">
-		              <h1 className="text-6xl md:text-7xl font-bold font-maghribi text-white mb-6 drop-shadow-2xl leading-tight">
+		              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold font-amiri text-white mb-6 drop-shadow-2xl leading-tight">
 		                {getTextFromDoc(doc, 'hero_title', t('hero_title', 'مهنة العدول'))}
 		              </h1>
-		              <p className="text-xl md:text-2xl text-white/95 mb-12 max-w-3xl mx-auto drop-shadow-lg leading-relaxed whitespace-pre-line">
+		              <p className="text-lg sm:text-xl md:text-2xl text-white/95 mb-10 max-w-3xl mx-auto drop-shadow-lg leading-relaxed whitespace-pre-line">
 		                {getTextFromDoc(
 		                  doc,
 		                  'hero_sub',
@@ -1412,13 +1410,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 		              <div className="flex flex-col sm:flex-row justify-center gap-6">
 		                <a
 		                  href="#features"
-		                  className="px-10 py-5 bg-white text-gray-800 text-lg font-bold rounded-xl hover:bg-yellow-400 hover:text-gray-900 transition-all transform hover:scale-105 shadow-2xl"
+		                  className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-xl hover:shadow-emerald-600/30 transition-all transform hover:scale-105"
 		                >
 		                  {getTextFromDoc(doc, 'hero_btn_primary', 'ابدأ الآن')}
 		                </a>
 		                <a
 		                  href="#features"
-		                  className="px-10 py-5 bg-transparent border-2 border-white text-white text-lg font-bold rounded-xl hover:bg-white hover:text-gray-900 transition-all transform hover:scale-105 shadow-2xl"
+		                  className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/40 text-lg font-bold rounded-xl shadow-xl backdrop-blur-sm transition-all transform hover:scale-105"
 		                >
 		                  {getTextFromDoc(doc, 'hero_btn_secondary', 'اكتشف المميزات')}
 		                </a>
@@ -1470,11 +1468,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* Features Section - Scrollable Advertisement Sections */}
-      <section id="features" className="bg-gray-50 py-14 md:py-16">
+      <section id="features" className="bg-slate-50 py-16 md:py-20 border-t border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2
-              className={`text-5xl font-bold font-maghribi text-gray-800 mb-4 ${
+              className={`text-4xl md:text-5xl font-bold font-amiri text-slate-900 mb-4 ${
                 isEditing ? 'rounded-xl ring-1 ring-transparent hover:ring-indigo-300' : ''
               }`}
               contentEditable={isEditing}
@@ -1491,9 +1489,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               {getTextFromDoc(doc, 'features_heading', 'منصة متكاملة للإدارة العدلية')}
             </h2>
-            <div className="w-24 h-1 bg-gray-700 mx-auto mb-6"></div>
+            <div className="w-20 h-1 bg-amber-500 rounded-full mx-auto mb-6"></div>
             <p
-              className={`text-xl text-gray-600 max-w-3xl mx-auto ${
+              className={`text-lg md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed ${
                 isEditing ? 'rounded-xl ring-1 ring-transparent hover:ring-indigo-300' : ''
               }`}
               contentEditable={isEditing}
@@ -1531,76 +1529,75 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 	          ) : (
 	            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
 	            {dynamicCards && dynamicCards.length > 0 ? dynamicCards.map((card: any, idx: number) => (
-	               <div key={idx} className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-	                 <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-4xl">
+	               <div key={idx} className="group bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+	                 <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-3xl">
 	                   {card.icon}
 	                 </div>
-	                 <h3 className="text-2xl font-bold text-gray-800 mb-4">{card.title}</h3>
-	                 <p className="text-gray-600 leading-relaxed mb-4">{card.description}</p>
+	                 <h3 className="text-2xl font-bold font-amiri text-slate-900 mb-3">{card.title}</h3>
+	                 <p className="text-slate-600 leading-relaxed mb-4">{card.description}</p>
 	               </div>
 	            )) : (
 	                /* Fallback Static Cards */
 	                <>
 	                {/* Feature 1 - Marriage Contracts */}
-	                <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	                <div className="group bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#0B254E] to-[#123E7E] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-md text-amber-400">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">عقود الزواج الإلكترونية</h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
+                <h3 className="text-2xl font-bold font-amiri text-slate-900 mb-3">عقود الزواج الإلكترونية</h3>
+                <p className="text-slate-600 leading-relaxed mb-4 text-sm md:text-base">
                     نظام متقدم لإنشاء وإدارة عقود الزواج بشكل رقمي مع التوقيع الإلكتروني الآمن
                 </p>
-                <ul className="space-y-2 text-gray-600">
-                    {/* ... (truncated static list items for brevity, they are just visual) ... */}
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>توقيع رقمي آمن</span></li>
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>أرشفة تلقائية</span></li>
+                <ul className="space-y-2 text-slate-600 text-sm">
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>توقيع رقمي آمن</span></li>
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>أرشفة تلقائية</span></li>
                 </ul>
                 </div>
                 
                 {/* Feature 2 - Documents Archive */}
-                <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                     <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                <div className="group bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#0B254E] to-[#123E7E] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-md text-amber-400">
+                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">الأرشيف الرقمي</h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
+                <h3 className="text-2xl font-bold font-amiri text-slate-900 mb-3">الأرشيف الرقمي</h3>
+                <p className="text-slate-600 leading-relaxed mb-4 text-sm md:text-base">
                     حفظ وتوثيق جميع العقود والمستندات في قاعدة بيانات آمنة وسهلة الوصول
                 </p>
-                 <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>بحث متقدم</span></li>
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>نسخ احتياطية</span></li>
+                 <ul className="space-y-2 text-slate-600 text-sm">
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>بحث متقدم</span></li>
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>نسخ احتياطية</span></li>
                 </ul>
                 </div>
 
                 {/* Feature 3 - Fees Management */}
-                <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div className="group bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#0B254E] to-[#123E7E] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-md text-amber-400">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">احتساب الرسوم</h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
+                <h3 className="text-2xl font-bold font-amiri text-slate-900 mb-3">احتساب الرسوم</h3>
+                <p className="text-slate-600 leading-relaxed mb-4 text-sm md:text-base">
                     نظام ذكي لاحتساب وإدارة الرسوم العدلية والضرائب بدقة وشفافية عالية
                 </p>
-                 <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>حساب دقيق</span></li>
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>تقارير مالية</span></li>
+                 <ul className="space-y-2 text-slate-600 text-sm">
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>حساب دقيق</span></li>
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>تقارير مالية</span></li>
                 </ul>
                 </div>
 
                  {/* Feature 4 - E-Services */}
-                <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                <div className="group bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#0B254E] to-[#123E7E] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-md text-amber-400">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">خدمات إلكترونية</h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
+                <h3 className="text-2xl font-bold font-amiri text-slate-900 mb-3">خدمات إلكترونية</h3>
+                <p className="text-slate-600 leading-relaxed mb-4 text-sm md:text-base">
                      بوابة شاملة للخدمات الإلكترونية تتيح للمواطنين والعدول إنجاز المعاملات عن بعد
                 </p>
-                 <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>متاح 24/7</span></li>
-                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span>سهولة الاستخدام</span></li>
+                 <ul className="space-y-2 text-slate-600 text-sm">
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>متاح 24/7</span></li>
+                    <li className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div><span>سهولة الاستخدام</span></li>
                 </ul>
                 </div>
                 </>
@@ -1615,11 +1612,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto px-4">
              <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1">
-              <div className="bg-gradient-to-br from-gray-700 to-gray-600 rounded-3xl p-12 shadow-2xl">
-                <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-sm">
-                  <div className="text-6xl text-white mb-6">{t('about_right_icon', '🚀')}</div>
-                  <h3 className="text-3xl font-bold text-white mb-4">{t('about_right_title', 'التحول الرقمي الكامل')}</h3>
-                  <p className="text-white/90 text-lg">
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#0B254E] via-[#0E356E] to-[#12428A] rounded-3xl p-8 md:p-10 shadow-2xl border border-blue-400/20 text-white">
+                <div className="bg-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md border border-white/10">
+                  <div className="w-16 h-16 bg-amber-400/20 border border-amber-400/40 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-inner">
+                    {t('about_right_icon', '🚀')}
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold font-amiri text-amber-300 mb-4">
+                    {t('about_right_title', 'التحول الرقمي الكامل')}
+                  </h3>
+                  <p className="text-slate-100 text-base md:text-lg leading-relaxed">
                     {t(
                       'about_right_text',
                       'لا مزيد من الأوراق والملفات المتناثرة. كل شيء منظم ومرتب في منصة واحدة سهلة الاستخدام'
@@ -1629,19 +1630,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
             <div className="order-1 md:order-2">
-              <h2 className="text-4xl md:text-5xl font-bold font-maghribi text-gray-800 mb-6 leading-tight">
+              <h2 className="text-4xl md:text-5xl font-bold font-amiri text-slate-900 mb-6 leading-tight">
                 {t('about_title_line1', 'ودّع الأوراق التقليدية')}
                 <br />
-                <span className="text-gray-700">{t('about_title_line2', 'مرحباً بالمستقبل')}</span>
+                <span className="text-emerald-700">{t('about_title_line2', 'مرحباً بالمستقبل')}</span>
               </h2>
-               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
                 {t('about_subtitle', 'نظام متكامل يحول مكتبك العدلي إلى بيئة رقمية 100% بدون أي تعقيدات')}
               </p>
               <div className="space-y-4">
                 {aboutBullets.map((b, idx) => (
-                  <div key={`${b.title}-${idx}`} className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <div key={`${b.title}-${idx}`} className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-emerald-300 transition-colors">
+                    <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -1649,9 +1650,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         />
                       </svg>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-800 text-lg mb-1">{b.title}</h4>
-                      <p className="text-gray-600">{b.description}</p>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-base md:text-lg leading-snug mb-1">{b.title}</h4>
+                      <p className="text-slate-600 text-sm md:text-base leading-normal">{b.description}</p>
                     </div>
                   </div>
                 ))}
@@ -1662,10 +1663,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* AI */}
-      <section id="ai" className="bg-gradient-to-br from-gray-900 to-gray-800 py-14 md:py-16 text-white">
-        <div className="max-w-7xl mx-auto px-4">
+      <section id="ai" className="bg-gradient-to-br from-slate-950 via-slate-900 to-[#0A1A30] py-16 md:py-20 text-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <div className="inline-block bg-yellow-400 text-gray-900 px-6 py-2 rounded-full font-bold mb-6">
+            <div className="inline-flex items-center gap-2 bg-amber-400/20 border border-amber-400/30 text-amber-300 px-5 py-2 rounded-full font-bold text-sm mb-6">
+              <span className="text-base">✨</span>
               <InlineEditableText
                 tag="span"
                 value={getTextFromDoc(doc, 'ai_badge', t('ai_badge', 'مدعوم بالذكاء الاصطناعي'))}
@@ -1683,7 +1685,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               selected={builderSelectedId === 'ai_title'}
               onSelect={() => builderDispatch?.({ type: 'SELECT', id: 'ai_title' })}
               onChange={(next) => setTextInDoc(builderDispatch, 'ai_title', next)}
-              className="text-5xl font-bold font-maghribi mb-6 outline-none"
+              className="text-4xl md:text-5xl font-bold font-amiri mb-6 outline-none"
             />
             <InlineEditableText
               tag="p"
@@ -1692,7 +1694,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               selected={builderSelectedId === 'ai_subtitle'}
               onSelect={() => builderDispatch?.({ type: 'SELECT', id: 'ai_subtitle' })}
               onChange={(next) => setTextInDoc(builderDispatch, 'ai_subtitle', next)}
-              className="text-xl text-gray-300 max-w-3xl mx-auto whitespace-pre-line outline-none"
+              className="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto whitespace-pre-line outline-none leading-relaxed"
             />
           </div>
 
@@ -1757,7 +1759,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Roles */}
       <section
         id="roles"
-        className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 py-14 md:py-16 text-white relative overflow-hidden"
+        className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0F223D] py-16 md:py-20 text-white relative overflow-hidden"
       >
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -1779,9 +1781,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               selected={builderSelectedId === 'roles_title'}
               onSelect={() => builderDispatch?.({ type: 'SELECT', id: 'roles_title' })}
               onChange={(next) => setTextInDoc(builderDispatch, 'roles_title', next)}
-              className="text-5xl font-bold font-maghribi mb-4 outline-none"
+              className="text-4xl md:text-5xl font-bold font-amiri mb-4 outline-none"
             />
-            <div className="w-24 h-1 bg-yellow-400 mx-auto mb-6"></div>
+            <div className="w-20 h-1 bg-amber-500 rounded-full mx-auto mb-6"></div>
             <InlineEditableText
               tag="p"
               value={getTextFromDoc(doc, 'roles_subtitle', t('roles_subtitle', 'نظام شامل يخدم جميع الأطراف في العملية العدلية بكفاءة واحترافية'))}
@@ -1789,7 +1791,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               selected={builderSelectedId === 'roles_subtitle'}
               onSelect={() => builderDispatch?.({ type: 'SELECT', id: 'roles_subtitle' })}
               onChange={(next) => setTextInDoc(builderDispatch, 'roles_subtitle', next)}
-              className="text-xl text-white/90 max-w-3xl mx-auto whitespace-pre-line outline-none"
+              className="text-lg md:text-xl text-white/90 max-w-3xl mx-auto whitespace-pre-line outline-none leading-relaxed"
             />
           </div>
 

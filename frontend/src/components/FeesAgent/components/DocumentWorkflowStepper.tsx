@@ -185,7 +185,7 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي والإذن', desc: 'إذن المحكمة ومحضر الصلح', icon: ShieldCheck },
             { index: 2, targetStep: 1, num: '②', title: 'طرفا الإشهاد', desc: 'بيانات الزوج والمطلقة', icon: Users },
             { index: 3, targetStep: 2, num: '③', title: 'مستحقات الطلاق', desc: 'نوع الطلاق والعدة والمتعة', icon: Scale },
-            { index: 4, targetStep: 6, num: '④', title: 'مجلس الإشهاد', desc: 'التلقي الثنائي ومذكرة الحفظ', icon: Clock },
+            { index: 4, targetStep: 6, num: '④', title: 'مجلس الإشهاد', desc: 'التلقي الثنائي وسجل البيانات', icon: Clock },
             { index: 5, targetStep: 7, num: '⑤', title: 'التحرير والمراجعة', desc: 'صياغة رسم الطلاق النموذجي', icon: FileText },
             { index: 6, targetStep: 8, num: '⑥', title: 'التأشير والإيداع', desc: 'خطاب القاضي وسجل الطلاق', icon: Lock },
           ]
@@ -234,7 +234,7 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 3, targetStep: 2, num: '③', title: 'موضوع الوثيقة', desc: 'الصلاحيات والالتزامات والبنود', icon: FileText },
             { index: 4, targetStep: 6, num: '④', title: 'مجلس الإشهاد والتواريخ', desc: 'التلقي الثنائي وتوثيق التاريخ', icon: Clock },
             { index: 5, targetStep: 7, num: '⑤', title: 'التحرير والتدقيق', desc: 'الصياغة النموذجية والمراجعة', icon: Scale },
-            { index: 6, targetStep: 8, num: '⑥', title: 'التأشير والتضمين', desc: 'مذكرة الحفظ وسجل التضمين', icon: Lock },
+            { index: 6, targetStep: 8, num: '⑥', title: 'التأشير والتضمين', desc: 'سجل البيانات وسجل التضمين', icon: Lock },
           ]
         };
     }

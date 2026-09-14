@@ -96,7 +96,13 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState, on
                   validationAlerts: alerts,
                   step: 7,
                 }));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                try {
+                  document.documentElement.scrollTop = 0;
+                  if (document.body) document.body.scrollTop = 0;
+                  window.scrollTo(0, 0);
+                } catch {
+                  window.scrollTo(0, 0);
+                }
               }}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
@@ -358,7 +364,13 @@ export const Step6_Dates: React.FC<DocumentWizardProps> = ({ state, setState, on
                 validationAlerts: alerts,
                 step: 7,
               }));
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              try {
+                document.documentElement.scrollTop = 0;
+                if (document.body) document.body.scrollTop = 0;
+                window.scrollTo(0, 0);
+              } catch {
+                window.scrollTo(0, 0);
+              }
             }}
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-black transition shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >

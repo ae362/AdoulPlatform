@@ -86,6 +86,17 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   );
   const notaryAppellateCourt = formatCourtName(notaryProfile?.appellate_court);
 
+  useEffect(() => {
+    try {
+      const scrollContainer = document.getElementById('main-content-scroll-container');
+      if (scrollContainer) scrollContainer.scrollTop = 0;
+      const scrollables = document.querySelectorAll('.overflow-auto, .overflow-y-auto');
+      scrollables.forEach((el) => { el.scrollTop = 0; });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+    } catch {}
+  }, []);
+
   // Document Type Classification for contextual stepper & instructions
   const isMarriage = useMemo(() => {
     const docType = String(state.documentType || '');
@@ -790,6 +801,14 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
     });
 
     onProceed();
+    try {
+      const scrollContainer = document.getElementById('main-content-scroll-container');
+      if (scrollContainer) scrollContainer.scrollTop = 0;
+      const scrollables = document.querySelectorAll('.overflow-auto, .overflow-y-auto');
+      scrollables.forEach((el) => { el.scrollTop = 0; });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+    } catch {}
   };
 
   return (
@@ -1889,7 +1908,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
             <div>
               <h3 className="font-bold text-lg">سجل البيانات</h3>
               <p className="text-xs text-emerald-100 font-normal">
-                بيانات التضمين بسجل التلقي ومذكرة الحفظ — تُملأ تلقائياً وقابلة للتعديل اليدوي
+                بيانات التضمين بسجل التلقي وسجل البيانات للعدل الأول — تُملأ تلقائياً وقابلة للتعديل اليدوي
               </p>
             </div>
           </div>
