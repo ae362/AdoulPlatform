@@ -308,16 +308,12 @@ export const judgeSubmissionsProcedures = {
 
           const nameLower = nameRaw.toLowerCase();
           const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
-          const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf)$/i, '').trim() || 'judge-attachment';
           const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf|png|jpe?g|webp)$/i, '').trim() || 'judge-attachment';
 
           let uploadedPdfUrl: string | null = null;
           let pdfFileSize = 0;
 
           if (isDocx) {
-            // Upload original DOCX (for later editing)
-            const uploadedDocx = await uploadBufferToDocumentsBucket({
-              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.docx`,
             const isLegacyDoc =
               docBytes.length >= 8 &&
               docBytes[0] === 0xd0 &&
@@ -334,46 +330,21 @@ export const judgeSubmissionsProcedures = {
             const uploadedDoc = await uploadBufferToDocumentsBucket({
               path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.${docExt}`,
               buffer: docBytes,
-              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               contentType: docMime,
               upsert: true,
             });
 
-            // Convert to PDF for preview
-            const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docBytes });
-            const uploadedPdf = await uploadBufferToDocumentsBucket({
-              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
-              buffer: pdfRes.pdfBuffer,
-              contentType: 'application/pdf',
-              upsert: true,
-            });
-
-            uploadedPdfUrl = uploadedPdf.url;
-            pdfFileSize = pdfRes.pdfBuffer.length;
-
             // Immediately attach public URL so document is never lost even if conversion fails
             payloadAny.attachment = {
               ...primaryDeed,
-              name: `${baseNoExt}.docx`,
-              fileName: `${baseNoExt}.docx`,
               name: `${baseNoExt}.${docExt}`,
               fileName: `${baseNoExt}.${docExt}`,
               category: 'judge_attachment_docx',
-              url: uploadedDocx.url,
-              fileUrl: uploadedDocx.url,
-              pdfUrl: uploadedPdf.url,
               url: uploadedDoc.url,
               fileUrl: uploadedDoc.url,
               base64: undefined,
             };
-            payloadAny.previewUrl = uploadedPdf.url;
-            payloadAny.previewName = `${baseNoExt}.pdf`;
-            payloadAny.canonical_approved_pdf = uploadedPdf.url;
-            payloadAny.signed_pdf_url = uploadedPdf.url;
-            payloadAny.pdf_preview_url = uploadedPdf.url;
 
-            await supabase.from('deed_attachments').insert([
-              {
             await supabase.from('deed_attachments').insert({
               record_type: 'judge_submission',
               record_id: created.id,
@@ -412,17 +383,6 @@ export const judgeSubmissionsProcedures = {
                 file_url: uploadedPdf.url,
                 mime_type: 'application/pdf',
                 file_size: pdfRes.pdfBuffer.length,
-              },
-              {
-                record_type: 'judge_submission',
-                record_id: created.id,
-                category: 'judge_attachment_docx',
-                file_name: `${baseNoExt}.docx`,
-                file_url: uploadedDocx.url,
-                mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                file_size: docBytes.length,
-              }
-            ]);
               });
             } catch (convErr) {
               console.warn('[submitToJudge] Background PDF conversion skipped/failed, keeping original DOCX/DOC:', convErr);

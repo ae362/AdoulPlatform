@@ -165,7 +165,6 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
   // Enterprise Security: Validate docx structure and protect against zip bombs or embedded scripts
   inspectDocxSafety(opts.docxBuffer);
 
-  const timeoutMs = opts.timeoutMs ?? 60_000;
   const timeoutMs = opts.timeoutMs ?? 15_000;
 
   const isLegacyDoc =
@@ -176,7 +175,6 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
     opts.docxBuffer[3] === 0xe0;
 
   const tmpOutDir = await tmpDir({ unsafeCleanup: true });
-  const tmpIn = await tmpFile({ postfix: '.docx' });
   const tmpIn = await tmpFile({ postfix: isLegacyDoc ? '.doc' : '.docx' });
   const tmpProfileDir = await tmpDir({ unsafeCleanup: true });
 
@@ -209,7 +207,6 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
       throw err;
     }
 
-    const pdfPath = path.join(tmpOutDir.path, path.basename(tmpIn.path).replace(/\.docx$/i, '.pdf'));
     const pdfPath = path.join(tmpOutDir.path, path.basename(tmpIn.path).replace(/\.(docx?)$/i, '.pdf'));
     const pdfBuffer = await readFile(pdfPath);
 

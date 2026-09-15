@@ -421,7 +421,6 @@ export class JudgeDeedService {
 
       const name = String(f.name || f.fileName || f.filename || `مرفق_${idx + 1}`);
       const mime = f.type || f.mimeType || f.mime_type || null;
-      let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || '').trim();
       let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || f.pdfUrl || '').trim();
       if (!url && typeof f.base64 === 'string' && f.base64.trim()) {
         const b64 = f.base64.trim();
@@ -431,7 +430,6 @@ export class JudgeDeedService {
       if (url && !savedRasmAttachments.some((x) => (x.fileUrl && x.fileUrl === url) || (x.fileName === name && x.fileSize === f.size))) {
         savedRasmAttachments.push({
           id: String(f.id || `payload_att_${idx}`),
-          category: String(f.category || f.field || 'attachment'),
           category: String(f.category || f.field || 'judge_attachment'),
           fileName: name,
           fileUrl: url,
