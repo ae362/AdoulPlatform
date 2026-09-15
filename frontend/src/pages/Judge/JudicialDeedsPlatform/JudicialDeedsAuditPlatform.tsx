@@ -973,13 +973,18 @@ export default function JudicialDeedsAuditPlatform() {
                              url={documentStream.blobUrl || activeStreamUrl || ''}
                              submissionId={id}
                            />
-                        ) : activeFileType === 'PDF' && (documentStream.blobUrl || (activeStreamUrl && !activeStreamUrl.toLowerCase().includes('.docx'))) ? (
+                        ) : activeFileType === 'PDF' && (documentStream.blobUrl || (activeStreamUrl && !activeStreamUrl.toLowerCase().includes('.docx') && !activeStreamUrl.startsWith('data:'))) ? (
                            <iframe
-                             key={`judge-pdf-${id || ''}-${activeStreamUrl || ''}-${viewerNonce}`}
+                             key={`judge-pdf-${id || ''}-${documentStream.blobUrl || activeStreamUrl || ''}-${viewerNonce}`}
                              src={getJudgeLikePdfViewerUrl(documentStream.blobUrl || activeStreamUrl || '')}
                              className="w-full h-[1123px] border-none"
                              title={selectedDocTitle || primaryDoc?.title || 'Judicial Deed Document'}
                            />
+                        ) : documentStream.isLoading ? (
+                           <div className="w-full h-[600px] flex flex-col items-center justify-center gap-4 bg-white rounded-2xl border border-slate-100 shadow-sm" dir="rtl">
+                              <div className="w-12 h-12 border-4 border-[#023120]/15 border-t-[#023120] rounded-full animate-spin"></div>
+                              <p className="font-amiri font-black text-slate-700 text-base">جاري تجهيز وعرض المستند القضائي...</p>
+                           </div>
                         ) : (
                            <RasmHtmlPreview
                              key={`judge-html-${id || ''}-${viewerNonce}`}

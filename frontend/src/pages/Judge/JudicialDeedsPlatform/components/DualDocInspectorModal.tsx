@@ -32,9 +32,37 @@ export interface DualDocInspectorModalProps {
   attachments: AttachmentItem[];
 }
 
+const blobUrlCache = new Map<string, string>();
+
 const getJudgeLikePdfViewerUrl = (url: string) => {
   if (!url) return '';
-  const cleanUrl = url.split('#')[0];
+  let cleanUrl = url.split('#')[0];
+  if (cleanUrl.startsWith('data:') || cleanUrl.startsWith('JVBERi')) {
+    if (blobUrlCache.has(cleanUrl)) {
+      cleanUrl = blobUrlCache.get(cleanUrl)!;
+    } else {
+      try {
+        let b64 = cleanUrl;
+        let mime = 'application/pdf';
+        if (cleanUrl.startsWith('data:')) {
+          const commaIdx = cleanUrl.indexOf(',');
+          b64 = cleanUrl.slice(commaIdx + 1);
+          const mimeMatch = cleanUrl.slice(0, commaIdx).match(/:(.*?);/);
+          if (mimeMatch) mime = mimeMatch[1];
+        }
+        const binStr = atob(b64.trim());
+        const len = binStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = binStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: mime });
+        const bUrl = URL.createObjectURL(blob);
+        blobUrlCache.set(cleanUrl, bUrl);
+        cleanUrl = bUrl;
+      } catch {
+        // fallback
+      }
+    }
+  }
   return `${cleanUrl}#view=FitH&zoom=100&toolbar=1`;
 };
 

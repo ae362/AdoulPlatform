@@ -277,6 +277,7 @@ export const judgeSubmissionsProcedures = {
         const primaryDeed = payloadAny.attachment || payloadAny.judgeAttachment || payloadAny.manualRasmFile;
         let isDocx = false;
         let isPdf = false;
+        let isImage = false;
         let nameRaw = 'judge-attachment';
         if (primaryDeed) {
           nameRaw = String(primaryDeed?.name || primaryDeed?.fileName || 'judge-attachment');
@@ -292,6 +293,12 @@ export const judgeSubmissionsProcedures = {
             typeRaw.includes('word') ||
             typeRaw.includes('officedocument');
           isPdf = nameLower.endsWith('.pdf') || typeRaw.includes('pdf');
+          isImage =
+            nameLower.endsWith('.png') ||
+            nameLower.endsWith('.jpg') ||
+            nameLower.endsWith('.jpeg') ||
+            nameLower.endsWith('.webp') ||
+            typeRaw.startsWith('image/');
         }
 
         const processPrimaryDeed = async () => {
@@ -299,8 +306,10 @@ export const judgeSubmissionsProcedures = {
           const docBytes = await readAttachmentBytes(primaryDeed);
           if (!docBytes) return;
 
+          const nameLower = nameRaw.toLowerCase();
           const safeBase = nameRaw.replace(/[^\w.\- ]+/g, '_').trim() || 'judge-attachment';
           const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf)$/i, '').trim() || 'judge-attachment';
+          const baseNoExt = safeBase.replace(/\.(docx?|dotx?|pdf|png|jpe?g|webp)$/i, '').trim() || 'judge-attachment';
 
           let uploadedPdfUrl: string | null = null;
           let pdfFileSize = 0;
@@ -309,8 +318,24 @@ export const judgeSubmissionsProcedures = {
             // Upload original DOCX (for later editing)
             const uploadedDocx = await uploadBufferToDocumentsBucket({
               path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.docx`,
+            const isLegacyDoc =
+              docBytes.length >= 8 &&
+              docBytes[0] === 0xd0 &&
+              docBytes[1] === 0xcf &&
+              docBytes[2] === 0x11 &&
+              docBytes[3] === 0xe0;
+
+            const docExt = isLegacyDoc ? 'doc' : 'docx';
+            const docMime = isLegacyDoc
+              ? 'application/msword'
+              : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+            // Upload original DOCX/DOC (immediately securing the user's primary document)
+            const uploadedDoc = await uploadBufferToDocumentsBucket({
+              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.${docExt}`,
               buffer: docBytes,
               contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              contentType: docMime,
               upsert: true,
             });
 
@@ -326,14 +351,19 @@ export const judgeSubmissionsProcedures = {
             uploadedPdfUrl = uploadedPdf.url;
             pdfFileSize = pdfRes.pdfBuffer.length;
 
+            // Immediately attach public URL so document is never lost even if conversion fails
             payloadAny.attachment = {
               ...primaryDeed,
               name: `${baseNoExt}.docx`,
               fileName: `${baseNoExt}.docx`,
+              name: `${baseNoExt}.${docExt}`,
+              fileName: `${baseNoExt}.${docExt}`,
               category: 'judge_attachment_docx',
               url: uploadedDocx.url,
               fileUrl: uploadedDocx.url,
               pdfUrl: uploadedPdf.url,
+              url: uploadedDoc.url,
+              fileUrl: uploadedDoc.url,
               base64: undefined,
             };
             payloadAny.previewUrl = uploadedPdf.url;
@@ -344,6 +374,37 @@ export const judgeSubmissionsProcedures = {
 
             await supabase.from('deed_attachments').insert([
               {
+            await supabase.from('deed_attachments').insert({
+              record_type: 'judge_submission',
+              record_id: created.id,
+              category: 'judge_attachment_docx',
+              file_name: `${baseNoExt}.${docExt}`,
+              file_url: uploadedDoc.url,
+              mime_type: docMime,
+              file_size: docBytes.length,
+            });
+
+            // Convert to PDF for high-fidelity browser preview
+            try {
+              const pdfRes = await convertDocxToPdfViaLibreOffice({ docxBuffer: docBytes });
+              const uploadedPdf = await uploadBufferToDocumentsBucket({
+                path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
+                buffer: pdfRes.pdfBuffer,
+                contentType: 'application/pdf',
+                upsert: true,
+              });
+
+              uploadedPdfUrl = uploadedPdf.url;
+              pdfFileSize = pdfRes.pdfBuffer.length;
+
+              payloadAny.attachment.pdfUrl = uploadedPdf.url;
+              payloadAny.previewUrl = uploadedPdf.url;
+              payloadAny.previewName = `${baseNoExt}.pdf`;
+              payloadAny.canonical_approved_pdf = uploadedPdf.url;
+              payloadAny.signed_pdf_url = uploadedPdf.url;
+              payloadAny.pdf_preview_url = uploadedPdf.url;
+
+              await supabase.from('deed_attachments').insert({
                 record_type: 'judge_submission',
                 record_id: created.id,
                 category: 'judge_attachment',
@@ -362,6 +423,10 @@ export const judgeSubmissionsProcedures = {
                 file_size: docBytes.length,
               }
             ]);
+              });
+            } catch (convErr) {
+              console.warn('[submitToJudge] Background PDF conversion skipped/failed, keeping original DOCX/DOC:', convErr);
+            }
           } else if (isPdf) {
             const uploadedPdf = await uploadBufferToDocumentsBucket({
               path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.pdf`,
@@ -395,6 +460,37 @@ export const judgeSubmissionsProcedures = {
               file_name: `${baseNoExt}.pdf`,
               file_url: uploadedPdf.url,
               mime_type: 'application/pdf',
+              file_size: docBytes.length,
+            });
+          } else if (isImage) {
+            const imgExt = nameLower.endsWith('.png') ? 'png' : nameLower.endsWith('.webp') ? 'webp' : 'jpg';
+            const imgMime = imgExt === 'png' ? 'image/png' : imgExt === 'webp' ? 'image/webp' : 'image/jpeg';
+            const uploadedImg = await uploadBufferToDocumentsBucket({
+              path: `judge-submissions/${created.id}/${baseNoExt}-${created.id}.${imgExt}`,
+              buffer: docBytes,
+              contentType: imgMime,
+              upsert: true,
+            });
+
+            payloadAny.attachment = {
+              ...primaryDeed,
+              name: `${baseNoExt}.${imgExt}`,
+              fileName: `${baseNoExt}.${imgExt}`,
+              category: 'judge_attachment',
+              url: uploadedImg.url,
+              fileUrl: uploadedImg.url,
+              base64: undefined,
+            };
+            payloadAny.previewUrl = uploadedImg.url;
+            payloadAny.previewName = `${baseNoExt}.${imgExt}`;
+
+            await supabase.from('deed_attachments').insert({
+              record_type: 'judge_submission',
+              record_id: created.id,
+              category: 'judge_attachment',
+              file_name: `${baseNoExt}.${imgExt}`,
+              file_url: uploadedImg.url,
+              mime_type: imgMime,
               file_size: docBytes.length,
             });
           }

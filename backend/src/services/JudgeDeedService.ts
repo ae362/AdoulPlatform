@@ -145,6 +145,27 @@ export class JudgeDeedService {
         (row.summary ? String(row.summary).slice(0, 60) : null) ||
         null;
 
+      // Sanitize payload for list view: only return essential metadata, strip heavy base64/attachments
+      const listPayload: Record<string, any> = {
+        husband_name: p.husband_name ?? null,
+        wife_name: p.wife_name ?? null,
+        parties_names: p.parties_names ?? null,
+        deceased_name: p.deceased_name ?? null,
+        applicant_name: p.applicant_name ?? null,
+        courtCity: p.courtCity || p.city || null,
+        primary_court: p.primary_court || p.primaryCourt || null,
+        court_name: p.court_name || p.courtName || null,
+        savedRasmId: p.savedRasmId ?? null,
+        hasPdf: Boolean(
+          p.previewUrl ||
+          p.pdf_preview_url ||
+          p.canonical_approved_pdf ||
+          p.signed_pdf_url ||
+          p.attachment?.pdfUrl ||
+          (p.attachment?.url && (String(p.attachment.url).includes('.pdf') || String(p.attachment.url).startsWith('http')))
+        ),
+      };
+
       return {
         id: row.id as string,
         notaryUserId: row.notary_user_id as string,
@@ -153,7 +174,7 @@ export class JudgeDeedService {
         documentType: (row.document_type ?? '') as string,
         summary: (row.summary ?? '') as string,
         partySummary,
-        payload: p,
+        payload: listPayload,
         status: row.status as JudgeSubmissionStatus,
         decision: (row.decision ?? null) as JudgeDecision | null,
         judgeNotes: (row.judge_notes ?? null) as string | null,
@@ -401,6 +422,7 @@ export class JudgeDeedService {
       const name = String(f.name || f.fileName || f.filename || `مرفق_${idx + 1}`);
       const mime = f.type || f.mimeType || f.mime_type || null;
       let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || '').trim();
+      let url = String(f.url || f.fileUrl || f.file_url || f.publicUrl || f.pdfUrl || '').trim();
       if (!url && typeof f.base64 === 'string' && f.base64.trim()) {
         const b64 = f.base64.trim();
         url = b64.startsWith('data:') ? b64 : `data:${mime || 'application/octet-stream'};base64,${b64}`;
@@ -410,6 +432,7 @@ export class JudgeDeedService {
         savedRasmAttachments.push({
           id: String(f.id || `payload_att_${idx}`),
           category: String(f.category || f.field || 'attachment'),
+          category: String(f.category || f.field || 'judge_attachment'),
           fileName: name,
           fileUrl: url,
           mimeType: mime ? String(mime) : null,
@@ -482,11 +505,19 @@ export class JudgeDeedService {
     }
 
     // 1. Direct compiled PDF stream from payload pointers or saved_rasms.state
+    const plAny = payloadObject as any;
     const payloadCandidates = [
       { url: payloadObject?.previewUrl, name: payloadObject?.previewName },
       { url: payloadObject?.finalPdfUrl, name: 'المستند_النهائي.pdf' },
       { url: payloadObject?.latestSigningPdfUrl, name: 'مستند_التوقيع.pdf' },
       { url: payloadObject?.latestDraftPdfUrl, name: 'مسودة_الرسم.pdf' },
+      { url: plAny?.attachment?.pdfUrl, name: plAny?.attachment?.name || 'مستند_القاضي.pdf' },
+      { url: plAny?.attachment?.url && (String(plAny.attachment.url).includes('.pdf') || String(plAny.attachment.url).startsWith('http')) ? plAny.attachment.url : undefined, name: plAny?.attachment?.name || 'مستند_القاضي.pdf' },
+      { url: plAny?.judgeAttachment?.url && (String(plAny.judgeAttachment.url).includes('.pdf') || String(plAny.judgeAttachment.url).startsWith('http')) ? plAny.judgeAttachment.url : undefined, name: plAny?.judgeAttachment?.name || 'مستند_القاضي.pdf' },
+      { url: plAny?.previewUrl, name: plAny?.previewName },
+      { url: plAny?.finalPdfUrl, name: 'المستند_النهائي.pdf' },
+      { url: plAny?.latestSigningPdfUrl, name: 'مستند_التوقيع.pdf' },
+      { url: plAny?.latestDraftPdfUrl, name: 'مسودة_الرسم.pdf' },
       { url: savedRasmStateObj?.latestSigningPdfUrl, name: 'مستند_التوقيع.pdf' },
       { url: savedRasmStateObj?.previewUrl, name: 'المستند_القضائي_المعتمد.pdf' },
       { url: savedRasmStateObj?.latestDraftPdfUrl, name: 'مسودة_الرسم.pdf' },

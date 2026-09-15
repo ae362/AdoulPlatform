@@ -1502,7 +1502,18 @@ export const judgeRouter = router({
           fileNumber: (row.file_number ?? '') as string,
           documentType: (row.document_type ?? '') as string,
           summary: (row.summary ?? '') as string,
-          payload: row.payload,
+          payload: {
+            source: (row.payload as any)?.source,
+            signedDeedId: (row.payload as any)?.signedDeedId,
+            originalApprovedJudgeUserId: (row.payload as any)?.originalApprovedJudgeUserId,
+            originJudgeUserId: (row.payload as any)?.originJudgeUserId,
+            husband_name: (row.payload as any)?.husband_name,
+            wife_name: (row.payload as any)?.wife_name,
+            courtCity: (row.payload as any)?.courtCity,
+            primary_court: (row.payload as any)?.primary_court,
+            court_name: (row.payload as any)?.court_name,
+            savedRasmId: (row.payload as any)?.savedRasmId,
+          },
           courtCity: extractCourtCity(
             row.payload?.courtCity ||
             row.payload?.primary_court ||

@@ -140,6 +140,7 @@ export function sanitizeAttachmentLikeValue(value: any): any {
     'fileURL',
     'publicUrl',
     'public_url',
+    'pdfUrl',
   ];
 
   for (const key of keepKeys) {
@@ -147,6 +148,12 @@ export function sanitizeAttachmentLikeValue(value: any): any {
     if (raw == null) continue;
     if (typeof raw === 'string' && raw.startsWith('data:')) continue;
     next[key] = raw;
+  }
+
+  // If no external URL is available yet, preserve base64 to avoid permanent document loss
+  const hasUrl = Boolean(next.url || next.fileUrl || next.file_url || next.fileURL || next.publicUrl || next.pdfUrl);
+  if (!hasUrl && typeof value.base64 === 'string' && value.base64.trim()) {
+    next.base64 = value.base64.trim();
   }
 
   return next;
@@ -160,6 +167,18 @@ export function sanitizePersistedPayload<T>(payload: T): T {
 
   if (Array.isArray((next as any).attachments)) {
     next.attachments = ((next as any).attachments as any[]).map((att) => sanitizeAttachmentLikeValue(att));
+  }
+
+  if ((next as any).attachment && typeof (next as any).attachment === 'object') {
+    next.attachment = sanitizeAttachmentLikeValue((next as any).attachment);
+  }
+
+  if ((next as any).judgeAttachment && typeof (next as any).judgeAttachment === 'object') {
+    next.judgeAttachment = sanitizeAttachmentLikeValue((next as any).judgeAttachment);
+  }
+
+  if ((next as any).manualRasmFile && typeof (next as any).manualRasmFile === 'object') {
+    next.manualRasmFile = sanitizeAttachmentLikeValue((next as any).manualRasmFile);
   }
 
   if ((next as any).judgeAcceptedDoc && typeof (next as any).judgeAcceptedDoc === 'object') {

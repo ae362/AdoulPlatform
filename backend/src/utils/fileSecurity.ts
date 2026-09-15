@@ -184,6 +184,26 @@ export function inspectDocxSafety(docxBuffer: Buffer): void {
     throw new Error('Security Error: Invalid DOCX payload');
   }
 
+  // Support legacy Word .doc (Compound File Binary Format: 0xD0 0xCF 0x11 0xE0)
+  if (
+    docxBuffer.length >= 8 &&
+    docxBuffer[0] === 0xd0 &&
+    docxBuffer[1] === 0xcf &&
+    docxBuffer[2] === 0x11 &&
+    docxBuffer[3] === 0xe0
+  ) {
+    const rawBinary = docxBuffer.toString('binary').toLowerCase();
+    if (
+      rawBinary.includes('powershell') ||
+      rawBinary.includes('cmd.exe') ||
+      rawBinary.includes('cscript') ||
+      rawBinary.includes('wscript')
+    ) {
+      throw new Error('Security Error: Forbidden active script or macro detected inside DOC file');
+    }
+    return;
+  }
+
   // Validate PK\x03\x04 header
   if (docxBuffer[0] !== 0x50 || docxBuffer[1] !== 0x4b) {
     throw new Error('Security Error: DOCX does not contain valid zip structure');

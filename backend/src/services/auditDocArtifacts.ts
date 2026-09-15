@@ -166,9 +166,18 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
   inspectDocxSafety(opts.docxBuffer);
 
   const timeoutMs = opts.timeoutMs ?? 60_000;
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+
+  const isLegacyDoc =
+    opts.docxBuffer.length >= 8 &&
+    opts.docxBuffer[0] === 0xd0 &&
+    opts.docxBuffer[1] === 0xcf &&
+    opts.docxBuffer[2] === 0x11 &&
+    opts.docxBuffer[3] === 0xe0;
 
   const tmpOutDir = await tmpDir({ unsafeCleanup: true });
   const tmpIn = await tmpFile({ postfix: '.docx' });
+  const tmpIn = await tmpFile({ postfix: isLegacyDoc ? '.doc' : '.docx' });
   const tmpProfileDir = await tmpDir({ unsafeCleanup: true });
 
   try {
@@ -182,6 +191,7 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
         '--nolockcheck',
         '--nodefault',
         '--norestore',
+        '--nofirststartwizard',
         '--invisible',
         '--convert-to',
         'pdf',
@@ -200,6 +210,7 @@ export async function convertDocxToPdfViaLibreOffice(opts: {
     }
 
     const pdfPath = path.join(tmpOutDir.path, path.basename(tmpIn.path).replace(/\.docx$/i, '.pdf'));
+    const pdfPath = path.join(tmpOutDir.path, path.basename(tmpIn.path).replace(/\.(docx?)$/i, '.pdf'));
     const pdfBuffer = await readFile(pdfPath);
 
     return { pdfBuffer, stdout, stderr, exitCode, durationMs };

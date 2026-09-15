@@ -21,6 +21,29 @@ export const RasmHtmlPreview: React.FC<Props> = ({ htmlContent, submissionId }) 
 
     let raw = content;
 
+    // Safety guard: if input is binary (PDF, DOCX, base64, or corrupted replacement chars)
+    const isBinaryContent =
+      raw.startsWith('%PDF-') ||
+      raw.startsWith('JVBERi') ||
+      raw.startsWith('data:application/pdf') ||
+      raw.startsWith('data:application/vnd') ||
+      raw.startsWith('PK\x03\x04') ||
+      raw.startsWith('UEsDB') ||
+      (raw.slice(0, 500).includes('\uFFFD') && raw.split('\uFFFD').length > 5);
+
+    if (isBinaryContent) {
+      const fallbackNotice = `
+        <div style="text-align: center; padding: 48px 24px; font-family: 'Amiri', serif; direction: rtl;">
+          <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 16px; background: #f0fdf4; display: flex; align-items: center; justify-content: center; font-size: 28px;">📜</div>
+          <h3 style="color: #023120; font-size: 20px; font-weight: bold; margin-bottom: 8px;">مستند عدلي ثنائي</h3>
+          <p style="color: #64748b; font-size: 14px; max-width: 480px; margin: 0 auto 20px; line-height: 1.8;">
+            هذا الملف مرفق بصيغة رقمية ثنائية (PDF أو Word). يرجى الضغط على الملف من قائمة مستودع الوثائق أو تحميله لعرضه بالدقة الكاملة.
+          </p>
+        </div>
+      `;
+      return wrapInFullHtml(fallbackNotice, getHeaderHtml('DECOR ADOUL 33'));
+    }
+
     // If input is plain text (no HTML tags), format paragraphs cleanly
     if (!raw.includes('<div') && !raw.includes('<p') && !raw.includes('<table') && !raw.includes('<html')) {
       const paragraphs = raw

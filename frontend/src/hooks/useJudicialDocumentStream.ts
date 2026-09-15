@@ -15,6 +15,27 @@ export interface UseJudicialDocumentStreamResult {
  * Preserves raw string HTML payloads directly in state and maintains
  * byte-exact binary streams for PDF/DOCX assets with explicit cleanup.
  */
+function parseDataUrlOrBase64ToBlob(input: string, fallbackMime = 'application/pdf'): Blob {
+  let mime = fallbackMime;
+  let b64 = input;
+  if (input.startsWith('data:')) {
+    const commaIdx = input.indexOf(',');
+    if (commaIdx !== -1) {
+      const meta = input.slice(0, commaIdx);
+      b64 = input.slice(commaIdx + 1);
+      const mimeMatch = meta.match(/:(.*?);/);
+      if (mimeMatch) mime = mimeMatch[1];
+    }
+  }
+  const binaryString = atob(b64.trim());
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
 export function useJudicialDocumentStream(
   attachmentUrl?: string | null,
   fileType?: string,
@@ -51,8 +72,15 @@ export function useJudicialDocumentStream(
     const rawInput = (attachmentUrl || '').trim();
     const normalizedType = (fileType || '').toLowerCase();
 
+    // Helper to decode data URLs or raw base64 strings directly in memory
+    const isBase64Payload =
+      rawInput.startsWith('data:') ||
+      rawInput.startsWith('JVBERi') ||
+      rawInput.startsWith('UEsDB');
+
     // 1. Direct Raw HTML / Text Content bypasses binary conversions
     const isBinaryAsset =
+      isBase64Payload ||
       normalizedType === 'docx' ||
       normalizedType === 'pdf' ||
       normalizedType === 'image' ||
@@ -61,23 +89,15 @@ export function useJudicialDocumentStream(
       /\.(png|jpe?g|webp|gif)$/i.test(rawInput) ||
       rawInput.startsWith('http://') ||
       rawInput.startsWith('https://') ||
-      rawInput.startsWith('blob:') ||
-      rawInput.startsWith('data:application/pdf') ||
-      rawInput.startsWith('data:application/vnd') ||
-      rawInput.startsWith('data:image/');
+      rawInput.startsWith('blob:');
 
     const isInlineHtml =
-      (initialRawContent && initialRawContent.trim().length > 0) ||
-      rawInput.startsWith('<') ||
-      rawInput.startsWith('html://') ||
-      rawInput.startsWith('draft://') ||
-      (normalizedType.includes('html') && !rawInput.startsWith('http://') && !rawInput.startsWith('https://') && !rawInput.startsWith('/'));
       !isBinaryAsset &&
       ((initialRawContent && initialRawContent.trim().length > 0) ||
         rawInput.startsWith('<') ||
         rawInput.startsWith('html://') ||
         rawInput.startsWith('draft://') ||
-        normalizedType.includes('html'));
+        (normalizedType.includes('html') && !rawInput.startsWith('http://') && !rawInput.startsWith('https://') && !rawInput.startsWith('/')));
 
     if (isInlineHtml) {
       cleanupActiveBlobUrl();
@@ -128,6 +148,21 @@ export function useJudicialDocumentStream(
       });
 
       try {
+        // Direct in-memory conversion for data URLs or raw base64 strings (bypasses browser fetch limitations)
+        if (rawInput.startsWith('data:') || rawInput.startsWith('JVBERi') || rawInput.startsWith('UEsDB')) {
+          const mime = normalizedType === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf';
+          const blob = parseDataUrlOrBase64ToBlob(rawInput, mime);
+          const newBlobUrl = URL.createObjectURL(blob);
+          activeBlobUrlRef.current = newBlobUrl;
+          setBlobUrl(newBlobUrl);
+          setLoadedUrl(rawInput);
+          setLoadedType(normalizedType);
+          setRawContent(null);
+          setIsLoading(false);
+          logViewerEvent('DOC_FETCH_SUCCESS', { fileType, submissionId, inMemoryBlob: true });
+          return;
+        }
+
         const headers: HeadersInit = {};
         const isExternalStorageUrl =
           rawInput.includes('/storage/v1/object/public/') ||

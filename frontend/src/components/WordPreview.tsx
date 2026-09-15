@@ -273,9 +273,37 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
 
           if (!isZip) {
             // Check if it's readable UTF-8 text or HTML
+            // 1. Check if it's actually a PDF file mistakenly routed to WordPreview
+            const isPdf = bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // %PDF
+            if (isPdf) {
+              setIsLegacyDoc(true);
+              setLoading(false);
+              return;
+            }
+
+            // 2. Check if it contains binary null bytes or OLE compound binary header (.doc)
+            const isBinaryCompoundDoc = bytes.length >= 8 && bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0;
+            const hasNullBytes = bytes.slice(0, Math.min(bytes.length, 1024)).some((b) => b === 0);
+
+            if (isBinaryCompoundDoc || hasNullBytes) {
+              // Binary legacy .doc or non-zip format detected — NEVER decode as plain text!
+              setIsLegacyDoc(true);
+              setLoading(false);
+              return;
+            }
+
+            // 3. Only if it is strictly valid UTF-8 text or HTML without binary bytes
             try {
-              const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-              if (text && (text.includes('<html') || text.includes('<p') || text.includes('<div') || text.includes('قال تعالى') || text.trim().length > 20)) {
+              const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+              const hasHtmlOrArabicKeywords =
+                text.includes('<html') ||
+                text.includes('<p') ||
+                text.includes('<div') ||
+                text.includes('قال تعالى') ||
+                text.includes('رسم') ||
+                text.includes('عقد');
+
+              if (text && hasHtmlOrArabicKeywords) {
                 const host = document.createElement('div');
                 host.className = 'p-8 sm:p-12 bg-white min-h-[1050px] shadow-lg rounded text-right font-amiri leading-relaxed';
                 host.dir = 'rtl';
@@ -291,7 +319,7 @@ export const WordPreview = React.forwardRef<WordPreviewHandle, WordPreviewProps>
                 return;
               }
             } catch {
-              // Not plain text
+              // Not valid plain UTF-8 text
             }
 
             // Legacy .doc format detected

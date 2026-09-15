@@ -189,7 +189,13 @@ export function pickNormalizedDocument(
 
   for (const candidate of candidatePdfUrls) {
     const url = normalize(candidate.url);
-    if (url && (url.toLowerCase().endsWith('.pdf') || url.includes('.pdf') || url.startsWith('data:application/pdf') || url.startsWith('blob:') || url.startsWith('http'))) {
+    if (!url) continue;
+
+    const lower = url.toLowerCase();
+    const isDocx = lower.endsWith('.docx') || lower.endsWith('.doc') || lower.includes('.docx') || lower.includes('.doc?');
+    if (isDocx) continue; // Let DOCX candidates be processed in the DOCX phase
+
+    if (lower.endsWith('.pdf') || lower.includes('.pdf') || lower.startsWith('data:application/pdf') || (lower.startsWith('blob:') && !isDocx)) {
       return {
         id: 'primary-compiled-pdf',
         title: candidate.name,
