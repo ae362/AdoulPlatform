@@ -12,7 +12,7 @@ import {
 } from './types';
 import { deepSanitizeObject } from '../../utils/inputSanitizer';
 
-const bidi = new Bidi();
+const bidi = new (Bidi as any)();
 
 export function normalizeJudgeCityKey(value: string): string {
   return String(value ?? '')

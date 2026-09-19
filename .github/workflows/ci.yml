@@ -9,11 +9,18 @@ on:
 jobs:
   build-and-verify:
     name: Type Integrity & Automated Test Verification
+    name: Code Quality (Oxlint), Type Integrity & Test Verification
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+          version: 10
 
       - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
@@ -23,14 +30,22 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
+          cache: 'pnpm'
 
       - name: Install Backend Dependencies
         working-directory: ./backend
         run: npm ci
+      - name: Install Workspace Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Oxlint Static Analysis & Test Gate
+        run: pnpm run lint
 
       - name: Verify Backend TypeScript Integrity
         working-directory: ./backend
         run: npm run build
+        run: pnpm run build
+        run: pnpm --filter adliyyah-fees-backend run build
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
@@ -39,8 +54,11 @@ jobs:
       - name: Verify Frontend Strict Gating (tsc --noEmit & vite build)
         working-directory: ./frontend
         run: npm run build
+        run: pnpm run build
+        run: pnpm --filter adliyyah-fees-frontend run build
 
       - name: Run Enterprise Production Tests
         working-directory: ./backend
         run: npm run test:all
+        run: pnpm run test:all
 

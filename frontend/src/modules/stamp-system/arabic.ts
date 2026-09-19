@@ -2,7 +2,7 @@ import Bidi from 'bidi-js';
 
 export type CircularTextStrategy = 'textPath' | 'manualGlyphs';
 
-const bidi = new Bidi();
+const bidi = new (Bidi as any)();
 
 function segmentText(text: string) {
   const SegmenterCtor = (Intl as unknown as { Segmenter?: new (...args: any[]) => any }).Segmenter;

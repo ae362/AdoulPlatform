@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "unicorn"
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/dist-build/**",
+    "**/.agent/**",
+    "**/.agents/**",
+    "**/backup/**",
+    "migrations/**",
+    "e2e/**"
+  ],
+  "categories": {
+    "correctness": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "unicorn/no-useless-fallback-in-spread": "off",
+    "react/set-state-in-effect": "off"
+  }
+}
+

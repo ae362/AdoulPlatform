@@ -9,11 +9,13 @@ echo ================================================================
 echo.
 echo [1/3] Starting Backend Server (Port 4000)...
 start "Adoul Backend Server" cmd /k "cd backend && npm run dev"
+start "Adoul Backend Server" cmd /k "cd backend && pnpm dev"
 
 timeout /t 3 /nobreak >nul
 
 echo [2/3] Starting Frontend Server (Port 5173)...
 start "Adoul Frontend Server" cmd /k "cd frontend && npm run host"
+start "Adoul Frontend Server" cmd /k "cd frontend && pnpm host"
 
 timeout /t 3 /nobreak >nul
 

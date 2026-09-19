@@ -1,0 +1,11 @@
+packages:
+  - 'backend'
+  - 'frontend'
+  - 'shared'
+
+allowBuilds:
+  core-js: true
+  esbuild: true
+  protobufjs: true
+  puppeteer: true
+  tesseract.js: true

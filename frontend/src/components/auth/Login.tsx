@@ -101,45 +101,45 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#212328] via-[#1a1b1e] to-[#141517] text-slate-100" dir="rtl" lang="ar">
-      <div className="relative isolate min-h-screen overflow-hidden">
-        {/* Dark grey ambient background lighting */}
+    <div className="min-h-screen w-full flex-1 flex flex-col bg-slate-100 text-slate-900" dir="rtl" lang="ar">
+      <div className="relative isolate flex-1 flex flex-col justify-center overflow-hidden w-full">
+        {/* Soft ambient lighting and geometric pattern */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-slate-700/10 blur-3xl" />
-          <div className="absolute -bottom-40 right-[-6rem] h-80 w-80 rounded-full bg-zinc-700/10 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.04)_1px,transparent_0)] [background-size:20px_20px]" />
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-amber-600/5 blur-3xl" />
+          <div className="absolute -bottom-40 right-[-6rem] h-80 w-80 rounded-full bg-slate-400/10 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(100,116,139,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
         </div>
 
         <ReturnToLandingButton className="absolute right-6 top-6 z-20" />
 
-        <main className="relative mx-auto flex min-h-screen w-full flex-col items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+        <main className="relative mx-auto flex flex-1 w-full flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
           {/* Centered Form card */}
           <section className="flex w-full max-w-md flex-col justify-center">
             <div className="group relative">
-              {/* Dark grey border glow effect */}
-              <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-zinc-700/40 via-slate-600/30 to-zinc-700/40 blur opacity-30 group-hover:opacity-60 transition duration-500" />
+              {/* Subtle ambient border glow */}
+              <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-amber-600/20 via-slate-300 to-amber-600/20 blur opacity-60 group-hover:opacity-90 transition duration-500" />
               
-              <div className="relative rounded-3xl bg-white/98 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
+              <div className="relative rounded-3xl bg-white p-8 shadow-xl shadow-slate-300/60 ring-1 ring-slate-200/80 sm:p-10">
                 {/* Logo Section at Top */}
-                <div className="mb-8 flex flex-col items-center gap-4">
+                <div className="mb-8 flex flex-col items-center gap-3">
                   <div className="flex items-center justify-center">
                     <img
                       src="/logos/adoul-logo.jpg"
                       alt="شعار الهيئة الوطنية للعدول"
-                      className="h-24 w-auto object-contain rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-2.5 shadow-md ring-1 ring-slate-200 transition-transform duration-300 hover:scale-105"
+                      className="h-24 w-auto object-contain rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200 transition-transform duration-300 hover:scale-105"
                       loading="lazy"
                       decoding="async"
                     />
                   </div>
                   <div className="flex flex-col items-center text-center">
-                    <p className="text-base font-bold text-rose-900">الهيئة الوطنية للعدول</p>
-                    <p className="text-xs text-amber-700 mt-1 font-medium">المملكة المغربية</p>
+                    <p className="text-base font-bold text-rose-950">الهيئة الوطنية للعدول</p>
+                    <p className="text-xs text-amber-800 mt-0.5 font-medium">المملكة المغربية</p>
                   </div>
                 </div>
 
                 <div className="mb-8 text-right">
-                  <h2 className="text-3xl font-bold tracking-tight text-white">تسجيل الدخول</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-amber-100">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-maghribi">تسجيل الدخول</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
                     استخدم بيانات دخولك للوصول إلى اللوحة الآمنة
                   </p>
                 </div>
@@ -160,11 +160,10 @@ export const Login: React.FC = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label htmlFor="email" className="mb-2.5 block text-right text-sm font-semibold text-white">
+                    <label htmlFor="email" className="mb-2 block text-right text-sm font-semibold text-slate-800">
                       البريد الإلكتروني
                     </label>
                     <div className="relative group">
-                      <div className={`absolute inset-0 rounded-xl bg-gradient-to-r from-rose-700/20 to-amber-600/20 opacity-0 group-focus-within:opacity-100 transition duration-300 blur`} />
                       <div className="relative">
                         <input
                           ref={emailRef}
@@ -176,16 +175,16 @@ export const Login: React.FC = () => {
                           onBlur={() => setEmailFocused(false)}
                           required
                           autoComplete="email"
-                          className={`h-12 w-full rounded-xl border-2 bg-white pl-11 pr-4 text-left text-slate-900 shadow-sm outline-none transition-all duration-200 ${ 
+                          className={`h-12 w-full rounded-xl border bg-slate-50/60 pl-11 pr-4 text-left text-slate-900 shadow-sm outline-none transition-all duration-200 ${ 
                             emailFocused
-                              ? 'border-rose-900 ring-4 ring-rose-200/50'
-                              : 'border-slate-200 hover:border-slate-300'
+                              ? 'border-rose-900 ring-4 ring-rose-900/10 bg-white'
+                              : 'border-slate-300 hover:border-slate-400'
                           }`}
                           placeholder="example@domain.com"
                           dir="ltr"
                           inputMode="email"
                         />
-                        <div className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${emailFocused ? 'text-amber-600' : 'text-amber-700/60'}`}>
+                        <div className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${emailFocused ? 'text-rose-900' : 'text-slate-400'}`}>
                           <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
                             <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
                           </svg>
@@ -195,13 +194,12 @@ export const Login: React.FC = () => {
                   </div>
 
                   <div>
-                    <div className="mb-2.5 flex items-center justify-between">
-                      <label htmlFor="password" className="text-sm font-semibold text-white">
+                    <div className="mb-2 flex items-center justify-between">
+                      <label htmlFor="password" className="text-sm font-semibold text-slate-800">
                         كلمة المرور
                       </label>
                     </div>
                     <div className="relative group">
-                      <div className={`absolute inset-0 rounded-xl bg-gradient-to-r from-rose-700/20 to-amber-600/20 opacity-0 group-focus-within:opacity-100 transition duration-300 blur`} />
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
@@ -218,19 +216,19 @@ export const Login: React.FC = () => {
                               ? 'inherit'
                               : 'caption, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
                           }}
-                          className={`h-12 w-full rounded-xl border-2 bg-white pl-12 pr-11 text-left text-slate-900 shadow-sm outline-none transition-all duration-200 ${
+                          className={`h-12 w-full rounded-xl border bg-slate-50/60 pl-12 pr-11 text-left text-slate-900 shadow-sm outline-none transition-all duration-200 ${
                             !showPassword ? 'tracking-wider' : ''
                           } ${
                             passwordFocused
-                              ? 'border-rose-900 ring-4 ring-rose-200/50'
-                              : 'border-slate-200 hover:border-slate-300'
+                              ? 'border-rose-900 ring-4 ring-rose-900/10 bg-white'
+                              : 'border-slate-300 hover:border-slate-400'
                           }`}
                           placeholder="••••••••"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-amber-700 hover:text-amber-600 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-900/20 transition-all"
                           aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                         >
                           {showPassword ? (
@@ -243,7 +241,7 @@ export const Login: React.FC = () => {
                             </svg>
                           )}
                         </button>
-                        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${passwordFocused ? 'text-amber-600' : 'text-amber-700/60'}`}>
+                        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200 ${passwordFocused ? 'text-rose-900' : 'text-slate-400'}`}>
                           <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
                             <path d="M18 8h-1V6c0-2.76-2.24-5-5-5s-5 2.24-5 5v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
                           </svg>
@@ -252,18 +250,18 @@ export const Login: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 pt-2">
-                    <label className="flex items-center gap-2.5 text-sm text-amber-100 cursor-pointer group">
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer group">
                       <input
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(e) => handleRememberMeChange(e.target.checked)}
-                        className="h-4 w-4 rounded border-amber-600 bg-white/5 text-amber-600 focus:ring-amber-500 transition cursor-pointer accent-amber-600"
+                        className="h-4 w-4 rounded border-slate-300 bg-slate-50 text-rose-900 focus:ring-rose-900/20 transition cursor-pointer accent-rose-900"
                       />
-                      <span className="group-hover:text-white transition">تذكرني</span>
+                      <span className="group-hover:text-slate-900 transition">تذكرني</span>
                     </label>
                     <a
-                      className="text-sm font-medium text-amber-400 underline decoration-amber-400/30 underline-offset-4 hover:text-amber-300 hover:decoration-amber-400 transition-all"
+                      className="text-sm font-semibold text-amber-800 underline decoration-amber-800/30 underline-offset-4 hover:text-amber-900 hover:decoration-amber-900 transition-all"
                       href="mailto:support@adoul.ma?subject=%D8%AF%D8%B9%D9%85%20%D8%AA%D8%B3%D8%AC%D9%8A%D9%84%20%D8%A7%D9%84%D8%AF%D8%AE%D9%88%D9%84"
                     >
                       هل نسيت كلمة المرور؟
@@ -273,13 +271,13 @@ export const Login: React.FC = () => {
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className={`group relative w-full h-12 rounded-xl font-semibold shadow-lg transition-all duration-200 overflow-hidden ${ 
+                    className={`group relative w-full h-12 rounded-xl font-bold shadow-lg transition-all duration-200 overflow-hidden ${ 
                       canSubmit
-                        ? 'bg-gradient-to-r from-rose-900 to-rose-800 text-white shadow-rose-900/30 hover:shadow-rose-900/50 hover:from-rose-800 hover:to-rose-700 active:scale-95'
-                        : 'bg-rose-700 text-white/80 cursor-not-allowed shadow-none'
+                        ? 'bg-gradient-to-r from-[#5a0c0b] via-[#6f0f0e] to-[#800020] text-white shadow-[#5a0c0b]/25 hover:shadow-[#5a0c0b]/40 hover:from-[#6b0f0e] hover:to-[#910527] active:scale-[0.99]'
+                        : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                     }`}
                   >
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300 bg-white/20" />
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300 bg-white/10" />
                     <div className="relative flex items-center justify-center gap-2">
                       {isLoading && (
                         <span
@@ -292,9 +290,9 @@ export const Login: React.FC = () => {
                   </button>
                 </form>
 
-                <div className="mt-7 border-t border-white/10 pt-6 text-center text-sm text-amber-100">
+                <div className="mt-8 border-t border-slate-100 pt-6 text-center text-sm text-slate-600">
                   <span>ليس لديك حساب؟ </span>
-                  <Link to="/register" className="font-semibold text-amber-400 hover:text-amber-300 underline decoration-amber-400/50 underline-offset-2 transition-colors">
+                  <Link to="/register" className="font-bold text-amber-800 hover:text-amber-900 underline decoration-amber-800/40 underline-offset-4 transition-colors">
                     إنشاء حساب
                   </Link>
                 </div>

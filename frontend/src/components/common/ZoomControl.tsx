@@ -31,11 +31,13 @@ export const ZoomControl: React.FC<{ className?: string; compact?: boolean }> = 
       // ignore storage errors
     }
     document.documentElement.style.zoom = `${clamped}%`;
+    document.documentElement.style.setProperty('--app-zoom', (clamped / 100).toString());
   };
 
   useEffect(() => {
     // Sync initial zoom on mount
     document.documentElement.style.zoom = `${zoom}%`;
+    document.documentElement.style.setProperty('--app-zoom', (zoom / 100).toString());
   }, [zoom]);
 
   const handleZoomIn = (e: React.MouseEvent) => {

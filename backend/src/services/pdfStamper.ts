@@ -6,7 +6,7 @@ import PizZip from 'pizzip';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-const bidi = new Bidi();
+const bidi = new (Bidi as any)();
 const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
 
 export interface PaginationOptions {

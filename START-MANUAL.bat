@@ -17,8 +17,11 @@ cd backend
 if not exist "node_modules\" (
     echo   Installing backend dependencies...
     call npm install
+    echo   Installing dependencies with pnpm...
+    call pnpm install
 )
 start "Adliyyah Backend" cmd /c "npm run dev"
+start "Adliyyah Backend" cmd /c "pnpm dev"
 cd ..
 
 echo [2/3] Starting Frontend...
@@ -26,9 +29,13 @@ cd frontend
 if not exist "node_modules\" (
     echo   Installing frontend dependencies...
     call npm install
+    echo   Installing dependencies with pnpm...
+    call pnpm install
 )
 :: Use call npm run dev to ensure the local vite binary is used
 start "Adliyyah Frontend" cmd /c "npm run dev -- --port 5143"
+:: Use call pnpm dev to ensure the local vite binary is used
+start "Adliyyah Frontend" cmd /c "pnpm dev --port 5143"
 cd ..
 
 echo.

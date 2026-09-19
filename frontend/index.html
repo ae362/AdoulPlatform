@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ar" dir="rtl" class="notranslate" translate="no">
+<html lang="ar" dir="rtl" class="notranslate bg-slate-100" translate="no" style="background-color: #f1f5f9;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -54,6 +55,8 @@
     </script>
   </head>
   <body class="bg-slate-50">
+  <body class="bg-slate-100">
+  <body class="bg-slate-100 min-h-screen" style="background-color: #f1f5f9;">
     <script>
       (function() {
         try {
@@ -61,8 +64,10 @@
           var zoomVal = saved ? parseInt(saved, 10) : 90;
           if (!isNaN(zoomVal) && zoomVal >= 75 && zoomVal <= 110) {
             document.documentElement.style.zoom = zoomVal + '%';
+            document.documentElement.style.setProperty('--app-zoom', (zoomVal / 100).toString());
           } else {
             document.documentElement.style.zoom = '90%';
+            document.documentElement.style.setProperty('--app-zoom', '0.9');
           }
         } catch (e) {}
       })();

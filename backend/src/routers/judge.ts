@@ -32,7 +32,7 @@ const INCLUSION_REGISTRY_LABELS: Record<InclusionRegistryType, string> = {
 };
 
 const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
-const bidi = new Bidi();
+const bidi = new (Bidi as any)();
 const JUDGE_CITY_CODE_MAP: Record<string, string> = {
   chefchaouen: 'CHE',
   شفشاون: 'CHE',
