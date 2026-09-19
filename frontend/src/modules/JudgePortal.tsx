@@ -650,9 +650,9 @@ function JudgeShell({ children }: { children: React.ReactNode }) {
   const currentCourtName = judgeProfileQuery.data?.primaryCourt || judgeProfileQuery.data?.courtName || judgeProfileQuery.data?.appellateCourt || 'المحكمة غير محددة بعد';
 
   return (
-    <div className="flex h-full min-h-screen bg-slate-100 text-slate-900 overflow-hidden" dir="rtl">
+    <div className="flex h-screen max-h-screen bg-slate-100 text-slate-900 overflow-hidden" dir="rtl">
       {/* Sidebar */}
-      <aside className="w-72 bg-gradient-to-b from-[#023120] via-[#023120] to-[#011a11] text-white shadow-xl z-20 border-l-4 border-[#E6BE8A] flex flex-col h-full flex-shrink-0 transition-all duration-300 relative overflow-hidden font-kufi">
+      <aside className="w-72 bg-gradient-to-b from-[#023120] via-[#023120] to-[#011a11] text-white shadow-xl z-20 border-l-4 border-[#E6BE8A] flex flex-col h-screen max-h-screen flex-shrink-0 transition-all duration-300 sticky top-0 self-start overflow-hidden font-kufi">
         {/* Luxury Grand Moroccan Islamic Pattern Watermark */}
         <div className="absolute inset-0 moroccan-luxury-pattern pointer-events-none z-0"></div>
 

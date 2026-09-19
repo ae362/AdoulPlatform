@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react';
 import {
   Users, Plus, Trash2, CheckCircle2, AlertTriangle, XCircle,
   HelpCircle, Calendar, ShieldCheck, UserCheck, AlertCircle,
-  ChevronDown, ChevronUp, FileText, Search, Eye, Sparkles, Clock, MapPin
+  ChevronDown, ChevronUp, FileText, Search, Eye, Sparkles, Clock, MapPin,
+  Camera, Loader2, CreditCard
 } from 'lucide-react';
+import { trpc } from '../../../../trpc';
+import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
 import type { Witness, FeesAgentState, WitnessKinshipRelation, WitnessInquestResult } from '../../../../types/feesAgentTypes';
 import { createEmptyWitness } from '../../../../utils/feesAgentUtils';
 import {
@@ -44,6 +47,86 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
   const defaultHearingDate = defaultDepositionDate;
   const defaultTestimonyDate = defaultDepositionDate;
   const defaultInquestNotary = state.meta?.notaryPrimary || 'العدل المتلقي';
+
+  const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+  const [scanningWitness, setScanningWitness] = useState<Record<number, boolean>>({});
+  const [witnessNotice, setWitnessNotice] = useState<
+    Record<number, { message: string; success: boolean }>
+  >({});
+
+  const scanWitnessCard = async (index: number, file: File) => {
+    setScanningWitness((prev) => ({ ...prev, [index]: true }));
+    setWitnessNotice((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      if (res?.extractedFields?.idNumber) {
+        const cin = res.extractedFields.idNumber.toUpperCase();
+        const extractedName = res.extractedFields.name;
+        const extractedDate = res.extractedFields.idIssueDate;
+
+        const currentWitness: Partial<Witness> = witnesses[index] || {};
+        const patch: Partial<Witness> = {
+          idNumber: cin,
+        };
+
+        if (extractedName && (!currentWitness.name || currentWitness.name.trim() === '')) {
+          patch.name = extractedName;
+        }
+
+        if (extractedDate && !currentWitness.dateOfBirth) {
+          patch.dateOfBirth = extractedDate;
+        }
+
+        handleWitnessChange(index, patch);
+
+        setWitnessNotice((prev) => ({
+          ...prev,
+          [index]: {
+            message: `تم استخراج رقم البطاقة: ${cin}${extractedName ? ` | الاسم: ${extractedName}` : ''}`,
+            success: true,
+          },
+        }));
+      } else {
+        setWitnessNotice((prev) => ({
+          ...prev,
+          [index]: {
+            message: 'لم نتمكن من قراءة رقم البطاقة بدقة، يمكنك كتابته يدوياً',
+            success: false,
+          },
+        }));
+      }
+    } catch {
+      setWitnessNotice((prev) => ({
+        ...prev,
+        [index]: {
+          message: 'حدث خطأ أثناء معالجة صورة البطاقة',
+          success: false,
+        },
+      }));
+    } finally {
+      setScanningWitness((prev) => ({ ...prev, [index]: false }));
+    }
+  };
 
   const handleWitnessChange = (index: number, patch: Partial<Witness>) => {
     const updated = [...witnesses];
@@ -544,9 +627,44 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
 
                     {/* Section 1: Personal Data & Dual Dates */}
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                         <span className="text-xs font-black text-slate-800">أ. البيانات الشخصية ومواقيت الشهادة</span>
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-xs">
+                          {scanningWitness[index] ? (
+                            <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                          ) : (
+                            <Camera className="w-3.5 h-3.5 text-blue-600" />
+                          )}
+                          <span>مسح من صورة البطاقة (CIN)</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            disabled={scanningWitness[index]}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                scanWitnessCard(index, file);
+                              }
+                            }}
+                          />
+                        </label>
                       </div>
+
+                      {witnessNotice[index] && (
+                        <div className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-bold ${
+                          witnessNotice[index].success
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-800 border border-amber-200'
+                        }`}>
+                          {witnessNotice[index].success ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          )}
+                          <span>{witnessNotice[index].message}</span>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>

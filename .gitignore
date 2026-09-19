@@ -53,9 +53,8 @@ backend/google-vision-credentials.json
 FeesAgent old.tsx
 *.html
 .dependency-cruiser.js
-*.tsbuildinfo
 .graphify/
-.agents/.graphify/
 graphify-out/
-
+*.tsbuildinfo
+*.traineddata
 

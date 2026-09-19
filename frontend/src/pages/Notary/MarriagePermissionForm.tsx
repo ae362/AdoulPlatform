@@ -3,6 +3,8 @@ import { WacomSignatureCapture, type CapturedWacomSignature } from '../../compon
 import { PermissionJudgeSelector } from '../../components/PermissionJudgeSelector';
 import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
+import { Camera, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { enhanceCardImageForOCR } from '../../utils/cinImageEnhancer';
 
 interface MarriagePermissionFormProps {
   notaryData: {
@@ -234,6 +236,11 @@ const MarriagePermissionForm: React.FC<MarriagePermissionFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+  const [scanningCIN, setScanningCIN] = useState<Record<string, boolean>>({});
+  const [extractedCINNotice, setExtractedCINNotice] = useState<
+    Record<string, { cin: string; message: string; success: boolean }>
+  >({});
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -245,6 +252,85 @@ const MarriagePermissionForm: React.FC<MarriagePermissionFormProps> = ({
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  const scanCINForPermission = async (file: File, target: 'suitor' | 'fiancee') => {
+    setScanningCIN((prev) => ({ ...prev, [target]: true }));
+    setExtractedCINNotice((prev) => {
+      const next = { ...prev };
+      delete next[target];
+      return next;
+    });
+
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await fileToBase64(file);
+      }
+      if (!b64) {
+        b64 = await fileToBase64(file);
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      if (res?.extractedFields?.idNumber) {
+        const cin = res.extractedFields.idNumber.toUpperCase();
+        setFormData((prev) => {
+          const update: any = {};
+          if (target === 'suitor') {
+            update.suitorCIN = cin;
+            if (res.extractedFields.name && !prev.suitorFirstNameAr) {
+              const parts = res.extractedFields.name.split(' ');
+              update.suitorFirstNameAr = parts[0] || '';
+              update.suitorLastNameAr = parts.slice(1).join(' ') || '';
+            }
+          } else {
+            update.fianceeCIN = cin;
+            if (res.extractedFields.name && !prev.fianceeFirstNameAr) {
+              const parts = res.extractedFields.name.split(' ');
+              update.fianceeFirstNameAr = parts[0] || '';
+              update.fianceeLastNameAr = parts.slice(1).join(' ') || '';
+            }
+          }
+          return { ...prev, ...update };
+        });
+
+        setExtractedCINNotice((prev) => ({
+          ...prev,
+          [target]: {
+            cin,
+            message: `تم استخراج رقم البطاقة الوطنية: ${cin}`,
+            success: true,
+          },
+        }));
+      } else {
+        setExtractedCINNotice((prev) => ({
+          ...prev,
+          [target]: {
+            cin: '',
+            message: res?.errors?.[0] || 'تعذر قراءة رقم البطاقة بدقة، يرجى كتابته يدوياً.',
+            success: false,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error('Error scanning CIN:', err);
+      setExtractedCINNotice((prev) => ({
+        ...prev,
+        [target]: {
+          cin: '',
+          message: 'حدث خطأ أثناء قراءة صورة البطاقة، يرجى إدخال الرقم يدوياً.',
+          success: false,
+        },
+      }));
+    } finally {
+      setScanningCIN((prev) => ({ ...prev, [target]: false }));
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -594,8 +680,70 @@ const MarriagePermissionForm: React.FC<MarriagePermissionFormProps> = ({
                 <input type="text" name="suitorNationality" value={formData.suitorNationality} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl px-4 py-3 font-bold" />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-1">رقم البطاقة الوطنية</label>
-                <input type="text" name="suitorCIN" value={formData.suitorCIN} onChange={handleInputChange} className={`w-full border rounded-xl px-4 py-3 font-bold text-red-950 ${errors.suitorCIN ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-bold">رقم البطاقة الوطنية</label>
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold text-red-950 bg-red-50 hover:bg-red-100 border border-red-200 transition-all shadow-xs">
+                    <Camera className="w-3.5 h-3.5 text-red-800" />
+                    <span>مسح من الصورة</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          scanCINForPermission(file, 'suitor');
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  name="suitorCIN"
+                  value={formData.suitorCIN}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData((prev) => ({ ...prev, suitorCIN: val }));
+                  }}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold font-mono text-red-950 ${errors.suitorCIN ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
+                  placeholder="مثال: AB123456"
+                />
+                {scanningCIN['suitor'] && (
+                  <div className="mt-2 flex items-center gap-2 text-xs font-bold text-red-900 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-red-700" />
+                    <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
+                  </div>
+                )}
+                {extractedCINNotice['suitor'] && (
+                  <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
+                    extractedCINNotice['suitor'].success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-amber-50 border-amber-200 text-amber-800'
+                  }`}>
+                    <span className="flex items-center gap-1.5 truncate">
+                      {extractedCINNotice['suitor'].success ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                      )}
+                      <span>{extractedCINNotice['suitor'].message}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExtractedCINNotice((prev) => {
+                          const next = { ...prev };
+                          delete next['suitor'];
+                          return next;
+                        });
+                      }}
+                      className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
                 {errors.suitorCIN && <p className="text-red-600 text-xs mt-1 font-bold">{errors.suitorCIN}</p>}
               </div>
               <div>
@@ -832,8 +980,70 @@ const MarriagePermissionForm: React.FC<MarriagePermissionFormProps> = ({
                 <input type="text" name="fianceeNationality" value={formData.fianceeNationality} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl px-4 py-3 font-bold" />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-1">رقم البطاقة الوطنية</label>
-                <input type="text" name="fianceeCIN" value={formData.fianceeCIN} onChange={handleInputChange} className={`w-full border rounded-xl px-4 py-3 font-bold text-red-950 ${errors.fianceeCIN ? 'border-red-500 bg-red-50' : 'border-gray-200'}`} />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-bold">رقم البطاقة الوطنية</label>
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold text-red-950 bg-red-50 hover:bg-red-100 border border-red-200 transition-all shadow-xs">
+                    <Camera className="w-3.5 h-3.5 text-red-800" />
+                    <span>مسح من الصورة</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          scanCINForPermission(file, 'fiancee');
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  name="fianceeCIN"
+                  value={formData.fianceeCIN}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setFormData((prev) => ({ ...prev, fianceeCIN: val }));
+                  }}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold font-mono text-red-950 ${errors.fianceeCIN ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
+                  placeholder="مثال: CD654321"
+                />
+                {scanningCIN['fiancee'] && (
+                  <div className="mt-2 flex items-center gap-2 text-xs font-bold text-red-900 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-red-700" />
+                    <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
+                  </div>
+                )}
+                {extractedCINNotice['fiancee'] && (
+                  <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
+                    extractedCINNotice['fiancee'].success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-amber-50 border-amber-200 text-amber-800'
+                  }`}>
+                    <span className="flex items-center gap-1.5 truncate">
+                      {extractedCINNotice['fiancee'].success ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                      )}
+                      <span>{extractedCINNotice['fiancee'].message}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExtractedCINNotice((prev) => {
+                          const next = { ...prev };
+                          delete next['fiancee'];
+                          return next;
+                        });
+                      }}
+                      className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
                 {errors.fianceeCIN && <p className="text-red-600 text-xs mt-1 font-bold">{errors.fianceeCIN}</p>}
               </div>
               <div>

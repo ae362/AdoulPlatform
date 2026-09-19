@@ -3,6 +3,8 @@ import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessagingNotifications } from '../../contexts/MessagingNotificationsContext';
 import { printElement } from '../../utils/print';
+import { useNavigate } from 'react-router-dom';
+import { convertMarriagePermissionToFeesAgent } from '../../utils/marriagePermissionAdapter';
 
 interface GenericPermissionPortalProps {
   title: string;
@@ -45,6 +47,17 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
   const [selectedTrackingView, setSelectedTrackingView] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleCreateMarriageContract = (permission: any) => {
+    const feesAgentDraft = convertMarriagePermissionToFeesAgent(permission);
+    navigate('/dashboard?module=fees&section=drafting', {
+      state: {
+        loadFeesAgentDraft: feesAgentDraft,
+        marriagePermissionId: permission.id,
+      },
+    });
+  };
 
   const { data: permissionsList, isLoading: listLoading, refetch: refetchPermissions } = 
     type === 'scientific' ? (trpc as any).permissions.getScientific.useQuery({ notaryId: user?.id }) :
@@ -196,7 +209,7 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
       <div className="rounded-xl bg-white p-6 shadow-sm border border-slate-200">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3 font-maghribi">
+            <h2 className="text-3xl font-normal text-slate-900 flex items-center gap-3 font-maghribi tracking-normal">
               <span>{icon}</span>
               {title}
             </h2>
@@ -327,7 +340,7 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                           <span className="text-gray-400 text-[10px] italic">بانتظار القرار</span>
                         )}
                       </td>
-                      <td className="p-4 flex gap-3">
+                      <td className="p-4 flex gap-2 flex-wrap items-center">
                         <button 
                           onClick={() => setSelectedRequestView(p)} 
                           className="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1"
@@ -340,6 +353,16 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                         >
                           📍 التتبع
                         </button>
+                        {type === 'marriage' && (
+                          <button
+                            onClick={() => handleCreateMarriageContract(p)}
+                            className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-2.5 py-1 rounded-lg font-black text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            title="تحرير وتوثيق رسم الزواج في حاسبة الرسوم آلياً"
+                          >
+                            <span>💍</span>
+                            <span>تحرير العقد</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -378,7 +401,7 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <button 
                       onClick={() => setSelectedTrackingView(p)}
                       className="text-orange-600 hover:text-orange-800 font-bold px-4 py-2 rounded-lg border border-orange-200"
@@ -391,6 +414,15 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                     >
                       عرض القرار
                     </button>
+                    {type === 'marriage' && (
+                      <button
+                        onClick={() => handleCreateMarriageContract(p)}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>💍</span>
+                        <span>تحرير رسم الزواج</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -400,6 +432,137 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'archive' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <span>📁</span>
+                  أرشيف طلبات {title}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">السجل الكامل لكافة الطلبات والمحررات والقرارات المؤرشفة</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <span className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg font-bold border border-slate-200">
+                  إجمالي المؤرشف: {filteredList?.length || 0}
+                </span>
+                <div className="relative flex-1 sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="بحث في الأرشيف..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-[#E6BE8A] outline-none"
+                  />
+                  <span className="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                </div>
+              </div>
+            </div>
+
+            {filteredList && filteredList.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b text-slate-700 text-xs">
+                      <th className="p-4 font-black">رقم الطلب</th>
+                      <th className="p-4 font-black">الأطراف المعنية</th>
+                      <th className="p-4 font-black">تاريخ الإنشاء</th>
+                      <th className="p-4 font-black">الحالة والقرار</th>
+                      <th className="p-4 font-black text-center">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {filteredList.map((p: any) => (
+                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-4 font-bold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400">📄</span>
+                            <span>{p.request_number}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-slate-600 max-w-xs truncate">
+                          {p.involved_names || p.partiesNames || p.beneficiaryName || '---'}
+                        </td>
+                        <td className="p-4 text-slate-500 text-xs">
+                          {p.created_at ? new Date(p.created_at).toLocaleDateString('ar-MA') : '---'}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              p.status === 'قيد_المعالجة' ? 'bg-amber-100 text-amber-700' :
+                              (p.status === 'مقبول' || p.status === 'موافق_عليه' || p.status === 'APPROVED') ? 'bg-green-100 text-green-700' :
+                              (p.status === 'مرفوض' || p.status === 'REJECTED') ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {p.status === 'موافق_عليه' ? 'مقبول' : p.status}
+                            </span>
+                            {p.decision_type && (
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
+                                p.decision_type === 'موافقة' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                              }`}>
+                                {p.decision_type}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setSelectedRequestView(p)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                              title="عرض نص الطلب"
+                            >
+                              <span>👁️</span>
+                              عرض الطلب
+                            </button>
+                            {(p.decision_type || p.status === 'موافق_عليه' || p.status === 'مقبول' || p.status === 'مرفوض' || p.status === 'APPROVED' || p.status === 'REJECTED') && (
+                              <button
+                                onClick={() => setSelectedDecision(p)}
+                                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200 transition flex items-center gap-1"
+                                title="عرض وثيقة القرار"
+                              >
+                                <span>📜</span>
+                                القرار
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setSelectedTrackingView(p)}
+                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-200 transition flex items-center gap-1"
+                              title="مسار التتبع"
+                            >
+                              <span>📍</span>
+                              التتبع
+                            </button>
+                            {type === 'marriage' && (
+                              <button
+                                onClick={() => handleCreateMarriageContract(p)}
+                                className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-lg text-xs font-bold shadow-xs hover:shadow-md transition flex items-center gap-1 cursor-pointer"
+                                title="تحرير وتوثيق رسم الزواج في حاسبة الرسوم آلياً"
+                              >
+                                <span>💍</span>
+                                <span>تحرير العقد</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-20 text-center flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-3xl mb-3 text-amber-600 shadow-sm">
+                  📁
+                </div>
+                <h4 className="text-lg font-bold text-slate-700">لا توجد طلبات مؤرشفة حالياً</h4>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm">
+                  الطلبات التي تكتمل دورتها القضائية أو تُحفظ ستظهر مسجلة في هذا الأرشيف الإلكتروني للرجوع إليها وتتبعها.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -437,20 +600,33 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                   }} 
               />
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-               <button 
-                 onClick={() => {
-                   if (requestRef.current) {
-                     printElement(requestRef.current, { title: `طلب_${selectedRequestView.request_number}` });
-                   } else {
-                     window.print();
-                   }
-                 }} 
-                 className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors"
-               >
-                 طبع الطلب
-               </button>
-               <button onClick={() => setSelectedRequestView(null)} className="bg-slate-100 text-slate-600 px-6 py-2 rounded-lg">إغلاق</button>
+            <div className="mt-6 flex justify-end gap-2 items-center flex-wrap">
+              {type === 'marriage' && (
+                <button 
+                  onClick={() => {
+                    const p = selectedRequestView;
+                    setSelectedRequestView(null);
+                    handleCreateMarriageContract(p);
+                  }}
+                  className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>💍</span>
+                  <span>تحرير رسم الزواج في حاسبة الرسوم</span>
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  if (requestRef.current) {
+                    printElement(requestRef.current, { title: `طلب_${selectedRequestView.request_number}` });
+                  } else {
+                    window.print();
+                  }
+                }} 
+                className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors"
+              >
+                طبع الطلب
+              </button>
+              <button onClick={() => setSelectedRequestView(null)} className="bg-slate-100 text-slate-600 px-6 py-2 rounded-lg">إغلاق</button>
             </div>
           </div>
         </div>
@@ -477,9 +653,22 @@ const GenericPermissionPortal: React.FC<GenericPermissionPortalProps> = ({
                    <p className="text-[10px] text-slate-500 font-bold">الرقم المرجعي: {selectedDecision.request_number}</p>
                  </div>
                </div>
-               <div className="flex gap-3">
-                 <button 
-                   onClick={() => {
+                <div className="flex gap-3 items-center flex-wrap">
+                  {type === 'marriage' && (selectedDecision.decision_type === 'موافقة' || selectedDecision.status === 'موافق_عليه' || selectedDecision.status === 'مقبول') && (
+                    <button
+                      onClick={() => {
+                        const p = selectedDecision;
+                        setSelectedDecision(null);
+                        handleCreateMarriageContract(p);
+                      }}
+                      className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg hover:shadow-xl transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <span>💍</span>
+                      <span>تحرير رسم الزواج مباشرة</span>
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
                      if (decisionRef.current) {
                        printElement(decisionRef.current, { 
                          title: `قرار_${selectedDecision.request_number}`,

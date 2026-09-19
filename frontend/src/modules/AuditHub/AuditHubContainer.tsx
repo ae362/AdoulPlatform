@@ -53,7 +53,10 @@ import {
   ScrollText,
   LayoutGrid,
   FolderArchive,
-  Loader2
+  Loader2,
+  Columns,
+  Eye,
+  SlidersHorizontal
 } from 'lucide-react';
 import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
@@ -140,6 +143,8 @@ export const deriveUniqueSerial = (rasmData: any, stateObj: any): string => {
 
 export const AuditHubContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState('data');
+  const [workspaceLayoutMode, setWorkspaceLayoutMode] = useState<'split' | 'doc' | 'form'>('split');
+  const [activeFormSection, setActiveFormSection] = useState<'all' | 'deed' | 'parties' | 'properties' | 'financial' | 'notaries'>('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -4078,21 +4083,21 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         <Shield className="w-10 h-10 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
       </div>
       <div className="text-center space-y-2">
-        <h2 className="font-black text-3xl font-amiri tracking-tight">جاري تحضير منصة التضمين</h2>
-        <p className="text-slate-500 font-bold text-sm uppercase tracking-widest animate-pulse">Initializing Secure Registration Hub</p>
+        <h2 className="font-black text-3xl font-maghribi tracking-tight text-white">جاري تحضير منصة التضمين</h2>
+        <p className="text-slate-400 font-bold text-sm uppercase tracking-widest animate-pulse font-kufi">Initializing Secure Registration Hub</p>
       </div>
     </div>
   );
   
   if (error || rasmQuery.error) return (
-    <div className="h-[calc(100vh-5rem)] min-h-[500px] flex items-center justify-center bg-red-50 p-6 md:p-12">
+    <div className="h-[calc(100vh-5rem)] min-h-[500px] flex items-center justify-center bg-red-50 p-6 md:p-12 font-kufi">
       <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border-2 border-red-100 flex flex-col items-center gap-6 max-w-lg text-center">
         <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center text-red-600">
           <AlertCircle className="w-12 h-12" />
         </div>
-        <h3 className="text-2xl font-black text-slate-900 font-amiri">عذراً، تعذر تحميل البيانات</h3>
-        <p className="text-slate-600 font-medium leading-relaxed">{error || (rasmQuery.error as any)?.message}</p>
-        <button onClick={() => navigate(-1)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all">العودة للخلف</button>
+        <h3 className="text-2xl font-black text-slate-900 font-maghribi">عذراً، تعذر تحميل البيانات</h3>
+        <p className="text-slate-600 font-bold leading-relaxed">{error || (rasmQuery.error as any)?.message}</p>
+        <button onClick={() => navigate(-1)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all font-kufi cursor-pointer">العودة للخلف</button>
       </div>
     </div>
   );
@@ -4120,69 +4125,116 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   })();
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden bg-[linear-gradient(135deg,#EAF4FF_0%,#F4F7FB_100%)] font-amiri" dir="rtl">
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden bg-slate-900 font-kufi select-none" dir="rtl">
       
-      {/* ZONE 1: HEADER (Fixed) */}
-      <header className="h-[70px] shrink-0 bg-[linear-gradient(90deg,#1E88E5_0%,#6A1B9A_100%)] text-white shadow-lg z-50 px-6 flex items-center justify-between relative">
-         <div className="flex items-center gap-4">
-             {/* Logo / Badge */}
-             <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 shadow-inner">
-                    <Shield className="w-6 h-6 text-white" />
-                 </div>
-                 <div className="flex flex-col">
-                     <h1 className="text-lg font-black tracking-tight leading-none">مسار المراقبة و التضمين</h1>
-                     <span className="text-[10px] text-blue-100 font-bold opacity-80 uppercase tracking-widest">Smart Audit Hub</span>
-                 </div>
-             </div>
-             <div className="h-8 w-px bg-white/20 mx-2"></div>
-             {/* Fee Info */}
-             <div className="flex items-center gap-6">
-                 <div className="flex flex-col">
-                     <span className="text-[10px] text-blue-200 uppercase tracking-widest font-bold">رقم الرسم</span>
-                     <span className="text-sm font-black font-mono">{finalRecord.serial}</span>
-                 </div>
-                 <div className="flex flex-col border-r border-white/10 pr-4">
-                     <span className="text-[10px] text-blue-200 uppercase tracking-widest font-bold">الموثق</span>
-                     <span className="text-sm font-bold">{finalRecord.notaryName || '---'}</span>
-                 </div>
-                  <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                      <span className="text-xs font-bold text-white">قيد المعالجة</span>
-                  </div>
-             </div>
-         </div>
+      {/* 1. EXECUTIVE MOROCCAN JUDICIAL COMMAND HEADER */}
+      <header className="h-20 shrink-0 bg-[#0B1329] border-b-2 border-amber-500/40 text-white px-6 flex items-center justify-between z-30 shadow-xl">
+        {/* Right: Moroccan Judicial Identity & Document Vital Status */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-500/70 shadow-lg bg-slate-900 flex items-center justify-center shrink-0">
+            <img 
+              src="/logos/moroccan-judicial-seal.jpg" 
+              alt="شعار المملكة المغربية" 
+              className="w-full h-full object-cover" 
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-amber-200 leading-tight font-maghribi">منصة المراقبة وتدقيق الرسوم العدلية</h1>
+              <span className="text-sm font-bold px-3.5 py-1 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 flex items-center gap-2 shadow-sm font-kufi">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                قيد التدقيق والتضمين
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-base text-slate-300 font-bold mt-1 font-kufi">
+              <span>رقم الرسم: <span className="font-mono text-amber-400 font-black text-lg">{finalRecord.serial}</span></span>
+              <span className="text-slate-600">•</span>
+              <span className="truncate max-w-[280px]">الموثق: <span className="text-amber-100">{finalRecord.notaryName || '---'}</span></span>
+              {notaryCity && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span>دائرة التوثيق: <span className="text-amber-100">{notaryCity}</span></span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
 
-         {/* Right Actions */}
-         <div className="flex items-center gap-3">
-             <button 
-                onClick={() => navigate(-1)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-95 text-white/80 hover:text-white"
-             >
-                 <XCircle className="w-6 h-6" />
-             </button>
-         </div>
+        {/* Center: Workspace View Switcher (Split / Doc Only / Form Only) */}
+        <div className="hidden lg:flex items-center bg-slate-950/90 p-1.5 rounded-2xl border border-slate-700/90 shadow-inner font-kufi">
+          <button
+            type="button"
+            onClick={() => setWorkspaceLayoutMode('split')}
+            className={`px-4.5 py-2.5 rounded-xl text-base font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              workspaceLayoutMode === 'split'
+                ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-md font-black'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+            title="عرض متوازن (المستند والاستمارة جنباً إلى جنب)"
+          >
+            <Columns className="w-5 h-5" />
+            <span>عرض متوازن</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setWorkspaceLayoutMode('doc')}
+            className={`px-4.5 py-2.5 rounded-xl text-base font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              workspaceLayoutMode === 'doc'
+                ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-md font-black'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+            title="عرض الوثيقة بالكامل (أقصى مساحة للمعاينة والتكبير)"
+          >
+            <Eye className="w-5 h-5" />
+            <span>الوثيقة فقط</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setWorkspaceLayoutMode('form')}
+            className={`px-4.5 py-2.5 rounded-xl text-base font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              workspaceLayoutMode === 'form'
+                ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-md font-black'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+            title="عرض الاستمارة والبيانات بالكامل"
+          >
+            <SlidersHorizontal className="w-5 h-5" />
+            <span>الاستمارة فقط</span>
+          </button>
+        </div>
+
+        {/* Left: Exit button */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate(-1)}
+            className="p-2.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors active:scale-95 border border-transparent hover:border-slate-700 cursor-pointer"
+            title="إغلاق والعودة"
+          >
+            <XCircle className="w-6 h-6" />
+          </button>
+        </div>
       </header>
 
       {/* Success Toast */}
       {successMessage.show && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 animate-in slide-in-from-top duration-300">
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl shadow-2xl p-6 flex items-center gap-4 border border-emerald-400/50">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-6 h-6 text-white" />
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-300 font-kufi">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl shadow-2xl p-6 flex items-center gap-5 border-2 border-emerald-400/50">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
-              <p className="font-black text-lg">تم الحفظ في مكتبة الوثائق بنجاح! 📚✨</p>
-              <p className="text-sm text-emerald-50 font-bold">تم توثيق وتأمين الرسم كوثيقة مدققة جاهزة للتوقيع في مكتبة الوثائق المحفوظة</p>
+              <p className="font-black text-xl font-maghribi">تم الحفظ في مكتبة الوثائق بنجاح! 📚✨</p>
+              <p className="text-sm text-emerald-50 font-bold mt-1">تم توثيق وتأمين الرسم كوثيقة مدققة جاهزة للتوقيع في مكتبة الوثائق المحفوظة</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setSuccessMessage({ show: false });
                   navigate('/dashboard?module=savedDocuments');
                 }}
-                className="px-4 py-2 bg-white text-emerald-800 rounded-xl font-black text-sm hover:bg-emerald-50 transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
+                className="px-5 py-2.5 bg-white text-emerald-900 rounded-xl font-black text-sm hover:bg-emerald-50 transition-colors whitespace-nowrap flex items-center gap-2 shadow-md cursor-pointer"
               >
                 <span>📚</span>
                 <span>الانتقال لمكتبة الوثائق</span>
@@ -4198,7 +4250,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                   openNotarySigningFromAuditHub();
                 }}
                 disabled={!rasmId}
-                className="px-4 py-2 bg-emerald-800 text-white rounded-xl font-black text-sm hover:bg-emerald-900 transition-colors whitespace-nowrap flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-emerald-800 text-white rounded-xl font-black text-sm hover:bg-emerald-900 transition-colors whitespace-nowrap flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <span>🖋</span>
                 <span>رواق التوقيع العدلي</span>
@@ -4207,32 +4259,33 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
               <button
                 type="button"
                 onClick={() => setSuccessMessage({ show: false })}
-                className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                className="p-2 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
                 aria-label="إغلاق"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Signing Transition Modal */}
       {signingTransition.active && (
-        <div className="fixed inset-0 z-[2500] bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white shadow-2xl p-8 text-right overflow-hidden" dir="rtl">
+        <div className="fixed inset-0 z-[2500] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-6 font-kufi">
+          <div className="w-full max-w-2xl rounded-3xl border-2 border-slate-700 bg-[#0F172A] shadow-2xl p-8 text-right overflow-hidden text-white" dir="rtl">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
-                <FileSignature className="w-5 h-5 text-blue-600" />
+              <div className="w-14 h-14 rounded-2xl bg-amber-950/70 border border-amber-500/50 flex items-center justify-center shadow-sm">
+                <FileSignature className="w-7 h-7 text-amber-400" />
               </div>
               <div>
-                <div className="text-xl font-black text-slate-900">رحلة الرسم المضمن</div>
-                <div className="text-xs font-bold text-slate-500">يتم حفظ المستند وتأمينه قبل الانتقال إلى رواق التوقيع</div>
+                <div className="text-2xl md:text-3xl font-black text-white font-maghribi">مسار اعتماد وتأمين المحرر</div>
+                <div className="text-base font-bold text-slate-300 mt-1">يتم حفظ المستند وتأمينه رقمياً قبل الانتقال إلى رواق التوقيع</div>
               </div>
             </div>
 
-            <div className="relative rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-blue-50/40 px-6 py-8 overflow-hidden">
+            <div className="relative rounded-2xl border border-slate-800 bg-slate-950/90 px-6 py-8 overflow-hidden">
               <div
-                className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent"
                 style={{
                   transform: `translateX(${(signingTransitionTick % 2 === 0 ? 180 : 360)}%)`,
                   transition: 'transform 1.8s ease-in-out',
@@ -4241,91 +4294,59 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
               <div className="relative mb-8 h-28">
                 <div className="absolute left-[10%] right-[10%] top-1/2 -translate-y-1/2">
-                  <div className="relative h-2 rounded-full bg-slate-200/90 overflow-hidden">
+                  <div className="relative h-2.5 rounded-full bg-slate-800 overflow-hidden">
                     <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-400 via-sky-400 to-emerald-400 transition-all duration-700"
-                      style={{ width: `${signingTransitionUi.lineFill}%` }}
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 transition-all duration-700"
+                      style={{ width: `${Math.min(100, Math.max(0, signingTransition.progress))}%` }}
                     />
                   </div>
-                  <div
-                    className="absolute top-1/2 h-5 w-24 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-white/90 to-transparent"
-                    style={{
-                      left: `${Math.max(0, signingTransitionUi.lineFill - 10)}%`,
-                      transition: 'left 1.4s ease-in-out',
-                    }}
-                  />
                 </div>
 
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 transition-all duration-700"
-                  style={{
-                    left: `${signingTransitionUi.docPosition}%`,
-                    transform: `translate(-50%, -50%) scale(${signingTransitionUi.phase === 'saving' ? (signingTransitionTick % 2 === 0 ? 1.02 : 1) : 1})`,
-                  }}
-                >
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-2xl bg-blue-200/40 blur-xl" />
-                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-200 bg-white shadow-lg">
-                      <FileText className="w-8 h-8 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between">
+                  {[
+                    { title: 'تحرير العقد', desc: 'اكتمال الصياغة والبيانات' },
+                    { title: 'التدقيق والتضمين', desc: 'المراقبة والمصادقة العدلية' },
+                    { title: 'التأمين والحفظ', desc: 'الحفظ المشفر والأرشفة' },
+                    { title: 'التوقيع السيادي', desc: 'رواق التوقيع الإلكتروني' },
+                  ].map((step, index) => {
+                    const stepPercentage = (index / 3) * 100;
+                    const isDone = signingTransition.progress >= stepPercentage;
+                    const isCurrent =
+                      signingTransition.progress >= stepPercentage - 12 &&
+                      signingTransition.progress < stepPercentage + 18;
 
-                <div className="absolute left-[14%] top-1/2 -translate-y-1/2 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <FileText className="w-7 h-7 text-slate-600" />
-                </div>
-
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border bg-white shadow-sm transition-all duration-700 ${signingTransitionUi.glowAtSave ? 'border-emerald-200 shadow-[0_0_0_8px_rgba(16,185,129,0.08)]' : 'border-slate-200'}`}>
-                    <Save className={`w-7 h-7 ${signingTransitionUi.phase === 'handoff' ? 'text-emerald-600' : 'text-slate-700'}`} />
-                    {signingTransitionUi.phase === 'handoff' ? (
-                      <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg">
-                        <CheckCircle2 className="w-4 h-4" />
+                    return (
+                      <div key={step.title} className="relative flex flex-col items-center">
+                        <div
+                          className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-500 shadow-md ${
+                            isDone
+                              ? 'border-emerald-500 bg-emerald-500 text-white ring-4 ring-emerald-500/20'
+                              : isCurrent
+                                ? 'border-amber-500 bg-slate-900 text-amber-400 ring-4 ring-amber-500/20'
+                                : 'border-slate-800 bg-slate-900 text-slate-600'
+                          }`}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="h-6 w-6" />
+                          ) : (
+                            <span className="text-base font-black">{index + 1}</span>
+                          )}
+                        </div>
+                        <div className="mt-3 text-center">
+                          <div className={`text-base font-black ${isDone ? 'text-emerald-400' : isCurrent ? 'text-amber-400' : 'text-slate-400'}`}>
+                            {step.title}
+                          </div>
+                          <div className="hidden sm:block text-sm font-bold text-slate-400 mt-0.5">
+                            {step.desc}
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        <span className="absolute -left-5 top-3 h-1.5 w-4 rounded-full bg-emerald-300/90 animate-pulse" />
-                        <span className="absolute -left-7 top-7 h-1.5 w-6 rounded-full bg-sky-300/80 animate-pulse" />
-                        <span className="absolute -left-4 top-11 h-1.5 w-3 rounded-full bg-blue-300/80 animate-pulse" />
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="absolute right-[14%] top-1/2 -translate-y-1/2">
-                  <div className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border bg-white shadow-sm transition-all duration-700 ${signingTransitionUi.penGlow ? 'border-amber-200 shadow-[0_0_0_8px_rgba(251,191,36,0.12)]' : 'border-slate-200'}`}>
-                    <PenTool className={`w-7 h-7 ${signingTransitionUi.penGlow ? 'text-amber-500' : 'text-slate-500'}`} />
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="relative text-center">
-                <div className="text-xl font-black text-slate-900">{signingTransitionUi.stageTitle}</div>
-                <div className="mt-2 text-sm font-bold text-slate-600">{signingTransitionUi.detailText}</div>
-                {signingTransitionUi.isLongWait && signingTransitionUi.phase !== 'handoff' && (
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-black text-amber-700">
-                    <Clock className="w-4 h-4" />
-                    العملية مستمرة بشكل طبيعي ويتم تأمين آخر نسخة محفوظة
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-8 flex items-center justify-between text-[11px] font-black text-slate-400">
-                <div className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${signingTransitionUi.phase === 'start' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                  <span>📜 بداية الحركة</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${signingTransitionUi.phase === 'saving' ? 'bg-blue-500 animate-pulse' : signingTransitionUi.phase === 'handoff' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                  <span>💾 الحفظ والتأمين</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${signingTransitionUi.phase === 'handoff' ? 'bg-amber-500' : 'bg-slate-300'}`} />
-                  <span>✍️ التوقيع</span>
-                </div>
-              </div>
-
-              <div className="mt-5 text-xs font-black text-slate-400 text-left" dir="ltr">
+              <div className="mt-5 text-sm font-black text-amber-400 text-left font-mono" dir="ltr">
                 {Math.round(signingTransition.progress)}%
               </div>
             </div>
@@ -4333,6 +4354,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         </div>
       )}
 
+      {/* OnlyOffice Editor Overlay */}
       {onlyOfficeMode === 'overlay' && onlyOfficeOpen && onlyOfficeDsUrl && onlyOfficeConfig && (
         <OnlyOfficeEditor
           key={`onlyoffice-overlay-${onlyOfficeRenderNonce}`}
@@ -4346,1401 +4368,1405 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         />
       )}
 
-      {/* MAIN BODY FLEX ROW */}
-      <div className="flex flex-1 overflow-hidden min-w-0">
-        
-        {/* ZONE 2: Left Sidebar */}
-        <aside className="w-[210px] xl:w-[220px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col shadow-sm z-40 relative">
-           <div className="p-6">
-               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">أقسام الملف</h3>
-               <nav className="space-y-1">
-                   {[
-                     { id: 'data', label: 'بيانات الرسم', icon: FileText },
-                     { id: 'attachments', label: 'المرفقات', icon: FileSearch },
-                     { id: 'registration', label: 'التسجيل والتنبر', icon: CreditCardIcon },
-                   ].map((item) => (
-                       <button
-                         key={item.id}
-                         onClick={() => setActiveTab(item.id)}
-                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold text-sm ${
-                             activeTab === item.id 
-                             ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100 translate-x-[-4px]' 
-                             : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                         }`}
-                       >
-                           <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-blue-500' : 'text-slate-400'}`} />
-                           {item.label}
-                           {activeTab === item.id && (
-                               <div className="mr-auto w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                           )}
-                       </button>
-                   ))}
-               </nav>
-           </div>
-        </aside>
+      {/* 2. SUBNAV STRIP (Navigation Tabs & Document Tools) */}
+      <div className="h-16 shrink-0 bg-slate-950 border-b border-slate-800 px-6 flex items-center justify-between z-20 shadow-md font-kufi">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-3">
+          {[
+            { id: 'data', label: 'بيانات ومراجع الرسم', icon: FileText },
+            { id: 'attachments', label: 'المرفقات وملاحظات القاضي', icon: FileSearch, count: attachmentTabDocs.length },
+            { id: 'registration', label: 'بطاقات التحقق والتسجيل', icon: CreditCardIcon },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-base font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-amber-600 text-white shadow-md font-black'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <tab.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
+                    isActive ? 'bg-amber-950 text-amber-200' : 'bg-slate-800 text-slate-200'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* ZONE 3: Workspace */}
-        <main className="flex-1 relative bg-slate-50/50 overflow-hidden flex flex-col min-w-0">
-            
-            {/* Dynamic View based on Active Tab */}
-            {activeTab === 'attachments' ? (
-                <div className="h-full overflow-y-auto bg-slate-50 px-6 py-8 xl:px-8">
-                    <div className="mx-auto w-full max-w-none space-y-6">
-                        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                            <div className="flex items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-900">المرفقات</h3>
-                                    <p className="mt-1 text-sm font-bold text-slate-500">تعرض هذه المساحة المرفقات الإضافية فقط، مع ملاحظات القاضي إن وُجدت.</p>
-                                </div>
-                                <div className="rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">
-                                    {attachmentTabDocs.length} مرفق
-                                </div>
-                            </div>
+        {/* Quick Document Tools */}
+        <div className="flex items-center gap-3">
+          {/* Readiness gauge */}
+          {(activeEditedArtifact?.versionId || (rasmQuery.data as any)?.latestDraftVersionId) && (
+            <div className="hidden sm:flex items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/90 px-4 py-2">
+              <span className="text-base font-bold text-slate-200">الجاهزية:</span>
+              <div className="w-24 h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${stats.qualityColor.replace('text-', 'bg-')}`}
+                  style={{ width: `${Math.max(stats.fillRatio, 8)}%` }}
+                />
+              </div>
+              <span className={`text-base font-black ${stats.qualityColor}`}>{stats.fillRatio}%</span>
+            </div>
+          )}
+
+          {/* Revert / refresh draft button */}
+          <button 
+            onClick={() => void revertSavedEdit()}
+            disabled={revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)}
+            className={`px-4 py-2.5 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 transition-all shadow-xs active:scale-95 ${
+              revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)
+                ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800'
+                : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white cursor-pointer'
+            }`}
+            title="تحديث واستعادة النسخة المحفوظة"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="hidden md:inline">تحديث النسخة</span>
+          </button>
+
+          {/* Download DOCX */}
+          <button
+            type="button"
+            onClick={handleDownloadDocx}
+            className="px-4 py-2.5 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-500 shadow-md transition-all active:scale-95 cursor-pointer"
+            title="تنزيل الملف بصيغة Word (.docx)"
+          >
+            <FileDown className="w-4 h-4" />
+            <span>تنزيل Word</span>
+          </button>
+
+          {/* Import DOCX */}
+          <button
+            type="button"
+            disabled={isImportingDocx}
+            onClick={() => docxImportInputRef.current?.click()}
+            className="px-4 py-2.5 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-500 shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            title="رفع نسخة Word معدلة واستبدال النسخة الحالية"
+          >
+            {isImportingDocx ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            <span>رفع Word</span>
+          </button>
+          <input
+            type="file"
+            accept=".docx"
+            ref={docxImportInputRef}
+            className="hidden"
+            onChange={handleImportDocxFile}
+          />
+
+          {/* Saved Documents Archive */}
+          <button 
+            onClick={() => {
+              try {
+                trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken: sessionToken || '' } as any);
+              } catch {}
+              navigate('/saved-documents');
+            }}
+            className="px-4 py-2.5 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white cursor-pointer"
+            title="مكتبة الوثائق المحفوظة"
+          >
+            <FolderArchive className="w-4 h-4" />
+            <span className="hidden lg:inline">المكتبة</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. MAIN WORKSPACE CONTENT AREA */}
+      <main className="flex-1 relative overflow-hidden flex flex-col min-w-0 bg-slate-900 font-kufi">
+        {activeTab === 'attachments' ? (
+          /* ATTACHMENTS TAB VIEW */
+          <div className="h-full overflow-y-auto bg-slate-900 p-6">
+            <div className="mx-auto w-full max-w-7xl space-y-6">
+              <div className="rounded-3xl border border-slate-800 bg-[#0F172A] p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-white font-maghribi">المرفقات والمستندات الثبوتية</h3>
+                  <p className="mt-1 text-sm font-bold text-slate-400">تعرض هذه المساحة المرفقات الإضافية وملاحظات قاضي التوثيق إن وُجدت.</p>
+                </div>
+                <div className="rounded-2xl bg-amber-950/80 border border-amber-600/50 px-5 py-2.5 text-sm font-black text-amber-300 shadow-inner">
+                  {attachmentTabDocs.length} مرفق مسجل
+                </div>
+              </div>
+
+              {judgeAcceptanceNotes && (
+                <div className="rounded-3xl border border-amber-500/40 bg-amber-950/30 p-6 shadow-xl">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-900/60 text-amber-300 border border-amber-600/40">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black text-amber-200 font-maghribi">ملاحظات قاضي التوثيق للعدل</h4>
+                      <p className="text-sm font-bold text-amber-400/80">الملاحظات المرفقة عند قبول الرسم أو إعادته للاستكمال.</p>
+                    </div>
+                  </div>
+                  <div className="whitespace-pre-wrap rounded-2xl border border-amber-600/30 bg-[#0B1329] p-5 text-base font-bold leading-relaxed text-amber-100 shadow-inner">
+                    {judgeAcceptanceNotes}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Attachment Preview (2 Cols) */}
+                <div className="lg:col-span-2 rounded-3xl border border-slate-800 bg-[#0F172A] p-6 shadow-xl min-h-[520px] flex flex-col">
+                  {selectedAttachmentTabDoc ? (
+                    <div className="flex h-full flex-col">
+                      <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-6 h-6 text-amber-400" />
+                          <h4 className="text-lg font-black text-white font-maghribi">
+                            {selectedAttachmentTabDoc?.fileName || selectedAttachmentTabDoc?.name || 'مرفق'}
+                          </h4>
                         </div>
-
-                        {judgeAcceptanceNotes && (
-                            <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-6 shadow-sm">
-                                <div className="mb-3 flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-                                        <AlertCircle className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-black text-amber-900">ملاحظات القاضي للعدل</h4>
-                                        <p className="text-xs font-bold text-amber-700">الملاحظات المرفقة عند قبول الرسم أو إعادته مع ملاحظات شكلية.</p>
-                                    </div>
-                                </div>
-                                <div className="whitespace-pre-wrap rounded-2xl border border-amber-200 bg-white px-5 py-4 text-sm font-bold leading-8 text-slate-700">
-                                    {judgeAcceptanceNotes}
-                                </div>
-                            </div>
+                        {selectedAttachmentTabDoc?.url && (
+                          <a
+                            href={selectedAttachmentTabDoc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold transition flex items-center gap-2 border border-slate-700"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>تنزيل المرفق</span>
+                          </a>
                         )}
+                      </div>
+                      <div className="flex-1 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center min-h-[440px]">
+                        {(() => {
+                          const previewUrl = String(selectedAttachmentTabDoc?.url || selectedAttachmentTabDoc?.fileUrl || '').trim();
+                          const mime = String(selectedAttachmentTabDoc?.mimeType || selectedAttachmentTabDoc?.type || '').toLowerCase();
+                          const isImg = mime.startsWith('image/') || /.(png|jpe?g|webp|gif)$/i.test(previewUrl);
+                          const isPdf = mime.includes('pdf') || /.pdf$/i.test(previewUrl);
+                          const isDocx = mime.includes('word') || mime.includes('officedocument') || /.docx$/i.test(previewUrl);
 
-                        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start" dir="ltr">
-                            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm xl:p-4" dir="rtl">
-                                {selectedAttachmentTabDoc ? (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                                            <div className="min-w-0">
-                                                <h4 className="truncate text-lg font-black text-slate-900">
-                                                    {String(selectedAttachmentTabDoc?.fileName || selectedAttachmentTabDoc?.name || 'attachment').trim()}
-                                                </h4>
-                                                <p className="mt-1 text-xs font-bold text-slate-500">
-                                                    {String(selectedAttachmentTabDoc?.category || 'attachment').trim()}
-                                                </p>
-                                            </div>
-                                            <a
-                                                href={String(selectedAttachmentTabDoc?.url || selectedAttachmentTabDoc?.fileUrl || '').trim() || undefined}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700"
-                                            >
-                                                <span className="inline-flex items-center gap-2">
-                                                    <Download className="h-4 w-4" />
-                                                    تنزيل
-                                                </span>
-                                            </a>
-                                        </div>
-
-                                        <div className="h-[72vh] min-h-[640px] overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50 xl:h-[76vh]">
-                                            {(() => {
-                                                const previewUrl = String(selectedAttachmentTabDoc?.url || selectedAttachmentTabDoc?.fileUrl || '').trim();
-                                                const fileName = String(selectedAttachmentTabDoc?.fileName || selectedAttachmentTabDoc?.name || '').toLowerCase();
-                                                const mimeType = String(selectedAttachmentTabDoc?.mimeType || selectedAttachmentTabDoc?.type || '').toLowerCase();
-                                                const isImage =
-                                                  fileName.endsWith('.png') ||
-                                                  fileName.endsWith('.jpg') ||
-                                                  fileName.endsWith('.jpeg') ||
-                                                  fileName.endsWith('.webp') ||
-                                                  fileName.endsWith('.gif') ||
-                                                  mimeType.startsWith('image/');
-                                                const isPdf =
-                                                  fileName.endsWith('.pdf') ||
-                                                  mimeType.includes('application/pdf') ||
-                                                  previewUrl.toLowerCase().includes('.pdf');
-                                                const isDocx =
-                                                  fileName.endsWith('.docx') ||
-                                                  fileName.endsWith('.doc') ||
-                                                  mimeType.includes('wordprocessingml') ||
-                                                  mimeType.includes('msword');
-
-                                                if (isImage) {
-                                                    return (
-                                                        <div className="flex h-full items-center justify-center bg-slate-100 p-4">
-                                                            <img src={previewUrl} alt={fileName || 'attachment'} className="max-h-full max-w-full rounded-2xl object-contain shadow-sm" />
-                                                        </div>
-                                                    );
-                                                }
-
-                                                if (isPdf) {
-                                                    return <iframe title={fileName || 'attachment-pdf'} src={previewUrl} className="h-full w-full bg-white" />;
-                                                }
-
-                                                if (isDocx) {
-                                                    return (
-                                                        <div className="h-full overflow-auto bg-white p-4">
-                                                            <WordPreview
-                                                                url={previewUrl}
-                                                                isDarkMode={false}
-                                                                editable={false}
-                                                                sourceTag="base"
-                                                                msWordRtlJustify
-                                                            />
-                                                        </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                                                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                                                            <FileText className="h-7 w-7" />
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="text-lg font-black text-slate-700">معاينة غير متاحة داخل النظام</h4>
-                                                            <p className="mt-2 text-sm font-bold text-slate-500">يمكنك تنزيل هذا المرفق أو فتحه في نافذة مستقلة.</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex h-full min-h-[300px] flex-col items-center justify-center text-center">
-                                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                                            <FileSearch className="h-7 w-7" />
-                                        </div>
-                                        <h4 className="text-lg font-black text-slate-700">اختر مرفقاً للمعاينة</h4>
-                                        <p className="mt-2 text-sm font-bold text-slate-500">لكل مرفق هنا معاينته المستقلة بعيداً عن عارض الرسم الرئيسي.</p>
-                                    </div>
-                                )}
+                          if (isImg) {
+                            return <img src={previewUrl} alt="معاينة المرفق" className="max-h-[500px] max-w-full object-contain rounded-xl" />;
+                          }
+                          if (isPdf) {
+                            return <iframe src={previewUrl} title="معاينة المرفق" className="w-full h-[600px] border-0 rounded-xl" />;
+                          }
+                          if (isDocx) {
+                            return (
+                              <div className="h-full w-full overflow-auto bg-white p-5">
+                                <WordPreview
+                                  url={previewUrl}
+                                  isDarkMode={false}
+                                  editable={false}
+                                  sourceTag="base"
+                                  msWordRtlJustify
+                                />
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col items-center justify-center gap-3 text-center p-8">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-slate-400">
+                                <FileText className="h-8 w-8" />
+                              </div>
+                              <h4 className="text-lg font-black text-slate-300 font-maghribi">معاينة غير متاحة داخل النظام</h4>
+                              <p className="text-sm font-bold text-slate-500">يمكنك تنزيل هذا المرفق أو فتحه في نافذة مستقلة.</p>
                             </div>
-
-                            <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm" dir="rtl">
-                                {attachmentTabDocs.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {attachmentTabDocs.map((doc: any, idx: number) => {
-                                            const fileName = String(doc?.fileName || doc?.name || `attachment-${idx + 1}`).trim();
-                                            const category = String(doc?.category || 'attachment').trim();
-                                            const url = String(doc?.url || doc?.fileUrl || '').trim();
-                                            const mimeType = String(doc?.mimeType || doc?.type || '').trim();
-                                            const currentKey = `${String(selectedAttachmentTabDoc?.url || selectedAttachmentTabDoc?.fileUrl || '').trim()}||${String(selectedAttachmentTabDoc?.fileName || selectedAttachmentTabDoc?.name || '').trim()}`;
-                                            const rowKey = `${url}||${fileName}`;
-                                            const isActive = currentKey === rowKey;
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={String(doc?.id || `${fileName}-${idx}`)}
-                                                    onClick={() => setSelectedAttachmentTabDoc(doc)}
-                                                    className={`w-full rounded-2xl border px-4 py-3 text-right transition ${
-                                                        isActive
-                                                          ? 'border-blue-200 bg-blue-50 shadow-sm'
-                                                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${isActive ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
-                                                            <FileText className="h-4 w-4" />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="truncate text-sm font-black text-slate-900">{fileName}</p>
-                                                            <p className="mt-1 truncate text-[11px] font-bold text-slate-500">
-                                                                {category || 'attachment'}{mimeType ? ` • ${mimeType}` : ''}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="flex min-h-[240px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 text-center">
-                                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                                            <FileSearch className="h-7 w-7" />
-                                        </div>
-                                        <h4 className="text-lg font-black text-slate-700">لا توجد مرفقات متاحة</h4>
-                                        <p className="mt-2 text-sm font-bold text-slate-500">سيتم عرض مرفقات الرسم وملاحظات القاضي هنا عند توفرها.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                          );
+                        })()}
+                      </div>
                     </div>
+                  ) : (
+                    <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-slate-500">
+                        <FileSearch className="h-8 w-8" />
+                      </div>
+                      <h4 className="text-xl font-black text-slate-300 font-maghribi">اختر مرفقاً من القائمة لمعاينته</h4>
+                      <p className="mt-1 text-sm font-bold text-slate-500">لكل مرفق معاينته المستقلة عن عارض الرسم الرئيسي.</p>
+                    </div>
+                  )}
                 </div>
-            ) : activeTab === 'formal' || activeTab === 'legal' || activeTab === 'data' ? (
-            <div className="flex h-full min-w-0 pb-[80px]">
-                    {/* Left Half: Document Preview */}
-              <div className="flex-1 relative bg-slate-200/50 border-l border-slate-200 p-2.5 flex flex-col min-w-0 overflow-hidden">
-                        <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(0,0,0,0.05)] border border-slate-200 h-full overflow-hidden relative group flex flex-col">
-                            {/* Document Actions Bar (Optimized Responsive Layout for 100% Zoom) */}
-                            <div className="h-12 bg-white/95 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between px-3 z-30 shrink-0 gap-2 overflow-x-auto no-scrollbar" dir="rtl">
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {/* Action 1: Save directly to Saved Documents Library (without signing) */}
-                                    <button 
-                                      onClick={() => {
-                                        if (!state || !isFormComplete) return;
-                                        if (primaryTextEditorOpen) {
-                                          const finalContent = editedPlainTextGetterRef.current?.();
-                                          if (finalContent) {
-                                            updateDraftContent(finalContent);
-                                          }
-                                          setPrimaryTextEditorOpen(false);
-                                        }
-                                        setPreSaveReviewIntent('library');
-                                        setIsPreSaveReviewModalOpen(true);
-                                      }}
-                                      disabled={!state || !isFormComplete || isRedirecting}
-                                      className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
-                                        state && isFormComplete && !isRedirecting
-                                          ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:brightness-110 cursor-pointer shadow-emerald-700/20'
-                                          : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
-                                      }`}
-                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً'}
-                                    >
-                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                        <span>حفظ في مكتبة الوثائق 📚</span>
-                                    </button>
 
-                                    {/* Action 2: Save & Proceed Directly to Notary Signing Portal */}
-                                    <button 
-                                      onClick={() => {
-                                        if (!state || !isFormComplete) return;
-                                        if (primaryTextEditorOpen) {
-                                          const finalContent = editedPlainTextGetterRef.current?.();
-                                          if (finalContent) {
-                                            updateDraftContent(finalContent);
-                                          }
-                                          setPrimaryTextEditorOpen(false);
-                                        }
-                                        setPreSaveReviewIntent('signing');
-                                        setIsPreSaveReviewModalOpen(true);
-                                      }}
-                                      disabled={!state || !isFormComplete || isRedirecting}
-                                      className={`px-3 py-1.5 rounded-lg text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
-                                        state && isFormComplete && !isRedirecting
-                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:brightness-110 cursor-pointer shadow-blue-700/20'
-                                          : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
-                                      }`}
-                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال الفوري إلى رواق التوقيع'}
-                                    >
-                                        <FileSignature className="w-3.5 h-3.5" />
-                                        <span>رواق التوقيع 🖋️</span>
-                                    </button>
-
-                                    {/* Compact Readiness Indicator */}
-                                    {(activeEditedArtifact?.versionId || (rasmQuery.data as any)?.latestDraftVersionId) && (
-                                      <div className="flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-1 shadow-inner shrink-0">
-                                        <span className="text-[10px] font-bold text-slate-500">الجاهزية</span>
-                                        <div className="w-16 h-2 overflow-hidden rounded-full bg-slate-200 ring-1 ring-slate-300/50">
-                                          <div
-                                            className={`h-full rounded-full transition-all duration-500 ${stats.qualityColor.replace('text-', 'bg-')}`}
-                                            style={{ width: `${Math.max(stats.fillRatio, 8)}%` }}
-                                          />
-                                        </div>
-                                        <span className={`text-[10px] font-black ${stats.qualityColor}`}>{stats.fillRatio}%</span>
-                                      </div>
-                                    )}
-
-                                    {/* Revert / Refresh Draft Button */}
-                                    <button 
-                                        onClick={() => void revertSavedEdit()}
-                                        disabled={revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)}
-                                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 ${
-                                          revertLatestSavedRasmEditMutation.isPending || (!activeEditedArtifact?.versionId && !(rasmQuery.data as any)?.latestDraftVersionId)
-                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                                            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer'
-                                        }`}
-                                        title="تحديث واستعادة النسخة المحفوظة"
-                                    >
-                                        <RotateCcw className="w-3.5 h-3.5" />
-                                        <span>تحديث النسخة</span>
-                                    </button>
-
-                                    {/* Saved Documents Archive Button */}
-                                    <button 
-                                        onClick={() => {
-                                          try {
-                                            trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken: sessionToken || '' } as any);
-                                          } catch {}
-                                          navigate('/saved-documents');
-                                        }}
-                                        className="px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0 bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
-                                        title="مكتبة الوثائق المحفوظة"
-                                    >
-                                        <FolderArchive className="w-3.5 h-3.5" />
-                                        <span>مكتبة الوثائق المحفوظة</span>
-                                    </button>
-                                </div>
-
-                                {/* Left Action Block: Export / Import DOCX */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                     {/* Export DOCX Button */}
-                                     <button
-                                       type="button"
-                                       onClick={handleDownloadDocx}
-                                       className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
-                                       title="تنزيل الملف بصيغة Word الرسمية (.docx)"
-                                     >
-                                       <FileDown className="w-3.5 h-3.5" />
-                                       <span>تنزيل Word</span>
-                                     </button>
-
-                                     {/* Import DOCX Button */}
-                                     <button
-                                       type="button"
-                                       disabled={isImportingDocx}
-                                       onClick={() => docxImportInputRef.current?.click()}
-                                       className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
-                                       title="رفع نسخة Word معدلة واستبدال النسخة الحالية"
-                                     >
-                                       {isImportingDocx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                                       <span>رفع نسخة Word</span>
-                                     </button>
-                                     <input
-                                       type="file"
-                                       accept=".docx"
-                                       ref={docxImportInputRef}
-                                       className="hidden"
-                                       onChange={handleImportDocxFile}
-                                     />
-
-                                     <div className="h-4 w-px bg-slate-200 mx-0.5"></div>
-
-                                     {/* Status Badge */}
-                                     <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/80 rounded-lg py-1 px-2.5 shadow-sm shrink-0">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        <span className="text-[10px] font-bold text-emerald-800">
-                                          معاينة الرسم
-                                        </span>
-                                     </div>
-                                </div>
+                {/* Attachments List (1 Col) */}
+                <div className="rounded-3xl border border-slate-800 bg-[#0F172A] p-6 shadow-xl">
+                  <h4 className="text-lg font-black text-white mb-4 flex items-center justify-between border-b border-slate-800 pb-3 font-maghribi">
+                    <span>قائمة المرفقات المسجلة</span>
+                    <span className="text-sm font-bold text-amber-400 font-mono bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-600/30">
+                      {attachmentTabDocs.length}
+                    </span>
+                  </h4>
+                  {attachmentTabDocs.length > 0 ? (
+                    <div className="space-y-3 max-h-[540px] overflow-y-auto">
+                      {attachmentTabDocs.map((doc: any, idx: number) => {
+                        const fileName = String(doc?.fileName || doc?.name || `attachment-${idx + 1}`).trim();
+                        const category = String(doc?.category || 'attachment').trim();
+                        const url = String(doc?.url || doc?.fileUrl || '').trim();
+                        const mimeType = String(doc?.mimeType || doc?.type || '').trim();
+                        const currentKey = `${String(selectedAttachmentTabDoc?.url || selectedAttachmentTabDoc?.fileUrl || '').trim()}||${String(selectedAttachmentTabDoc?.fileName || selectedAttachmentTabDoc?.name || '').trim()}`;
+                        const rowKey = `${url}||${fileName}`;
+                        const isActive = currentKey === rowKey;
+                        return (
+                          <button
+                            type="button"
+                            key={String(doc?.id || `${fileName}-${idx}`)}
+                            onClick={() => setSelectedAttachmentTabDoc(doc)}
+                            className={`w-full rounded-2xl border p-4 text-right transition cursor-pointer ${
+                              isActive
+                                ? 'border-amber-500 bg-amber-950/50 shadow-md'
+                                : 'border-slate-800 bg-slate-900/60 hover:bg-slate-800/80'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-black text-slate-100">{fileName}</p>
+                                <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                                  {category}{mimeType ? ` • ${mimeType}` : ''}
+                                </p>
+                              </div>
                             </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 text-center p-6">
+                      <FileSearch className="h-8 w-8 text-slate-600 mb-2" />
+                      <h5 className="text-sm font-black text-slate-400">لا توجد مرفقات مسجلة</h5>
+                      <p className="text-xs text-slate-500 mt-1">تظهر مرفقات الرسم ومذكرات القاضي هنا عند رفعها.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'registration' ? (
+          /* REGISTRATION & VALIDATION TAB VIEW */
+          <div className="h-full overflow-y-auto bg-slate-900 p-6">
+            <div className="mx-auto w-full max-w-4xl space-y-5">
+              <div className="rounded-3xl border border-slate-800 bg-[#0F172A] p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-white font-maghribi">بطاقات التحقق والتسجيل العدلي</h3>
+                  <p className="mt-1 text-sm font-bold text-slate-400">تدقيق تلقائي للسلامة الشكلية والبيانات الضريبية والتنبر.</p>
+                </div>
+                <div className="rounded-2xl bg-emerald-950/80 border border-emerald-600/50 px-5 py-2.5 text-sm font-black text-emerald-300 shadow-inner">
+                  فحص آلي متكامل
+                </div>
+              </div>
 
-                            {/* Viewer Canvas */}
-                            <div className="flex-1 relative overflow-hidden bg-slate-100">
-                               {isAwaitingPdfResolved ? (
-                                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 p-8">
-                                   <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xl flex flex-col items-center max-w-md text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
-                                     <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 relative">
-                                       <Loader2 className="w-8 h-8 animate-spin" />
-                                       <span className="absolute text-sm">⚖️</span>
-                                     </div>
-                                     <div className="space-y-2">
-                                       <h3 className="text-lg font-black text-slate-900 font-amiri">
-                                         جاري استكمال وتجهيز المحرر القضائي المعتمد...
-                                       </h3>
-                                       <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                                         تم اعتماد المعاملة من طرف قاضي التوثيق بنجاح. يجري الآن توليد وتضمين النسخة الرقمية المعتمدة عالية الدقة.
-                                       </p>
-                                     </div>
-                                     <div className="flex flex-col items-center gap-2">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[11px] font-bold">
-                                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
-                                          <span>تحديث تلقائي آني قيد المتابعة</span>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            rasmQuery.refetch();
-                                            judgeSubmissionQuery.refetch();
-                                            latestApprovedByFileNumberQuery.refetch();
-                                          }}
-                                          className="mt-1 px-4 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                                        >
-                                          <RotateCcw className="w-3.5 h-3.5" />
-                                          <span>تحديث يدوي للبيانات</span>
-                                        </button>
-                                      </div>
-                                   </div>
-                                 </div>
-                               ) : forcedViewerDoc || activePdfUrl ? (
-                                 <HighResViewer 
-                                     doc={
-                                       forcedViewerDoc || {
-                                         id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
-                                         category: 'audit_final_pdf',
-                                         fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
-                                         name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
-                                         fileUrl: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
-                                         url: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
-                                         mimeType: 'application/pdf',
-                                         type: 'application/pdf',
-                                         isJudgePrimary: true,
-                                       }
-                                     }
-                                     docSourceMeta={{
-                                       selectedDocSource: activeDocVersion,
-                                       baseDocUrl: baseDocUrlForDebug,
-                                       editedDocUrl: editedDocUrlForDebug,
-                                       versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
-                                       rasmId,
-                                       submissionId: judgeSubmissionId || null,
-                                       reason:
-                                         (activeDocVersion as any) === 'edited'
-                                           ? 'activeDocVersion=edited'
-                                           : (forcedViewerDoc as any)?.category
-                                             ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
-                                             : 'no-selectedVaultDoc',
-                                     }}
-                                     zoom={viewerZoom}
-                                     isDragging={isDragging}
-                                     onMouseDown={handleViewerMouseDown}
-                                     onMouseMove={handleViewerMouseMove}
-                                     onMouseUp={handleViewerMouseUp}
-                                     onWheel={handleViewerWheel}
-                                     containerRef={viewerContainerRef}
-                                     isDarkMode={isDarkMode}
-                                     onUpdateDraft={updateDraftContent}
-                                     inlineEditMode={isAuditHubEditMode}
-                                     activeViewMode={activeViewMode}
-                                     onlyOfficeConfig={onlyOfficeConfig}
-                                     onlyOfficeDsUrl={onlyOfficeDsUrl}
-                                     onSaveAndCloseOnlyOffice={handleSaveAndCloseOnlyOffice}
-                                     isSavingOnlyOffice={isSavingEdits}
-                                     onCloseOnlyOffice={() => setActiveViewMode('preview')}
-                                     updateZoom={updateZoom}
-                                     renderNonce={viewerDocRenderNonce}
-                                     pdfTextEditor={{
-                                       active: pdfFormEditorOpen && isSelectedPdf,
-                                       tool: pdfTextTool,
-                                       pageIndex: pdfTextPageIndex,
-                                       pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
-                                       edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
-                                       textInput: pdfTextInput,
-                                       fontSize: pdfTextFontSize,
-                                       onAddRect: addPdfRedactionRect,
-                                       onAddText: addPdfOverlayText,
-                                     }}
-                                     onRegisterPlainTextGetter={(fn: () => string) => {
-                                       editedPlainTextGetterRef.current = fn;
-                                     }}
-                                 />
-                               ) : (
-                                 <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                   <p className="font-bold text-sm">جاري تحضير نسخ المعاينة المعتمدة...</p>
-                                 </div>
-                               )}
-                            </div>
-                        </div>
+              <div className="space-y-4">
+                {validations.map((item, i) => (
+                  <div 
+                    key={i} 
+                    className={`p-6 rounded-3xl border-2 transition-all duration-200 bg-[#0F172A] shadow-lg ${
+                      item.status === 'success' ? 'border-emerald-500/50' : 
+                      item.status === 'warning' ? 'border-amber-500/50' : 
+                      'border-red-500/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`mt-0.5 w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border-2 ${
+                        item.status === 'success' ? 'bg-emerald-950 border-emerald-500 text-emerald-400' : 
+                        item.status === 'warning' ? 'bg-amber-950 border-amber-500 text-amber-400' : 
+                        'bg-red-950 border-red-500 text-red-400'
+                      }`}>
+                        {item.status === 'success' ? <CheckCircle className="w-6 h-6" /> : 
+                         item.status === 'warning' ? <AlertTriangle className="w-6 h-6" /> : 
+                         <XCircle className="w-6 h-6" />}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-white text-lg font-maghribi">{item.label}</h4>
+                        {item.msg && <p className="text-sm text-slate-300 mt-1 font-bold leading-relaxed">{item.msg}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* PRIMARY AUDIT WORKSPACE (DOCUMENT PREVIEW + AUDIT FORM) */
+          <div className="flex h-full min-w-0 pb-22">
+            
+            {/* DOCUMENT PREVIEW AREA (Left in RTL, Right in LTR) */}
+            {workspaceLayoutMode !== 'form' && (
+              <div className={`relative bg-[#070B14] p-3 flex flex-col min-w-0 overflow-hidden ${
+                workspaceLayoutMode === 'doc' ? 'w-full h-full' : 'flex-1 h-full'
+              }`}>
+                <div className="bg-[#0D1527] rounded-3xl shadow-2xl border border-slate-800 h-full overflow-hidden relative flex flex-col">
+                  {/* Top Bar for Document Canvas */}
+                  <div className="h-16 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between px-5 z-30 shrink-0 gap-3 backdrop-blur-md" dir="rtl">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5 bg-emerald-950/80 border border-emerald-500/50 rounded-xl py-2 px-4 shadow-inner">
+                        <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+                        <span className="text-base md:text-lg font-black text-emerald-200 font-maghribi">
+                          المحرر القضائي المعتمد (معاينة رقمية رسمية)
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Right Panel in RTL: Validation Cards & Registration References */}
-                    <div className="w-[340px] xl:w-[370px] 2xl:w-[400px] bg-white h-full overflow-y-auto p-4 shadow-sm border-r border-slate-200 flex flex-col shrink-0">
-                        {activeTab === 'data' ? (
-                          <div className="space-y-4 pb-16">
-                                <div className="flex items-center justify-between border-b border-slate-200/90 pb-2.5">
-                                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-emerald-700" />
-                                        <span>مراجع تضمين الشهادة/العقد</span>
-                                    </h3>
-                                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                        معتمد
-                                    </span>
-                                </div>
-
-                                {/* Level 1: Deed Identity & Registration Data */}
-                                <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                                    {/* نوع الشهادة */}
-                                    <div className="mb-3">
-                                        <label className="block text-[11px] font-bold text-slate-600 mb-1">نوع الشهادة / العقد</label>
-                                        <input 
-                                            type="text" 
-                                            value={finalRecord.certificateType}
-                                            onChange={(e) => setFinalRecord(prev => ({...prev, certificateType: e.target.value}))}
-                                            className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-800 transition-all"
-                                            placeholder="أدخل نوع الشهادة..."
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2.5 mb-3">
-                                        <div>
-                                            <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
-                                                <span>جهة التوثيق (المكتب)</span>
-                                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">تلقائي</span>
-                                            </label>
-                                            <select 
-                                                value={finalRecord.authority}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, authority: e.target.value}))}
-                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-800 transition-all"
-                                            >
-                                                {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
-                                                    <option value={notaryCity}>مكتب التوثيق - {notaryCity}</option>
-                                                )}
-                                                {MOROCCAN_CITIES.map(city => (
-                                                    <option key={city} value={city}>مكتب التوثيق - {city}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
-                                                <span>الرقم المسلسل</span>
-                                                <span className="text-[9px] font-mono text-slate-400">فريد وتلقائي</span>
-                                            </label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    value={finalRecord.serial}
-                                                    readOnly
-                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 outline-none font-mono font-bold cursor-not-allowed select-all pl-7"
-                                                    title="رقم تسلسلي فريد يتم توليده تلقائياً للرسم"
-                                                />
-                                                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* سجل البيانات (Small Header + 4 fields) */}
-                                    <div className="mt-3 pt-3 border-t border-slate-100">
-                                        <div className="flex items-center gap-1.5 mb-2.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
-                                            <h5 className="text-xs font-bold text-slate-700">سجل البيانات</h5>
-                                        </div>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            <div>
-                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">رقم</label>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="#"
-                                                    value={finalRecord.register}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, register: e.target.value}))}
-                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">الصحيفة</label>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="#"
-                                                    value={finalRecord.page}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, page: e.target.value}))}
-                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">العدد</label>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="#"
-                                                    value={finalRecord.count}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, count: e.target.value}))}
-                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-center text-slate-800 transition-all font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">تاريخ التلقي</label>
-                                                <input 
-                                                    type="date" 
-                                                    value={finalRecord.date}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, date: e.target.value}))}
-                                                    className="w-full text-[10px] p-2 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-medium text-slate-800 transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Level 2: Parties Cards */}
-                                <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs">
-                                    <div className="mb-3.5 flex items-center justify-between gap-3">
-                                        <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                            <Users className="w-3.5 h-3.5 text-slate-600" />
-                                            <span>بيانات أطراف الشهادة / العقد</span>
-                                        </h4>
-                                        <button
-                                          type="button"
-                                          onClick={addOptionalParty}
-                                          className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 text-[10px] font-bold transition-all flex items-center gap-1"
-                                        >
-                                          <Plus className="w-3 h-3" />
-                                          إضافة طرف
-                                        </button>
-                                    </div>
-                                    
-                                    {/* الطرف الأول */}
-                                    <div className="mb-3 p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
-                                                الطرف الأول ({partyLabels.sellerSingle || 'الطرف الأول'})
-                                            </span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="الاسم الكامل"
-                                                    value={finalRecord.firstPartyName}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyName: e.target.value}))}
-                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none pr-8 text-slate-800 font-bold transition-all"
-                                                />
-                                                <UserCheck className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
-                                            </div>
-                                            <input 
-                                                type="text" 
-                                                placeholder="رقم البطاقة الوطنية (CNIE)"
-                                                value={finalRecord.firstPartyId}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyId: e.target.value}))}
-                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-mono text-left uppercase transition-all"
-                                                dir="ltr"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* الطرف الثاني */}
-                                    <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                                                الطرف الثاني ({partyLabels.buyerSingle || 'الطرف الثاني'})
-                                            </span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="الاسم الكامل"
-                                                    value={finalRecord.secondPartyName}
-                                                    onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyName: e.target.value}))}
-                                                    className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none pr-8 text-slate-800 font-bold transition-all"
-                                                />
-                                                <UserCheck className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
-                                            </div>
-                                            <input 
-                                                type="text" 
-                                                placeholder="رقم البطاقة الوطنية (CNIE)"
-                                                value={finalRecord.secondPartyId}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyId: e.target.value}))}
-                                                className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-mono text-left uppercase transition-all"
-                                                dir="ltr"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* الأطراف الاختيارية */}
-                                    {Array.isArray((finalRecord as any).optionalParties) && (finalRecord as any).optionalParties.length > 0 && (
-                                      <div className="mt-3 space-y-2.5 pt-2.5 border-t border-slate-100">
-                                        {(finalRecord as any).optionalParties.map((party: any, index: number) => (
-                                          <div key={party.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                                            <div className="mb-2 flex items-center justify-between gap-3">
-                                              <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">طرف اختياري {index + 1}</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => removeOptionalParty(party.id)}
-                                                className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
-                                              >
-                                                <Trash2 className="w-3 h-3" />
-                                                حذف
-                                              </button>
-                                            </div>
-                                            <div className="space-y-2">
-                                              <input
-                                                type="text"
-                                                placeholder="الاسم الكامل"
-                                                value={party.name}
-                                                onChange={(e) => updateOptionalParty(party.id, 'name', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 font-bold text-slate-800"
-                                              />
-                                              <input
-                                                type="text"
-                                                placeholder="رقم البطاقة الوطنية (CNIE)"
-                                                value={party.nationalId}
-                                                onChange={(e) => updateOptionalParty(party.id, 'nationalId', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-left font-mono text-xs outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 uppercase"
-                                                dir="ltr"
-                                              />
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                </div>
-
-                                {/* Level 3: Deed Reference System (Property Units) */}
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div 
-                                        className="flex items-center justify-between mb-0 group/header"
-                                    >
-                                        <div 
-                                            className="flex items-center gap-2 cursor-pointer flex-1"
-                                            onClick={() => setIsUnitsCollapsed(!isUnitsCollapsed)}
-                                        >
-                                            <Building2 className={`w-4 h-4 transition-colors ${isUnitsCollapsed ? 'text-slate-400' : 'text-blue-500'}`} />
-                                            <h4 className="font-bold text-slate-700 text-sm">مراجع سند الشهادة/العقد</h4>
-                                            <div className={`p-0.5 rounded-md hover:bg-slate-200 transition-all ${isUnitsCollapsed ? 'rotate-180 text-slate-400' : 'rotate-0 text-blue-500'}`}>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 bg-white/50 p-1 rounded-lg border border-slate-200">
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    checked={isUnitsAvailable} 
-                                                    onChange={() => {
-                                                        setIsUnitsAvailable(true);
-                                                        setIsUnitsCollapsed(false);
-                                                    }}
-                                                    className="w-3 h-3 text-blue-600 focus:ring-blue-500"
-                                                />
-                                                <span className={`text-[10px] font-bold ${isUnitsAvailable ? 'text-blue-600' : 'text-slate-400'}`}>متوفر</span>
-                                            </label>
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    checked={!isUnitsAvailable} 
-                                                    onChange={() => setIsUnitsAvailable(false)}
-                                                    className="w-3 h-3 text-red-600 focus:ring-red-500"
-                                                />
-                                                <span className={`text-[10px] font-bold ${!isUnitsAvailable ? 'text-red-600' : 'text-slate-400'}`}>غير متوفر</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    {!isUnitsCollapsed && (
-                                        !isUnitsAvailable ? (
-                                            <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600 animate-in fade-in slide-in-from-top-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
-                                                <span className="text-xs font-bold">تم استثناء مراجع السند (هذه الخانة غير متوفرة لهذا العقد)</span>
-                                            </div>
-                                        ) : (
-                                        <div className="space-y-4 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        {propertyUnits.map((unit, idx) => {
-                                            // Duplicate Check Logic
-                                            const isDuplicate = propertyUnits.some((u, i) => i !== idx && (
-                                                (u.type === 'unregistered' && unit.type === 'unregistered' && 
-                                                 u.unregisteredData.bookNumber === unit.unregisteredData.bookNumber &&
-                                                 u.unregisteredData.count === unit.unregisteredData.count &&
-                                                 u.unregisteredData.page === unit.unregisteredData.page &&
-                                                 u.unregisteredData.authority === unit.unregisteredData.authority) ||
-                                                (u.type === 'registered' && unit.type === 'registered' &&
-                                                 u.registeredData.deedNumber === unit.registeredData.deedNumber)
-                                            ));
-
-                                            return (
-                                            <div key={unit.id} className={`p-4 bg-white rounded-xl border relative group transition-all ${isDuplicate ? 'border-red-300 shadow-red-100 shadow-md' : 'border-slate-200 hover:shadow-md'}`}>
-                                                <div className="absolute top-3 left-3 flex gap-2">
-                                                     <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Unit {idx + 1}</span>
-                                                    <button 
-                                                        onClick={() => removePropertyUnit(unit.id)}
-                                                        className="text-red-400 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all"
-                                                        title="Remove Unit"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                                
-                                                <div className="mb-4 pr-8">
-                                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-2">
-                                                        <span>🔹 نوع السند (Deed Type)</span>
-                                                        {isDuplicate && <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 rounded-full animate-pulse">تكرار بيانات!</span>}
-                                                    </label>
-                                                    <select 
-                                                        value={unit.type}
-                                                        onChange={(e) => updatePropertyUnit(unit.id, 'type', e.target.value)}
-                                                        className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer font-bold text-slate-700"
-                                                    >
-                                                        <option value="unregistered">☐ سند غير محفظ (رسوم عدلية – غير محفظة)</option>
-                                                        <option value="registered">☐ رسم عقاري محفظ (Land Title)</option>
-                                                    </select>
-                                                </div>
-
-                                                {unit.type === 'unregistered' ? (
-                                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                                            <span className="text-xs font-bold text-emerald-700">حالة سند غير محفظ (رسوم عدلية)</span>
-                                                        </div>
-
-                                                        <div>
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">نوع الدفتر / نوع المحرر</label>
-                                                            <select 
-                                                                value={unit.unregisteredData.bookType}
-                                                                onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookType')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 bg-white outline-none font-bold text-slate-700"
-                                                            >
-                                                                <optgroup label="سجلات التوثيق الرسمية (Official Registers)">
-                                                                    <option value="أملاك">سجل الأملاك</option>
-                                                                    <option value="تركات">سجل التركات والمخلفات</option>
-                                                                    <option value="وصايا">سجل الوصايا</option>
-                                                                    <option value="كفالات">سجل الرهون والكفالات</option>
-                                                                    <option value="هبات">سجل الهبات والصدقات</option>
-                                                                    <option value="زواج">سجل الزواج ومستنداته</option>
-                                                                    <option value="طلاق">سجل الطلاق والرجعة</option>
-                                                                    <option value="أوقاف">سجل الأوقاف والتحبيس</option>
-                                                                    <option value="معاوضات">سجل المعاوضات والمناقلات</option>
-                                                                    <option value="توكيلات">سجل التوكيلات والإنابات</option>
-                                                                    <option value="ديون">سجل الديون والإقرارات</option>
-                                                                    <option value="مختلفة">سجلات مختلفة</option>
-                                                                </optgroup>
-                                                                <optgroup label="أنواع المعاملات والرسوم (FeesAgent Document Types)">
-                                                                    <option value="بيع_وشراء">بيع وشراء عقار</option>
-                                                                    <option value="بيع_وشراء_معنوي">بيع وشراء معنوي (أصل تجاري)</option>
-                                                                    <option value="بيع_وشراء_طور_انجاز_ابتدائي">بيع في طور الإنجاز (ابتدائي)</option>
-                                                                    <option value="بيع_وشراء_طور_انجاز_نهائي">بيع في طور الإنجاز (نهائي)</option>
-                                                                    <option value="بيع_وشراء_ملكية_مشتركة">بيع وشراء في الملكية المشتركة</option>
-                                                                    <option value="عقد_ايجار_المفضي_الى_تملك">عقد إيجار مفضي إلى تملك</option>
-                                                                    <option value="عقد_تفويت_حق_السطحية">عقد تفويت حق السطحية</option>
-                                                                    <option value="عقد_بيع_حق_الهواء_والتعلية">عقد بيع حق الهواء والتعلية</option>
-                                                                    <option value="كراء_طويل_الامد">عقد كراء طويل الأمد</option>
-                                                                    <option value="عقد_تحبيس">عقد تحبيس (وقف)</option>
-                                                                    <option value="عقد_العمري">عقد العمرى</option>
-                                                                    <option value="هبة">رسم هبة</option>
-                                                                    <option value="صدقة">رسم صدقة</option>
-                                                                    <option value="مقاسمة">عقد مقاسمة</option>
-                                                                    <option value="مناقلة">عقد مناقلة معاوضة</option>
-                                                                    <option value="رهن">رسم رهن رسمي</option>
-                                                                    <option value="رهن_حيازي">رسم رهن حيازي</option>
-                                                                    <option value="اراثة">رسم إراثة</option>
-                                                                    <option value="بيان_فريضة">بيان فريضة</option>
-                                                                    <option value="احصاء_متروك">إحصاء متروك</option>
-                                                                    <option value="ثبوت_مخلف">ثبوت مخلف</option>
-                                                                    <option value="وصية">رسم وصية</option>
-                                                                    <option value="ملكية">رسم ملكية</option>
-                                                                    <option value="حيازة">رسم حيازة</option>
-                                                                    <option value="ثبوت_بناء">رسم ثبوت بناء</option>
-                                                                    <option value="ثبوت_زينة_عقار">ثبوت زينة عقار</option>
-                                                                    <option value="ثبوت_مرفق">ثبوت مرفق</option>
-                                                                    <option value="زواج">رسم زواج</option>
-                                                                    <option value="زواج_مختلط">رسم زواج مختلط</option>
-                                                                    <option value="رسم_استمرار_زواج">رسم استمرار زواج</option>
-                                                                    <option value="الاشهاد_على_الطلاق_الاتفاقي">إشهاد على طلاق اتفاقي</option>
-                                                                    <option value="اتفاق_تدبير_اموال_زوجية">اتفاق تدبير أموال زوجية</option>
-                                                                    <option value="توكيل_رسمي">توكيل رسمي</option>
-                                                                    <option value="رسم_اقرار_واعتراف">رسم إقرار واعتراف</option>
-                                                                    <option value="رسم_اقرار_بدين">رسم إقرار بدين</option>
-                                                                    <option value="رسم_إبراء_من_دين">رسم إبراء من دين</option>
-                                                                    <option value="رسم_تسليم_بعوض">رسم تسليم بعوض</option>
-                                                                    <option value="رسم_الاقرار_ببنوة">رسم إقرار ببنوة</option>
-                                                                    <option value="ثبوت_نسب_ببينة_السماع">ثبوت نسب ببينة السماع</option>
-                                                                    <option value="وعد_بالبيع">وعد بالبيع</option>
-                                                                    <option value="أخرى">محرر / رسم عدلي آخر</option>
-                                                                </optgroup>
-                                                            </select>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-4 gap-2">
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">رقم الدفتر</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    placeholder="#"
-                                                                    value={unit.unregisteredData.bookNumber}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookNumber')}
-                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">حرف (اختياري)</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    placeholder="أ / ب"
-                                                                    value={unit.unregisteredData.bookLetter || ''}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookLetter')}
-                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">العدد</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    placeholder="#"
-                                                                    value={unit.unregisteredData.count}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'count')}
-                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1 text-center">الصحيفة</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    placeholder="#"
-                                                                    value={unit.unregisteredData.page}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'page')}
-                                                                    className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white outline-none font-mono text-center focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">تاريخ التضمين</label>
-                                                                <input 
-                                                                    type="date" 
-                                                                    value={unit.unregisteredData.date}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'date')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">جهة التوثيق</label>
-                                                                <select 
-                                                                    value={unit.unregisteredData.authority}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'authority')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none font-bold text-slate-700"
-                                                                >
-                                                                    {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
-                                                                        <option value={notaryCity}>{notaryCity}</option>
-                                                                    )}
-                                                                    {MOROCCAN_CITIES.map(city => (
-                                                                        <option key={city} value={city}>{city}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <textarea 
-                                                                placeholder="ملاحظات حول هذا السند..."
-                                                                value={unit.unregisteredData.notes || ''}
-                                                                onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'notes')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 outline-none min-h-[60px]"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                                            <span className="text-xs font-bold text-blue-700">حالة رسم عقاري محفظ (Registered)</span>
-                                                        </div>
-
-                                                        <div>
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">رقم الرسم العقاري</label>
-                                                            <input 
-                                                                type="text" 
-                                                                placeholder="Titre Foncier (e.g., 12345/R)"
-                                                                value={unit.registeredData.deedNumber}
-                                                                onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'deedNumber')}
-                                                                className="w-full text-sm p-2.5 rounded border border-blue-200 bg-blue-50/30 outline-none font-mono font-bold text-blue-900"
-                                                            />
-                                                        </div>
-
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">تاريخ الإصدار</label>
-                                                                <input 
-                                                                    type="date" 
-                                                                    value={unit.registeredData.issueDate}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'issueDate')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">المحافظة العقارية</label>
-                                                                <select 
-                                                                    value={unit.registeredData.registryOffice}
-                                                                    onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'registryOffice')}
-                                                                    className="w-full text-xs p-2 rounded border border-slate-200 outline-none"
-                                                                >
-                                                                    <option value="الرباط">الرباط</option>
-                                                                    <option value="الدار البيضاء">الدار البيضاء</option>
-                                                                    <option value="طنجة">طنجة</option>
-                                                                    <option value="القنيطرة">القنيطرة</option>
-                                                                    <option value="سطات">سطات</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">رقم المطلب (اختياري)</label>
-                                                            <input 
-                                                                type="text" 
-                                                                placeholder="رقم مطلب التحفيظ..."
-                                                                value={unit.registeredData.applicationNumber}
-                                                                onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'applicationNumber')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 outline-none"
-                                                            />
-                                                        </div>
-
-                                                         <div>
-                                                            <textarea 
-                                                                placeholder="ملاحظات عقارية..."
-                                                                value={unit.registeredData.notes || ''}
-                                                                onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'notes')}
-                                                                className="w-full text-xs p-2 rounded border border-slate-200 outline-none min-h-[60px]"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            );
-                                        })}
-                                        
-                                        <button 
-                                            onClick={addPropertyUnit}
-                                            className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-slate-500 font-bold hover:bg-slate-50 hover:border-slate-400 transition-all group"
-                                        >
-                                            <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                                                <Plus className="w-4 h-4" />
-                                            </div>
-                                            <span>إضافة عقار / سند آخر (Add Property Unit)</span>
-                                        </button>
-                                    </div>
-                                    )
-                                    )}
-                                </div>
-
-                                {/* Level 4: Fiscal/Stamp */}
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div 
-                                        className="flex items-center justify-between mb-0 group/header"
-                                    >
-                                        <div 
-                                            className="flex items-center gap-2 cursor-pointer flex-1"
-                                            onClick={() => setIsFinancialCollapsed(!isFinancialCollapsed)}
-                                        >
-                                            <CreditCardIcon className={`w-4 h-4 transition-colors ${isFinancialCollapsed ? 'text-slate-400' : 'text-emerald-500'}`} />
-                                            <h4 className="font-bold text-slate-700 text-sm">البيانات المالية (Financial Data)</h4>
-                                            <div className={`p-0.5 rounded-md hover:bg-slate-200 transition-all ${isFinancialCollapsed ? 'rotate-180 text-slate-400' : 'rotate-0 text-emerald-500'}`}>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 bg-white/50 p-1 rounded-lg border border-slate-200">
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    checked={isFinancialAvailable} 
-                                                    onChange={() => {
-                                                        setIsFinancialAvailable(true);
-                                                        setIsFinancialCollapsed(false);
-                                                    }}
-                                                    className="w-3 h-3 text-emerald-600 focus:ring-emerald-500"
-                                                />
-                                                <span className={`text-[10px] font-bold ${isFinancialAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>متوفر</span>
-                                            </label>
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    checked={!isFinancialAvailable} 
-                                                    onChange={() => setIsFinancialAvailable(false)}
-                                                    className="w-3 h-3 text-red-600 focus:ring-red-500"
-                                                />
-                                                <span className={`text-[10px] font-bold ${!isFinancialAvailable ? 'text-red-600' : 'text-slate-400'}`}>غير متوفر</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    {!isFinancialCollapsed && (
-                                        !isFinancialAvailable ? (
-                                            <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600 animate-in fade-in slide-in-from-top-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
-                                                <span className="text-xs font-bold">تم استثناء البيانات المالية (غير متوفرة لهذا السند)</span>
-                                            </div>
-                                        ) : (
-                                        <div className="grid grid-cols-2 gap-3 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">دفتر المشهر</label>
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.deedBook}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, deedBook: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none bg-slate-100 font-bold"
-                                            />
-                                        </div>
-                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5">أمر المطالبة</label>
-                                            <input 
-                                                type="text" 
-                                                value={finalRecord.taxOrder}
-                                                onChange={(e) => setFinalRecord(prev => ({...prev, taxOrder: e.target.value}))}
-                                                className="w-full text-sm p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none font-mono font-bold"
-                                            />
-                                        </div>
-                                    </div>
-                                    )
-                                    )}
-                                </div>
-
-                                {/* Level 5: Notary Vital Data */}
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center justify-between">
-                                        <span>بيانات هيئة التوثيق العدلي</span>
-                                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">طبقاً للقانون 16.03</span>
-                                    </h4>
-
-                                    {/* Primary Notary (Logged in Adoul) */}
-                                    <div className="mb-2.5 p-3 rounded-lg bg-white border border-slate-200">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-xs font-bold text-slate-700">العدل المتلقي الأول (الأصيل)</span>
-                                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">الملف الشخصي</span>
-                                        </div>
-                                        <div className="text-sm font-black text-slate-900">
-                                            الأستاذ(ة): {user?.full_name || 'العدل الموثق'}
-                                        </div>
-                                        {notaryCity && (
-                                            <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                                دائرة التوثيق: {notaryCity}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Secondary Notary (العدل العاطف) - Automatically pre-filled from active partner */}
-                                    <div className="p-3 rounded-lg bg-white border border-slate-200">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-xs font-bold text-slate-700">اسم العدل العاطف (المتلقي الثاني)</span>
-                                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                <span>الشريك النشط حالياً</span>
-                                            </span>
-                                        </div>
-                                        <input 
-                                            type="text" 
-                                            placeholder="أدخل اسم العدل العاطف..."
-                                            value={(finalRecord as any).judgeName || ''}
-                                            onChange={(e) => setFinalRecord(prev => ({...prev, judgeName: e.target.value}))}
-                                            className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 outline-none font-bold text-slate-900 transition-all"
-                                        />
-
-                                        {notaryPartners && notaryPartners.length > 1 && (
-                                          <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
-                                            <span className="text-[10px] text-slate-400 font-medium">الشركاء المسجلون:</span>
-                                            {notaryPartners.map((partner: any) => {
-                                              const isSelected = (finalRecord as any).judgeName === partner.partner_name;
-                                              const isAvailable = Boolean(partner.is_available);
-                                              return (
-                                                <button
-                                                  key={partner.id}
-                                                  type="button"
-                                                  onClick={() => setFinalRecord(prev => ({ ...prev, judgeName: partner.partner_name }))}
-                                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all border ${
-                                                    isSelected
-                                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-xs'
-                                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
-                                                  }`}
-                                                >
-                                                  <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                  <span>{partner.partner_name}</span>
-                                                  {isAvailable && <span className="text-[9px] text-emerald-700 font-normal">(نشط)</span>}
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Bottom Action Card */}
-                                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-xl">
-                                  <div className="mb-3.5 flex items-center gap-3 text-white">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 border border-slate-700">
-                                      <FolderArchive className="w-4 h-4 text-emerald-400" />
-                                    </div>
-                                    <div>
-                                      <div className="text-xs font-black text-slate-100">إجراءات الوثيقة</div>
-                                      <div className="text-[10px] text-slate-400">الإجراءات الرسمية للرسم العدلي بعد استكمال التدقيق</div>
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-2.5">
-                                    {!isFormComplete && (
-                                      <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/50 text-amber-200 text-[11px] font-bold flex items-center gap-2">
-                                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                                        <span>يرجى استكمال البيانات أعلاه للمتابعة ({validationErrors.length} متبقي)</span>
-                                      </div>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (!isFormComplete) return;
-                                        setPreSaveReviewIntent('library');
-                                        setIsPreSaveReviewModalOpen(true);
-                                      }}
-                                      disabled={!rasmId || !isFormComplete || isRedirecting}
-                                      className={`w-full rounded-xl px-4 py-2.5 text-xs font-black text-white transition-all flex items-center justify-center gap-2 border ${
-                                        rasmId && isFormComplete && !isRedirecting
-                                        ? 'bg-emerald-700 hover:bg-emerald-600 border-emerald-600 shadow-md shadow-emerald-950/40 cursor-pointer'
-                                        : 'bg-slate-900 border-slate-800 opacity-40 cursor-not-allowed text-slate-500'
-                                      }`}
-                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ في مكتبة الوثائق 📚'}
-                                    >
-                                      <ShieldCheck className="w-4 h-4" />
-                                      حفظ في مكتبة الوثائق 📚
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (!isFormComplete) return;
-                                        setPreSaveReviewIntent('signing');
-                                        setIsPreSaveReviewModalOpen(true);
-                                      }}
-                                      disabled={!rasmId || !isFormComplete || isRedirecting}
-                                      className={`w-full rounded-xl px-4 py-2.5 text-xs font-black text-white transition-all flex items-center justify-center gap-2 border ${
-                                        rasmId && isFormComplete && !isRedirecting
-                                        ? 'bg-blue-700 hover:bg-blue-600 border-blue-600 shadow-md shadow-blue-950/40 cursor-pointer'
-                                        : 'bg-slate-900 border-slate-800 opacity-40 cursor-not-allowed text-slate-500'
-                                      }`}
-                                      title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'رواق التوقيع العدلي 🖋️'}
-                                    >
-                                      <FileSignature className="w-4 h-4" />
-                                      رواق التوقيع العدلي 🖋️
-                                    </button>
-
-                                    <div className="grid grid-cols-2 gap-2 pt-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => void shareSelectedDocument()}
-                                        disabled={!selectedDocumentUrl}
-                                        className={`rounded-lg px-3 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
-                                          selectedDocumentUrl
-                                          ? 'bg-slate-900 text-slate-200 border-slate-800 hover:bg-slate-800'
-                                          : 'bg-slate-900/60 text-slate-600 border-slate-900 cursor-not-allowed'
-                                        }`}
-                                      >
-                                        <Share2 className="w-3.5 h-3.5" />
-                                        مشاركة
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={printSelectedDocument}
-                                        className="rounded-lg px-3 py-2 text-xs font-bold text-slate-200 bg-slate-900 hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 border border-slate-800"
-                                      >
-                                        <Printer className="w-3.5 h-3.5" />
-                                        طباعة
-                                      </button>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => void deleteCurrentRasm()}
-                                      disabled={!rasmId || deleteSavedRasmMutation.isPending}
-                                      className={`w-full rounded-lg px-3 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
-                                        !rasmId || deleteSavedRasmMutation.isPending
-                                        ? 'bg-red-950/20 text-red-500/40 border-red-950/30 cursor-not-allowed'
-                                        : 'bg-red-950/40 text-red-400 border-red-900/40 hover:bg-red-950/70 hover:text-red-300'
-                                      }`}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      حذف الرسم
-                                    </button>
-                                  </div>
-                                </div>
-
-                            </div>
-                        ) : (
-                            <>
-                                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-                                    <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                                    بطاقات التحقق
-                                </h3>
-                                
-                                <div className="space-y-4 pb-20">
-                            {validations.map((item, i) => (
-                                <div key={i} className={`p-5 rounded-2xl border transition-all duration-300 hover:shadow-md cursor-pointer ${
-                                    item.status === 'success' ? 'bg-emerald-50/50 border-emerald-100' : 
-                                    item.status === 'warning' ? 'bg-amber-50/50 border-amber-100' : 
-                                    'bg-red-50/50 border-red-100'
-                                }`}>
-                                    <div className="flex items-start gap-4">
-                                        <div className={`mt-1 w-6 h-6 rounded-full flex items-center justify-center shrink-0 border ${
-                                            item.status === 'success' ? 'bg-emerald-100 border-emerald-200 text-emerald-600' : 
-                                            item.status === 'warning' ? 'bg-amber-100 border-amber-200 text-amber-600' : 
-                                            'bg-red-100 border-red-200 text-red-600'
-                                        }`}>
-                                            {item.status === 'success' ? <CheckCircle className="w-3.5 h-3.5" /> : 
-                                             item.status === 'warning' ? <AlertTriangle className="w-3.5 h-3.5" /> : 
-                                             <XCircle className="w-3.5 h-3.5" />}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-[15px]">{item.label}</h4>
-                                            {item.msg && <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">{item.msg}</p>}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        </>
-                    )}
-                    </div>
-                </div>
-            ) : (
-                <div className="flex items-center justify-center h-full flex-col gap-4">
-                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
-                        <Activity className="w-8 h-8 text-slate-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-500">مساحة العمل: {activeTab}</h3>
-                </div>
-            )}
-
-            {/* ZONE 4: Footer Action Bar (Fixed at bottom of main area) */}
-            <div className="h-[80px] bg-white border-t border-slate-200 px-8 flex items-center justify-between shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-20 absolute bottom-0 w-full left-0 right-0">
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => { setDecisionType('reject'); setIsDecisionModalOpen(true); }}
-                        className="px-6 py-3 rounded-xl border border-red-200 text-[#C62828] font-bold hover:bg-red-50 hover:brightness-110 transition-all text-sm"
-                    >
-                        رفض الملف
-                    </button>
-                    <button 
-                        onClick={() => { setDecisionType('correct'); setIsDecisionModalOpen(true); }}
-                        className="px-6 py-3 rounded-xl border border-orange-200 text-[#EF6C00] font-bold hover:bg-orange-50 hover:brightness-110 transition-all text-sm"
-                    >
-                        طلب استكمال
-                    </button>
-                    <button className="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all text-sm">
-                        حفظ الملاحظات
-                    </button>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                    {!isFormComplete && (
-                      <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span>يرجى استكمال بيانات الاستمارة أعلاه ({validationErrors.length} متبقي)</span>
-                      </span>
-                    )}
-
-                    <button 
-                        type="button"
+                    <div className="flex items-center gap-3">
+                      {/* Save to library quick action */}
+                      <button 
                         onClick={() => {
                           if (!state || !isFormComplete) return;
+                          if (primaryTextEditorOpen) {
+                            const finalContent = editedPlainTextGetterRef.current?.();
+                            if (finalContent) {
+                              updateDraftContent(finalContent);
+                            }
+                            setPrimaryTextEditorOpen(false);
+                          }
                           setPreSaveReviewIntent('library');
                           setIsPreSaveReviewModalOpen(true);
                         }}
                         disabled={!state || !isFormComplete || isRedirecting}
-                        className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
+                        className={`px-4.5 py-2.5 rounded-xl text-white font-black text-sm md:text-base flex items-center gap-2 transition-all shadow-md active:scale-95 ${
                           state && isFormComplete && !isRedirecting
-                            ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:brightness-110 shadow-emerald-600/20 cursor-pointer'
-                            : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
+                            ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700 cursor-pointer'
+                            : 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50'
                         }`}
-                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً'}
-                    >
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>حفظ في مكتبة الوثائق 📚</span>
-                    </button>
+                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة'}
+                      >
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                        <span>حفظ في المكتبة 📚</span>
+                      </button>
 
-                    <button 
-                        type="button"
+                      {/* Notary signing portal quick action */}
+                      <button 
                         onClick={() => {
                           if (!state || !isFormComplete) return;
+                          if (primaryTextEditorOpen) {
+                            const finalContent = editedPlainTextGetterRef.current?.();
+                            if (finalContent) {
+                              updateDraftContent(finalContent);
+                            }
+                            setPrimaryTextEditorOpen(false);
+                          }
                           setPreSaveReviewIntent('signing');
                           setIsPreSaveReviewModalOpen(true);
                         }}
                         disabled={!state || !isFormComplete || isRedirecting}
-                        className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 ${
+                        className={`px-4.5 py-2.5 rounded-xl text-white font-black text-sm md:text-base flex items-center gap-2 transition-all shadow-md active:scale-95 ${
                           state && isFormComplete && !isRedirecting
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:brightness-110 shadow-blue-600/20 cursor-pointer'
-                            : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
+                            ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 cursor-pointer shadow-amber-900/40'
+                            : 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50'
                         }`}
-                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال المباشر للتوقيع'}
-                    >
-                        <FileSignature className="w-4 h-4" />
-                        <span>اعتماد ورواق التوقيع 🖋️</span>
-                    </button>
+                        title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال الفوري إلى رواق التوقيع'}
+                      >
+                        <FileSignature className="w-5 h-5" />
+                        <span>رواق التوقيع 🖋️</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Viewer Canvas */}
+                  <div className="flex-1 relative overflow-hidden bg-slate-950">
+                    {isAwaitingPdfResolved ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 p-8">
+                        <div className="bg-[#0F172A] rounded-3xl p-8 border border-slate-800 shadow-2xl flex flex-col items-center max-w-md text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
+                          <div className="w-16 h-16 rounded-2xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 relative">
+                            <Loader2 className="w-8 h-8 animate-spin" />
+                            <span className="absolute text-sm">⚖️</span>
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-xl font-black text-white font-maghribi">
+                              جاري استكمال وتجهيز المحرر القضائي المعتمد...
+                            </h3>
+                            <p className="text-sm font-bold text-slate-400 leading-relaxed">
+                              تم اعتماد المعاملة من طرف قاضي التوثيق بنجاح. يجري الآن توليد وتضمين النسخة الرقمية المعتمدة عالية الدقة.
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-950/80 border border-amber-600/40 text-amber-300 text-sm font-bold">
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                              <span>تحديث تلقائي آني قيد المتابعة</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                rasmQuery.refetch();
+                                judgeSubmissionQuery.refetch();
+                                latestApprovedByFileNumberQuery.refetch();
+                              }}
+                              className="mt-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold transition shadow-xs flex items-center gap-2 cursor-pointer border border-slate-700"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              <span>تحديث يدوي للبيانات</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : forcedViewerDoc || activePdfUrl ? (
+                      <HighResViewer 
+                        doc={
+                          forcedViewerDoc || {
+                            id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
+                            category: 'audit_final_pdf',
+                            fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+                            name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
+                            fileUrl: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
+                            url: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
+                            mimeType: 'application/pdf',
+                            type: 'application/pdf',
+                            isJudgePrimary: true,
+                          }
+                        }
+                        docSourceMeta={{
+                          selectedDocSource: activeDocVersion,
+                          baseDocUrl: baseDocUrlForDebug,
+                          editedDocUrl: editedDocUrlForDebug,
+                          versionId: activeEditedArtifact?.versionId || latestAuditVersionId || null,
+                          rasmId,
+                          submissionId: judgeSubmissionId || null,
+                          reason:
+                            (activeDocVersion as any) === 'edited'
+                              ? 'activeDocVersion=edited'
+                              : (forcedViewerDoc as any)?.category
+                                ? `selectedVaultDoc.category=${String((forcedViewerDoc as any).category)}`
+                                : 'no-selectedVaultDoc',
+                        }}
+                        zoom={viewerZoom}
+                        isDragging={isDragging}
+                        onMouseDown={handleViewerMouseDown}
+                        onMouseMove={handleViewerMouseMove}
+                        onMouseUp={handleViewerMouseUp}
+                        onWheel={handleViewerWheel}
+                        containerRef={viewerContainerRef}
+                        isDarkMode={isDarkMode}
+                        onUpdateDraft={updateDraftContent}
+                        inlineEditMode={isAuditHubEditMode}
+                        activeViewMode={activeViewMode}
+                        onlyOfficeConfig={onlyOfficeConfig}
+                        onlyOfficeDsUrl={onlyOfficeDsUrl}
+                        onSaveAndCloseOnlyOffice={handleSaveAndCloseOnlyOffice}
+                        isSavingOnlyOffice={isSavingEdits}
+                        onCloseOnlyOffice={() => setActiveViewMode('preview')}
+                        updateZoom={updateZoom}
+                        renderNonce={viewerDocRenderNonce}
+                        pdfTextEditor={{
+                          active: pdfFormEditorOpen && isSelectedPdf,
+                          tool: pdfTextTool,
+                          pageIndex: pdfTextPageIndex,
+                          pageSize: pdfTextPageSizes[pdfTextPageIndex] || null,
+                          edits: pdfTextEditsByPage[pdfTextPageIndex] || { rects: [], texts: [] },
+                          textInput: pdfTextInput,
+                          fontSize: pdfTextFontSize,
+                          onAddRect: addPdfRedactionRect,
+                          onAddText: addPdfOverlayText,
+                        }}
+                        onRegisterPlainTextGetter={(fn: () => string) => {
+                          editedPlainTextGetterRef.current = fn;
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-500">
+                        <p className="font-bold text-base">جاري تحضير نسخ المعاينة المعتمدة...</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-            </div>
+              </div>
+            )}
 
-        </main>
-      </div>
+            {/* AUDIT FORM PANEL (Right in RTL: Spacious, high-contrast, modern cards) */}
+            {workspaceLayoutMode !== 'doc' && (
+              <div className={`bg-[#0A0F1D] h-full overflow-y-auto p-6 shadow-2xl border-r border-slate-800/80 flex flex-col shrink-0 ${
+                workspaceLayoutMode === 'form' ? 'w-full max-w-5xl mx-auto px-8 py-6' : 'w-[540px] xl:w-[580px] 2xl:w-[620px]'
+              }`}>
+                
+                {/* INTERACTIVE SECTION SWITCHER WITH NOTARY SIDEBAR FONT */}
+                <div className="mb-6 sticky top-0 z-20 bg-[#0A0F1D]/95 backdrop-blur-md pb-2 pt-1 font-kufi">
+                  <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner overflow-x-auto no-scrollbar">
+                    {[
+                      { id: 'all', label: '🌟 عرض شامل' },
+                      { id: 'deed', label: '📜 مراجع وسجل الرسم' },
+                      { id: 'parties', label: '👥 أطراف العقد' },
+                      { id: 'properties', label: '🏛️ العقارات' },
+                      { id: 'financial', label: '💳 المالية' },
+                      { id: 'notaries', label: '⚖️ التوثيق' },
+                    ].map((sec) => {
+                      const isCurrent = activeFormSection === sec.id;
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => setActiveFormSection(sec.id as any)}
+                          className={`px-4 py-2.5 rounded-xl text-base font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                            isCurrent
+                              ? 'bg-amber-600 text-white shadow-md font-black'
+                              : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+                          }`}
+                        >
+                          <span>{sec.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-      {/* --- Modals --- */}
+                <div className="space-y-6 pb-28 font-kufi">
+                  
+                  {/* CARD 1: DEED IDENTITY & REGISTER DOCKET */}
+                  {(activeFormSection === 'all' || activeFormSection === 'deed') && (
+                    <div className="bg-[#0F172A] rounded-3xl border-2 border-slate-800 overflow-hidden shadow-xl transition-all">
+                      {/* Card Header Banner in Maghribi Font */}
+                      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 px-6 py-4 border-b border-emerald-900/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-900/70 border border-emerald-500/50 flex items-center justify-center text-emerald-300">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-black text-amber-100 font-maghribi">مراجع تضمين الشهادة / العقد الرسمية</h3>
+                        </div>
+                        <span className="text-sm font-black text-emerald-300 bg-emerald-950 px-3.5 py-1 rounded-full border border-emerald-600/60 font-kufi">
+                          معتمد رسمياً
+                        </span>
+                      </div>
+
+                      <div className="p-6 space-y-5">
+                        {/* نوع الشهادة */}
+                        <div>
+                          <label className="block text-base font-bold text-slate-200 mb-2">نوع الشهادة / العقد العدلي</label>
+                          <input 
+                            type="text" 
+                            value={finalRecord.certificateType}
+                            onChange={(e) => setFinalRecord(prev => ({...prev, certificateType: e.target.value}))}
+                            className="w-full text-base p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-950 text-white focus:bg-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none font-bold transition-all"
+                            placeholder="أدخل نوع الشهادة..."
+                          />
+                        </div>
+
+                        {/* الجهة والرقم المسلسل */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-base font-bold text-slate-200 mb-2 flex items-center justify-between">
+                              <span>جهة التوثيق (المكتب)</span>
+                              <span className="text-xs font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800/60">تلقائي</span>
+                            </label>
+                            <select 
+                              value={finalRecord.authority}
+                              onChange={(e) => setFinalRecord(prev => ({...prev, authority: e.target.value}))}
+                              className="w-full text-base p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-950 text-white focus:bg-slate-900 focus:border-amber-500 outline-none font-bold transition-all cursor-pointer"
+                            >
+                              {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
+                                <option value={notaryCity}>مكتب التوثيق - {notaryCity}</option>
+                              )}
+                              {MOROCCAN_CITIES.map(city => (
+                                <option key={city} value={city}>مكتب التوثيق - {city}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-base font-bold text-slate-200 mb-2 flex items-center justify-between">
+                              <span>الرقم المسلسل</span>
+                              <span className="text-xs font-mono text-amber-400">فريد وتلقائي</span>
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="text" 
+                                value={finalRecord.serial}
+                                readOnly
+                                className="w-full text-base p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-900 text-amber-300 outline-none font-mono font-black cursor-not-allowed select-all pl-10"
+                                title="رقم تسلسلي فريد يتم توليده تلقائياً للرسم"
+                              />
+                              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center">
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* سجل البيانات (Judicial Docket Card) */}
+                        <div className="pt-4 border-t border-slate-800">
+                          <div className="flex items-center gap-2.5 mb-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                            <h5 className="text-lg md:text-xl font-black text-amber-300 font-maghribi">سجل التضمين والبيانات الرسمية</h5>
+                          </div>
+                          
+                          <div className="grid grid-cols-4 gap-3.5 bg-slate-950/80 p-4 rounded-2xl border-2 border-slate-800">
+                            <div>
+                              <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">رقم السجل</label>
+                              <input 
+                                type="text" 
+                                placeholder="#"
+                                value={finalRecord.register}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, register: e.target.value}))}
+                                className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] focus:border-amber-500 outline-none font-black text-center text-white transition-all font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">الصحيفة</label>
+                              <input 
+                                type="text" 
+                                placeholder="#"
+                                value={finalRecord.page}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, page: e.target.value}))}
+                                className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] focus:border-amber-500 outline-none font-black text-center text-white transition-all font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">العدد</label>
+                              <input 
+                                type="text" 
+                                placeholder="#"
+                                value={finalRecord.count}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, count: e.target.value}))}
+                                className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] focus:border-amber-500 outline-none font-black text-center text-white transition-all font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">تاريخ التلقي</label>
+                              <input 
+                                type="date" 
+                                value={finalRecord.date}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, date: e.target.value}))}
+                                className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] focus:border-amber-500 outline-none font-bold text-center text-white transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CARD 2: PARTIES DATA (OFFICIAL IDENTITY DOSSIERS) */}
+                  {(activeFormSection === 'all' || activeFormSection === 'parties') && (
+                    <div className="bg-[#0F172A] rounded-3xl border-2 border-slate-800 overflow-hidden shadow-xl transition-all">
+                      {/* Card Header Banner in Maghribi Font */}
+                      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 px-6 py-4 border-b border-indigo-900/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-indigo-900/70 border border-indigo-500/50 flex items-center justify-center text-indigo-300">
+                            <Users className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-black text-amber-100 font-maghribi">بيانات أطراف الشهادة / العقد والهويات الرسمية</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addOptionalParty}
+                          className="rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/60 px-5 py-2.5 text-base font-black transition-all flex items-center gap-2 cursor-pointer shadow-md font-kufi"
+                        >
+                          <Plus className="w-5 h-5" />
+                          <span>إضافة طرف</span>
+                        </button>
+                      </div>
+                      
+                      <div className="p-6 space-y-5">
+                        {/* الطرف الأول */}
+                        <div className="p-5 bg-slate-950/80 rounded-2xl border-2 border-emerald-900/60 shadow-md">
+                          <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
+                            <span className="text-base font-black text-emerald-300 bg-emerald-950/90 px-4 py-1.5 rounded-lg border border-emerald-700/50 flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                              <span>الطرف الأول ({partyLabels.sellerSingle || 'الطرف الأول'})</span>
+                            </span>
+                            <span className="text-sm font-bold text-slate-300">طرف رئيسي</span>
+                          </div>
+                          <div className="space-y-3.5">
+                            <div className="relative">
+                              <input 
+                                type="text" 
+                                placeholder="الاسم الكامل للطرف الأول..."
+                                value={finalRecord.firstPartyName}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyName: e.target.value}))}
+                                className="w-full text-base p-4 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none pr-12 font-black transition-all"
+                              />
+                              <UserCheck className="w-6 h-6 text-emerald-400 absolute right-3.5 top-4" />
+                            </div>
+                            <input 
+                              type="text" 
+                              placeholder="رقم البطاقة الوطنية للتعريف (CNIE)..."
+                              value={finalRecord.firstPartyId}
+                              onChange={(e) => setFinalRecord(prev => ({...prev, firstPartyId: e.target.value}))}
+                              className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-amber-200 focus:border-emerald-500 outline-none font-mono text-left uppercase font-bold transition-all tracking-wider"
+                              dir="ltr"
+                            />
+                          </div>
+                        </div>
+
+                        {/* الطرف الثاني */}
+                        <div className="p-5 bg-slate-950/80 rounded-2xl border-2 border-indigo-900/60 shadow-md">
+                          <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
+                            <span className="text-base font-black text-indigo-300 bg-indigo-950/90 px-4 py-1.5 rounded-lg border border-indigo-700/50 flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+                              <span>الطرف الثاني ({partyLabels.buyerSingle || 'الطرف الثاني'})</span>
+                            </span>
+                            <span className="text-sm font-bold text-slate-300">طرف رئيسي</span>
+                          </div>
+                          <div className="space-y-3.5">
+                            <div className="relative">
+                              <input 
+                                type="text" 
+                                placeholder="الاسم الكامل للطرف الثاني..."
+                                value={finalRecord.secondPartyName}
+                                onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyName: e.target.value}))}
+                                className="w-full text-base p-4 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none pr-12 font-black transition-all"
+                              />
+                              <UserCheck className="w-6 h-6 text-indigo-400 absolute right-3.5 top-4" />
+                            </div>
+                            <input 
+                              type="text" 
+                              placeholder="رقم البطاقة الوطنية للتعريف (CNIE)..."
+                              value={finalRecord.secondPartyId}
+                              onChange={(e) => setFinalRecord(prev => ({...prev, secondPartyId: e.target.value}))}
+                              className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-amber-200 focus:border-indigo-500 outline-none font-mono text-left uppercase font-bold transition-all tracking-wider"
+                              dir="ltr"
+                            />
+                          </div>
+                        </div>
+
+                        {/* الأطراف الاختيارية */}
+                        {Array.isArray((finalRecord as any).optionalParties) && (finalRecord as any).optionalParties.length > 0 && (
+                          <div className="mt-4 space-y-4 pt-4 border-t border-slate-800">
+                            {(finalRecord as any).optionalParties.map((party: any, index: number) => (
+                              <div key={party.id} className="rounded-2xl border-2 border-slate-800 bg-slate-950/80 p-5">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                  <span className="text-base font-bold text-slate-200 bg-slate-900 px-3.5 py-1 rounded-lg border border-slate-700">طرف اختياري {index + 1}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeOptionalParty(party.id)}
+                                    className="text-base font-bold text-red-400 hover:text-red-300 flex items-center gap-1.5 cursor-pointer font-kufi"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    حذف
+                                  </button>
+                                </div>
+                                <div className="space-y-3.5">
+                                  <input
+                                    type="text"
+                                    placeholder="الاسم الكامل..."
+                                    value={party.name}
+                                    onChange={(e) => updateOptionalParty(party.id, 'name', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-slate-700 bg-[#0F172A] p-3.5 text-base outline-none focus:border-amber-500 font-black text-white"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="رقم البطاقة الوطنية (CNIE)..."
+                                    value={party.nationalId}
+                                    onChange={(e) => updateOptionalParty(party.id, 'nationalId', e.target.value)}
+                                    className="w-full rounded-xl border-2 border-slate-700 bg-[#0F172A] p-3.5 text-left font-mono text-base outline-none focus:border-amber-500 uppercase text-amber-200 font-bold"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CARD 3: DEED REFERENCE SYSTEM (PROPERTY UNITS) */}
+                  {(activeFormSection === 'all' || activeFormSection === 'properties') && (
+                    <div className="bg-[#0F172A] rounded-3xl border-2 border-slate-800 overflow-hidden shadow-xl transition-all">
+                      {/* Card Header Banner in Maghribi Font */}
+                      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 px-6 py-4 border-b border-amber-900/50 flex items-center justify-between">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer flex-1"
+                          onClick={() => setIsUnitsCollapsed(!isUnitsCollapsed)}
+                        >
+                          <div className="w-10 h-10 rounded-2xl bg-amber-900/70 border border-amber-500/50 flex items-center justify-center text-amber-300">
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-black text-amber-100 font-maghribi">مراجع سند الشهادة / العقد (العقارات)</h3>
+                          <div className={`p-1 rounded-md text-amber-400 transition-all ${isUnitsCollapsed ? 'rotate-180' : 'rotate-0'}`}>
+                            <ChevronRight className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-2xl border border-slate-800 font-kufi">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              checked={isUnitsAvailable} 
+                              onChange={() => {
+                                setIsUnitsAvailable(true);
+                                setIsUnitsCollapsed(false);
+                              }}
+                              className="w-4 h-4 text-amber-500 focus:ring-amber-500"
+                            />
+                            <span className={`text-base font-bold ${isUnitsAvailable ? 'text-amber-400 font-black' : 'text-slate-300'}`}>متوفر</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              checked={!isUnitsAvailable} 
+                              onChange={() => setIsUnitsAvailable(false)}
+                              className="w-4 h-4 text-red-500 focus:ring-red-500"
+                            />
+                            <span className={`text-base font-bold ${!isUnitsAvailable ? 'text-red-400 font-black' : 'text-slate-300'}`}>غير متوفر</span>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {!isUnitsCollapsed && (
+                        <div className="p-6">
+                          {!isUnitsAvailable ? (
+                            <div className="p-5 bg-red-950/50 border-2 border-red-800/60 rounded-2xl flex items-center gap-3 text-red-300 animate-in fade-in">
+                              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                              <span className="text-base font-bold">تم استثناء مراجع السند (هذه الخانة غير متوفرة لهذا العقد)</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-5">
+                              {propertyUnits.map((unit, idx) => {
+                                const isDuplicate = propertyUnits.some((u, i) => i !== idx && (
+                                  (u.type === 'unregistered' && unit.type === 'unregistered' && 
+                                   u.unregisteredData.bookNumber === unit.unregisteredData.bookNumber &&
+                                   u.unregisteredData.count === unit.unregisteredData.count &&
+                                   u.unregisteredData.page === unit.unregisteredData.page &&
+                                   u.unregisteredData.authority === unit.unregisteredData.authority) ||
+                                  (u.type === 'registered' && unit.type === 'registered' &&
+                                   u.registeredData.deedNumber === unit.registeredData.deedNumber)
+                                ));
+
+                                return (
+                                  <div key={unit.id} className={`p-5 bg-slate-950/90 rounded-2xl border-2 transition-all ${isDuplicate ? 'border-red-500/60' : 'border-slate-800'}`}>
+                                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                                      <span className="text-sm font-black text-amber-300 bg-amber-950 px-3.5 py-1 rounded-lg border border-amber-800">
+                                        عقار / سند رقم {idx + 1}
+                                      </span>
+                                      <button 
+                                        onClick={() => removePropertyUnit(unit.id)}
+                                        className="text-red-400 hover:text-red-300 p-1.5 transition-all cursor-pointer"
+                                        title="حذف العقار"
+                                      >
+                                        <Trash2 className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                    
+                                     <div className="mb-4">
+                                       <label className="block text-base font-bold text-slate-200 mb-2 flex items-center gap-2">
+                                         <span>نوع السند العقاري</span>
+                                         {isDuplicate && <span className="text-sm text-red-400 font-bold bg-red-950 px-2.5 py-0.5 rounded-full border border-red-800">تكرار بيانات!</span>}
+                                       </label>
+                                       <select 
+                                         value={unit.type}
+                                         onChange={(e) => updatePropertyUnit(unit.id, 'type', e.target.value)}
+                                         className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white focus:border-amber-500 outline-none cursor-pointer font-bold"
+                                       >
+                                         <option value="unregistered">☐ سند غير محفظ (رسوم عدلية – غير محفظة)</option>
+                                         <option value="registered">☐ رسم عقاري محفظ (Land Title)</option>
+                                       </select>
+                                     </div>
+
+                                     {unit.type === 'unregistered' ? (
+                                       <div className="space-y-4">
+                                         <div>
+                                           <label className="block text-base font-bold text-slate-200 mb-2">نوع الدفتر / نوع المحرر</label>
+                                           <select 
+                                             value={unit.unregisteredData.bookType}
+                                             onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookType')}
+                                             className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold cursor-pointer"
+                                           >
+                                            <optgroup label="سجلات التوثيق الرسمية">
+                                              <option value="أملاك">سجل الأملاك</option>
+                                              <option value="تركات">سجل التركات والمخلفات</option>
+                                              <option value="وصايا">سجل الوصايا</option>
+                                              <option value="كفالات">سجل الرهون والكفالات</option>
+                                              <option value="هبات">سجل الهبات والصدقات</option>
+                                              <option value="زواج">سجل الزواج ومستنداته</option>
+                                              <option value="طلاق">سجل الطلاق والرجعة</option>
+                                              <option value="أوقاف">سجل الأوقاف والتحبيس</option>
+                                              <option value="معاوضات">سجل المعاوضات والمناقلات</option>
+                                              <option value="توكيلات">سجل التوكيلات والإنابات</option>
+                                              <option value="ديون">سجل الديون والإقرارات</option>
+                                              <option value="مختلفة">سجلات مختلفة</option>
+                                            </optgroup>
+                                            <optgroup label="أنواع المعاملات والرسوم">
+                                              <option value="بيع_وشراء">بيع وشراء عقار</option>
+                                              <option value="بيع_وشراء_معنوي">بيع وشراء معنوي (أصل تجاري)</option>
+                                              <option value="بيع_وشراء_طور_انجاز_ابتدائي">بيع في طور الإنجاز (ابتدائي)</option>
+                                              <option value="بيع_وشراء_طور_انجاز_نهائي">بيع في طور الإنجاز (نهائي)</option>
+                                              <option value="بيع_وشراء_ملكية_مشتركة">بيع وشراء في الملكية المشتركة</option>
+                                              <option value="عقد_ايجار_المفضي_الى_تملك">عقد إيجار مفضي إلى تملك</option>
+                                              <option value="عقد_تفويت_حق_السطحية">عقد تفويت حق السطحية</option>
+                                              <option value="عقد_بيع_حق_الهواء_والتعلية">عقد بيع حق الهواء والتعلية</option>
+                                              <option value="كراء_طويل_الامد">عقد كراء طويل الأمد</option>
+                                              <option value="عقد_تحبيس">عقد تحبيس (وقف)</option>
+                                              <option value="عقد_العمري">عقد العمرى</option>
+                                              <option value="هبة">رسم هبة</option>
+                                              <option value="صدقة">رسم صدقة</option>
+                                              <option value="مقاسمة">عقد مقاسمة</option>
+                                              <option value="مناقلة">عقد مناقلة معاوضة</option>
+                                              <option value="رهن">رسم رهن رسمي</option>
+                                              <option value="رهن_حيازي">رسم رهن حيازي</option>
+                                              <option value="اراثة">رسم إراثة</option>
+                                              <option value="بيان_فريضة">بيان فريضة</option>
+                                              <option value="احصاء_متروك">إحصاء متروك</option>
+                                              <option value="ثبوت_مخلف">ثبوت مخلف</option>
+                                              <option value="وصية">رسم وصية</option>
+                                              <option value="ملكية">رسم ملكية</option>
+                                              <option value="حيازة">رسم حيازة</option>
+                                              <option value="ثبوت_بناء">رسم ثبوت بناء</option>
+                                              <option value="ثبوت_زينة_عقار">رسم ثبوت زينة عقار</option>
+                                              <option value="ثبوت_مرفق">رسم ثبوت مرفق</option>
+                                              <option value="زواج">رسم زواج</option>
+                                              <option value="زواج_مختلط">رسم زواج مختلط</option>
+                                              <option value="رسم_استمرار_زواج">رسم استمرار زواج</option>
+                                              <option value="الاشهاد_على_الطلاق_الاتفاقي">إشهاد على طلاق اتفاقي</option>
+                                              <option value="اتفاق_تدبير_اموال_زوجية">اتفاق تدبير أموال زوجية</option>
+                                              <option value="توكيل_رسمي">توكيل رسمي</option>
+                                              <option value="رسم_اقرار_واعتراف">رسم إقرار واعتراف</option>
+                                              <option value="رسم_اقرار_بدين">رسم إقرار بدين</option>
+                                              <option value="رسم_إبراء_من_دين">رسم إبراء من دين</option>
+                                              <option value="رسم_تسليم_بعوض">رسم تسليم بعوض</option>
+                                              <option value="رسم_الاقرار_ببنوة">رسم إقرار ببنوة</option>
+                                              <option value="ثبوت_نسب_ببينة_السماع">ثبوت نسب ببينة السماع</option>
+                                              <option value="وعد_بالبيع">وعد بالبيع</option>
+                                              <option value="أخرى">محرر / رسم عدلي آخر</option>
+                                            </optgroup>
+                                           </select>
+                                         </div>
+
+                                         <div className="grid grid-cols-4 gap-3">
+                                           <div>
+                                             <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">رقم الدفتر</label>
+                                             <input 
+                                               type="text" 
+                                               placeholder="#"
+                                               value={unit.unregisteredData.bookNumber}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookNumber')}
+                                               className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-mono text-center focus:border-amber-500"
+                                             />
+                                           </div>
+                                           <div>
+                                             <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">حرف</label>
+                                             <input 
+                                               type="text" 
+                                               placeholder="أ / ب"
+                                               value={unit.unregisteredData.bookLetter || ''}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'bookLetter')}
+                                               className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none text-center focus:border-amber-500"
+                                             />
+                                           </div>
+                                           <div>
+                                             <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">العدد</label>
+                                             <input 
+                                               type="text" 
+                                               placeholder="#"
+                                               value={unit.unregisteredData.count}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'count')}
+                                               className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-mono text-center focus:border-amber-500"
+                                             />
+                                           </div>
+                                           <div>
+                                             <label className="block text-sm font-bold text-slate-200 mb-1.5 text-center">الصحيفة</label>
+                                             <input 
+                                               type="text" 
+                                               placeholder="#"
+                                               value={unit.unregisteredData.page}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'page')}
+                                               className="w-full text-base p-3 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-mono text-center focus:border-amber-500"
+                                             />
+                                           </div>
+                                         </div>
+
+                                         <div className="grid grid-cols-2 gap-4">
+                                           <div>
+                                             <label className="block text-base font-bold text-slate-200 mb-2">تاريخ التضمين</label>
+                                             <input 
+                                               type="date" 
+                                               value={unit.unregisteredData.date}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'date')}
+                                               className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold"
+                                             />
+                                           </div>
+                                           <div>
+                                             <label className="block text-base font-bold text-slate-200 mb-2">جهة التوثيق</label>
+                                             <select 
+                                               value={unit.unregisteredData.authority}
+                                               onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'authority')}
+                                               className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold cursor-pointer"
+                                             >
+                                              {notaryCity && !MOROCCAN_CITIES.includes(notaryCity) && (
+                                                <option value={notaryCity}>{notaryCity}</option>
+                                              )}
+                                              {MOROCCAN_CITIES.map(city => (
+                                                <option key={city} value={city}>{city}</option>
+                                              ))}
+                                             </select>
+                                           </div>
+                                         </div>
+
+                                         <div>
+                                           <textarea 
+                                             placeholder="ملاحظات حول هذا السند..."
+                                             value={unit.unregisteredData.notes || ''}
+                                             onChange={(e) => updatePropertyUnit(unit.id, 'unregisteredData', e.target.value, 'notes')}
+                                             className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none min-h-[80px] font-bold"
+                                           />
+                                         </div>
+                                       </div>
+                                    ) : (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <label className="block text-base font-bold text-slate-200 mb-2">رقم الرسم العقاري</label>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Titre Foncier (e.g., 12345/R)"
+                                            value={unit.registeredData.deedNumber}
+                                            onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'deedNumber')}
+                                            className="w-full text-base p-4 rounded-xl border-2 border-blue-500/50 bg-blue-950/40 outline-none font-mono font-black text-blue-200"
+                                          />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <label className="block text-base font-bold text-slate-200 mb-2">تاريخ الإصدار</label>
+                                            <input 
+                                              type="date" 
+                                              value={unit.registeredData.issueDate}
+                                              onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'issueDate')}
+                                              className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-base font-bold text-slate-200 mb-2">المحافظة العقارية</label>
+                                            <select 
+                                              value={unit.registeredData.registryOffice}
+                                              onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'registryOffice')}
+                                              className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold cursor-pointer"
+                                            >
+                                              <option value="الرباط">الرباط</option>
+                                              <option value="الدار البيضاء">الدار البيضاء</option>
+                                              <option value="طنجة">طنجة</option>
+                                              <option value="القنيطرة">القنيطرة</option>
+                                              <option value="سطات">سطات</option>
+                                              <option value="مراكش">مراكش</option>
+                                              <option value="فاس">فاس</option>
+                                              <option value="أكادير">أكادير</option>
+                                            </select>
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <label className="block text-base font-bold text-slate-200 mb-2">رقم المطلب (اختياري)</label>
+                                          <input 
+                                            type="text" 
+                                            placeholder="رقم مطلب التحفيظ..."
+                                            value={unit.registeredData.applicationNumber}
+                                            onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'applicationNumber')}
+                                            className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none font-bold"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <textarea 
+                                            placeholder="ملاحظات عقارية..."
+                                            value={unit.registeredData.notes || ''}
+                                            onChange={(e) => updatePropertyUnit(unit.id, 'registeredData', e.target.value, 'notes')}
+                                            className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] text-white outline-none min-h-[80px] font-bold"
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              
+                              <button 
+                                onClick={addPropertyUnit}
+                                className="w-full py-4 border-2 border-dashed border-slate-700 rounded-2xl flex items-center justify-center gap-2.5 text-amber-300 font-black hover:bg-slate-800/90 hover:border-amber-500 transition-all cursor-pointer text-base"
+                              >
+                                <Plus className="w-5 h-5 text-amber-400" />
+                                <span>إضافة عقار / سند آخر</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CARD 4: FINANCIAL DATA (FISCAL/STAMP) */}
+                  {(activeFormSection === 'all' || activeFormSection === 'financial') && (
+                    <div className="bg-[#0F172A] rounded-3xl border-2 border-slate-800 overflow-hidden shadow-xl transition-all">
+                      {/* Card Header Banner in Maghribi Font */}
+                      <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-slate-900 px-6 py-4 border-b border-teal-900/50 flex items-center justify-between">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer flex-1"
+                          onClick={() => setIsFinancialCollapsed(!isFinancialCollapsed)}
+                        >
+                          <div className="w-10 h-10 rounded-2xl bg-teal-900/70 border border-teal-500/50 flex items-center justify-center text-teal-300">
+                            <CreditCardIcon className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-black text-amber-100 font-maghribi">البيانات المالية وأمر المطالبة الضريبية</h3>
+                          <div className={`p-1 rounded-md text-teal-400 transition-all ${isFinancialCollapsed ? 'rotate-180' : 'rotate-0'}`}>
+                            <ChevronRight className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-2xl border border-slate-800 font-kufi">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              checked={isFinancialAvailable} 
+                              onChange={() => {
+                                setIsFinancialAvailable(true);
+                                setIsFinancialCollapsed(false);
+                              }}
+                              className="w-4 h-4 text-teal-500 focus:ring-teal-500"
+                            />
+                            <span className={`text-base font-bold ${isFinancialAvailable ? 'text-teal-300 font-black' : 'text-slate-300'}`}>متوفر</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              checked={!isFinancialAvailable} 
+                              onChange={() => setIsFinancialAvailable(false)}
+                              className="w-4 h-4 text-red-500 focus:ring-red-500"
+                            />
+                            <span className={`text-base font-bold ${!isFinancialAvailable ? 'text-red-400 font-black' : 'text-slate-300'}`}>غير متوفر</span>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {!isFinancialCollapsed && (
+                        <div className="p-6">
+                          {!isFinancialAvailable ? (
+                            <div className="p-5 bg-red-950/50 border-2 border-red-800/60 rounded-2xl flex items-center gap-3 text-red-300 animate-in fade-in">
+                              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                              <span className="text-base font-bold">تم استثناء البيانات المالية (غير متوفرة لهذا السند)</span>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-base font-bold text-slate-200 mb-2">دفتر المشهر</label>
+                                <input 
+                                  type="text" 
+                                  value={finalRecord.deedBook}
+                                  onChange={(e) => setFinalRecord(prev => ({...prev, deedBook: e.target.value}))}
+                                  className="w-full text-base p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-950 text-white focus:border-teal-500 outline-none font-bold"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-base font-bold text-slate-200 mb-2">أمر المطالبة</label>
+                                <input 
+                                  type="text" 
+                                  value={finalRecord.taxOrder}
+                                  onChange={(e) => setFinalRecord(prev => ({...prev, taxOrder: e.target.value}))}
+                                  className="w-full text-base p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-950 text-white focus:border-teal-500 outline-none font-mono font-bold"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CARD 5: NOTARY VITAL DATA (قانون 16.03) */}
+                  {(activeFormSection === 'all' || activeFormSection === 'notaries') && (
+                    <div className="bg-[#0F172A] rounded-3xl border-2 border-slate-800 overflow-hidden shadow-xl transition-all">
+                      {/* Card Header Banner in Maghribi Font */}
+                      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-4 border-b border-slate-700/60 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-amber-300">
+                            <Scale className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-black text-amber-100 font-maghribi">بيانات هيئة التوثيق العدلي (القانون 16.03)</h3>
+                        </div>
+                        <span className="text-sm font-bold text-slate-300 bg-slate-900 px-3.5 py-1 rounded-full border border-slate-800 font-kufi">
+                          هيئة رسمية
+                        </span>
+                      </div>
+
+                      <div className="p-6 space-y-5">
+                        {/* Primary Notary */}
+                        <div className="p-5 rounded-2xl bg-slate-950 border-2 border-slate-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-base font-bold text-slate-400">العدل المتلقي الأول (الأصيل)</span>
+                            <span className="text-sm font-bold text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded border border-emerald-800/60 font-kufi">الملف الشخصي</span>
+                          </div>
+                          <div className="text-xl font-bold text-amber-100 font-kufi">
+                            الأستاذ(ة): {user?.full_name || 'العدل الموثق'}
+                          </div>
+                          {notaryCity && (
+                            <div className="text-base text-slate-400 font-bold mt-1.5 font-kufi">
+                              دائرة التوثيق: {notaryCity}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Secondary Notary (العدل العاطف) */}
+                        <div className="p-5 rounded-2xl bg-slate-950 border-2 border-slate-800">
+                          <div className="flex items-center justify-between mb-2.5">
+                            <span className="text-base font-bold text-slate-200">اسم العدل العاطف (المتلقي الثاني)</span>
+                            <span className="text-sm font-bold text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded border border-emerald-800/60 flex items-center gap-1.5 font-kufi">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                              <span>الشريك المعتمد</span>
+                            </span>
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="أدخل اسم العدل العاطف..."
+                            value={(finalRecord as any).judgeName || ''}
+                            onChange={(e) => setFinalRecord(prev => ({...prev, judgeName: e.target.value}))}
+                            className="w-full text-base p-3.5 rounded-xl border-2 border-slate-700 bg-[#0F172A] focus:border-amber-500 outline-none font-bold text-white transition-all font-kufi"
+                          />
+
+                          {notaryPartners && notaryPartners.length > 1 && (
+                            <div className="flex flex-wrap items-center gap-2.5 mt-3.5 pt-3.5 border-t border-slate-800">
+                              <span className="text-base text-slate-300 font-bold">الشركاء المسجلون:</span>
+                              {notaryPartners.map((partner: any) => {
+                                const isSelected = (finalRecord as any).judgeName === partner.partner_name;
+                                const isAvailable = Boolean(partner.is_available);
+                                return (
+                                  <button
+                                    key={partner.id}
+                                    type="button"
+                                    onClick={() => setFinalRecord(prev => ({ ...prev, judgeName: partner.partner_name }))}
+                                    className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-base font-bold transition-all border cursor-pointer font-kufi ${
+                                      isSelected
+                                        ? 'bg-amber-950 text-amber-200 border-amber-500 shadow-md font-black'
+                                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                                    }`}
+                                  >
+                                    <span className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                                    <span>{partner.partner_name}</span>
+                                    {isAvailable && <span className="text-xs text-emerald-400 font-normal">(نشط)</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CARD 6: SECONDARY ACTIONS (SHARE, PRINT, DELETE) */}
+                  <div className="p-6 rounded-3xl border-2 border-slate-800 bg-[#0F172A] shadow-xl font-kufi">
+                    <h5 className="text-lg md:text-xl font-black text-amber-200 mb-3.5 font-maghribi">أدوات وإجراءات إضافية للمحرر</h5>
+                    <div className="grid grid-cols-2 gap-3.5 mb-3.5">
+                      <button
+                        type="button"
+                        onClick={() => void shareSelectedDocument()}
+                        disabled={!selectedDocumentUrl}
+                        className={`rounded-2xl px-5 py-3 text-base font-bold transition-all flex items-center justify-center gap-2 border ${
+                          selectedDocumentUrl
+                            ? 'bg-slate-900 text-slate-200 border-slate-700 hover:bg-slate-800 cursor-pointer'
+                            : 'bg-slate-950 text-slate-600 border-slate-800 cursor-not-allowed'
+                        }`}
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span>مشاركة الرسم</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={printSelectedDocument}
+                        className="rounded-2xl px-5 py-3 text-sm font-bold text-slate-200 bg-slate-900 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
+                      >
+                        <Printer className="w-4 h-4" />
+                        <span>طباعة</span>
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void deleteCurrentRasm()}
+                      disabled={!rasmId || deleteSavedRasmMutation.isPending}
+                      className={`w-full rounded-2xl px-5 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 border ${
+                        !rasmId || deleteSavedRasmMutation.isPending
+                          ? 'bg-red-950/20 text-red-600/40 border-red-950/30 cursor-not-allowed'
+                          : 'bg-red-950/40 text-red-400 border-red-900/60 hover:bg-red-950/80 cursor-pointer'
+                      }`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>حذف الرسم الحالي من السجل</span>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 4. SOVEREIGN INTEGRATED ACTION DOCK (Fixed at bottom) */}
+        <div className="h-22 bg-[#070B14] border-t-2 border-amber-500/30 px-8 flex items-center justify-between shrink-0 shadow-2xl z-40 fixed bottom-0 left-0 right-0 font-kufi">
+          {/* Decisions */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => { setDecisionType('reject'); setIsDecisionModalOpen(true); }}
+              className="px-5 py-2.5 rounded-2xl border-2 border-red-600/60 bg-red-950/40 text-red-300 font-bold hover:bg-red-950/80 transition-all text-base cursor-pointer shadow-sm"
+            >
+              رفض الملف
+            </button>
+            <button 
+              onClick={() => { setDecisionType('correct'); setIsDecisionModalOpen(true); }}
+              className="px-5 py-2.5 rounded-2xl border-2 border-amber-600/60 bg-amber-950/40 text-amber-300 font-bold hover:bg-amber-950/80 transition-all text-base cursor-pointer shadow-sm"
+            >
+              طلب استكمال
+            </button>
+            <button className="px-5 py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 font-bold hover:bg-slate-700 hover:text-white transition-all text-base cursor-pointer">
+              حفظ الملاحظات
+            </button>
+          </div>
+          
+          {/* Center warning if form is incomplete */}
+          <div className="flex items-center gap-3">
+            {!isFormComplete && (
+              <span className="hidden md:flex text-base font-bold text-amber-300 bg-amber-950/80 border border-amber-600/50 px-4 py-2 rounded-2xl items-center gap-2 shadow-inner">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>يرجى استكمال بيانات الاستمارة ({validationErrors.length} متبقي)</span>
+              </span>
+            )}
+
+            {/* Master Action 1: Save to Library */}
+            <button 
+              type="button"
+              onClick={() => {
+                if (!state || !isFormComplete) return;
+                setPreSaveReviewIntent('library');
+                setIsPreSaveReviewModalOpen(true);
+              }}
+              disabled={!state || !isFormComplete || isRedirecting}
+              className={`px-6 py-3 rounded-2xl font-black text-base flex items-center gap-2.5 transition-all shadow-md active:scale-95 border ${
+                state && isFormComplete && !isRedirecting
+                  ? 'bg-emerald-800 hover:bg-emerald-700 text-white border-emerald-600 cursor-pointer shadow-emerald-950/50'
+                  : 'bg-slate-900 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
+              }`}
+              title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'حفظ الرسم في مكتبة الوثائق المحفوظة للرجوع إليه وتوقيعه لاحقاً'}
+            >
+              <ShieldCheck className="w-5 h-5 text-emerald-300" />
+              <span>حفظ في مكتبة الوثائق 📚</span>
+            </button>
+
+            {/* Master Action 2: Sign Portal */}
+            <button 
+              type="button"
+              onClick={() => {
+                if (!state || !isFormComplete) return;
+                setPreSaveReviewIntent('signing');
+                setIsPreSaveReviewModalOpen(true);
+              }}
+              disabled={!state || !isFormComplete || isRedirecting}
+              className={`px-7 py-3 rounded-2xl font-black text-base flex items-center gap-2.5 transition-all shadow-lg active:scale-95 border ${
+                state && isFormComplete && !isRedirecting
+                  ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:brightness-110 text-slate-950 font-black border-amber-400 cursor-pointer shadow-amber-900/60'
+                  : 'bg-slate-900 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
+              }`}
+              title={!isFormComplete ? `يرجى استكمال البيانات أعلاه (${validationErrors[0] || ''})` : 'اعتماد الرسم والانتقال المباشر للتوقيع'}
+            >
+              <FileSignature className="w-5 h-5" />
+              <span>اعتماد ورواق التوقيع 🖋️</span>
+            </button>
+          </div>
+        </div>
+
+      </main>
+
+      {/* --- Modals & Overlays --- */}
       <DecisionModal
-         isOpen={isDecisionModalOpen}
-         onClose={() => setIsDecisionModalOpen(false)}
-         type={decisionType}
-         onConfirm={confirmFinalize}
-         name={state?.sellers?.[0]?.name || '---'}
+        isOpen={isDecisionModalOpen}
+        onClose={() => setIsDecisionModalOpen(false)}
+        type={decisionType}
+        onConfirm={confirmFinalize}
+        name={state?.sellers?.[0]?.name || '---'}
       />
 
       <PreSaveReviewModal
@@ -5757,18 +5783,18 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       />
 
       <SaveCategoryModal 
-         isOpen={isSaveCategoryModalOpen}
-         onClose={() => setIsSaveCategoryModalOpen(false)}
-         onSave={handleSaveToCategory}
-         intent={saveCategoryIntent}
-         isLoading={isCategorySaving}
-         fileName={state?.sellers?.[0]?.name ? `رسم عدلي: ${state?.sellers?.[0]?.name || ''}` : 'رسم غير مسمى'}
+        isOpen={isSaveCategoryModalOpen}
+        onClose={() => setIsSaveCategoryModalOpen(false)}
+        onSave={handleSaveToCategory}
+        intent={saveCategoryIntent}
+        isLoading={isCategorySaving}
+        fileName={state?.sellers?.[0]?.name ? `رسم عدلي: ${state?.sellers?.[0]?.name || ''}` : 'رسم غير مسمى'}
       />
 
       <ImageViewerModal 
-         isOpen={isImageViewerOpen} 
-         onClose={() => setIsImageViewerOpen(false)} 
-         doc={selectedVaultDoc}
+        isOpen={isImageViewerOpen} 
+        onClose={() => setIsImageViewerOpen(false)} 
+        doc={selectedVaultDoc}
       />
 
       {/* Signature Confirmation Checklist */}
@@ -5787,19 +5813,18 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
             setIsRedirecting(false);
             return;
           }
-          // If navigation is blocked by the alert dialog, ensure the modal doesn't stay on-screen.
           setIsSignatureModalOpen(false);
         }}
       />
 
       {/* Success Animation Overlay */}
       {isRedirecting && (
-        <div className="fixed inset-0 z-[2000] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-500">
-            <div className="w-24 h-24 bg-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse">
-                <CheckCircle2 className="w-14 h-14 text-white" />
-            </div>
-            <h2 className="text-3xl font-black text-white mb-2 font-amiri text-center">تم اعتماد الرسم بنجاح</h2>
-            <p className="text-emerald-300 text-xl font-bold">أصبح الرسم جاهزاً الآن لتوقيع السادة العدول...</p>
+        <div className="fixed inset-0 z-[2000] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-500 font-kufi">
+          <div className="w-24 h-24 bg-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse">
+            <CheckCircle2 className="w-14 h-14 text-white" />
+          </div>
+          <h2 className="text-3xl font-black text-white mb-2 font-maghribi text-center">تم اعتماد الرسم بنجاح</h2>
+          <p className="text-emerald-300 text-xl font-bold font-kufi">أصبح الرسم جاهزاً الآن لتوقيع السادة العدول...</p>
         </div>
       )}
     </div>

@@ -40,8 +40,10 @@ import {
   X, Plus, Minus, Download, Search, FileText, CheckCircle,
   AlertTriangle, Paperclip, Shield, Database, Activity,
   Clock, Clipboard, FileCheck, Book, UserCheck, MoreVertical,
-  MapPin, XCircle, Printer, Upload, Calendar
+  MapPin, XCircle, Printer, Upload, Calendar, Camera, Loader2, CheckCircle2
 } from 'lucide-react';
+import { trpc } from '../../../../trpc';
+import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
 
   export const Step3_MarriageContinuityDeed: React.FC<DocumentWizardProps> = ({ state, setState }) => {
   const handlePrev = () => {
@@ -189,6 +191,10 @@ import {
       }
     }, [deed.spouses, state.sellers, state.buyers]);
 
+    const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+    const [scanningWitnessIndex, setScanningWitnessIndex] = useState<number | null>(null);
+    const [witnessNotice, setWitnessNotice] = useState<Record<number, string>>({});
+
     const addContinuityWitness = () => {
       const current = deed.witnesses || [];
       if (current.length >= 4) return;
@@ -205,6 +211,54 @@ import {
       const current = [...(deed.witnesses || [])];
       current.splice(index, 1);
       updateDeed('witnesses', current);
+    };
+
+    const scanContinuityWitness = async (index: number, file: File) => {
+      setScanningWitnessIndex(index);
+      setWitnessNotice(prev => ({ ...prev, [index]: 'جاري فحص وتوضيح صورة البطاقة واستخراج البيانات...' }));
+      try {
+        let enhancedBase64 = '';
+        try {
+          enhancedBase64 = await enhanceCardImageForOCR(file);
+        } catch {
+          enhancedBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+            reader.readAsDataURL(file);
+          });
+        }
+        const res: any = await extractIdCardMutation.mutateAsync({
+          fileBase64: enhancedBase64,
+          fileName: file.name,
+        });
+        const patch: Partial<NonNullable<MarriageContinuityDeed['witnesses']>[number]> = {};
+        if (res?.extractedFields?.idNumber) {
+          patch.cin = res.extractedFields.idNumber.toUpperCase();
+        }
+        if (res?.extractedFields?.name) {
+          patch.name = res.extractedFields.name;
+        }
+        if (Object.keys(patch).length > 0) {
+          updateContinuityWitness(index, patch);
+          setWitnessNotice(prev => ({
+            ...prev,
+            [index]: `✓ تم استخراج: ${patch.name || ''} ${patch.cin ? `(CIN: ${patch.cin})` : ''}`.trim()
+          }));
+        } else {
+          setWitnessNotice(prev => ({
+            ...prev,
+            [index]: 'لم يتم التعرف على الاسم أو رقم البطاقة بوضوح. يرجى إدخال البيانات يدوياً.'
+          }));
+        }
+      } catch (err: any) {
+        console.error('OCR Error on Continuity Witness:', err);
+        setWitnessNotice(prev => ({
+          ...prev,
+          [index]: 'تعذر استخراج البيانات من الصورة. يرجى التحقق من جودتها أو الإدخال يدوياً.'
+        }));
+      } finally {
+        setScanningWitnessIndex(null);
+      }
     };
 
     const identityFields: Array<{ key: keyof PersonIdentityFields; arLabel: string; latLabel: string; inputType?: string }> = [
@@ -576,6 +630,32 @@ import {
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="font-semibold text-gray-800">شاهد {idx + 1}</h4>
                   <div className="flex items-center gap-2">
+                    <label className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded cursor-pointer flex items-center gap-1 transition-colors">
+                      {scanningWitnessIndex === idx ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>جاري المسح...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>مسح من صورة البطاقة (CIN)</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={scanningWitnessIndex === idx}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            scanContinuityWitness(idx, file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
                     <button
                       type="button"
                       className="text-xs bg-purple-600 text-white px-2 py-1 rounded"
@@ -592,6 +672,25 @@ import {
                     </button>
                   </div>
                 </div>
+
+                {witnessNotice[idx] && (
+                  <div className={`p-2 rounded text-xs flex items-center gap-1.5 ${
+                    witnessNotice[idx].startsWith('✓') 
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : witnessNotice[idx].startsWith('جاري')
+                      ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}>
+                    {witnessNotice[idx].startsWith('✓') ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    ) : witnessNotice[idx].startsWith('جاري') ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    )}
+                    <span>{witnessNotice[idx]}</span>
+                  </div>
+                )}
 
                 <div className="grid md:grid-cols-3 gap-3">
                   <div className="md:col-span-2">

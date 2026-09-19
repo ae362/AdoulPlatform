@@ -309,6 +309,64 @@ const WorkCertificatePortal: React.FC = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'archive' && (
+          <div className="bg-white rounded-[3rem] p-10 shadow-xl border border-slate-100 animate-fadeIn space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-100">
+              <div>
+                <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                  <span>📁</span>
+                  أرشيف شهادات العمل
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">السجل الكامل لطلبات شهادات العمل الصادرة والمؤرشفة</p>
+              </div>
+              <span className="text-xs bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold border border-slate-200">
+                إجمالي المؤرشف: {filteredList?.length || 0}
+              </span>
+            </div>
+
+            {filteredList && filteredList.length > 0 ? (
+              <div className="space-y-4">
+                {filteredList.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
+                    <div className="text-right">
+                      <p className="font-black text-slate-800 text-base">{p.request_number}</p>
+                      <p className="text-xs text-slate-400 font-bold mt-1">
+                        {p.created_at ? new Date(p.created_at).toLocaleDateString('ar-MA') : '---'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        p.status === 'مقبول' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {p.status}
+                      </span>
+                      <button
+                        onClick={() => setSelectedRequestView(p)}
+                        className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black hover:bg-slate-900 hover:text-white transition-all"
+                      >
+                        عرض الطلب
+                      </button>
+                      {p.decision_type && (
+                        <button
+                          onClick={() => setSelectedDecision(p)}
+                          className="px-4 py-2 bg-emerald-950/10 text-emerald-950 rounded-xl text-xs font-black hover:bg-emerald-900 hover:text-white transition-all"
+                        >
+                          عرض الشهادة
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-20 text-center opacity-40">
+                <div className="text-5xl mb-4">📁</div>
+                <h4 className="text-xl font-bold">لا توجد شهادات مؤرشفة حالياً</h4>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modals Strategy */}

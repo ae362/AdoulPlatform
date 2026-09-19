@@ -265,10 +265,10 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       boundaries: p.boundaries,
     })),
     finance: {
-      price: state.finance.price,
-      priceInWords: state.finance.priceInWords,
-      paymentMethod: state.finance.paymentMethod,
-      registeredWithTax: state.finance.registeredWithTax,
+      price: state.finance?.price ?? 0,
+      priceInWords: state.finance?.priceInWords ?? '',
+      paymentMethod: state.finance?.paymentMethod ?? '',
+      registeredWithTax: state.finance?.registeredWithTax ?? '',
     },
     dates: {
       gregorian: state.meta.dateGregorian,
@@ -1105,10 +1105,10 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       })),
     })),
     finance: {
-      price: state.finance.price,
-      priceInWords: state.finance.priceInWords,
-      paymentMethod: state.finance.paymentMethod,
-      transferDetails: state.finance.transferDetails,
+      price: state.finance?.price ?? 0,
+      priceInWords: state.finance?.priceInWords ?? '',
+      paymentMethod: state.finance?.paymentMethod ?? '',
+      transferDetails: state.finance?.transferDetails,
     },
   });
 
@@ -1261,14 +1261,14 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
       saveFinalToRegistry();
     }
   }, [
-    state.finance.registeredWithTax,
-    state.finance.registrationDate,
-    state.finance.taxReceiptNumber,
-    state.finance.region,
-    state.finance.registrationType,
-    state.finance.isFreeRegistration,
-    state.finance.conservationPrice,
-    state.finance.paymentMethod,
+    state.finance?.registeredWithTax,
+    state.finance?.registrationDate,
+    state.finance?.taxReceiptNumber,
+    state.finance?.region,
+    state.finance?.registrationType,
+    state.finance?.isFreeRegistration,
+    state.finance?.conservationPrice,
+    state.finance?.paymentMethod,
     state.step7JudgeAttachment,
     state.step,
   ]);

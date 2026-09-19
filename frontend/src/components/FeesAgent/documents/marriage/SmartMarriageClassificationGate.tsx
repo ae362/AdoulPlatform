@@ -36,6 +36,7 @@ import type {
   PreviousMarriageContractDetails
 } from '../../../../types/feesAgentTypes';
 import { NationalMarriageStatsModal } from './NationalMarriageStatsModal';
+import { MarriagePermissionPickerModal } from './MarriagePermissionPickerModal';
 
 interface SmartMarriageClassificationGateProps {
   state: FeesAgentState;
@@ -52,6 +53,7 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
 }) => {
   // Stats modal state
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+  const [showPickerModal, setShowPickerModal] = useState<boolean>(false);
 
   // Current classification from state or defaults
   const currentClassification = state.marriageClassification;
@@ -434,9 +436,17 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
 
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
             <button
+              onClick={() => setShowPickerModal(true)}
+              type="button"
+              className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl font-bold shadow-md shadow-emerald-900/20 flex items-center gap-2 text-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>⚡ استيراد الزوجين من إذن زواج سابق</span>
+            </button>
+            <button
               onClick={() => setShowStatsModal(true)}
               type="button"
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold shadow-md shadow-amber-900/20 flex items-center gap-2 text-sm transition-all hover:scale-105 active:scale-95"
+              className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold shadow-md shadow-amber-900/20 flex items-center gap-2 text-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <BarChart3 className="w-4 h-4 text-amber-100" />
               <span>📊 لوحة الإحصائيات الوطنية للزواج</span>
@@ -444,6 +454,36 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
           </div>
         </div>
       </div>
+
+      {state.importedPermissionReference && (
+        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">💍</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-black text-emerald-950 text-sm">
+                  تم استيراد بيانات الزوجين ومراجع الإذن القضائي آلياً
+                </h4>
+                <span className="bg-emerald-200 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  جاهز للتحرير
+                </span>
+              </div>
+              <p className="text-xs text-emerald-800 mt-1">
+                طلب رقم: <strong>{state.importedPermissionReference.requestNumber}</strong> • 
+                الزوج: <strong>{state.importedPermissionReference.husbandName}</strong> • 
+                الزوجة: <strong>{state.importedPermissionReference.wifeName}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPickerModal(true)}
+            className="text-xs bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3.5 py-1.5 rounded-xl font-bold transition shadow-2xs self-start sm:self-auto"
+          >
+            تغيير الإذن المستورد
+          </button>
+        </div>
+      )}
 
       {/* Grid of 7 Classification Cards */}
       <div>
@@ -1308,6 +1348,17 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
       <NationalMarriageStatsModal
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
+      />
+
+      {/* Marriage Permission Picker Modal */}
+      <MarriagePermissionPickerModal
+        isOpen={showPickerModal}
+        onClose={() => setShowPickerModal(false)}
+        state={state}
+        setState={setState}
+        onImportSuccess={() => {
+          onConfirm();
+        }}
       />
     </div>
   );

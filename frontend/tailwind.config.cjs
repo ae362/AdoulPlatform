@@ -5,6 +5,8 @@ module.exports = {
       fontFamily: {
         sans: ['"Noto Sans Arabic"', 'ui-sans-serif', 'system-ui'],
         amiri: ['Amiri', 'serif'],
+        maghribi: ['Maghribi', 'Amiri', 'Tajawal', 'serif'],
+        kufi: ['DroidArabicKufi', 'Roboto', 'Noto Sans Arabic', 'sans-serif'],
       },
     },
   },

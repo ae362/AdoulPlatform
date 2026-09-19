@@ -151,7 +151,7 @@ const createPermissionHandler = async (input: PermissionInput, tableName: string
   }
 };
 
-const resolveScopedNotaryId = (ctx: any, requestedNotaryId?: string): string => {
+const resolveScopedNotaryIds = (ctx: any, requestedNotaryId?: string): string[] => {
   const isOversight =
     ctx.user?.role === 'authentication_judge' ||
     ctx.user?.role === 'regional_judge' ||
@@ -161,22 +161,28 @@ const resolveScopedNotaryId = (ctx: any, requestedNotaryId?: string): string => 
     ctx.user?.role === 'admin';
 
   if (isOversight && requestedNotaryId) {
-    return requestedNotaryId;
+    return [requestedNotaryId];
   }
-  // Enforce self-scoping for notaries to prevent cross-account IDOR
-  return ctx.notaryProfile?.id || ctx.user?.id || '';
+  // Enforce self-scoping for notaries to prevent cross-account IDOR,
+  // matching both auth user.id and notary_profile.id
+  const ids = new Set<string>();
+  if (ctx.user?.id) ids.add(ctx.user.id);
+  if (ctx.notaryProfile?.id) ids.add(ctx.notaryProfile.id);
+  if (ctx.notaryProfile?.user_id) ids.add(ctx.notaryProfile.user_id);
+  return Array.from(ids);
 };
 
-const getPermissionsHandler = async (notaryId: string | undefined, tableName: string) => {
+const getPermissionsHandler = async (notaryIds: string | string[] | undefined, tableName: string) => {
   try {
-    if (!notaryId) {
+    const ids = Array.isArray(notaryIds) ? notaryIds.filter(Boolean) : (notaryIds ? [notaryIds] : []);
+    if (ids.length === 0) {
       return [];
     }
 
     let query = supabase
       .from(tableName)
       .select('*')
-      .eq('notary_id', notaryId)
+      .in('notary_id', ids)
       .order('created_at', { ascending: false });
 
     const { data, error } = await query;
@@ -344,7 +350,7 @@ export const permissionsRouter = router({
   createScientific: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'scientific_certificate_permissions')),
   getScientific: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'scientific_certificate_permissions')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'scientific_certificate_permissions')),
   getAllScientific: judgeProcedure.query(() => 
     getAllPermissionsHandler('scientific_certificate_permissions')),
 
@@ -352,7 +358,7 @@ export const permissionsRouter = router({
   createMarriage: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'marriage_permissions')),
   getMarriage: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'marriage_permissions')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'marriage_permissions')),
   getAllMarriage: judgeProcedure.query(() => 
     getAllPermissionsHandler('marriage_permissions')),
 
@@ -360,7 +366,7 @@ export const permissionsRouter = router({
   createJudicialFees: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'judicial_fees_permissions')),
   getJudicialFees: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'judicial_fees_permissions')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'judicial_fees_permissions')),
   getAllJudicialFees: judgeProcedure.query(() => 
     getAllPermissionsHandler('judicial_fees_permissions')),
 
@@ -368,7 +374,7 @@ export const permissionsRouter = router({
   createIndividualReception: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'individual_reception_permissions')),
   getIndividualReception: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'individual_reception_permissions')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'individual_reception_permissions')),
   getAllIndividualReception: judgeProcedure.query(() => 
     getAllPermissionsHandler('individual_reception_permissions')),
 
@@ -376,7 +382,7 @@ export const permissionsRouter = router({
   createWorkCertificate: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'work_certificate_requests')),
   getWorkCertificates: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'work_certificate_requests')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'work_certificate_requests')),
   getAllWorkCertificates: judgeProcedure.query(() => 
     getAllPermissionsHandler('work_certificate_requests')),
 
@@ -384,7 +390,7 @@ export const permissionsRouter = router({
   createOfficeMovement: protectedProcedure.input(permissionSchema).mutation(({ input }) => 
     createPermissionHandler(input, 'office_movement_notifications')),
   getOfficeMovements: protectedProcedure.input(z.object({ notaryId: z.string().optional() })).query(({ input, ctx }) => 
-    getPermissionsHandler(resolveScopedNotaryId(ctx, input.notaryId), 'office_movement_notifications')),
+    getPermissionsHandler(resolveScopedNotaryIds(ctx, input.notaryId), 'office_movement_notifications')),
   getAllOfficeMovements: judgeProcedure.query(() => 
     getAllPermissionsHandler('office_movement_notifications')),
 

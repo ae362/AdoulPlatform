@@ -77,11 +77,18 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
     if (initialState) {
       return {
         ...initialState,
+        sellers: initialState.sellers?.length ? initialState.sellers : [createEmptyParty()],
+        buyers: initialState.buyers?.length ? initialState.buyers : [createEmptyParty()],
+        witnesses: initialState.witnesses || [],
+        properties: initialState.properties?.length ? initialState.properties : [createEmptyProperty()],
+        finance: { price: 0, priceInWords: '', paymentMethod: '', registeredWithTax: '', ...(initialState.finance || {}) },
         meta: normalizedMeta,
         postRegistration: { ...defaultPostRegistration, ...(initialState.postRegistration || {}) },
-        step: judgeSubmissionId || (startMode === 'drafting' && !!initialState.documentType)
+        step: judgeSubmissionId
           ? 7
-          : (initialState.step || 0),
+          : (initialState.step !== undefined
+              ? initialState.step
+              : (startMode === 'drafting' && !!initialState.documentType ? 1 : 0)),
         judgeSubmissionId,
         step7JudgeSubmissionId: judgeSubmissionId,
         step7FiscalNature: fiscalNature,

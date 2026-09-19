@@ -549,7 +549,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
   }, [active]);
 
   return (
-    <div className="flex h-full min-h-screen w-full bg-slate-100 text-slate-900 overflow-hidden" dir="ltr">
+    <div className="flex h-screen max-h-screen w-full bg-slate-100 text-slate-900 overflow-hidden" dir="ltr">
       {/* Mobile Drawer Backdrop */}
       {mobileSidebarOpen && (
         <div
@@ -564,10 +564,10 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
         dir={isArabic ? 'rtl' : 'ltr'}
         className={`order-2 w-72 bg-gradient-to-b from-[#5a0c0b] via-[#800020] to-[#450a0a] text-white shadow-2xl z-50 ${
           sidebarOnRight ? 'border-l-4' : 'border-r-4'
-        } border-[#0891b2] transition-transform duration-300 flex flex-col h-full flex-shrink-0 font-kufi overflow-hidden ${
+        } border-[#0891b2] transition-transform duration-300 flex flex-col h-screen max-h-screen flex-shrink-0 font-kufi overflow-hidden ${
           mobileSidebarOpen
             ? 'fixed inset-y-0 right-0 max-w-[85vw] translate-x-0'
-            : 'hidden md:flex relative'
+            : 'hidden md:flex sticky top-0 self-start'
         }`}
       >
         {/* Luxury Grand Moroccan Islamic Pattern Watermark */}
@@ -841,9 +841,9 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
       </aside>
 
       {/* Main area */}
-      <main className="order-1 flex flex-1 flex-col min-w-0" dir={isArabic ? 'rtl' : 'ltr'}>
+      <main className="order-1 flex flex-1 flex-col min-w-0 h-full max-h-screen min-h-0 overflow-hidden" dir={isArabic ? 'rtl' : 'ltr'}>
         {/* Header with logos and app name */}
-        <header className="border-b bg-gradient-to-b from-[#E2E4E7] via-[#F1F2F4] to-white shadow-sm overflow-hidden relative">
+        <header className="border-b bg-gradient-to-b from-[#E2E4E7] via-[#F1F2F4] to-white shadow-sm overflow-hidden relative flex-shrink-0">
           {/* Subtle light pattern overlay */}
           <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/pinstripe.png')] pointer-events-none"></div>
           
@@ -1010,7 +1010,7 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
 
         <div
           id="main-content-scroll-container"
-          className={`flex-1 min-w-0 overflow-auto ${active === 'auditHub' || (active as string) === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}
+          className={`flex-1 min-w-0 min-h-0 overflow-y-auto ${active === 'auditHub' || (active as string) === 'notarySigning' ? 'p-0' : 'p-4 lg:p-5'}`}
         >
           <Suspense fallback={<RouteLoader />}>{renderModule()}</Suspense>
         </div>

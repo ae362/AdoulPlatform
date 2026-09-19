@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   UserCheck, Users, Plus, Trash2, CheckCircle2, AlertTriangle, User,
   Scale, FileText, Calendar, Building, Upload, X, ShieldCheck, MapPin,
-  Clock, XCircle
+  Clock, XCircle, Camera, Loader2
 } from 'lucide-react';
+import { trpc } from '../../../../trpc';
+import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
 import type { FeesAgentState, Witness } from '../../../../types/feesAgentTypes';
 import { createEmptyWitness } from '../../../../utils/feesAgentUtils';
 import {
@@ -107,6 +109,86 @@ export const MithliyaTestimonyForm: React.FC<MithliyaTestimonyFormProps> = ({
       ...prev,
       witnesses: (prev.witnesses || []).filter((_, i) => i !== index),
     }));
+  };
+
+  const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+  const [scanningWitness, setScanningWitness] = useState<Record<number, boolean>>({});
+  const [witnessNotice, setWitnessNotice] = useState<
+    Record<number, { message: string; success: boolean }>
+  >({});
+
+  const scanWitnessCard = async (index: number, file: File) => {
+    setScanningWitness((prev) => ({ ...prev, [index]: true }));
+    setWitnessNotice((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      if (res?.extractedFields?.idNumber) {
+        const cin = res.extractedFields.idNumber.toUpperCase();
+        const extractedName = res.extractedFields.name;
+        const extractedDate = res.extractedFields.idIssueDate;
+
+        const currentWitness: Partial<Witness> = witnesses[index] || {};
+        const patch: Partial<Witness> = {
+          idNumber: cin,
+        };
+
+        if (extractedName && (!currentWitness.name || currentWitness.name.trim() === '')) {
+          patch.name = extractedName;
+        }
+
+        if (extractedDate && !currentWitness.dateOfBirth) {
+          patch.dateOfBirth = extractedDate;
+        }
+
+        handleWitnessChange(index, patch);
+
+        setWitnessNotice((prev) => ({
+          ...prev,
+          [index]: {
+            message: `تم استخراج رقم البطاقة: ${cin}${extractedName ? ` | الاسم: ${extractedName}` : ''}`,
+            success: true,
+          },
+        }));
+      } else {
+        setWitnessNotice((prev) => ({
+          ...prev,
+          [index]: {
+            message: 'لم نتمكن من قراءة رقم البطاقة بدقة، يمكنك كتابته يدوياً',
+            success: false,
+          },
+        }));
+      }
+    } catch {
+      setWitnessNotice((prev) => ({
+        ...prev,
+        [index]: {
+          message: 'حدث خطأ أثناء معالجة صورة البطاقة',
+          success: false,
+        },
+      }));
+    } finally {
+      setScanningWitness((prev) => ({ ...prev, [index]: false }));
+    }
   };
 
   return (
@@ -344,7 +426,7 @@ export const MithliyaTestimonyForm: React.FC<MithliyaTestimonyFormProps> = ({
                 key={idx}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-slate-300 transition-all space-y-3"
               >
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="h-6 w-6 rounded-full bg-amber-100 text-amber-900 text-xs font-black flex items-center justify-center">
                       {idx + 1}
@@ -353,14 +435,51 @@ export const MithliyaTestimonyForm: React.FC<MithliyaTestimonyFormProps> = ({
                       الشاهد رقم {idx + 1} {w.name ? `— ${w.name}` : ''}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeWitness(idx)}
-                    className="text-xs text-red-600 hover:text-red-800 font-bold p-1 rounded-md hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all shadow-xs">
+                      {scanningWitness[idx] ? (
+                        <Loader2 className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                      ) : (
+                        <Camera className="w-3.5 h-3.5 text-amber-600" />
+                      )}
+                      <span>مسح من صورة البطاقة (CIN)</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        disabled={scanningWitness[idx]}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            scanWitnessCard(idx, file);
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeWitness(idx)}
+                      className="text-xs text-red-600 hover:text-red-800 font-bold p-1 rounded-md hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {witnessNotice[idx] && (
+                  <div className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-bold ${
+                    witnessNotice[idx].success
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}>
+                    {witnessNotice[idx].success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    )}
+                    <span>{witnessNotice[idx].message}</span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>

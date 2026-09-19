@@ -4,6 +4,7 @@ import { Step1_PartiesDefinition } from '../../steps/Step1_PartiesDefinition';
 import { Step6_Dates } from '../../steps/Step6_Dates';
 import { SmartMarriageClassificationGate } from './SmartMarriageClassificationGate';
 import { NationalMarriageStatsModal } from './NationalMarriageStatsModal';
+import { MarriagePermissionPickerModal } from './MarriagePermissionPickerModal';
 import { useAuth } from '../../../../contexts/AuthContext';
 import type {
   PaymentMethod, PropertyType, ValidationSeverity, Party, Applicant,
@@ -56,7 +57,6 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
     notaryProfile?.appellate_court ||
     user?.court_name
   );
-  const notaryAppellateCourt = formatCourtName(notaryProfile?.appellate_court);
   
     const defaultCourt = state.marriageDetails?.courtName || state.meta?.court || notaryPrimaryCourt || '';
     const [details, setDetails] = useState<MarriageDetails>(() => ({
@@ -521,193 +521,6 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-5 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-sm">
-                <Scale className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-white font-black text-base">بيانات الإذن بالزواج والمحكمة</h3>
-                <p className="text-white/80 text-xs font-medium">مراجع قضاء الأسرة والإذن بالزواج</p>
-              </div>
-            </div>
-            {(notaryAppellateCourt || notaryPrimaryCourt) && (
-              <div className="flex items-center gap-1.5 text-xs bg-white/20 text-white border border-white/30 px-3 py-1 rounded-full font-bold shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-300 inline-block animate-pulse"></span>
-                <span>تم استرجاع المحكمة تلقائياً من بيانات حساب العدل</span>
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 space-y-6">
-          {(notaryAppellateCourt || notaryPrimaryCourt) && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {notaryAppellateCourt && (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">دائرة محكمة الاستئناف:</span>
-                  <span className="font-black text-slate-800">{notaryAppellateCourt}</span>
-                </div>
-              )}
-              {notaryPrimaryCourt && (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-500">المحكمة الابتدائية:</span>
-                  <span className="font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">{notaryPrimaryCourt}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Scale className="w-3.5 h-3.5 text-indigo-500" />المحكمة الابتدائية</label>
-              <input
-                type="text"
-                value={details.courtName || ''}
-                onChange={(e) => handleChange('courtName', e.target.value)}
-                placeholder={notaryPrimaryCourt || "مثال: تطوان"}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Building2 className="w-3.5 h-3.5 text-indigo-500" />القسم القضائي</label>
-              <input
-                type="text"
-                value={details.courtSection || ''}
-                onChange={(e) => handleChange('courtSection', e.target.value)}
-                placeholder="مثال: قسم التوثيق وقضاء الأسرة"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-indigo-500" />رقم ملف إذن قاضي الأسرة المكلف بالزواج</label>
-              <input
-                type="text"
-                value={details.authorizationNumber || ''}
-                onChange={(e) => handleChange('authorizationNumber', e.target.value)}
-                placeholder="مثال: 1308 /10"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-indigo-500" />تاريخ الإذن بالزواج</label>
-              <input
-                type="date"
-                value={details.authorizationDate || ''}
-                onChange={(e) => handleChange('authorizationDate', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-          </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden">
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-sm">
-              <Book className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-white font-black text-base">بيانات التضمين بكناش الأنكحة وسجل البيانات</h3>
-              <p className="text-white/80 text-xs font-medium">مراجع التسجيل الرسمية ومحضر الإشهاد</p>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Book className="w-3.5 h-3.5 text-emerald-500" />رقم كناش الأنكحة</label>
-              <input
-                type="text"
-                value={details.registryNumber || ''}
-                onChange={(e) => handleChange('registryNumber', e.target.value)}
-                placeholder="مثال: 15"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صحيفة الكناش</label>
-              <input
-                type="text"
-                value={details.registryPage || ''}
-                onChange={(e) => handleChange('registryPage', e.target.value)}
-                placeholder="مثال: 45"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد الكناش</label>
-              <input
-                type="text"
-                value={details.registryCount || ''}
-                onChange={(e) => handleChange('registryCount', e.target.value)}
-                placeholder="مثال: 120"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-emerald-500" />تاريخ التسجيل بالكناش</label>
-              <input
-                type="date"
-                value={details.registryDate || ''}
-                onChange={(e) => handleChange('registryDate', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clipboard className="w-3.5 h-3.5 text-emerald-500" />رقم سجل البيانات للعدل الأول</label>
-              <input
-                type="text"
-                value={details.memorandumNumber || ''}
-                onChange={(e) => handleChange('memorandumNumber', e.target.value)}
-                placeholder="مثال: 07"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileCheck className="w-3.5 h-3.5 text-slate-400" />عدد سجل البيانات للعدل الأول</label>
-              <input
-                type="text"
-                value={details.memorandumRecordNumber || ''}
-                onChange={(e) => handleChange('memorandumRecordNumber', e.target.value)}
-                placeholder="مثال: 13"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><FileText className="w-3.5 h-3.5 text-slate-400" />صفحة سجل البيانات للعدل الأول</label>
-              <input
-                type="text"
-                value={details.memorandumPage || ''}
-                onChange={(e) => handleChange('memorandumPage', e.target.value)}
-                placeholder="مثال: 10"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Clock className="w-3.5 h-3.5 text-emerald-500" />وقت الإشهاد بالحروف</label>
-              <input
-                type="text"
-                value={details.sessionTimeWords || ''}
-                onChange={(e) => handleChange('sessionTimeWords', e.target.value)}
-                placeholder="مثال: على الساعة الحادية عشرة صباحا"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-emerald-500" />تاريخ الإشهاد بالحروف</label>
-              <input
-                type="text"
-                value={details.sessionDateWords || ''}
-                onChange={(e) => handleChange('sessionDateWords', e.target.value)}
-                placeholder="مثال: يوم فاتح ربيع الأول 1448 هـ"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 outline-none transition-all text-slate-800 text-sm font-medium"
-              />
-            </div>
-          </div>
-          </div>
-        </div>
-
         <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200">
           <button
             onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
@@ -737,6 +550,7 @@ export const Step2_MarriageDetails: React.FC<DocumentWizardProps> = ({ state, se
 export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
   const [showGateOverride, setShowGateOverride] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+  const [showPickerModal, setShowPickerModal] = useState<boolean>(false);
 
   const isGateOpen = showGateOverride || !state.marriageClassification?.confirmedAt;
 
@@ -830,6 +644,14 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setShowPickerModal(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>⚡ استيراد من إذن زواج</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowStatsModal(true)}
             className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
           >
@@ -845,13 +667,55 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
         </div>
       </div>
 
-      {state.step === 1 && <Step1_PartiesDefinition state={state} setState={setState} />}
+      {state.importedPermissionReference && (
+        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-emerald-950 font-bold">
+            <span className="text-xl">💍</span>
+            <div>
+              <span>
+                تم استيراد بيانات الزوجين ومراجع الإذن القضائي آلياً من الطلب: <strong>{state.importedPermissionReference.requestNumber}</strong>
+              </span>
+              <span className="mx-2 text-slate-300">•</span>
+              <span className="text-emerald-800">
+                الزوج: <strong>{state.importedPermissionReference.husbandName}</strong> | الزوجة: <strong>{state.importedPermissionReference.wifeName}</strong>
+              </span>
+              {state.importedPermissionReference.authorizationNumber && (
+                <span className="mr-2 inline-block bg-emerald-200 text-emerald-950 px-2 py-0.5 rounded-full text-[11px] font-black border border-emerald-300">
+                  إذن قضائي رقم: {state.importedPermissionReference.authorizationNumber}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPickerModal(true)}
+            className="text-xs bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1 rounded-lg font-bold transition self-start sm:self-auto"
+          >
+            تغيير الإذن المستورد
+          </button>
+        </div>
+      )}
+
+      {state.step === 1 && (
+        <Step1_PartiesDefinition
+          key={`step1-${state.importedPermissionReference?.id || 'standard'}-${state.sellers?.[0]?.name || ''}`}
+          state={state}
+          setState={setState}
+        />
+      )}
       {state.step === 2 && <Step2_MarriageDetails state={state} setState={setState} />}
       {state.step === 6 && <Step6_Dates state={state} setState={setState} />}
 
       <NationalMarriageStatsModal
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
+      />
+
+      <MarriagePermissionPickerModal
+        isOpen={showPickerModal}
+        onClose={() => setShowPickerModal(false)}
+        state={state}
+        setState={setState}
       />
     </div>
   );
