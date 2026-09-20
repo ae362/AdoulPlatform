@@ -1,4 +1,4 @@
-import type { DocumentType, PartyLabels } from '../constants/feesAgentLocales';
+import type { DocumentType } from '../constants/feesAgentLocales';
 
 export type PaymentMethod = 'نقد' | 'شيك' | 'تحويل' | 'قسط' | 'اعترافا';
 export type PropertyType = 'محفظ' | 'غير_محفظ' | 'منقول' | 'مزيج';
@@ -15,6 +15,7 @@ export interface Party {
   address: string;
   idNumber: string;
   idIssueDate: string;
+  idExpiryDate?: string;
   profession?: string;
   dateOfBirth?: string;
   idImage: File | null;
@@ -23,6 +24,8 @@ export interface Party {
     name?: string;
     idNumber?: string;
     issueDate?: string;
+    expiryDate?: string;
+    address?: string;
   };
   // New fields for Deceased (Inheritance)
   isRecentDeath?: 'نعم' | 'لا' | '';

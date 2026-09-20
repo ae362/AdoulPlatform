@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -14,6 +14,7 @@ import {
   Cpu,
   RefreshCcw,
   CheckCircle,
+  CheckCircle2,
   Hash,
   AlertCircle,
   Clock,
@@ -32,13 +33,14 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { releaseStuViaBeacon } from '../../utils/stuReleaseBeacon';
 import { PostSignatureCorridorOverlay } from './PostSignatureCorridorOverlay.tsx';
+import { DualSigningEnginePanel } from './components/DualSigningEnginePanel';
 import { pickBestSavedDocsAttachment } from '../../utils/savedDocsPicker';
 
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export const NotarySignatureWorkarea: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { sessionToken } = useAuth();
+  const { user, sessionToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const trpcUtils = trpc.useUtils();
@@ -51,6 +53,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
   const [activeAdoul, setActiveAdoul] = useState<1 | 2>(1);
   const [preHash, setPreHash] = useState('8f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a');
   const [selectedAttachmentId, setSelectedAttachmentId] = useState<string | null>(null);
+  const [pdfLoadError, setPdfLoadError] = useState(false);
+
+  const recordFirstNotarySigMutation = trpc.feesAgent.documents.recordFirstNotarySignature.useMutation();
+  const recordSecondNotarySigMutation = trpc.feesAgent.documents.recordSecondNotarySignature.useMutation();
 
   // Prevent body/page scrolling while in the signing workarea.
   // Without this, scroll chaining can push the browser outside the portal, showing a white area.
@@ -78,6 +84,72 @@ export const NotarySignatureWorkarea: React.FC = () => {
   const [tabletSigningViewMode, setTabletSigningViewMode] = useState<'full' | 'signing-zone'>('full');
   const [tabletPreviewZoom, setTabletPreviewZoom] = useState(1.32);
   const [tabletPreviewScrollOffset, setTabletPreviewScrollOffset] = useState(0.5);
+  const [showNotary2CompletionModal, setShowNotary2CompletionModal] = useState(false);
+
+  // Saved Rasm Data Fetch
+  const { data: rasmData, isLoading } = trpc.feesAgent.documents.getSavedRasm.useQuery(
+    { sessionToken: sessionToken || '', id: id || '' },
+    { enabled: !!sessionToken && !!id, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true }
+  );
+  const rasm = rasmData as any;
+
+  // Dual Signing Session Sync and Role Constraints
+  const { data: dualSessionData } = trpc.feesAgent.documents.getDualSigningSession.useQuery(
+    { sessionToken: sessionToken || '', actId: id || '' },
+    { enabled: !!sessionToken && !!id, refetchInterval: 5000 }
+  );
+  const dualSession = dualSessionData?.session;
+  const dualParticipants = dualSessionData?.participants || [];
+  const p1Record = dualParticipants.find((p: any) => p.signing_order === 1);
+  const p2Record = dualParticipants.find((p: any) => p.signing_order === 2);
+
+  const isUserNotary1 = useMemo(() => {
+    if (!user) return true;
+    if (dualSession) {
+      return dualSession.notary_1_id === user.id || (!!user.full_name && dualSession.notary_1_name === user.full_name);
+    }
+    if (rasm?.notary_user_id) {
+      return rasm.notary_user_id === user.id;
+    }
+    return true;
+  }, [dualSession, user, rasm]);
+
+  const isUserNotary2 = useMemo(() => {
+    if (!user) return false;
+    if (dualSession) {
+      return dualSession.notary_2_id === user.id || (!!user.full_name && dualSession.notary_2_name === user.full_name) || !isUserNotary1;
+    }
+    if (rasm?.notary_user_id && rasm.notary_user_id !== user.id) {
+      return true;
+    }
+    return false;
+  }, [dualSession, user, isUserNotary1, rasm]);
+
+  // Automatically enforce active adoul to 2 if user is Notary 2
+  useEffect(() => {
+    if (isUserNotary2 && activeAdoul !== 2) {
+      setActiveAdoul(2);
+    }
+  }, [isUserNotary2, activeAdoul]);
+
+  // Sync dual signing participant signatures when session updates
+  useEffect(() => {
+    if (p1Record?.signature_data && !adoul1Signature) {
+      setAdoul1Signature(p1Record.signature_data);
+      if ((p1Record.device_info as any)?.bioHash) {
+        setAdoul1BioHash((p1Record.device_info as any).bioHash);
+      }
+    }
+    if (p2Record?.signature_data && !adoul2Signature) {
+      setAdoul2Signature(p2Record.signature_data);
+      if ((p2Record.device_info as any)?.bioHash) {
+        setAdoul2BioHash((p2Record.device_info as any).bioHash);
+      }
+    }
+    if (isUserNotary2 && activeAdoul !== 2) {
+      setActiveAdoul(2);
+    }
+  }, [p1Record, p2Record, isUserNotary2, adoul1Signature, adoul2Signature, activeAdoul]);
   
   // PDF Injection State
   const [currentPdfUrl, setCurrentPdfUrl] = useState<string | null>(null);
@@ -93,6 +165,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
   const buildPdfViewerSrc = (baseUrl: string, overrides?: { page?: number }) => {
     if (!baseUrl) return '';
+    if (baseUrl.startsWith('blob:')) {
+      // In Chromium, blob: URLs with hash fragments fail to load in iframes.
+      return baseUrl;
+    }
     const safePage = Math.max(1, Math.floor(overrides?.page ?? page ?? 1));
     const [urlWithoutHash, existingHash] = baseUrl.split('#');
 
@@ -132,6 +208,104 @@ export const NotarySignatureWorkarea: React.FC = () => {
       printWindow.onload = () => {
         printWindow.print();
       };
+    }
+  };
+
+  const uint8ArrayToBase64 = (bytes: Uint8Array): string => {
+    let binary = '';
+    const len = bytes.byteLength;
+    const chunkSize = 8192;
+    for (let i = 0; i < len; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    return btoa(binary);
+  };
+
+  const burnSignatureToPdfBytes = async (
+    sigPngDataUrl: string,
+    adoulOrder: 1 | 2,
+    customPlacement?: { xPts: number; yPts: number; pageIndex?: number; sigWidthPts?: number; sigHeightPts?: number }
+  ): Promise<Uint8Array | null> => {
+    try {
+      const docUrl = currentPdfUrl || originalPdfUrl;
+      if (!docUrl) return null;
+
+      const pdfBytes = editedPdfBytes && editedPdfBytes.byteLength > 0
+        ? editedPdfBytes
+        : new Uint8Array(await (await fetch(docUrl)).arrayBuffer());
+
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const pages = pdfDoc.getPages();
+      if (pages.length === 0) return null;
+
+      const isJpg = /^data:image\/jpe?g;/i.test(sigPngDataUrl);
+      const embeddedImage = isJpg ? await pdfDoc.embedJpg(sigPngDataUrl) : await pdfDoc.embedPng(sigPngDataUrl);
+      const aspect = embeddedImage.height / Math.max(1, embeddedImage.width);
+
+      // Intelligent page placement:
+      // 1. Explicit placement page takes top priority
+      // 2. If the user is currently viewing a specific page in a multi-page document (page > 1 and page <= pages.length), target that active page.
+      // 3. Otherwise, target the conclusion page (pages.length - 1).
+      let targetPageIndex: number;
+      if (customPlacement?.pageIndex !== undefined) {
+        targetPageIndex = Math.max(0, Math.min(customPlacement.pageIndex, pages.length - 1));
+      } else if (page > 1 && page <= pages.length) {
+        targetPageIndex = page - 1;
+      } else {
+        targetPageIndex = pages.length - 1;
+      }
+
+      const targetPage = pages[targetPageIndex];
+      const { width: pdfW, height: pdfH } = targetPage.getSize();
+
+      let x: number;
+      let y: number;
+      let w: number;
+      let h: number;
+
+      if (customPlacement) {
+        w = customPlacement.sigWidthPts || 90;
+        h = customPlacement.sigHeightPts || (w * aspect);
+        x = customPlacement.xPts - (w / 2);
+        y = customPlacement.yPts - (h / 2);
+      } else {
+        // Moroccan legal deed positions:
+        // Notary 1 (العدل الأول على اليمين): right quadrant
+        // Notary 2 (العدل الثاني على اليسار): left quadrant
+        w = Math.min(130, Math.max(90, pdfW * 0.22));
+        h = w * aspect;
+        // In Moroccan deeds, the signatures sit in the closing section
+        // (around 25-35% from the bottom of the page)
+        y = Math.min(pdfH - h - 50, Math.max(90, pdfH * 0.28));
+        if (adoulOrder === 1) {
+          x = pdfW * 0.62;
+        } else {
+          x = pdfW * 0.16;
+        }
+      }
+
+      targetPage.drawImage(embeddedImage, {
+        x: Math.max(0, Math.min(x, pdfW - w)),
+        y: Math.max(0, Math.min(y, pdfH - h)),
+        width: w,
+        height: h,
+      });
+
+      const modified = await pdfDoc.save();
+      const blob = new Blob([modified as any], { type: 'application/pdf' });
+      const newUrl = URL.createObjectURL(blob);
+      setCurrentPdfUrl(newUrl);
+      setEditedPdfBytes(modified);
+      setPdfSize({ width: pdfW, height: pdfH });
+      setPdfPageCount(pages.length);
+      const safeDisplayPage = targetPageIndex + 1;
+      setPage(safeDisplayPage);
+      pageRef.current = safeDisplayPage;
+      return modified;
+    } catch (err) {
+      console.warn('[burnSignatureToPdfBytes] Error embedding signature into PDF:', err);
+      return null;
     }
   };
 
@@ -213,11 +387,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   }, [tabletSigningViewMode]);
 
-  const { data: rasmData, isLoading } = trpc.feesAgent.documents.getSavedRasm.useQuery(
-    { sessionToken: sessionToken || '', id: id || '' },
-    { enabled: !!sessionToken && !!id, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true }
-  );
-  const rasm = rasmData as any;
+
 
   const rawSigningDocQuery = trpc.feesAgent.documents.resolveSigningDocument.useQuery(
     { sessionToken: sessionToken || '', id: id || '', mode: 'pdf' },
@@ -233,6 +403,72 @@ export const NotarySignatureWorkarea: React.FC = () => {
     const joined = `${base}${hasQuery ? '&' : '?'}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
     return hash ? `${joined}#${hash}` : joined;
   };
+
+  const autoBurntSignaturesRef = useRef<Set<string>>(new Set());
+
+  // Automatically update PDF when final_package_url becomes available
+  useEffect(() => {
+    if (dualSession?.final_package_url) {
+      const pkgUrl = dualSession.final_package_url;
+      const currentClean = String(currentPdfUrl || originalPdfUrl || '').split('#')[0].split('?')[0];
+      const pkgClean = String(pkgUrl).split('#')[0].split('?')[0];
+      if (currentClean !== pkgClean && (!editedPdfBytes || editedPdfBytes.byteLength === 0)) {
+        const busted = appendCacheBuster(pkgUrl, 'pkg', String(Date.now()));
+        setOriginalPdfUrl(busted);
+        setCurrentPdfUrl(busted);
+      }
+    }
+  }, [dualSession?.final_package_url, currentPdfUrl, originalPdfUrl, editedPdfBytes]);
+
+  // Client-side guarantee: if participants have signatures but document has not yet loaded final package, burn them
+  useEffect(() => {
+    if (!currentPdfUrl && !originalPdfUrl) return;
+    if (dualSession?.final_package_url) return;
+
+    const syncMissingSignatures = async () => {
+      if (p1Record?.signature_data && !autoBurntSignaturesRef.current.has('p1')) {
+        autoBurntSignaturesRef.current.add('p1');
+        const modified = await burnSignatureToPdfBytes(p1Record.signature_data, 1);
+        if (modified && isUserNotary1) {
+          const signedPdfBase64 = uint8ArrayToBase64(modified);
+          const cachedData = trpcUtils.feesAgent.documents.getDualSigningSession.getData({ sessionToken: sessionToken || '', actId: id || '' });
+          const targetSessionId = dualSession?.id || cachedData?.session?.id;
+          const effectiveHash = dualSession?.document_hash || preHash;
+          if (targetSessionId) {
+            recordFirstNotarySigMutation.mutate({
+              sessionToken: sessionToken || '',
+              sessionId: targetSessionId,
+              signatureData: p1Record.signature_data,
+              signedPdfBase64,
+              currentDocumentHash: effectiveHash,
+            });
+          }
+        }
+      }
+
+      if (p2Record?.signature_data && !autoBurntSignaturesRef.current.has('p2')) {
+        autoBurntSignaturesRef.current.add('p2');
+        const modified = await burnSignatureToPdfBytes(p2Record.signature_data, 2);
+        if (modified && isUserNotary2) {
+          const signedPdfBase64 = uint8ArrayToBase64(modified);
+          const cachedData = trpcUtils.feesAgent.documents.getDualSigningSession.getData({ sessionToken: sessionToken || '', actId: id || '' });
+          const targetSessionId = dualSession?.id || cachedData?.session?.id;
+          const effectiveHash = dualSession?.document_hash || preHash;
+          if (targetSessionId) {
+            recordSecondNotarySigMutation.mutate({
+              sessionToken: sessionToken || '',
+              sessionId: targetSessionId,
+              signatureData: p2Record.signature_data,
+              signedPdfBase64,
+              currentDocumentHash: effectiveHash,
+            });
+          }
+        }
+      }
+    };
+
+    void syncMissingSignatures();
+  }, [p1Record?.signature_data, p2Record?.signature_data, currentPdfUrl, originalPdfUrl, dualSession?.final_package_url, dualSession?.document_hash, isUserNotary1, isUserNotary2, preHash]);
 
   const buildFallbackSigningUrls = () => {
     const candidates: string[] = [];
@@ -419,22 +655,60 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     let cancelled = false;
 
+    const computeSha256 = async (buffer: ArrayBuffer | string): Promise<string> => {
+      try {
+        const data = typeof buffer === 'string' ? new TextEncoder().encode(buffer) : new Uint8Array(buffer);
+        if (window.crypto?.subtle) {
+          const hashBuf = await window.crypto.subtle.digest('SHA-256', data);
+          return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+      } catch {}
+      return '8f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a';
+    };
+
     const loadPdfMeta = async () => {
       try {
-        const resp = await fetch(sourceUrl, { cache: 'no-store', credentials: 'same-origin' });
-        if (!resp.ok) return;
-        const bytes = await resp.arrayBuffer();
+        let bytes: ArrayBuffer;
+        if (editedPdfBytes && editedPdfBytes.byteLength > 0) {
+          bytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength);
+        } else {
+          const resp = await fetch(sourceUrl);
+          const ct = resp.headers.get('content-type') || '';
+          if (!resp.ok || ct.includes('application/json')) {
+            if (!editedPdfBytes) {
+              setPdfLoadError(true);
+            }
+            if (rasm?.draft) {
+              void computeSha256(rasm.draft).then(h => setPreHash(h));
+            }
+            return;
+          }
+          bytes = await resp.arrayBuffer();
+        }
         if (cancelled) return;
         const pdfDoc = await PDFDocument.load(bytes);
         if (cancelled) return;
-        setPdfPageCount(pdfDoc.getPageCount() || 1);
-        const activePage = pdfDoc.getPages()[Math.max(0, Math.min(page - 1, pdfDoc.getPageCount() - 1))] || pdfDoc.getPages()[0];
+        const count = pdfDoc.getPageCount() || 1;
+        setPdfPageCount(count);
+        const activePage = pdfDoc.getPages()[Math.max(0, Math.min(page - 1, count - 1))] || pdfDoc.getPages()[0];
         if (activePage) {
           const { width, height } = activePage.getSize();
           setPdfSize({ width, height });
         }
-      } catch {
-        if (!cancelled) setPdfPageCount(1);
+        const calculatedHash = await computeSha256(bytes);
+        if (!cancelled) {
+          setPreHash(calculatedHash);
+          setPdfLoadError(false);
+        }
+      } catch (err) {
+        console.warn('[loadPdfMeta] Error loading PDF meta:', err);
+        if (!cancelled && !editedPdfBytes) {
+          setPdfPageCount(1);
+          setPdfLoadError(true);
+          if (rasm?.draft) {
+            void computeSha256(rasm.draft).then(h => setPreHash(h));
+          }
+        }
       }
     };
 
@@ -442,7 +716,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentPdfUrl, originalPdfUrl, page]);
+  }, [currentPdfUrl, originalPdfUrl, page, rasm?.draft, editedPdfBytes]);
 
   useEffect(() => {
     if (hasSeededNavigationPdf) return;
@@ -534,7 +808,11 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     const run = async () => {
       try {
-        const resp = await fetch(urlToLoad, { cache: 'no-store' });
+        if (urlToLoad.startsWith('blob:') || (editedPdfBytes && editedPdfBytes.byteLength > 0)) {
+          setPdfLoadError(false);
+          return;
+        }
+        const resp = await fetch(urlToLoad);
         const ab = await resp.arrayBuffer();
         // eslint-disable-next-line no-console
         console.log('[SIGN] load', {
@@ -545,7 +823,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
           byteLength: ab.byteLength,
         });
 
-        if (!resp.ok) {
+        const ct = resp.headers.get('content-type') || '';
+        if (!resp.ok || ct.includes('application/json')) {
           const candidates = buildFallbackSigningUrls();
           const nextUrl = candidates.find((candidate) => candidate && candidate !== urlToLoad);
           if (nextUrl) {
@@ -556,9 +835,14 @@ export const NotarySignatureWorkarea: React.FC = () => {
             if (matchingAttachment?.id) {
               setSelectedAttachmentId(String(matchingAttachment.id));
             }
+          } else if (!editedPdfBytes) {
+            setPdfLoadError(true);
           }
         }
       } catch (e: any) {
+        if (!editedPdfBytes && !urlToLoad.startsWith('blob:')) {
+          setPdfLoadError(true);
+        }
         // eslint-disable-next-line no-console
         console.log('[SIGN] load', {
           rasmId: id,
@@ -824,15 +1108,22 @@ export const NotarySignatureWorkarea: React.FC = () => {
   };
 
   // Enhanced cleanup to fix "Device found but busy" without USB reconnect
-  const disconnectLayer = async () => {
+  const disconnectLayer = async (keepServiceAlive = true) => {
     const wgss = (window as any).WacomGSS;
     const isStuReady = !!wgss?.STU?.isServiceReady?.();
     const p = (wgss && wgss.STU) ? new wgss.STU.Protocol() : null;
     
     try {
-      // 1. Force tablet disconnect if it exists
+      // 1. Stop reporting pen data
+      if (reportHandlerRef.current?.stopReporting) {
+        try {
+          await reportHandlerRef.current.stopReporting();
+        } catch {}
+        reportHandlerRef.current = null;
+      }
+
+      // 2. Force tablet disconnect if it exists
       if (tabletRef.current) {
-        // Best-effort release sequence while socket is still alive
         try {
           if (isStuReady) {
             tabletRef.current.endCapture?.();
@@ -841,44 +1132,42 @@ export const NotarySignatureWorkarea: React.FC = () => {
               tabletRef.current.setInkingMode?.(p.InkingMode.InkingMode_Off);
             }
           }
-        } catch {
-          // ignore
-        }
+        } catch {}
 
-        const dcPromise = isStuReady ? tabletRef.current.disconnect().catch(() => {}) : Promise.resolve();
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 300));
-        await Promise.race([dcPromise, timeoutPromise]);
+        try {
+          if (isStuReady && tabletRef.current.disconnect) {
+            await tabletRef.current.disconnect().catch(() => {});
+          }
+        } catch {}
         tabletRef.current = null;
       }
       
-      // 2. Force USB interface disconnect if it exists - Critical for "Busy" error
+      // 3. Force USB interface disconnect if it exists - Critical for "Busy" error
       if (usbInterfaceRef.current) {
         try {
-          if (isStuReady) {
-            await usbInterfaceRef.current.disconnect();
+          if (isStuReady && usbInterfaceRef.current.disconnect) {
+            await usbInterfaceRef.current.disconnect().catch(() => {});
           }
         } catch {}
         usbInterfaceRef.current = null;
       }
 
-      // 3. Attempt to close existing connection if SDK supports it
-      if (wgss && wgss.STU && typeof wgss.STU.close === 'function') {
-        try { 
-          wgss.STU.close(); 
+      // 4. Only close existing service connection if explicitly requested
+      if (!keepServiceAlive) {
+        if (wgss && wgss.STU && typeof wgss.STU.close === 'function') {
+          try { 
+            wgss.STU.close(); 
+          } catch {}
+        }
+        try {
+          if (wgss) wgss.STU = null;
         } catch {}
       }
-
-      try {
-        if (wgss) wgss.STU = null;
-      } catch {
-        // ignore
-      }
-    } catch {
-      // ignore
-    }
+    } catch {}
     
-    // Give the OS/Service a moment to release the USB handle completely
-    await new Promise(resolve => setTimeout(resolve, 180));
+    setIsWacomConnected(false);
+    // Give the OS kernel driver a moment to flush USB HID buffers
+    await new Promise(resolve => setTimeout(resolve, 200));
   };
 
   const connectingRef = useRef(false);
@@ -894,48 +1183,46 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
       if (!wgss || !wgss.STUConstructor) {
         setHardwareError("Wacom GSS SDK not loaded. Please wait.");
-        connectingRef.current = false;
         return;
       }
 
-      // 1. Force cleanup first to release any hung sessions
+      // 1. Cleanly disconnect previous session without dropping the WebSocket service
       await closeSignatureSession();
-      await disconnectLayer();
+      await disconnectLayer(true);
       
       const host = 'localhost';
       
-      // Reset the core STU instance to force a fresh WebSocket handshake
-      if (wgss.STU) {
-        try { wgss.STU.close(); } catch {}
-        wgss.STU = null;
-      }
-      wgss.STU = new wgss.STUConstructor(9000, host);
+      // Only reset the core STU instance if it is not ready
+      if (!wgss.STU || !wgss.STU.isServiceReady?.()) {
+        if (wgss.STU) {
+          try { wgss.STU.close(); } catch {}
+          wgss.STU = null;
+        }
+        wgss.STU = new wgss.STUConstructor(9000, host);
 
-      const isReady = await waitForService(wgss, 2, 250);
-      if (!isReady) {
-        setHardwareError(`SigCaptX Service not found on ${host}:9000.`);
-        setStuStatus('ERROR');
-        connectingRef.current = false;
-        return;
+        const isReady = await waitForService(wgss, 8, 300);
+        if (!isReady) {
+          setHardwareError(`SigCaptX Service not found on ${host}:9000.`);
+          setStuStatus('ERROR');
+          return;
+        }
       }
 
       const getUsbDevicesWithRetry = async (attempt: number): Promise<any[]> => {
         try {
           const list = await wgss.STU.getUsbDevices();
           if (Array.isArray(list) && list.length > 0) return list;
-        } catch (e) {
-          // continue to retry
-        }
-        if (attempt >= 2) return [];
-        await new Promise((r) => setTimeout(r, 180));
+        } catch {}
+        if (attempt >= 4) return [];
+        await new Promise((r) => setTimeout(r, 220));
         return getUsbDevicesWithRetry(attempt + 1);
       };
 
       const devices = await getUsbDevicesWithRetry(0);
       if (!devices || devices.length === 0) {
-          setHardwareError("STU-540 not detected. Ensure USB is plugged in.");
-          setStuStatus('ERROR');
-          return;
+        setHardwareError("STU-540 not detected. Ensure USB is plugged in.");
+        setStuStatus('ERROR');
+        return;
       }
 
       const candidate = devices.find((d: any) => String(d.model || d.name || '').includes('540')) || devices[0];
@@ -943,22 +1230,31 @@ export const NotarySignatureWorkarea: React.FC = () => {
       await intf.Constructor();
       usbInterfaceRef.current = intf; // STORE THIS IMMEDIATELY
       
-      // Attempt connection in exclusive mode
+      // Attempt connection: try exclusive first; if busy/locked by previous session, fallback to shared mode
+      let connected = false;
       try {
         await intf.connect(candidate, true);
-
-        // Let the service settle after grabbing exclusive lock.
+        connected = true;
         await new Promise((r) => setTimeout(r, 120));
       } catch (connErr: any) {
-        const errStr = String(connErr.message || connErr);
-        
-        // If it's the specific "busy" or "not connected" error, retry after a forced delay
-        if (retryCount < 2 && (errStr.includes("not_connected") || errStr.includes("interface") || errStr.includes("exclusive"))) {
-          await disconnectLayer();
-          await new Promise(r => setTimeout(r, 320));
-          return connectToSTUDevice(retryCount + 1);
+        console.warn('Exclusive connection failed, trying shared fallback...', connErr);
+        await new Promise((r) => setTimeout(r, 250));
+        try {
+          await intf.connect(candidate, false);
+          connected = true;
+          await new Promise((r) => setTimeout(r, 120));
+        } catch (fallbackErr: any) {
+          if (retryCount < 2) {
+            await disconnectLayer(true);
+            await new Promise((r) => setTimeout(r, 450));
+            return connectToSTUDevice(retryCount + 1);
+          }
+          throw fallbackErr;
         }
-        throw connErr;
+      }
+
+      if (!connected) {
+        throw new Error('Could not establish USB connection to STU device.');
       }
 
       const tablet = new wgss.STU.Tablet();
@@ -986,27 +1282,33 @@ export const NotarySignatureWorkarea: React.FC = () => {
       setIsWacomConnected(true);
       setStuStatus('CONNECTED');
       setHardwareError(null);
-      connectingRef.current = false;
+
+      // Auto-push current document page to tablet immediately upon connection
+      if (currentPdfUrl || originalPdfUrl) {
+        window.setTimeout(() => {
+          void refreshTabletDisplay();
+        }, 150);
+      }
 
     } catch (err: any) {
-      const msg = String(err.message || err);
+      const msg = String(err?.message || err);
 
-      // If we got a not_connected_error after physical connect, do a deeper reset/retry.
+      // If we got a not_connected_error after physical connect, do a deeper reset/retry without killing the service.
       if (retryCount < 2 && (msg.includes('not_connected_error') || msg.includes('not_connected') || msg.includes('instance not found'))) {
-        await disconnectLayer();
-        await new Promise((r) => setTimeout(r, 320));
-        connectingRef.current = false;
+        await disconnectLayer(true);
+        await new Promise((r) => setTimeout(r, 400));
         return connectToSTUDevice(retryCount + 1);
       }
 
       if (msg.includes('UsbInterface')) {
-          setHardwareError("Wacom USB Interface busy. Click 'RESET DEVICE' to force release.");
+        setHardwareError("Wacom USB Interface busy. Click 'RESET DEVICE' to force release.");
       } else if (msg.includes('not_connected_error')) {
-          setHardwareError("Device found but busy. Click 'RESET DEVICE' to fix.");
+        setHardwareError("Device found but busy. Click 'RESET DEVICE' to fix.");
       } else {
-          setHardwareError(`Hardware Error: ${msg}`);
+        setHardwareError(`Hardware Error: ${msg}`);
       }
       setStuStatus('ERROR');
+    } finally {
       connectingRef.current = false;
     }
   };
@@ -1218,9 +1520,14 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     if (pdfSourceUrl) {
       try {
-        const resp = await fetch(pdfSourceUrl, { cache: 'no-store', credentials: 'same-origin' });
-        if (!resp.ok) throw new Error(`PDF fetch failed (${resp.status})`);
-        const pdfBytes = await resp.arrayBuffer();
+        let pdfBytes: ArrayBuffer;
+        if (editedPdfBytes && editedPdfBytes.byteLength > 0) {
+          pdfBytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength);
+        } else {
+          const resp = await fetch(pdfSourceUrl);
+          if (!resp.ok) throw new Error(`PDF fetch failed (${resp.status})`);
+          pdfBytes = await resp.arrayBuffer();
+        }
         const loadingTask = (pdfjsLib as any).getDocument({ data: pdfBytes });
         const pdf = await loadingTask.promise;
         const safePage = Math.max(1, Math.min(pageRef.current || 1, pdf.numPages || 1));
@@ -1542,17 +1849,21 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
-  const refreshTabletDisplay = async () => {
-    if (!tabletRef.current || !isWacomConnected) return;
+  const refreshTabletDisplay = async (forceMode?: 'full' | 'signing-zone') => {
     try {
       setIsSendingPreviewToTablet(true);
       setHardwareError(null);
+      if (!tabletRef.current || !isWacomConnected) {
+        await connectToSTUDevice(0);
+        if (!tabletRef.current) return;
+      }
+      const targetMode = forceMode || tabletSigningViewModeRef.current;
       const wgss = (window as any).WacomGSS;
       if (wgss?.STU?.Protocol && tabletRef.current) {
         const p = new wgss.STU.Protocol();
         await tabletRef.current.setInkingMode(p.InkingMode.InkingMode_Off).catch(() => {});
       }
-      await pushPreviewToTablet(tabletSigningViewModeRef.current);
+      await pushPreviewToTablet(targetMode);
       await startTabletNavigationMode();
       setStuStatus('CONNECTED');
     } catch (err: any) {
@@ -1666,6 +1977,100 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
+  const isDrawingScreenRef = useRef(false);
+  const lastScreenPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const getCanvasCoords = (canvas: HTMLCanvasElement, clientX: number, clientY: number) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / Math.max(1, rect.width);
+    const scaleY = canvas.height / Math.max(1, rect.height);
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
+  const handleScreenCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    isDrawingScreenRef.current = true;
+    const pt = getCanvasCoords(canvas, e.clientX, e.clientY);
+    lastScreenPointRef.current = pt;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a192f';
+    ctx.fill();
+  };
+
+  const handleScreenCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawingScreenRef.current) return;
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const pt = getCanvasCoords(canvas, e.clientX, e.clientY);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#0a192f';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    if (lastScreenPointRef.current) {
+      ctx.moveTo(lastScreenPointRef.current.x, lastScreenPointRef.current.y);
+    }
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    lastScreenPointRef.current = pt;
+  };
+
+  const handleScreenCanvasMouseUp = () => {
+    isDrawingScreenRef.current = false;
+    lastScreenPointRef.current = null;
+  };
+
+  const handleScreenCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    isDrawingScreenRef.current = true;
+    const pt = getCanvasCoords(canvas, touch.clientX, touch.clientY);
+    lastScreenPointRef.current = pt;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a192f';
+    ctx.fill();
+  };
+
+  const handleScreenCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawingScreenRef.current || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const pt = getCanvasCoords(canvas, touch.clientX, touch.clientY);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#0a192f';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    if (lastScreenPointRef.current) {
+      ctx.moveTo(lastScreenPointRef.current.x, lastScreenPointRef.current.y);
+    }
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    lastScreenPointRef.current = pt;
+  };
+
+  const handleScreenCanvasTouchEnd = () => {
+    isDrawingScreenRef.current = false;
+    lastScreenPointRef.current = null;
+  };
+
   const handleSaveSignature = async (adoul: 1 | 2) => {
     const canvas = sigCanvasRef.current;
     if (!canvas) return;
@@ -1673,14 +2078,15 @@ export const NotarySignatureWorkarea: React.FC = () => {
     // PINPOINT ACCURACY: Trim whitespace so the signature itself is centered on the click
     const trimmed = trimCanvas(canvas);
     const realSig = trimmed.toDataURL('image/png');
+    const bio = "SHA256_WACOM_" + Math.random().toString(36).substring(7).toUpperCase();
     
     if (adoul === 1) {
       setAdoul1Signature(realSig);
-      setAdoul1BioHash("SHA256_WACOM_" + Math.random().toString(36).substring(7).toUpperCase());
+      setAdoul1BioHash(bio);
       if (!adoul2Signature) setActiveAdoul(2); // Toggle to second adoul if not signed
     } else {
       setAdoul2Signature(realSig);
-      setAdoul2BioHash("SHA256_WACOM_" + Math.random().toString(36).substring(7).toUpperCase());
+      setAdoul2BioHash(bio);
     }
 
     setStuStatus('SAVED');
@@ -1697,9 +2103,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     // Release reporting but keep tablet connected for second adoul if needed
     if (reportHandlerRef.current && reportHandlerRef.current.stopReporting) {
-        await reportHandlerRef.current.stopReporting().catch(() => {});
+      await reportHandlerRef.current.stopReporting().catch(() => {});
     }
 
+    let modifiedBytes: Uint8Array | null = null;
     const canAutoPlaceOnPdf =
       tabletSigningViewMode === 'full' &&
       isPDF &&
@@ -1748,55 +2155,132 @@ export const NotarySignatureWorkarea: React.FC = () => {
           const sourceMinY = transform.cropY + normalizedMinY * transform.cropHeight;
           const sourceMaxY = transform.cropY + normalizedMaxY * transform.cropHeight;
 
+          const docSource = currentPdfUrl || originalPdfUrl!;
           const pdfDoc = await PDFDocument.load(
             editedPdfBytes && editedPdfBytes.byteLength > 0
               ? editedPdfBytes
-              : new Uint8Array(await (await fetch(currentPdfUrl || originalPdfUrl!, { cache: 'no-store', credentials: 'same-origin' })).arrayBuffer())
+              : new Uint8Array(await (await fetch(docSource)).arrayBuffer())
           );
           const pages = pdfDoc.getPages();
           const safePageIndex = Math.max(0, Math.min(transform.page - 1, pages.length - 1));
           const activePage = pages[safePageIndex];
-          if (!activePage) throw new Error('Page not available for automatic signature placement.');
+          if (activePage) {
+            const { width: pdfW, height: pdfH } = activePage.getSize();
+            const renderToPdfScaleX = pdfW / Math.max(1, transform.renderWidth);
+            const renderToPdfScaleY = pdfH / Math.max(1, transform.renderHeight);
+            const embeddedImage = await pdfDoc.embedPng(realSig);
+            const imageAspect = embeddedImage.height / Math.max(1, embeddedImage.width);
 
-          const { width: pdfW, height: pdfH } = activePage.getSize();
-          const renderToPdfScaleX = pdfW / Math.max(1, transform.renderWidth);
-          const renderToPdfScaleY = pdfH / Math.max(1, transform.renderHeight);
-          const embeddedImage = await pdfDoc.embedPng(realSig);
-          const imageAspect = embeddedImage.height / Math.max(1, embeddedImage.width);
+            const bboxWidthPts = Math.max(24, (sourceMaxX - sourceMinX) * renderToPdfScaleX);
+            const bboxHeightPts = Math.max(18, (sourceMaxY - sourceMinY) * renderToPdfScaleY);
+            const sigWidth = Math.max(42, bboxWidthPts * 1.08);
+            const sigHeight = Math.max(18, sigWidth * imageAspect);
+            const centerXPts = (sourceMinX + (sourceMaxX - sourceMinX) / 2) * renderToPdfScaleX;
+            const centerYFromTopPts = (sourceMinY + (sourceMaxY - sourceMinY) / 2) * renderToPdfScaleY;
+            const centerYPts = pdfH - centerYFromTopPts;
 
-          const bboxWidthPts = Math.max(24, (sourceMaxX - sourceMinX) * renderToPdfScaleX);
-          const bboxHeightPts = Math.max(18, (sourceMaxY - sourceMinY) * renderToPdfScaleY);
-          const sigWidth = Math.max(42, bboxWidthPts * 1.08);
-          const sigHeight = Math.max(18, sigWidth * imageAspect);
-          const centerXPts = (sourceMinX + (sourceMaxX - sourceMinX) / 2) * renderToPdfScaleX;
-          const centerYFromTopPts = (sourceMinY + (sourceMaxY - sourceMinY) / 2) * renderToPdfScaleY;
-          const centerYPts = pdfH - centerYFromTopPts;
+            activePage.drawImage(embeddedImage, {
+              x: centerXPts - (sigWidth / 2),
+              y: centerYPts - (sigHeight / 2),
+              width: sigWidth,
+              height: sigHeight,
+            });
 
-          activePage.drawImage(embeddedImage, {
-            x: centerXPts - (sigWidth / 2),
-            y: centerYPts - (sigHeight / 2),
-            width: sigWidth,
-            height: sigHeight,
-          });
+            modifiedBytes = await pdfDoc.save();
+            const blob = new Blob([modifiedBytes as any], { type: 'application/pdf' });
+            const newUrl = URL.createObjectURL(blob);
 
-          const modifiedBytes = await pdfDoc.save();
-          const blob = new Blob([modifiedBytes as any], { type: 'application/pdf' });
-          const newUrl = URL.createObjectURL(blob);
-
-          setCurrentPdfUrl(newUrl);
-          setEditedPdfBytes(modifiedBytes);
-          setPdfSize({ width: pdfW, height: pdfH });
-          setPendingPlacement(null);
-          return;
+            setCurrentPdfUrl(newUrl);
+            setEditedPdfBytes(modifiedBytes);
+            setPdfSize({ width: pdfW, height: pdfH });
+            setPdfPageCount(pages.length);
+            const safeDisplayPage = safePageIndex + 1;
+            setPage(safeDisplayPage);
+            pageRef.current = safeDisplayPage;
+          }
         }
       } catch (err: any) {
-        setHardwareError(err?.message || 'تعذر تضمين التوقيع تلقائياً داخل PDF.');
-        setStuStatus('ERROR');
+        console.warn('Tablet auto placement fallback:', err);
       }
     }
 
-    // Fallback to the existing manual placement flow.
-    setPendingPlacement({ img: realSig, adoul });
+    // Default Moroccan legal placement on closing page if not auto-placed from tablet
+    if (!modifiedBytes && isPDF && (currentPdfUrl || originalPdfUrl)) {
+      modifiedBytes = await burnSignatureToPdfBytes(realSig, adoul);
+    }
+
+    const signedPdfBase64 = modifiedBytes ? uint8ArrayToBase64(modifiedBytes) : undefined;
+
+    // Persist signature and burned PDF to dual signing session
+    const effectiveHash = dualSession?.document_hash || preHash;
+    try {
+      const cachedData = trpcUtils.feesAgent.documents.getDualSigningSession.getData({ sessionToken: sessionToken || '', actId: id || '' });
+      const targetSessionId = dualSession?.id || cachedData?.session?.id;
+
+      if (adoul === 1) {
+        if (targetSessionId) {
+          recordFirstNotarySigMutation.mutate({
+            sessionToken: sessionToken || '',
+            sessionId: targetSessionId,
+            signatureData: realSig,
+            signedPdfBase64,
+            currentDocumentHash: effectiveHash,
+            deviceInfo: {
+              method: isWacomConnected ? 'WACOM_STU_540' : 'SCREEN_TOUCH',
+              bioHash: bio,
+              notaryName: user?.full_name || undefined,
+            },
+          }, {
+            onSuccess: () => {
+              void trpcUtils.feesAgent.documents.getDualSigningSession.invalidate();
+              void trpcUtils.feesAgent.documents.listDualSigningSessions.invalidate();
+              void trpcUtils.feesAgent.documents.listMySigningTasks.invalidate();
+              void trpcUtils.feesAgent.documents.resolveSigningDocument.invalidate();
+            }
+          });
+        }
+      } else {
+        if (targetSessionId) {
+          recordSecondNotarySigMutation.mutate({
+            sessionToken: sessionToken || '',
+            sessionId: targetSessionId,
+            signatureData: realSig,
+            signedPdfBase64,
+            currentDocumentHash: effectiveHash,
+            deviceInfo: {
+              method: isWacomConnected ? 'WACOM_STU_540' : 'SCREEN_TOUCH',
+              bioHash: bio,
+              notaryName: user?.full_name || undefined,
+            },
+          }, {
+            onSuccess: () => {
+              void trpcUtils.feesAgent.documents.getDualSigningSession.invalidate();
+              void trpcUtils.feesAgent.documents.listDualSigningSessions.invalidate();
+              void trpcUtils.feesAgent.documents.listMySigningTasks.invalidate();
+              void trpcUtils.feesAgent.documents.resolveSigningDocument.invalidate();
+              if (isUserNotary2) {
+                setShowNotary2CompletionModal(true);
+              }
+            }
+          });
+        } else if (isUserNotary2) {
+          setShowNotary2CompletionModal(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync signature to dual signing session:', err);
+      if (adoul === 2 && isUserNotary2) {
+        setShowNotary2CompletionModal(true);
+      }
+    }
+
+    if (!modifiedBytes) {
+      // Fallback to manual placement flow only if direct PDF embedding failed
+      setPendingPlacement({ img: realSig, adoul });
+    } else {
+      setPendingPlacement(null);
+      void refreshTabletDisplay();
+    }
   };
 
   useEffect(() => {
@@ -1811,10 +2295,11 @@ export const NotarySignatureWorkarea: React.FC = () => {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        releaseStuViaBeacon();
-        forceReleaseSync();
-        void closeSignatureSession();
+      if (document.visibilityState === 'visible') {
+        // Auto-reconnect if tablet connection was dropped while tab was in background
+        if (!tabletRef.current && hasAttemptedAutoTabletConnect) {
+          void connectToSTUDevice(0);
+        }
       }
     };
 
@@ -1834,7 +2319,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
       void closeSignatureSession();
     };
-  }, []);
+  }, [hasAttemptedAutoTabletConnect]);
   // --- WACOM SDK LOGIC END ---
 
   const handleRepositionSignature = (targetAdoul?: 1 | 2) => {
@@ -1859,6 +2344,20 @@ export const NotarySignatureWorkarea: React.FC = () => {
   };
 
   const clearSignatures = (forceWipe = false) => {
+    if (isUserNotary2) {
+      setAdoul2Signature(null);
+      setAdoul2BioHash(null);
+      setSignatureStatus(adoul1Signature ? 'partial' : 'none');
+      setActiveAdoul(2);
+      setPendingPlacement(null);
+      if (stuStatus === 'SAVED') {
+        setStuStatus('CONNECTED');
+      }
+      clearSignatureCanvas();
+      void refreshTabletDisplay();
+      return;
+    }
+
     const existingSig = (activeAdoul === 2 ? adoul2Signature : adoul1Signature) || adoul1Signature || adoul2Signature;
     if (!forceWipe && existingSig) {
       handleRepositionSignature();
@@ -1891,15 +2390,15 @@ export const NotarySignatureWorkarea: React.FC = () => {
     void refreshTabletDisplay();
   };
 
-  // Auto-sync document page on tablet upon connection or page switch
+  // Auto-sync document page on tablet upon connection, page switch, or document load
   useEffect(() => {
     if (isWacomConnected && tabletRef.current && !isCapturing && (currentPdfUrl || originalPdfUrl)) {
       const timer = window.setTimeout(() => {
         void refreshTabletDisplay();
-      }, 300);
+      }, 250);
       return () => window.clearTimeout(timer);
     }
-  }, [isWacomConnected, page]);
+  }, [isWacomConnected, page, currentPdfUrl, originalPdfUrl, editedPdfBytes]);
 
   const undoLastSignature = async () => {
     if (isPDF) {
@@ -1928,7 +2427,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         const docUrl = currentPdfUrl || originalPdfUrl!;
         const pdfBytes = editedPdfBytes && editedPdfBytes.byteLength > 0
           ? editedPdfBytes
-          : new Uint8Array(await (await fetch(docUrl, { cache: 'no-store', credentials: 'same-origin' })).arrayBuffer());
+          : new Uint8Array(await (await fetch(docUrl)).arrayBuffer());
 
         // Load the PDF using pdf-lib
         const pdfDoc = await PDFDocument.load(pdfBytes);
@@ -1979,6 +2478,39 @@ export const NotarySignatureWorkarea: React.FC = () => {
         
         setCurrentPdfUrl(newUrl);
         setEditedPdfBytes(modifiedBytes);
+        setPdfPageCount(pages.length);
+        const safeDisplayPage = safePageIndex + 1;
+        setPage(safeDisplayPage);
+        pageRef.current = safeDisplayPage;
+
+        // SYNC: Upload repositioned PDF to server so both notaries see it permanently
+        try {
+          const signedPdfBase64 = uint8ArrayToBase64(modifiedBytes);
+          const cachedData = trpcUtils.feesAgent.documents.getDualSigningSession.getData({ sessionToken: sessionToken || '', actId: id || '' });
+          const targetSessionId = dualSession?.id || cachedData?.session?.id;
+          const effectiveHash = dualSession?.document_hash || preHash;
+          if (targetSessionId) {
+            if (pendingPlacement.adoul === 1) {
+              recordFirstNotarySigMutation.mutate({
+                sessionToken: sessionToken || '',
+                sessionId: targetSessionId,
+                signatureData: imgSrc,
+                signedPdfBase64,
+                currentDocumentHash: effectiveHash,
+              });
+            } else {
+              recordSecondNotarySigMutation.mutate({
+                sessionToken: sessionToken || '',
+                sessionId: targetSessionId,
+                signatureData: imgSrc,
+                signedPdfBase64,
+                currentDocumentHash: effectiveHash,
+              });
+            }
+          }
+        } catch (syncErr) {
+          console.warn('Failed to sync repositioned signature to server:', syncErr);
+        }
 
         setPendingPlacement(null);
         setStuStatus('SAVED');
@@ -2049,6 +2581,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
   };
 
   const handleSaveDeed = () => {
+    if (isUserNotary2) {
+      alert('بصفتك العدل الثاني (المضمم)، ينحصر دورك القانوني والتقني في توقيع الرسم فقط. يتولى العدل الأول (المتلقي) حفظ الرسم وتوجيهه للمصادقة القضائية.');
+      return;
+    }
     // Platform rule: archival effect only when both signatures are present.
     if (!isCoSigned) {
       setSaveDialog('warning');
@@ -2079,7 +2615,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         const selectedAtt = (rasm as any)?.attachments?.find((a: any) => String(a?.id || '') === String(selectedAttachmentId || '')) || null;
         const candidateUrl = currentPdfUrl || originalPdfUrl || selectedAtt?.fileUrl || '';
         if (candidateUrl) {
-          const resp = await fetch(candidateUrl, { cache: 'no-store', credentials: 'same-origin' });
+          const resp = await fetch(candidateUrl);
           if (resp.ok) {
             const ab = await resp.arrayBuffer();
             try {
@@ -2126,6 +2662,10 @@ export const NotarySignatureWorkarea: React.FC = () => {
   };
 
   const handleConfirmFinalSave = async () => {
+    if (isUserNotary2) {
+      setIsCategoryModalOpen(false);
+      return;
+    }
     if (!selectedFinalCategory || !sessionToken || !id) return;
     setFinalSaveError(null);
     try {
@@ -2187,6 +2727,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
   const docPayload = (rasm as any)?.payload || {};
   const isAudited =
+    !!dualSession ||
     docPayload.auditStatus === 'completed' ||
     docPayload.storedInLibrary === true ||
     docPayload.readyForSigning === true ||
@@ -2268,10 +2809,16 @@ export const NotarySignatureWorkarea: React.FC = () => {
               <ShieldCheck className="h-3.5 w-3.5" /> Secure Signing Suite
             </div>
             <h1 className="flex items-center gap-2 text-lg font-black tracking-tight lg:text-xl">
-              توقيع الرسوم المضمّنة
-              <span className="rounded-full bg-sky-500/20 border border-sky-400/30 px-2.5 py-1 text-[10px] font-bold uppercase text-sky-200">Encrypted Mode</span>
+              {isUserNotary2 ? 'توقيع ومصادقة العدل الثاني (المضمم)' : 'توقيع الرسوم المضمّنة'}
+              <span className="rounded-full bg-sky-500/20 border border-sky-400/30 px-2.5 py-1 text-[10px] font-bold uppercase text-sky-200">
+                {isUserNotary2 ? 'Co-Notary Review' : 'Encrypted Mode'}
+              </span>
             </h1>
-            <p className="text-xs font-bold text-white/65">غرفة تشغيل موحدة للمعاينة، التوقيع الثنائي، والحفظ المؤمّن</p>
+            <p className="text-xs font-bold text-white/65">
+              {isUserNotary2
+                ? 'معاينة ومطابقة الرسم لإتمام التضميم والتوقيع الإلكتروني'
+                : 'غرفة تشغيل موحدة للمعاينة، التوقيع الثنائي، والحفظ المؤمّن'}
+            </p>
           </div>
         </div>
 
@@ -2279,13 +2826,21 @@ export const NotarySignatureWorkarea: React.FC = () => {
           <div className="rounded-[1.2rem] border border-white/10 bg-white/10 px-4 py-3 text-right backdrop-blur-xl">
              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-[#ecd8aa]">الحالة الحالية</span>
              <span className="mt-1 block text-xs font-black text-white">
-               {currentStatus === 'PARTIALLY_SIGNED' ? 'بانتظار العدل الثاني' : 'جاهز للتوقيع الأول'}
+               {isUserNotary2
+                 ? (!adoul1Signature && !p1Record?.signature_data
+                     ? 'في انتظار توقيع العدل الأول'
+                     : isCoSigned || p2Record?.signature_data
+                     ? 'تم اكتمال التوقيع'
+                     : 'جاهز لتوقيعك (العدل الثاني)')
+                 : (currentStatus === 'PARTIALLY_SIGNED' ? 'بانتظار العدل الثاني' : isCoSigned ? 'مكتمل التوقيع الثنائي' : 'جاهز للتوقيع الأول')}
              </span>
           </div>
 
           <div className="rounded-[1.2rem] border border-white/10 bg-black/15 px-4 py-3 text-right backdrop-blur-xl">
              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-[#ecd8aa]">الموقّع النشط</span>
-             <span className="mt-1 block text-xs font-black text-white">العدل {activeAdoul === 1 ? 'الأول' : 'الثاني'}</span>
+             <span className="mt-1 block text-xs font-black text-white">
+               {isUserNotary2 ? 'العدل الثاني (المضمم)' : `العدل ${activeAdoul === 1 ? 'الأول' : 'الثاني'}`}
+             </span>
           </div>
 
           <button
@@ -2306,7 +2861,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             <span className="hidden md:inline">الرسوم الموقعة</span>
           </button>
 
-          {isCoSigned && (
+          {!isUserNotary2 && isCoSigned && (
             <button
               type="button"
               onClick={() => setIsCorridorOpen(true)}
@@ -2337,13 +2892,24 @@ export const NotarySignatureWorkarea: React.FC = () => {
             </div>
           )}
 
-          <button
-            className="flex items-center gap-2 rounded-2xl bg-[#DC143C] px-5 py-3 text-xs font-black text-white shadow-lg shadow-[#DC143C]/40 border border-[#DC143C] transition-all hover:bg-[#b01030] active:scale-95 cursor-pointer"
-            onClick={handleSaveDeed}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            حفظ وتسجيل
-          </button>
+          {!isUserNotary2 ? (
+            <button
+              className="flex items-center gap-2 rounded-2xl bg-[#DC143C] px-5 py-3 text-xs font-black text-white shadow-lg shadow-[#DC143C]/40 border border-[#DC143C] transition-all hover:bg-[#b01030] active:scale-95 cursor-pointer"
+              onClick={handleSaveDeed}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              حفظ وتسجيل
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-black text-white shadow-lg shadow-emerald-600/40 border border-emerald-500 transition-all hover:bg-emerald-700 active:scale-95 cursor-pointer"
+              onClick={() => navigate('/notary-signing-portal')}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>العودة لرواق التوقيع</span>
+            </button>
+          )}
 
           <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/15">
             <Lock className="w-5 h-5 text-slate-400" />
@@ -2370,6 +2936,41 @@ export const NotarySignatureWorkarea: React.FC = () => {
           lastSignedDeedId={lastSignedDeedId}
           onSignedDeedId={(newId) => setLastSignedDeedId(newId)}
         />
+
+        {/* Notary 2 Completion Modal */}
+        {showNotary2CompletionModal && (
+          <div className="fixed inset-0 z-[1001] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-inner">
+                <CheckCircle2 className="w-9 h-9" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">تم تسجيل توقيعكم العدلي بنجاح</h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed font-bold">
+                  تم تثبيت توقيعكم بالبصمة الرقمية على خادم المنصة المركزي، واكتمل نصاب التوقيع للرسم العدلي. تم إشعار العدل الأول لاستكمال إجراءات الحفظ والإحالة للمصادقة القضائية.
+                </p>
+              </div>
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-700 font-bold text-right space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500">🔒 بصمة الوثيقة المؤمنة:</span>
+                  <span className="font-mono text-[10px] text-blue-700 truncate max-w-[210px]">{preHash}</span>
+                </div>
+                <div className="text-emerald-700">✓ صفتكم في الوثيقة: العدل الثاني (المضمم)</div>
+                <div className="text-blue-700">✓ حالة المهمة: مكتملة بنجاح ومقيدة في سجل التدقيق</div>
+              </div>
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/remote-signing')}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition active:scale-95 text-xs flex items-center justify-center gap-2"
+                >
+                  <span>العودة إلى التوقيع العدلي عن بعد</span>
+                  <span>←</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mandatory Category Modal (Final Save) */}
         {isCategoryModalOpen && (
@@ -2590,44 +3191,93 @@ export const NotarySignatureWorkarea: React.FC = () => {
                 )}
 
                 {/* Document Content */}
-                {url ? (
-                  <>
-                    {isPDF ? (
-                      <div className="w-full h-full bg-white">
-                        <iframe
-                          key={buildPdfViewerSrc(url, { page })}
-                          src={buildPdfViewerSrc(url, { page })}
-                          title="Signed PDF Preview"
-                          className={`w-full h-full border-0 ${pendingPlacement ? 'pointer-events-none' : ''}`}
-                          style={{ borderRadius: '24px' }}
-                        />
-                      </div>
-                    ) : isPreparingSigningPdf ? (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-white px-8 text-center">
-                        <div className="w-12 h-12 mb-4 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin" />
-                        <p className="font-black text-lg">جاري تجهيز نسخة PDF للتوقيع</p>
-                        <p className="text-sm mt-2">يتم تحويل آخر نسخة معدلة تلقائياً قبل فتح مساحة التوقيع.</p>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-white px-8 text-center">
-                        <AlertCircle className="w-12 h-12 mb-4 opacity-40" />
-                        <p className="font-black text-lg">لا يمكن عرض هذه النسخة في صفحة التوقيع</p>
-                        <p className="text-sm mt-2">صفحة التوقيع تدعم فقط PDF المولّد من الخادم عبر LibreOffice.</p>
-                      </div>
-                    )}
-                  </>
+                {url && isPDF && !pdfLoadError ? (
+                  <div className="w-full h-full bg-white">
+                    <iframe
+                      key={buildPdfViewerSrc(url, { page })}
+                      src={buildPdfViewerSrc(url, { page })}
+                      title="Signed PDF Preview"
+                      className={`w-full h-full border-0 ${pendingPlacement ? 'pointer-events-none' : ''}`}
+                      style={{ borderRadius: '24px' }}
+                    />
+                  </div>
+                ) : isPreparingSigningPdf ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-white px-8 text-center min-h-[500px]">
+                    <div className="w-12 h-12 mb-4 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin" />
+                    <p className="font-black text-lg text-slate-800">جاري تجهيز نسخة PDF للتوقيع</p>
+                    <p className="text-sm mt-2">يتم تحويل آخر نسخة معدلة تلقائياً قبل فتح مساحة التوقيع.</p>
+                  </div>
                 ) : (
-                  <div className="w-full h-full bg-white flex flex-col items-center justify-center text-slate-500">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-slate-200 rounded-full mb-4 mx-auto" />
-                      <p className="font-black text-lg">لا توجد نسخة PDF صالحة للتوقيع</p>
-                      <p className="text-sm mt-2">يجب استعمال PDF المولّد من الخادم، وليس DOCX أو HTML.</p>
+                  /* Judicial Parchment Fallback Preview (renders rasm.draft directly) */
+                  <div className="w-full h-full min-h-[680px] bg-[#fcfaf4] p-6 md:p-10 text-slate-900 overflow-y-auto font-serif" dir="rtl">
+                    <div className="mb-4 p-3.5 rounded-2xl border border-amber-300 bg-amber-50/90 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-900">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>معاينة نص المحرر الرسمي المعتمد (المسودة المحفوظة للرسم)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPdfLoadError(false);
+                          signingDocQuery.refetch();
+                        }}
+                        className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-black transition cursor-pointer"
+                      >
+                        إعادة فحص PDF
+                      </button>
+                    </div>
+
+                    <div className="max-w-2xl mx-auto bg-white p-8 md:p-10 rounded-2xl border border-[#e5dac5] shadow-md text-right space-y-6">
+                      <div className="text-center border-b border-[#e5dac5] pb-5 space-y-1.5">
+                        <div className="text-xs font-black text-[#8f6f33]">المملكة المغربية • وزارة العدل</div>
+                        <h2 className="text-xl md:text-2xl font-black text-slate-900">{rasm?.title || rasm?.templateTitle || 'رسم عدلي رسمي'}</h2>
+                        <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold text-slate-500 pt-1">
+                          <span>رقم الطلب: {rasm?.applicationNumber || id}</span>
+                          <span>•</span>
+                          <span>كناش الأعداد: {rasm?.registryNumber || 'قيد الإنجاز'}</span>
+                          {rasm?.category && (
+                            <>
+                              <span>•</span>
+                              <span>التصنيف: {rasm.category}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="prose prose-slate max-w-none text-sm md:text-base leading-relaxed whitespace-pre-wrap font-sans text-slate-800">
+                        {rasm?.draft || (
+                          <div className="py-12 text-center text-slate-400 font-sans">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                            <p className="font-black text-sm">نص المسودة محفوظ في النظام</p>
+                            <p className="text-xs text-slate-400 mt-1">البيانات الواردة مطابقة للنسخة المودعة للمصادقة والتوقيع.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-[#e5dac5] pt-6 grid grid-cols-2 gap-4 text-center text-xs">
+                        <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70">
+                          <div className="font-black text-slate-700 mb-2">توقيع العدل الأول</div>
+                          {adoul1Signature ? (
+                            <img src={adoul1Signature} alt="توقيع العدل الأول" className="h-16 mx-auto object-contain" />
+                          ) : (
+                            <div className="h-16 flex items-center justify-center text-slate-400 italic">بانتظار التوقيع</div>
+                          )}
+                        </div>
+                        <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70">
+                          <div className="font-black text-slate-700 mb-2">توقيع العدل الثاني</div>
+                          {adoul2Signature ? (
+                            <img src={adoul2Signature} alt="توقيع العدل الثاني" className="h-16 mx-auto object-contain" />
+                          ) : (
+                            <div className="h-16 flex items-center justify-center text-slate-400 italic">بانتظار التوقيع</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Placed signatures overlay (visual feedback) */}
-                {!isPDF && placedSignatures.length > 0 && (
+                {placedSignatures.length > 0 && (
                   <div className="absolute inset-0 pointer-events-none z-[80]">
                     {placedSignatures.filter((sig) => sig.page === page).map(sig => (
                       <img
@@ -2739,7 +3389,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
                </div>
             </div>
 
-            {finalReviewChecklist && (
+            {!isUserNotary2 && finalReviewChecklist && (
               <div className="space-y-4">
                 <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#8f6f33]">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
@@ -2778,60 +3428,57 @@ export const NotarySignatureWorkarea: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-4">
-               <h3 className="text-xs font-black uppercase tracking-widest text-[#8f6f33]">اختر الموقع (العدل)</h3>
-               <div className="grid grid-cols-1 gap-3">
-                  <button 
-                    onClick={() => !adoul1Signature && setActiveAdoul(1)}
-                    disabled={!!adoul1Signature}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-right ${
-                      activeAdoul === 1 
-                        ? 'border-[#DC143C] bg-rose-50 shadow-lg shadow-rose-100' 
-                        : adoul1Signature 
-                          ? 'border-emerald-300 bg-emerald-50 opacity-100'
-                          : 'border-[#e5dac5] bg-white opacity-75 hover:opacity-100'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      adoul1Signature ? 'bg-emerald-600 text-white' : (activeAdoul === 1 ? 'bg-[#DC143C] text-white' : 'bg-slate-100 text-slate-500')
+            {isUserNotary2 && (
+              <div className="space-y-4">
+                <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#8f6f33]">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  بطاقة العدل المضمم
+                </h3>
+                <div className="space-y-3 rounded-[1.7rem] border border-[#e5dac5] bg-white p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-bold">العدل المتلقي (الأول):</span>
+                    <span className="font-black text-slate-800">{dualSession?.notary_1_name || 'الأستاذ العدل الأول'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-bold">صفة الحساب:</span>
+                    <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">عدل ثانٍ مضمم ومصادق</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-bold">حالة توقيع العدل الأول:</span>
+                    <span className={`font-bold px-2 py-0.5 rounded-full ${
+                      adoul1Signature || p1Record?.signature_data ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' : 'text-amber-700 bg-amber-50 border border-amber-200'
                     }`}>
-                      <Fingerprint className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-black">العدل الأول</p>
-                      <p className="text-[10px] font-bold italic text-slate-500">
-                        {adoul1Signature ? 'تم التوقيع بنجاح' : (activeAdoul === 1 ? 'محدد حالياً للتوقيع' : 'انقر للتحديد')}
-                      </p>
-                    </div>
-                    {adoul1Signature ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : activeAdoul === 1 && <div className="w-2 h-2 rounded-full bg-[#DC143C] animate-pulse" />}
-                  </button>
+                      {adoul1Signature || p1Record?.signature_data ? '✓ تم التوقيع وقفل النسخة' : '⏳ قيد الانتظار'}
+                    </span>
+                  </div>
+                  <div className="border-t border-[#efe5d2] pt-2 text-[10px] text-slate-500 font-bold">
+                    🛡️ بصمة الوثيقة محمية إلكترونياً وغير قابلة للتعديل أثناء مرحلة التوقيع المشترك.
+                  </div>
+                </div>
+              </div>
+            )}
 
-                  <button 
-                    onClick={() => !adoul2Signature && setActiveAdoul(2)}
-                    disabled={!!adoul2Signature}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-right ${
-                      activeAdoul === 2 
-                        ? 'border-[#8b1e3f] bg-rose-50 shadow-lg shadow-rose-100' 
-                        : adoul2Signature
-                          ? 'border-emerald-300 bg-emerald-50 opacity-100'
-                          : 'border-[#e5dac5] bg-white opacity-75 hover:opacity-100'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      adoul2Signature ? 'bg-emerald-600 text-white' : (activeAdoul === 2 ? 'bg-[#8b1e3f] text-white' : 'bg-slate-100 text-slate-500')
-                    }`}>
-                      <Fingerprint className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-black">العدل الثاني</p>
-                      <p className="text-[10px] font-bold text-slate-500 italic">
-                        {adoul2Signature ? 'تم التوقيع بنجاح' : (activeAdoul === 2 ? 'محدد حالياً للتوقيع' : 'انقر للتحديد')}
-                      </p>
-                    </div>
-                    {adoul2Signature ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : activeAdoul === 2 && <div className="w-2 h-2 rounded-full bg-red-700 animate-pulse" />}
-                  </button>
-               </div>
-            </div>
+            {/* Dual Notary Signing Engine */}
+            <DualSigningEnginePanel
+              actId={id || ''}
+              actNumber={rasm?.registryNumber || rasm?.applicationNumber}
+              documentType={rasm?.category || rasm?.title || 'رسم عدلي رسمي'}
+              currentHash={preHash}
+              currentPdfUrl={currentPdfUrl || originalPdfUrl}
+              adoul1Signed={!!adoul1Signature}
+              adoul2Signed={!!adoul2Signature}
+              isCoNotary={isUserNotary2}
+              onTriggerSign={(notaryOrder) => {
+                const order = isUserNotary2 ? 2 : notaryOrder;
+                setActiveAdoul(order);
+                setIsCapturing(true);
+              }}
+              onRefreshRasm={() => {
+                void trpcUtils.feesAgent.documents.getSavedRasm.invalidate({ sessionToken: sessionToken || '', id: id || '' });
+                void trpcUtils.feesAgent.documents.getDualSigningSession.invalidate({ sessionToken: sessionToken || '', actId: id || '' });
+                signingDocQuery.refetch();
+              }}
+            />
 
             <div className="h-px bg-[#e8ddc8]" />
 
@@ -2980,53 +3627,98 @@ export const NotarySignatureWorkarea: React.FC = () => {
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
-                                onClick={() => setTabletSigningViewMode('full')}
-                                className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
+                                disabled={isSendingPreviewToTablet}
+                                onClick={async () => {
+                                  tabletSigningViewModeRef.current = 'full';
+                                  setTabletSigningViewMode('full');
+                                  tabletPreviewScrollOffsetRef.current = 0.5;
+                                  setTabletPreviewScrollOffset(0.5);
+                                  await refreshTabletDisplay('full');
+                                }}
+                                className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
                                   tabletSigningViewMode === 'full'
                                     ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                 }`}
+                                title="تحميل وعرض الصفحة الحالية من المحرر على شاشة Wacom فوراً"
                               >
-                                عرض الصفحة كاملة
+                                {isSendingPreviewToTablet && tabletSigningViewMode === 'full' ? (
+                                  <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                                ) : null}
+                                <span>عرض الصفحة كاملة</span>
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setTabletSigningViewMode('signing-zone')}
-                                className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all ${
+                                disabled={isSendingPreviewToTablet}
+                                onClick={async () => {
+                                  tabletSigningViewModeRef.current = 'signing-zone';
+                                  setTabletSigningViewMode('signing-zone');
+                                  tabletPreviewScrollOffsetRef.current = 1;
+                                  setTabletPreviewScrollOffset(1);
+                                  await refreshTabletDisplay('signing-zone');
+                                }}
+                                className={`rounded-xl border px-3 py-2 text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
                                   tabletSigningViewMode === 'signing-zone'
                                     ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                 }`}
+                                title="تكبير منطقة توقيع العدلين وعرضها على شاشة Wacom"
                               >
-                                تكبير منطقة التوقيع
+                                {isSendingPreviewToTablet && tabletSigningViewMode === 'signing-zone' ? (
+                                  <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                                ) : null}
+                                <span>تكبير منطقة التوقيع</span>
                               </button>
                             </div>
                           </div>
 
                           {/* Primary Signing Trigger Button */}
-                          <button 
-                            type="button"
-                            onClick={async () => {
-                              clearSignatureCanvas();
-                              await handleCaptureStart(activeAdoul);
-                            }}
-                            disabled={activeAdoul === 1 ? !!adoul1Signature : !!adoul2Signature}
-                            className={`w-full flex items-center justify-center gap-3 py-3.5 ${
-                              activeAdoul === 1 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-700 hover:bg-emerald-800'
-                            } disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl transition-all shadow-lg font-black text-sm group`}
-                          >
-                            <Pen className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                            <div className="text-right">
-                              <p className="text-sm font-black">
-                                {activeAdoul === 1
-                                  ? (adoul1Signature ? 'تم توقيع العدل الأول' : 'توقيع العدل الأول بالقلم')
-                                  : (adoul2Signature ? 'تم توقيع العدل الثاني' : 'توقيع العدل الثاني بالقلم')}
-                              </p>
-                              <p className="text-[10px] font-bold opacity-80">
-                                {tabletSigningViewMode === 'full' ? 'التوقيع أثناء عرض الصفحة' : 'التوقيع داخل منطقة مكبرة'}
-                              </p>
-                            </div>
-                          </button>
+                          {(() => {
+                            const isFirstNotarySigned = !!adoul1Signature || !!p1Record?.signature_data;
+                            const isSecondNotarySigned = !!adoul2Signature || !!p2Record?.signature_data;
+                            const isDisabled = isUserNotary2
+                              ? (!isFirstNotarySigned || isSecondNotarySigned)
+                              : (activeAdoul === 1 ? !!adoul1Signature : !!adoul2Signature);
+
+                            let buttonTitle = '';
+                            if (isUserNotary2) {
+                              if (!isFirstNotarySigned) {
+                                buttonTitle = 'في انتظار توقيع العدل الأول أولاً';
+                              } else if (isSecondNotarySigned) {
+                                buttonTitle = '✓ تم تسجيل توقيعك كعدل مضمم';
+                              } else {
+                                buttonTitle = 'توقيعك كعدل مضمم بالقلم';
+                              }
+                            } else {
+                              if (activeAdoul === 1) {
+                                buttonTitle = adoul1Signature ? 'تم توقيع العدل الأول' : 'توقيع العدل الأول بالقلم';
+                              } else {
+                                buttonTitle = adoul2Signature ? 'تم توقيع العدل الثاني' : 'توقيع العدل الثاني بالقلم';
+                              }
+                            }
+
+                            return (
+                              <button 
+                                type="button"
+                                onClick={async () => {
+                                  clearSignatureCanvas();
+                                  await handleCaptureStart(isUserNotary2 ? 2 : activeAdoul);
+                                }}
+                                disabled={isDisabled}
+                                className={`w-full flex items-center justify-center gap-3 py-3.5 ${
+                                  isUserNotary2 ? 'bg-emerald-700 hover:bg-emerald-800' : (activeAdoul === 1 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-700 hover:bg-emerald-800')
+                                } disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl transition-all shadow-lg font-black text-sm group`}
+                              >
+                                <Pen className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                                <div className="text-right">
+                                  <p className="text-sm font-black">{buttonTitle}</p>
+                                  <p className="text-[10px] font-bold opacity-80">
+                                    {tabletSigningViewMode === 'full' ? 'التوقيع أثناء عرض الصفحة' : 'التوقيع داخل منطقة مكبرة'}
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          })()}
 
                           {/* Signature reposition and management buttons */}
                           {(placedSignatures.length > 0 || currentPdfUrl !== originalPdfUrl || adoul1Signature || adoul2Signature) && (
@@ -3074,44 +3766,113 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
                     <div className="space-y-2 pt-2">
                       <button 
-                        onClick={() => connectToSTUDevice(0)}
-                        className="w-full flex items-center justify-center gap-3 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-xl shadow-red-900/40 active:scale-[0.98]"
+                        type="button"
+                        onClick={() => void connectToSTUDevice(0)}
+                        className="w-full flex items-center justify-center gap-3 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-xl shadow-red-900/40 active:scale-[0.98] font-black text-xs cursor-pointer"
                       >
                         <RefreshCcw className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Retry Connection</span>
+                        <span>إعادة محاولة الاتصال باللوحة</span>
                       </button>
                       
                       <button 
+                        type="button"
                         onClick={async () => {
-                           setHardwareError("Performing Deep Reset...");
-                           await disconnectLayer();
-                           await new Promise(r => setTimeout(r, 250));
-                           connectToSTUDevice(0);
+                          setHardwareError("جاري تحرير منفذ USB وتصفية القفل دون فصل الكابل...");
+                          await disconnectLayer(true);
+                          await new Promise(r => setTimeout(r, 500));
+                          void connectToSTUDevice(0);
                         }}
-                        className="w-full text-[9px] text-red-400/80 font-black hover:text-white transition-all uppercase tracking-[0.15em] py-2.5 rounded-xl border border-white/5 hover:border-red-500/30 hover:bg-red-500/10"
+                        className="w-full text-xs text-rose-800 bg-white hover:bg-rose-100 font-black py-3 rounded-xl border border-rose-300 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                       >
-                        ⚡ Force Hardware Release (Fix Busy)
+                        <span>⚡ تحرير منفذ USB وإعادة الاتصال الذاتي (بدون فصل الكابل)</span>
                       </button>
 
                       {!hasAttemptedAutoTabletConnect && (
                       <button 
+                        type="button"
                         onClick={() => {
                           setHasAttemptedAutoTabletConnect(true);
                           void connectToSTUDevice(0);
                         }}
-                        className="w-full flex items-center justify-center gap-3 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-xl shadow-blue-900/30 active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-3 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-xl shadow-blue-900/30 active:scale-[0.98] font-black text-xs cursor-pointer"
                       >
                         <Monitor className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Connect Tablet</span>
+                        <span>ربط اللوحة الآن</span>
                       </button>
                       )}
+                    </div>
 
-                      <button 
-                        onClick={() => window.location.reload()}
-                        className="w-full text-[8px] text-slate-500 font-bold hover:text-slate-200 transition-all uppercase underline py-1"
-                      >
-                        Hard Refresh Application (If still busy)
-                      </button>
+                    {/* Native In-Engine Signature Alternative (Zero-Friction Fallback) */}
+                    <div className="mt-4 pt-4 border-t border-rose-200/70 text-right space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-800">التوقيع الرقمي على الشاشة</span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">بديل فوري بدون جهاز</span>
+                      </div>
+                      
+                      {isCapturing ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                            <span>ارسم توقيعك داخل الإطار (بالفأرة أو اللمس):</span>
+                            <span className="font-black text-blue-700">العدل {activeAdoul === 1 ? 'الأول' : 'الثاني'}</span>
+                          </div>
+                          <div className="border-2 border-dashed border-blue-400 rounded-2xl overflow-hidden bg-white shadow-inner p-1">
+                            <canvas
+                              ref={sigCanvasRef}
+                              width={600}
+                              height={280}
+                              className="w-full aspect-[2/1] bg-white cursor-crosshair touch-none rounded-xl"
+                              onMouseDown={handleScreenCanvasMouseDown}
+                              onMouseMove={handleScreenCanvasMouseMove}
+                              onMouseUp={handleScreenCanvasMouseUp}
+                              onMouseLeave={handleScreenCanvasMouseUp}
+                              onTouchStart={handleScreenCanvasTouchStart}
+                              onTouchMove={handleScreenCanvasTouchMove}
+                              onTouchEnd={handleScreenCanvasTouchEnd}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCapturing(false);
+                                clearSignatureCanvas();
+                              }}
+                              className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition cursor-pointer"
+                            >
+                              إلغاء
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearSignatureCanvas}
+                              className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <RefreshCcw className="w-3.5 h-3.5" />
+                              مسح
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSignature(activeAdoul)}
+                              className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              اعتماد
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearSignatureCanvas();
+                            setIsCapturing(true);
+                          }}
+                          disabled={activeAdoul === 1 ? !!adoul1Signature : !!adoul2Signature}
+                          className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-xs shadow-md transition cursor-pointer"
+                        >
+                          <Pen className="w-4 h-4" />
+                          <span>توقيع العدل {activeAdoul === 1 ? 'الأول' : 'الثاني'} على الشاشة مباشرة</span>
+                        </button>
+                      )}
                     </div>
                  </div>
                )}

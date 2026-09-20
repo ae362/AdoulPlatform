@@ -60,14 +60,14 @@ export const Navbar: React.FC = () => {
     }
   );
 
-  const notaryJudgeSubmissionsBellQuery = trpc.feesAgent.listMyJudgeSubmissions.useQuery(
+  const notaryJudgeSubmissionsBellQuery = trpc.feesAgent.documents.listMyJudgeSubmissions.useQuery(
     { sessionToken: sessionToken || '' },
     {
       enabled: !!user && isNotary && !!sessionToken,
       staleTime: 30_000,
-      refetchInterval: 10_000,
-      refetchIntervalInBackground: true,
-      refetchOnWindowFocus: true,
+      refetchInterval: 35_000,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: false,
       retry: 2,
     }
   );

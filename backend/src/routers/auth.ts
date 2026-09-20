@@ -5,6 +5,7 @@ import { supabase } from '../services/supabase';
 import { PasswordService } from '../services/password';
 import { CacheService } from '../services/cacheService';
 import { TRPCError } from '@trpc/server';
+import crypto from 'crypto';
 
 // User role enum
 const userRoleSchema = z.enum([
@@ -634,11 +635,56 @@ export const authRouter = router({
       // Get partners
       const { data: partners } = await supabase
         .from('notary_partners')
-        .select('id, partner_name, contact_info, position_order, is_available')
+        .select('id, notary_profile_id, partner_user_id, partner_name, contact_info, position_order, is_available, pairing_id, status, created_at')
         .eq('notary_profile_id', profile.id)
+        .neq('status', 'TERMINATED')
         .order('position_order');
 
-      return partners || [];
+      const rawPartners = partners || [];
+      const partnerUserIds = rawPartners
+        .map((p: any) => p.partner_user_id)
+        .filter(Boolean);
+
+      const usersMap: Record<string, any> = {};
+      const profilesMap: Record<string, any> = {};
+
+      if (partnerUserIds.length > 0) {
+        const { data: partnerUsers } = await supabase
+          .from('users')
+          .select('id, full_name, email, profile_picture_url')
+          .in('id', partnerUserIds);
+
+        const { data: partnerProfiles } = await supabase
+          .from('notary_profiles')
+          .select('user_id, primary_court, appointment_decree_number, profile_picture_url, phone, cin')
+          .in('user_id', partnerUserIds);
+
+        (partnerUsers || []).forEach((u: any) => { usersMap[u.id] = u; });
+        (partnerProfiles || []).forEach((p: any) => { profilesMap[p.user_id] = p; });
+      }
+
+      const enriched = rawPartners.map((p: any) => {
+        const u = p.partner_user_id ? usersMap[p.partner_user_id] : null;
+        const prof = p.partner_user_id ? profilesMap[p.partner_user_id] : null;
+
+        return {
+          id: p.id,
+          partner_user_id: p.partner_user_id || null,
+          partner_name: u?.full_name || p.partner_name,
+          contact_info: prof?.phone || u?.email || p.contact_info,
+          position_order: p.position_order,
+          is_available: p.is_available ?? true,
+          pairing_id: p.pairing_id || null,
+          status: p.status || 'ACTIVE',
+          is_registered: !!p.partner_user_id,
+          primary_court: prof?.primary_court || null,
+          appointment_decree_number: prof?.appointment_decree_number || null,
+          cin: prof?.cin || null,
+          profile_picture_url: prof?.profile_picture_url || u?.profile_picture_url || null,
+        };
+      });
+
+      return enriched;
     }),
 
   /**
@@ -989,14 +1035,31 @@ export const authRouter = router({
         });
       }
 
-      // Delete partner (verify ownership)
-      const { error } = await supabase
+      // Check if partner has a pairing_id for bilateral cleanup
+      const { data: partner } = await supabase
         .from('notary_partners')
-        .delete()
+        .select('id, pairing_id')
         .eq('id', partnerId)
-        .eq('notary_profile_id', profile.id);
+        .eq('notary_profile_id', profile.id)
+        .single();
 
-      if (error) {
+      let delErr = null;
+      if (partner?.pairing_id) {
+        const { error } = await supabase
+          .from('notary_partners')
+          .delete()
+          .eq('pairing_id', partner.pairing_id);
+        delErr = error;
+      } else {
+        const { error } = await supabase
+          .from('notary_partners')
+          .delete()
+          .eq('id', partnerId)
+          .eq('notary_profile_id', profile.id);
+        delErr = error;
+      }
+
+      if (delErr) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'فشل في حذف الشريك',
@@ -1006,5 +1069,413 @@ export const authRouter = router({
       return {
         success: true,
       };
+    }),
+
+  /**
+   * Send a partnership request to another registered notary
+   */
+  sendPartnershipRequest: publicProcedure
+    .input(z.object({
+      sessionToken: z.string(),
+      recipientNotaryUserId: z.string().uuid(),
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { sessionToken, recipientNotaryUserId, message } = input;
+
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('user_id')
+        .eq('session_token', sessionToken)
+        .single();
+
+      if (!session) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
+      }
+
+      if (session.user_id === recipientNotaryUserId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'لا يمكن إرسال طلب مضاممة لنفس الحساب' });
+      }
+
+      const { data: senderProfile } = await supabase
+        .from('notary_profiles')
+        .select('id')
+        .eq('user_id', session.user_id)
+        .single();
+
+      if (!senderProfile) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'ملف العدل غير موجود' });
+      }
+
+      const { data: recipientUser } = await supabase
+        .from('users')
+        .select('id, full_name, role')
+        .eq('id', recipientNotaryUserId)
+        .single();
+
+      if (!recipientUser || recipientUser.role !== 'notary') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'الطرف المختار ليس عدلاً مسجلاً في المنصة' });
+      }
+
+      // Check if already active partners
+      const { data: existingPartner } = await supabase
+        .from('notary_partners')
+        .select('id')
+        .eq('notary_profile_id', senderProfile.id)
+        .eq('partner_user_id', recipientNotaryUserId)
+        .neq('status', 'TERMINATED')
+        .maybeSingle();
+
+      if (existingPartner) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'هذا العدل شريك مسجل بالفعل في حسابكم' });
+      }
+
+      // Check if pending request exists in either direction
+      const { data: existingRequests } = await supabase
+        .from('notary_partnership_requests')
+        .select('id, sender_user_id, recipient_user_id, status')
+        .eq('status', 'PENDING');
+
+      const conflict = (existingRequests || []).find((r: any) =>
+        (r.sender_user_id === session.user_id && r.recipient_user_id === recipientNotaryUserId) ||
+        (r.sender_user_id === recipientNotaryUserId && r.recipient_user_id === session.user_id)
+      );
+
+      if (conflict) {
+        if (conflict.sender_user_id === session.user_id) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'يوجد طلب مضاممة قيد الانتظار مرسل مسبقاً لهذا العدل' });
+        } else {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'لديك بالفعل طلب مضاممة وارد من هذا العدل ينتظر موافقتك' });
+        }
+      }
+
+      const { data: newReq, error: reqErr } = await supabase
+        .from('notary_partnership_requests')
+        .insert({
+          sender_user_id: session.user_id,
+          sender_profile_id: senderProfile.id,
+          recipient_user_id: recipientNotaryUserId,
+          message: message || 'طلب مرافقة ومضاممة مهنية بين عدلين',
+          status: 'PENDING',
+        })
+        .select()
+        .single();
+
+      if (reqErr) {
+        console.error('Failed to send partnership request:', reqErr);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: reqErr.message || 'تعذر إرسال طلب الشراكة' });
+      }
+
+      return { success: true, request: newReq };
+    }),
+
+  /**
+   * List incoming and outgoing partnership requests
+   */
+  listPartnershipRequests: publicProcedure
+    .input(z.object({ sessionToken: z.string() }))
+    .query(async ({ input }) => {
+      const { sessionToken } = input;
+
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('user_id')
+        .eq('session_token', sessionToken)
+        .single();
+
+      if (!session) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
+      }
+
+      const { data: incoming } = await supabase
+        .from('notary_partnership_requests')
+        .select('id, sender_user_id, sender_profile_id, status, message, created_at')
+        .eq('recipient_user_id', session.user_id)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false });
+
+      const { data: outgoing } = await supabase
+        .from('notary_partnership_requests')
+        .select('id, recipient_user_id, status, message, created_at')
+        .eq('sender_user_id', session.user_id)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false });
+
+      const senderUserIds = (incoming || []).map((r: any) => r.sender_user_id);
+      const recipientUserIds = (outgoing || []).map((r: any) => r.recipient_user_id);
+      const allUserIds = Array.from(new Set([...senderUserIds, ...recipientUserIds]));
+
+      const usersMap: Record<string, any> = {};
+      const profilesMap: Record<string, any> = {};
+
+      if (allUserIds.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, full_name, email, profile_picture_url')
+          .in('id', allUserIds);
+
+        const { data: profiles } = await supabase
+          .from('notary_profiles')
+          .select('user_id, primary_court, appointment_decree_number, profile_picture_url, phone, cin')
+          .in('user_id', allUserIds);
+
+        (users || []).forEach((u: any) => { usersMap[u.id] = u; });
+        (profiles || []).forEach((p: any) => { profilesMap[p.user_id] = p; });
+      }
+
+      const enrichedIncoming = (incoming || []).map((r: any) => {
+        const u = usersMap[r.sender_user_id];
+        const p = profilesMap[r.sender_user_id];
+        return {
+          id: r.id,
+          sender_user_id: r.sender_user_id,
+          sender_name: u?.full_name || 'عدل مسجل',
+          sender_cin: p?.cin || null,
+          sender_court: p?.primary_court || null,
+          sender_decree: p?.appointment_decree_number || null,
+          sender_phone: p?.phone || null,
+          sender_photo: p?.profile_picture_url || u?.profile_picture_url || null,
+          message: r.message,
+          created_at: r.created_at,
+        };
+      });
+
+      const enrichedOutgoing = (outgoing || []).map((r: any) => {
+        const u = usersMap[r.recipient_user_id];
+        const p = profilesMap[r.recipient_user_id];
+        return {
+          id: r.id,
+          recipient_user_id: r.recipient_user_id,
+          recipient_name: u?.full_name || 'عدل مسجل',
+          recipient_court: p?.primary_court || null,
+          message: r.message,
+          created_at: r.created_at,
+        };
+      });
+
+      return {
+        incoming: enrichedIncoming,
+        outgoing: enrichedOutgoing,
+      };
+    }),
+
+  /**
+   * Respond to partnership request (ACCEPT creates bilateral mutual partnership)
+   */
+  respondToPartnershipRequest: publicProcedure
+    .input(z.object({
+      sessionToken: z.string(),
+      requestId: z.string().uuid(),
+      action: z.enum(['ACCEPT', 'REJECT']),
+    }))
+    .mutation(async ({ input }) => {
+      const { sessionToken, requestId, action } = input;
+
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('user_id')
+        .eq('session_token', sessionToken)
+        .single();
+
+      if (!session) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
+      }
+
+      const { data: req } = await supabase
+        .from('notary_partnership_requests')
+        .select('*')
+        .eq('id', requestId)
+        .eq('recipient_user_id', session.user_id)
+        .eq('status', 'PENDING')
+        .single();
+
+      if (!req) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'طلب الشراكة غير موجود أو تم البت فيه' });
+      }
+
+      if (action === 'REJECT') {
+        await supabase
+          .from('notary_partnership_requests')
+          .update({ status: 'REJECTED', responded_at: new Date().toISOString() })
+          .eq('id', requestId);
+        return { success: true, status: 'REJECTED' };
+      }
+
+      // ACCEPT: Mutual partnership
+      const { data: recipientProfile } = await supabase
+        .from('notary_profiles')
+        .select('id, user_id')
+        .eq('user_id', session.user_id)
+        .single();
+
+      if (!recipientProfile) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'ملف العدل الحالي غير موجود' });
+      }
+
+      const { data: senderUser } = await supabase
+        .from('users')
+        .select('id, full_name, email')
+        .eq('id', req.sender_user_id)
+        .single();
+
+      const { data: recipientUser } = await supabase
+        .from('users')
+        .select('id, full_name, email')
+        .eq('id', session.user_id)
+        .single();
+
+      const { data: senderProf } = await supabase
+        .from('notary_profiles')
+        .select('phone')
+        .eq('user_id', req.sender_user_id)
+        .maybeSingle();
+
+      const { data: recipientProf } = await supabase
+        .from('notary_profiles')
+        .select('phone')
+        .eq('user_id', session.user_id)
+        .maybeSingle();
+
+      const pairingId = crypto.randomUUID();
+
+      const { count: countA } = await supabase
+        .from('notary_partners')
+        .select('id', { count: 'exact', head: true })
+        .eq('notary_profile_id', req.sender_profile_id)
+        .neq('status', 'TERMINATED');
+
+      const { count: countB } = await supabase
+        .from('notary_partners')
+        .select('id', { count: 'exact', head: true })
+        .eq('notary_profile_id', recipientProfile.id)
+        .neq('status', 'TERMINATED');
+
+      const orderA = Math.min(4, (countA || 0) + 1);
+      const orderB = Math.min(4, (countB || 0) + 1);
+
+      // Insert for Sender (Notary A has Notary B as partner)
+      const { error: insErrA } = await supabase
+        .from('notary_partners')
+        .insert({
+          notary_profile_id: req.sender_profile_id,
+          partner_user_id: session.user_id,
+          partner_name: recipientUser?.full_name || 'عدل شريك',
+          contact_info: recipientProf?.phone || recipientUser?.email || null,
+          position_order: orderA,
+          is_available: true,
+          status: 'ACTIVE',
+          pairing_id: pairingId,
+          inviter_user_id: req.sender_user_id,
+        });
+
+      if (insErrA) {
+        console.error('Failed to insert partner record for sender:', insErrA);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: insErrA.message || 'فشل في حفظ بيانات الشريك الأول' });
+      }
+
+      // Insert for Recipient (Notary B has Notary A as partner)
+      const { error: insErrB } = await supabase
+        .from('notary_partners')
+        .insert({
+          notary_profile_id: recipientProfile.id,
+          partner_user_id: req.sender_user_id,
+          partner_name: senderUser?.full_name || 'عدل شريك',
+          contact_info: senderProf?.phone || senderUser?.email || null,
+          position_order: orderB,
+          is_available: true,
+          status: 'ACTIVE',
+          pairing_id: pairingId,
+          inviter_user_id: req.sender_user_id,
+        });
+
+      if (insErrB) {
+        console.error('Failed to insert partner record for recipient:', insErrB);
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: insErrB.message || 'فشل في حفظ بيانات الشريك الثاني' });
+      }
+
+      // Mark request as accepted
+      await supabase
+        .from('notary_partnership_requests')
+        .update({ status: 'ACCEPTED', responded_at: new Date().toISOString() })
+        .eq('id', requestId);
+
+      return { success: true, status: 'ACCEPTED', pairingId };
+    }),
+
+  /**
+   * Cancel an outgoing partnership request
+   */
+  cancelPartnershipRequest: publicProcedure
+    .input(z.object({
+      sessionToken: z.string(),
+      requestId: z.string().uuid(),
+    }))
+    .mutation(async ({ input }) => {
+      const { sessionToken, requestId } = input;
+
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('user_id')
+        .eq('session_token', sessionToken)
+        .single();
+
+      if (!session) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
+      }
+
+      await supabase
+        .from('notary_partnership_requests')
+        .update({ status: 'CANCELLED' })
+        .eq('id', requestId)
+        .eq('sender_user_id', session.user_id)
+        .eq('status', 'PENDING');
+
+      return { success: true };
+    }),
+
+  /**
+   * Terminate a mutual partnership
+   */
+  terminatePartnership: publicProcedure
+    .input(z.object({
+      sessionToken: z.string(),
+      partnerId: z.string().uuid(),
+    }))
+    .mutation(async ({ input }) => {
+      const { sessionToken, partnerId } = input;
+
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('user_id')
+        .eq('session_token', sessionToken)
+        .single();
+
+      if (!session) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'جلسة غير صالحة' });
+      }
+
+      const { data: partner } = await supabase
+        .from('notary_partners')
+        .select('id, pairing_id, notary_profile_id')
+        .eq('id', partnerId)
+        .single();
+
+      if (!partner) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'الشريك غير موجود' });
+      }
+
+      if (partner.pairing_id) {
+        await supabase
+          .from('notary_partners')
+          .update({ status: 'TERMINATED', is_available: false })
+          .eq('pairing_id', partner.pairing_id);
+      } else {
+        await supabase
+          .from('notary_partners')
+          .update({ status: 'TERMINATED', is_available: false })
+          .eq('id', partnerId);
+      }
+
+      return { success: true };
     }),
 });

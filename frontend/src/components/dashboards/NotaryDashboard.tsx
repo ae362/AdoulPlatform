@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Loader2, Check, X } from 'lucide-react';
+import { Pencil, Loader2, Check, X, UserPlus, Clock, Trash2, ShieldCheck, Users } from 'lucide-react';
 import { trpc } from '../../trpc';
+import { RegisteredNotaryPickerModal, RegisteredNotaryItem } from '../../pages/NotarySigningPortal/components/RegisteredNotaryPickerModal';
 
 export const NotaryDashboard: React.FC = () => {
   const { user, notaryProfile, logout, sessionToken } = useAuth();
@@ -21,11 +22,11 @@ export const NotaryDashboard: React.FC = () => {
   });
   const [showPrimaryCourtSearch, setShowPrimaryCourtSearch] = useState(false);
   
-  // Partner management state
-  const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
-  const [editingPartnerName, setEditingPartnerName] = useState('');
-  const [newPartner, setNewPartner] = useState({ partner_name: '', contact_info: '', position_order: 1 });
-  const [showAddPartner, setShowAddPartner] = useState(false);
+  // Registered Notary Partnership & Accompany state
+  const [showRegisteredPicker, setShowRegisteredPicker] = useState(false);
+  const [selectedNotaryToInvite, setSelectedNotaryToInvite] = useState<RegisteredNotaryItem | null>(null);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState('طلب مرافقة وتضمين مهني بين عدلين');
 
   // tRPC hooks
   const { data: appellateCourts } = trpc.auth.getAppellateCourts.useQuery(undefined);
@@ -39,15 +40,24 @@ export const NotaryDashboard: React.FC = () => {
   );
   const updateProfileMutation = trpc.auth.updateNotaryProfile.useMutation();
 
-  // Partners management
+  // Partners & Requests management
   const { data: partners, refetch: refetchPartners } = trpc.auth.getNotaryPartners.useQuery(
     { sessionToken: sessionToken || '' },
     { enabled: !!sessionToken }
   );
+  const { data: partnershipRequests, refetch: refetchRequests } = trpc.auth.listPartnershipRequests.useQuery(
+    { sessionToken: sessionToken || '' },
+    { enabled: !!sessionToken, refetchInterval: 8000 }
+  );
+
+  const incomingRequests = partnershipRequests?.incoming || [];
+  const outgoingRequests = partnershipRequests?.outgoing || [];
+
   const updatePartnerAvailabilityMutation = trpc.auth.updatePartnerAvailability.useMutation();
-  const addPartnerMutation = trpc.auth.addNotaryPartner.useMutation();
-  const updatePartnerMutation = trpc.auth.updateNotaryPartner.useMutation();
-  const deletePartnerMutation = trpc.auth.deleteNotaryPartner.useMutation();
+  const sendPartnershipRequestMutation = trpc.auth.sendPartnershipRequest.useMutation();
+  const respondPartnershipRequestMutation = trpc.auth.respondToPartnershipRequest.useMutation();
+  const cancelPartnershipRequestMutation = trpc.auth.cancelPartnershipRequest.useMutation();
+  const terminatePartnershipMutation = trpc.auth.terminatePartnership.useMutation();
 
   const primaryCourts = React.useMemo(() => {
     console.log('primaryCourtsData state:', primaryCourtsData);
@@ -96,8 +106,8 @@ export const NotaryDashboard: React.FC = () => {
           description: notaryProfile.description || '',
         });
       }
-      setShowAddPartner(false);
-      setEditingPartnerId(null);
+      setShowRegisteredPicker(false);
+      setInviteModalOpen(false);
     }
   };
 
@@ -204,73 +214,76 @@ export const NotaryDashboard: React.FC = () => {
     }
   };
 
-  const handleAddPartner = async () => {
+  const handleSelectNotaryToInvite = (notary: RegisteredNotaryItem) => {
+    setShowRegisteredPicker(false);
+    setSelectedNotaryToInvite(notary);
+    setInviteModalOpen(true);
+  };
+
+  const handleSendInvite = async () => {
+    if (!sessionToken || !selectedNotaryToInvite) return;
     try {
-      if (!sessionToken) {
-        alert('جلسة غير صالحة');
-        return;
-      }
-
-      await addPartnerMutation.mutateAsync({
+      await sendPartnershipRequestMutation.mutateAsync({
         sessionToken,
-        partner_name: newPartner.partner_name,
-        contact_info: newPartner.contact_info || undefined,
-        position_order: newPartner.position_order,
+        recipientNotaryUserId: selectedNotaryToInvite.id,
+        message: inviteMessage,
       });
-
-      setNewPartner({ partner_name: '', contact_info: '', position_order: 1 });
-      setShowAddPartner(false);
-      refetchPartners();
-      alert('تم إضافة الشريك بنجاح');
-    } catch (error: any) {
-      alert('فشل في إضافة الشريك: ' + (error.message || 'خطأ غير معروف'));
+      setInviteModalOpen(false);
+      setSelectedNotaryToInvite(null);
+      await refetchRequests();
+      alert(`تم إرسال طلب المضاممة بنجاح للأستاذ ${selectedNotaryToInvite.fullName}`);
+    } catch (err: any) {
+      alert(err?.message || 'تعذر إرسال طلب المضاممة');
     }
   };
 
-  const handleDeletePartner = async (partnerId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الشريك؟')) return;
-
+  const handleRespondToRequest = async (requestId: string, action: 'ACCEPT' | 'REJECT') => {
+    if (!sessionToken) return;
     try {
-      if (!sessionToken) {
-        alert('جلسة غير صالحة');
-        return;
+      await respondPartnershipRequestMutation.mutateAsync({
+        sessionToken,
+        requestId,
+        action,
+      });
+      await refetchRequests();
+      await refetchPartners();
+      if (action === 'ACCEPT') {
+        alert('تهانينا! تم قبول الشراكة بنجاح، وأصبحتم الآن شريكين متبادلين في المنصة.');
+      } else {
+        alert('تم رفض طلب الشراكة.');
       }
+    } catch (err: any) {
+      alert(err?.message || 'تعذر تنفيذ الإجراء');
+    }
+  };
 
-      await deletePartnerMutation.mutateAsync({
+  const handleCancelRequest = async (requestId: string) => {
+    if (!sessionToken) return;
+    try {
+      await cancelPartnershipRequestMutation.mutateAsync({
+        sessionToken,
+        requestId,
+      });
+      await refetchRequests();
+    } catch (err: any) {
+      alert(err?.message || 'تعذر إلغاء الطلب');
+    }
+  };
+
+  const handleTerminatePartner = async (partnerId: string, partnerName: string) => {
+    if (!confirm(`هل أنت متأكد من إنهاء الشراكة والمضاممة المهنية مع الأستاذ ${partnerName}؟ سيتم فك الارتباط من كلا الحسابين.`)) {
+      return;
+    }
+    if (!sessionToken) return;
+    try {
+      await terminatePartnershipMutation.mutateAsync({
         sessionToken,
         partnerId,
       });
-
-      refetchPartners();
-      alert('تم حذف الشريك بنجاح');
-    } catch (error: any) {
-      alert('فشل في حذف الشريك: ' + (error.message || 'خطأ غير معروف'));
-    }
-  };
-
-  const handleStartEditPartner = (partner: any) => {
-    setEditingPartnerId(partner.id);
-    setEditingPartnerName(partner.partner_name);
-  };
-
-  const handleCancelEditPartner = () => {
-    setEditingPartnerId(null);
-    setEditingPartnerName('');
-  };
-
-  const handleSavePartnerName = async (partner: any) => {
-    if (!sessionToken || !editingPartnerName.trim()) return;
-    try {
-      await updatePartnerMutation.mutateAsync({
-        sessionToken,
-        partnerId: partner.id,
-        partner_name: editingPartnerName.trim(),
-      });
-      setEditingPartnerId(null);
-      setEditingPartnerName('');
-      refetchPartners();
-    } catch (error: any) {
-      alert('فشل في تعديل اسم الشريك: ' + (error.message || 'خطأ غير معروف'));
+      await refetchPartners();
+      alert('تم إنهاء الشراكة المهنية بنجاح.');
+    } catch (err: any) {
+      alert(err?.message || 'تعذر إنهاء الشراكة');
     }
   };
 
@@ -590,21 +603,110 @@ export const NotaryDashboard: React.FC = () => {
             </div>
 
             {/* Partners Card with Premium Switch */}
-            <div className="bg-white rounded-[44px] shadow-2xl shadow-slate-200/40 border border-slate-100 p-10 overflow-hidden relative">
-              <div className="flex items-center justify-between mb-8 flex-row-reverse border-b border-slate-100 pb-4">
-                 <h3 className="text-xl font-black text-slate-800 font-maghribi">الشركاء المهنيون</h3>
-                 <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
-                 </div>
+            <div className="bg-white rounded-[44px] shadow-2xl shadow-slate-200/40 border border-slate-100 p-8 sm:p-10 overflow-hidden relative">
+              <div className="flex items-center justify-between mb-6 flex-row-reverse border-b border-slate-100 pb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-black text-slate-800 font-maghribi">الشركاء المهنيون</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegisteredPicker(true)}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-red-950 to-red-900 hover:from-red-900 hover:to-red-800 text-[#E6BE8A] text-xs font-black rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5"
+                    title="طلب مضاممة لعدل مسجل بالمنصة"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>طلب مضاممة لعدل زميل</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">نشط الآن</span>
+                </div>
               </div>
 
+              {/* Incoming Partnership Requests Banner */}
+              {incomingRequests.length > 0 && (
+                <div className="mb-6 space-y-3 animate-in fade-in duration-300">
+                  <div className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span>طلبات المضاممة المهنية الواردة ({incomingRequests.length})</span>
+                  </div>
+                  {incomingRequests.map((req: any) => (
+                    <div key={req.id} className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-xs space-y-3 text-right">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center font-black text-base shadow-xs">
+                            ⚖️
+                          </div>
+                          <div>
+                            <div className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                              <span>الأستاذ {req.sender_name}</span>
+                              <span className="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] rounded-full font-bold">طلب شراكة</span>
+                            </div>
+                            <div className="text-[11px] text-slate-600 mt-0.5">
+                              {req.sender_court && <span>المحكمة: {req.sender_court} | </span>}
+                              {req.sender_decree && <span>قرار: {req.sender_decree}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {req.message && (
+                        <p className="text-xs text-slate-600 bg-white/80 p-2.5 rounded-xl border border-amber-200/60 font-medium">
+                          "{req.message}"
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleRespondToRequest(req.id, 'ACCEPT')}
+                          disabled={respondPartnershipRequestMutation.isPending}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center justify-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>قبول الشراكة والمضاممة</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRespondToRequest(req.id, 'REJECT')}
+                          disabled={respondPartnershipRequestMutation.isPending}
+                          className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition"
+                        >
+                          رفض
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Outgoing Partnership Requests Status */}
+              {outgoingRequests.length > 0 && (
+                <div className="mb-5 space-y-2 text-right">
+                  {outgoingRequests.map((req: any) => (
+                    <div key={req.id} className="p-3 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs flex items-center justify-between text-blue-950">
+                      <div className="flex items-center gap-2 font-bold">
+                        <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>طلب مضاممة مرسل إلى الأستاذ {req.recipient_name} (في انتظار القبول...)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelRequest(req.id)}
+                        disabled={cancelPartnershipRequestMutation.isPending}
+                        className="text-[11px] text-red-600 hover:text-red-800 font-black hover:underline cursor-pointer"
+                      >
+                        إلغاء الطلب
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Active Partners List */}
               {partners && partners.length > 0 ? (
-                <div className="space-y-6">
-                  {partners.map((partner) => (
+                <div className="space-y-4">
+                  {partners.map((partner: any) => (
                     <div
                       key={partner.id}
-                      className="group flex items-center justify-between p-5 rounded-3xl bg-slate-50/50 border border-transparent hover:border-red-950/10 hover:bg-white hover:shadow-lg transition-all duration-300"
+                      className="group flex items-center justify-between p-4 sm:p-5 rounded-3xl bg-slate-50/70 border border-slate-100 hover:border-red-950/15 hover:bg-white hover:shadow-lg transition-all duration-300"
                     >
                       <label className="relative inline-flex items-center cursor-pointer scale-110">
                         <input 
@@ -615,83 +717,48 @@ export const NotaryDashboard: React.FC = () => {
                         />
                         <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-950"></div>
                       </label>
-                      {editingPartnerId === partner.id ? (
-                        <div className="text-right">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              value={editingPartnerName}
-                              onChange={(e) => setEditingPartnerName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSavePartnerName(partner);
-                                if (e.key === 'Escape') handleCancelEditPartner();
-                              }}
-                              autoFocus
-                              className="bg-white border border-red-950/30 focus:border-red-950 rounded-xl px-2.5 py-1 text-sm font-bold text-slate-900 outline-none shadow-sm w-32 sm:w-44"
-                              placeholder="اسم الشريك..."
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSavePartnerName(partner)}
-                              disabled={updatePartnerMutation.isPending}
-                              className="p-1.5 bg-red-950 text-[#E6BE8A] hover:bg-red-900 rounded-lg shadow-sm transition-all disabled:opacity-50"
-                              title="حفظ"
-                            >
-                              {updatePartnerMutation.isPending ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Check className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCancelEditPartner}
-                              disabled={updatePartnerMutation.isPending}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-all"
-                              title="إلغاء"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">موثق شريك</p>
+
+                      <div className="text-right flex-1 mx-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-base font-black text-slate-900">{partner.partner_name}</p>
+                          <span className="px-2.5 py-0.5 bg-red-100 text-red-950 text-[10px] rounded-full font-bold">
+                            {partner.is_registered ? 'عدل شريك معتمد' : 'موثق شريك'}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="text-right">
-                          <div className="flex items-center gap-2">
-                            <p className="text-base font-black text-slate-900">{partner.partner_name}</p>
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditPartner(partner)}
-                              className="opacity-70 group-hover:opacity-100 hover:scale-110 p-1 text-slate-400 hover:text-red-950 hover:bg-slate-200/60 rounded-lg transition-all"
-                              title="تعديل الاسم"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">موثق شريك</p>
+                        <div className="text-[11px] text-slate-500 font-bold mt-1">
+                          {partner.primary_court && <span>المحكمة: {partner.primary_court}</span>}
+                          {partner.appointment_decree_number && <span> | قرار التعيين: {partner.appointment_decree_number}</span>}
                         </div>
-                      )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTerminatePartner(partner.id, partner.partner_name)}
+                        disabled={terminatePartnershipMutation.isPending}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-700 hover:bg-red-50 p-2 rounded-xl transition cursor-pointer"
+                        title="إنهاء الشراكة والمضاممة المهنية"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
+
                   <div className="bg-gradient-to-br from-red-950 to-red-900 p-6 rounded-3xl text-center shadow-xl shadow-red-950/20">
                      <p className="text-[#E6BE8A] text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">
                         <span>التواجد الجماعي</span>
                      </p>
                      <p className="text-white font-black text-2xl">
-                        <span>{partners.filter(p => p.is_available).length}</span>
+                        <span>{partners.filter((p: any) => p.is_available).length}</span>
                         <span className="text-xs text-[#E6BE8A]/50 mx-2">/</span>
                         <span>{partners.length}</span>
                      </p>
                   </div>
                 </div>
               ) : (
-                <div className="py-10 text-center opacity-30">
-                   <span className="text-4xl block mb-2">
-                     <span>🤝</span>
-                   </span>
-                   <p className="text-xs font-black text-slate-500">
-                     <span>لا يوجد شركاء مسجلين</span>
-                   </p>
+                <div className="py-10 text-center opacity-40">
+                   <span className="text-4xl block mb-2">🤝</span>
+                   <p className="text-xs font-black text-slate-600">لا يوجد شركاء مسجلون حالياً</p>
+                   <p className="text-[11px] text-slate-400 mt-1">اضغط على «طلب مضاممة لعدل زميل» لإرسال طلب شراكة متبادلة</p>
                 </div>
               )}
             </div>
@@ -699,6 +766,74 @@ export const NotaryDashboard: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Invite Confirmation Modal */}
+      {inviteModalOpen && selectedNotaryToInvite && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-black text-slate-900">إرسال طلب مضاممة وشراكة مهنية</h3>
+              <button onClick={() => setInviteModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-red-50/70 border border-red-200/60 rounded-2xl flex items-center gap-3">
+                <span className="text-2xl">👤</span>
+                <div>
+                  <div className="font-black text-slate-900 text-sm">الأستاذ {selectedNotaryToInvite.fullName}</div>
+                  <div className="text-[11px] text-slate-600 mt-0.5">
+                    {selectedNotaryToInvite.primaryCourt && <span>المحكمة: {selectedNotaryToInvite.primaryCourt} | </span>}
+                    <span>ب.ت.و: {selectedNotaryToInvite.cin || 'غير متوفر'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">رسالة الطلب (اختيارية):</label>
+                <textarea
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="أدخل رسالة مرافقة للطلب..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none focus:border-red-950"
+                  rows={3}
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] space-y-1">
+                <p className="font-bold">⚖️ الشراكة المتبادلة في المنصة:</p>
+                <p>
+                  بمجرد قبول الأستاذ لهذا الطلب، سيصبح مسجلاً كعدل ثانٍ/شريك في حسابك، وستصبح أنت مسجلاً كعدل ثانٍ/شريك في حسابه بشكل تبادلي تلقائي.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSendInvite}
+                disabled={sendPartnershipRequestMutation.isPending}
+                className="flex-1 py-2.5 bg-red-950 hover:bg-red-900 text-[#E6BE8A] font-bold rounded-xl shadow-md transition"
+              >
+                {sendPartnershipRequestMutation.isPending ? 'جاري إرسال الطلب...' : 'إرسال طلب الشراكة'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registered Notary Picker */}
+      <RegisteredNotaryPickerModal
+        isOpen={showRegisteredPicker}
+        onClose={() => setShowRegisteredPicker(false)}
+        onSelectNotary={handleSelectNotaryToInvite}
+      />
     </div>
   );
 };

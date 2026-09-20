@@ -195,7 +195,8 @@ type ModuleKey =
   | 'individualReceptionPermission'
   | 'notaryNotifications'
   | 'workCertificatePortal'
-  | 'officeMovementPortal';
+  | 'officeMovementPortal'
+  | 'remoteSigning';
 
 const DASHBOARD_LABEL = 'لوحة التحكم';
 
@@ -258,7 +259,8 @@ const NAV_ITEMS: { key: ModuleKey | 'permissions' | 'administrative' | 'visitors
   { key: 'legalProcedures', label: NAV_LEGAL_PROCEDURES, icon: '⚖️' },
   { key: 'fees', label: 'تحرير الرسوم العدلية (سجل البيانات الالكتروني)', icon: '💰' },
   { key: 'auditHub', label: 'منصة التضمين والتدقيق', icon: '📝' },
-  { key: 'signedRasms', label: 'الرسوم الموقعة', icon: '✍️' },
+  { key: 'remoteSigning', label: 'التوقيع العدلي عن بعد', icon: '✍️' },
+  { key: 'signedRasms', label: 'الرسوم الموقعة', icon: '📑' },
   { key: 'savedDocuments', label: 'مكتبة الوثائق المحفوظة', icon: '📚' },
   { key: 'subscriptions', label: 'قسم الاشتراكات', icon: '🔔' },
   { key: 'statistics', label: NAV_STATISTICS, icon: '📈' },
@@ -347,7 +349,7 @@ function RouteLoader() {
 
 export function Layout({ initialModule = 'dashboard' }: { initialModule?: ModuleKey }) {
   const { i18n } = useTranslation();
-  const { user, notaryProfile } = useAuth();
+  const { user, notaryProfile, sessionToken } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const routeParams = useParams<{ id?: string }>();
@@ -356,6 +358,14 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
   const [adminExpanded, setAdminExpanded] = React.useState(false);
   const [visitorsExpanded, setVisitorsExpanded] = React.useState(false);
   const { unreadTotal, decisionsTotal, judgeRequestsTotal, judgePermissionsTotal, judgeAdlCopyPermissionsTotal, permissionsCounts, adminCounts, notaryNotificationsTotal, unseenCopyRequestsTotal } = useMessagingNotifications();
+
+  const { data: mySigningTasksData } = trpc.feesAgent.documents.listMySigningTasks.useQuery(
+    { sessionToken: sessionToken || '' },
+    { enabled: !!sessionToken && user?.role === 'notary', refetchInterval: 12000 }
+  );
+  const pendingRemoteSigningCount = Array.isArray(mySigningTasksData)
+    ? mySigningTasksData.filter((t: any) => t?.status === 'PENDING_SECOND_NOTARY').length
+    : 0;
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
 
@@ -500,6 +510,8 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
         return <JudicialFeesPermissionPortal />;
       case 'individualReceptionPermission':
         return <IndividualReceptionPermissionPortal />;
+      case 'remoteSigning':
+        return <NotarySigningPortal initialTab="signing_tasks" />;
       default:
         if (user?.role === 'notary') return <NotaryDashboard />;
         return <Dashboard />;
@@ -729,6 +741,10 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
                   {item.key === 'messages' && unreadTotal > 0 ? (
                     <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-black text-white shadow-sm ring-2 ring-white/20 flex-shrink-0">
                       <span>{unreadTotal}</span>
+                    </span>
+                  ) : item.key === 'remoteSigning' && pendingRemoteSigningCount > 0 ? (
+                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-slate-950 shadow-sm ring-2 ring-amber-300 flex-shrink-0 animate-pulse">
+                      <span>{pendingRemoteSigningCount}</span>
                     </span>
                   ) : null}
                 </span>
@@ -1298,6 +1314,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['notary', 'judge']}>
                     <NotarySigningPortal />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/remote-signing" 
+                element={
+                  <ProtectedRoute allowedRoles={['notary', 'judge']}>
+                    <NotarySigningPortal initialTab="signing_tasks" />
                   </ProtectedRoute>
                 } 
               />

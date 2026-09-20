@@ -5,10 +5,16 @@ export interface MoroccanCINExtractionResult {
   rawText: string;
   extractedFields: {
     name?: string;
+    nameLatin?: string;
     idNumber?: string;
     idIssueDate?: string;
     idExpiryDate?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    fatherName?: string;
+    motherName?: string;
     nationality?: string;
+    address?: string;
   };
   confidence: number;
   errors: string[];
@@ -208,66 +214,365 @@ export class OCRService {
   }
 
   /**
+   * Moroccan First and Last Names Dictionaries for Transliteration
+   */
+  private static readonly MOROCCAN_FIRST_NAMES_MAP: Record<string, string> = {
+    'MOHAMMED': 'محمد', 'MOHAMED': 'محمد', 'AHMED': 'أحمد', 'YOUSSEF': 'يوسف',
+    'HAMZA': 'حمزة', 'FATIMA': 'فاطمة', 'KHADIJA': 'خديجة', 'AICHA': 'عائشة',
+    'MERIEM': 'مريم', 'MARYAM': 'مريم', 'MERYEM': 'مريم', 'HASSAN': 'حسن',
+    'HOUCINE': 'حسين', 'HOUSSEIN': 'حسين', 'OMAR': 'عمر', 'ALI': 'علي',
+    'ABDELKRIM': 'عبد الكريم', 'ABDELILAH': 'عبد الإله', 'ABDELLAH': 'عبد الله',
+    'ABDERRAHMAN': 'عبد الرحمان', 'ABDERRAHIM': 'عبد الرحيم', 'ABDELALI': 'عبد العالي',
+    'ABDELAZIZ': 'عبد العزيز', 'ABDELLATIF': 'عبد اللطيف', 'ABDELKADER': 'عبد القادر',
+    'ABDELMAJID': 'عبد المجيد', 'ABDELHAK': 'عبد الحق', 'ABDELOUAHED': 'عبد الواحد',
+    'ABDELSALAM': 'عبد السلام', 'ABDELWAHED': 'عبد الواحد', 'ABDESSAMAD': 'عبد الصمد',
+    'ABDELOUAHAB': 'عبد الوهاب', 'MUSTAPHA': 'مصطفى', 'MOUSTAPHA': 'مصطفى',
+    'RACHID': 'رشيد', 'TARIK': 'طارق', 'TARIQ': 'طارق', 'KHALID': 'خالد',
+    'SAID': 'سعيد', 'AMINE': 'أمين', 'AMIN': 'أمين', 'ANAS': 'أنس',
+    'MEHDI': 'المهدي', 'ZINEB': 'زينب', 'SOUKAYNA': 'سكينة', 'SOUKAINA': 'سكينة',
+    'SALMA': 'سلمى', 'IMANE': 'إيمان', 'SOUAD': 'سعاد', 'NAIMA': 'نعيمة',
+    'SAMIRA': 'سميرة', 'HOUDA': 'هدى', 'SARA': 'سارة', 'SARAH': 'سارة',
+    'IKRAM': 'إكرام', 'ILHAM': 'إلهام', 'HANANE': 'حنان', 'LOUBNA': 'لبنى',
+    'SANAE': 'سناء', 'SANAA': 'سناء', 'ASMAE': 'أسماء', 'ASMAA': 'أسماء',
+    'SIHAM': 'سهام', 'NADIA': 'نادية', 'BOUCHRA': 'بشرى', 'NAOUAL': 'نوال',
+    'NAWAL': 'نوال', 'LAILA': 'ليلى', 'LAYLA': 'ليلى', 'GHITA': 'غيثة',
+    'KENZA': 'كنزة', 'HAFSA': 'حفصة', 'ASSIA': 'آسية', 'HIND': 'هند',
+    'MANAL': 'منال', 'KAOUTAR': 'كوثر', 'ZOUHAIR': 'زهير', 'BILAL': 'بلال',
+    'AYOUB': 'أيوب', 'OTHMANE': 'عثمان', 'OTMANE': 'عثمان', 'ISMAIL': 'إسماعيل',
+    'ZAKARIA': 'زكرياء', 'YASSINE': 'ياسين', 'YASSIR': 'ياسر', 'BADR': 'بدر',
+    'REDOUANE': 'رضوان', 'RIDOUANE': 'رضوان', 'KARIM': 'كريم', 'JAMAL': 'جمال',
+    'KAMAL': 'كمال', 'ADIL': 'عادل', 'FARID': 'فريد', 'HICHAM': 'هشام',
+    'WALID': 'وليد', 'OUALID': 'وليد', 'NABIL': 'نبيل', 'AZIZ': 'عزيز',
+    'DRISS': 'إدريس', 'TAHA': 'طه', 'JAOUAD': 'جواد', 'JAWAD': 'جواد',
+    'FOUAD': 'فؤاد', 'MONCEF': 'منصف', 'SIMOHAMED': 'سي محمد', 'SI MOHAMED': 'سي محمد',
+    'ABDELFATTAH': 'عبد الفتاح', 'MOHSINE': 'محسن', 'MOUNCIF': 'منصف',
+    'REDA': 'رضا', 'AYMAN': 'أيمن', 'AYMANE': 'أيمن', 'MAROUANE': 'مروان',
+    'MARWANE': 'مروان', 'SOFIANE': 'سفيان', 'SOUFIANE': 'سفيان', 'ILYES': 'إلياس',
+    'ILYAS': 'إلياس', 'ILIAS': 'إلياس', 'ILYASS': 'إلياس', 'BRAHIM': 'إبراهيم',
+    'IBRAHIM': 'إبراهيم', 'OUSSAMA': 'أسامة', 'ACHRAF': 'أشرف', 'ANWAR': 'أنور',
+    'ANOUAR': 'أنور', 'MOUNA': 'منى', 'MOUNIA': 'منية', 'HASNA': 'حسناء',
+    'HASNAE': 'حسناء', 'CHAIMAE': 'شيماء', 'CHAIMA': 'شيماء', 'DOUAE': 'دعاء',
+    'DOUNIA': 'دنيا', 'RABAB': 'رباب', 'RAJAE': 'رجاء', 'NAJAT': 'نجاة',
+    'LATIFA': 'لطيفة', 'MALIKA': 'مليكة', 'AMINA': 'أمينة', 'SAMIA': 'سامية',
+    'KHOLOUD': 'خلود', 'NIHAD': 'نهاد', 'RIHAM': 'ريهام', 'SAFAE': 'صفاء',
+    'SAFAA': 'صفاء', 'WAFAE': 'وفاء', 'WAFAA': 'وفاء', 'NAJOUA': 'نجوى',
+    'NAJWA': 'نجوى', 'FATIMA ZAHRA': 'فاطمة الزهراء', 'FATIMA-ZAHRA': 'فاطمة الزهراء',
+    'FATIMA EZZAHRA': 'فاطمة الزهراء', 'MOHAMMED AMINE': 'محمد أمين',
+    'MOHAMED AMINE': 'محمد أمين',
+  };
+
+  private static readonly MOROCCAN_LAST_NAMES_MAP: Record<string, string> = {
+    'ALAOUI': 'العلوي', 'ALAMI': 'العلمي', 'IDRISSI': 'الإدريسي', 'BENJELLOUN': 'بن جلون',
+    'BENKIRANE': 'بن كيران', 'BENNANI': 'بناني', 'BENANI': 'بناني', 'BERRADA': 'برادة',
+    'CHRAIBI': 'الشرايبي', 'FASSI': 'الفاسي', 'FILALI': 'الفيلالي', 'KABBAJ': 'القباج',
+    'LAHLOU': 'لحلو', 'SQALLI': 'الصقلي', 'SKALLI': 'الصقلي', 'TAZI': 'التازي',
+    'AMRANI': 'العمراني', 'MANSOURI': 'المنصوري', 'HASSANI': 'الحسني', 'SADIKI': 'الصديقي',
+    'OUAZZANI': 'الوزاني', 'SLIMANI': 'السليماني', 'JAAFARI': 'الجعفري', 'KHALIFI': 'الخليفي',
+    'MRABET': 'المرابط', 'CHAKIR': 'شاكر', 'KADIRI': 'القادري', 'DAOUDI': 'الداودي',
+    'BAHI': 'باهي', 'NACIRI': 'الناصري', 'YAAKOUBI': 'اليعقوبي', 'KHALIL': 'خليل',
+    'SABRI': 'صبري', 'ZAHIR': 'ظاهر', 'TAHIRI': 'الطاهري', 'ANDALOUSSI': 'الأندلسي',
+    'AZZOUZI': 'العزوزي', 'BELKACEM': 'بلقاسم', 'BENALI': 'بن علي', 'BENSAID': 'بنسعيد',
+    'BOUCHIKHI': 'بوشيخي', 'BOUKHALFA': 'بوخالفة', 'CHAOUKI': 'شوقي', 'CHERKAOUI': 'الشرقاوي',
+    'HAKIMI': 'حكيمي', 'HAMDAOUI': 'الحمداوي', 'HARRAK': 'الحراق', 'IBRAHIMI': 'الإبراهيمي',
+    'JABRI': 'الجابري', 'KARKOURI': 'القرقوري', 'LAAROUSSI': 'العروسي', 'MAAROUFI': 'المعروفي',
+    'MAHJOUBI': 'المحجوبي', 'MARZOUK': 'مرزوق', 'MARZOUKI': 'مرزوقي', 'MESKINI': 'المسكيني',
+    'MOKHTARI': 'المختاري', 'MOUTAOUAKKIL': 'المتوكل', 'NAJAH': 'نجاح', 'OUALI': 'الوالي',
+    'OUFKIR': 'أوفقير', 'RAHMANI': 'الرحماني', 'SAADI': 'السعدي', 'SBAI': 'السباعي',
+    'SEKKAT': 'السقاط', 'TABIT': 'ثابت', 'TALBI': 'الطلبي', 'TOUIMI': 'التويمي', 'ZOUITEN': 'زويتن',
+    'EL AMRANI': 'العمراني', 'EL IDRISSI': 'الإدريسي', 'BEN JELLOUN': 'بن جلون', 'EL ALAMI': 'العلمي',
+    'EL FASSI': 'الفاسي', 'EL FILALI': 'الفيلالي', 'EL TAZI': 'التازي', 'EL MANSOURI': 'المنصوري',
+    'RAFIK': 'رفيق', 'JILALI': 'الجيلالي', 'RHANEM': 'غانم', 'GHANEM': 'غانم',
+    'ZOUHIR': 'زهير', 'KANDIL': 'قنديل', 'HADDAD': 'الحداد', 'EL HADDAD': 'الحداد',
+    'AZAMI': 'العزمي', 'BOUZIANE': 'بوزيان', 'CHOUKRI': 'شكري', 'DERKAOUI': 'الدرقاوي',
+    'DRISSI': 'الدريسي', 'ENNAJI': 'الناجي', 'FAHMI': 'فهمي', 'GHARBI': 'الغربي',
+    'HAFID': 'حفيظ', 'JAOUHARI': 'الجوهري', 'LAMRANI': 'العمراني', 'LOUKILI': 'اللوكيلي',
+    'MEZIANE': 'مزيان', 'MOFID': 'مفيد', 'NADIR': 'نادر', 'OMARI': 'العماري',
+    'QURAICHI': 'القريشي', 'RADI': 'راضي', 'SABIR': 'صابر', 'TALEB': 'طالب',
+    'WAHBI': 'وهبي', 'YOUSFI': 'يوسفي', 'ZIANI': 'زياني', 'ZAHRAOUI': 'الزهراوي',
+    'ABOULKACEM': 'أبو القاسم', 'BELHAJ': 'بلحاج', 'BENCHEIKH': 'بن الشيخ',
+    'BENNOUNA': 'بنونة', 'BOUANANI': 'البوعناني', 'CHAFII': 'الشافعي',
+    'EL GHAZI': 'الغازي', 'GHAZI': 'الغازي', 'GUERRAOUI': 'الكراوي',
+    'KETTANI': 'الكتاني', 'MOUDDEN': 'المودن', 'SEBTI': 'السبتي',
+    'ZENTAR': 'الزنطار', 'ZEROUAL': 'زروال', 'ZNATI': 'الزناتي',
+  };
+
+  private static readonly ARABIC_TO_LATIN_MAP: Record<string, string> = (() => {
+    const map: Record<string, string> = {};
+    for (const [lat, ar] of Object.entries(OCRService.MOROCCAN_FIRST_NAMES_MAP)) {
+      if (!map[ar]) map[ar] = lat;
+    }
+    for (const [lat, ar] of Object.entries(OCRService.MOROCCAN_LAST_NAMES_MAP)) {
+      if (!map[ar]) map[ar] = lat;
+    }
+    return map;
+  })();
+
+  private static readonly ARABIC_CHAR_TO_LATIN: Record<string, string> = {
+    'ا': 'A', 'أ': 'A', 'إ': 'I', 'آ': 'A', 'ء': '', 'ئ': 'E', 'ؤ': 'O',
+    'ب': 'B', 'ت': 'T', 'ث': 'TH', 'ج': 'J', 'ح': 'H', 'خ': 'KH',
+    'د': 'D', 'ذ': 'DH', 'ر': 'R', 'ز': 'Z', 'س': 'S', 'ش': 'CH',
+    'ص': 'S', 'ض': 'D', 'ط': 'T', 'ظ': 'DH', 'ع': 'A', 'غ': 'GH',
+    'ف': 'F', 'ق': 'Q', 'ك': 'K', 'ل': 'L', 'م': 'M', 'ن': 'N',
+    'ه': 'H', 'ة': 'A', 'و': 'OU', 'ي': 'I', 'ى': 'A',
+  };
+
+  /**
+   * Transliterate Arabic Full Name to Latin script
+   */
+  private transliterateArabicToLatinFullName(arabicName: string): string {
+    if (!arabicName) return '';
+    const trimmed = arabicName.trim();
+    if (OCRService.ARABIC_TO_LATIN_MAP[trimmed]) return OCRService.ARABIC_TO_LATIN_MAP[trimmed];
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const latinWords = words.map((w) => {
+      if (OCRService.ARABIC_TO_LATIN_MAP[w]) return OCRService.ARABIC_TO_LATIN_MAP[w];
+      if (w.startsWith('ال') && w.length > 2) {
+        const rest = w.slice(2);
+        if (OCRService.ARABIC_TO_LATIN_MAP[rest]) return 'EL ' + OCRService.ARABIC_TO_LATIN_MAP[rest];
+      }
+      if (w.startsWith('بن') && w.length > 2) {
+        const rest = w.slice(2);
+        if (OCRService.ARABIC_TO_LATIN_MAP[rest]) return 'BEN ' + OCRService.ARABIC_TO_LATIN_MAP[rest];
+      }
+      return Array.from(w).map((c) => OCRService.ARABIC_CHAR_TO_LATIN[c] || '').join('');
+    });
+
+    return latinWords.join(' ').trim();
+  }
+
+  /**
+   * Transliterate a single Latin word to Arabic using Moroccan onomastic rules
+   */
+  private transliterateWord(word: string): string {
+    const upper = word.toUpperCase().trim();
+    if (OCRService.MOROCCAN_FIRST_NAMES_MAP[upper]) return OCRService.MOROCCAN_FIRST_NAMES_MAP[upper];
+    if (OCRService.MOROCCAN_LAST_NAMES_MAP[upper]) return OCRService.MOROCCAN_LAST_NAMES_MAP[upper];
+
+    if (upper.startsWith('EL') && upper.length > 2) {
+      const rest = upper.slice(2).trim();
+      if (OCRService.MOROCCAN_LAST_NAMES_MAP[rest]) return 'ال' + OCRService.MOROCCAN_LAST_NAMES_MAP[rest].replace(/^ال/, '');
+    }
+    if (upper.startsWith('BEN') && upper.length > 3) {
+      const rest = upper.slice(3).trim();
+      if (OCRService.MOROCCAN_LAST_NAMES_MAP[rest]) return 'بن ' + OCRService.MOROCCAN_LAST_NAMES_MAP[rest];
+    }
+    if (upper.startsWith('AIT') && upper.length > 3) {
+      const rest = upper.slice(3).trim();
+      if (OCRService.MOROCCAN_FIRST_NAMES_MAP[rest] || OCRService.MOROCCAN_LAST_NAMES_MAP[rest]) {
+        return 'أيت ' + (OCRService.MOROCCAN_FIRST_NAMES_MAP[rest] || OCRService.MOROCCAN_LAST_NAMES_MAP[rest]);
+      }
+    }
+
+    return upper
+      .replace(/^EL/, 'ال')
+      .replace(/^AL/, 'ال')
+      .replace(/OU/g, 'و')
+      .replace(/CH/g, 'ش')
+      .replace(/KH/g, 'خ')
+      .replace(/GH/g, 'غ')
+      .replace(/TH/g, 'ث')
+      .replace(/DH/g, 'ذ')
+      .replace(/PH/g, 'ف')
+      .replace(/SH/g, 'ش')
+      .replace(/AA/g, 'عا')
+      .replace(/AI/g, 'عي')
+      .replace(/EE/g, 'ي')
+      .replace(/B/g, 'ب')
+      .replace(/T/g, 'ت')
+      .replace(/J/g, 'ج')
+      .replace(/H/g, 'ح')
+      .replace(/D/g, 'د')
+      .replace(/R/g, 'ر')
+      .replace(/Z/g, 'ز')
+      .replace(/S/g, 'س')
+      .replace(/F/g, 'ف')
+      .replace(/Q/g, 'ق')
+      .replace(/K/g, 'ك')
+      .replace(/L/g, 'ل')
+      .replace(/M/g, 'م')
+      .replace(/N/g, 'ن')
+      .replace(/W/g, 'و')
+      .replace(/Y/g, 'ي')
+      .replace(/A/g, 'ا')
+      .replace(/I/g, 'ي')
+      .replace(/O/g, 'و')
+      .replace(/U/g, 'و')
+      .replace(/E/g, '')
+      .trim();
+  }
+
+  /**
+   * Transliterate a full Moroccan Latin name to authentic Arabic script
+   */
+  private transliterateMoroccanFullName(fullName: string): string {
+    if (!fullName) return '';
+    const upper = fullName.trim().toUpperCase();
+    if (OCRService.MOROCCAN_FIRST_NAMES_MAP[upper]) return OCRService.MOROCCAN_FIRST_NAMES_MAP[upper];
+    if (OCRService.MOROCCAN_LAST_NAMES_MAP[upper]) return OCRService.MOROCCAN_LAST_NAMES_MAP[upper];
+
+    // Compound prefix / suffix matches (e.g. FATIMA ZAHRA EL AMRANI)
+    for (const [k, v] of Object.entries(OCRService.MOROCCAN_FIRST_NAMES_MAP)) {
+      if (k.includes(' ') && upper.startsWith(k)) {
+        const rest = upper.slice(k.length).trim();
+        return `${v} ${this.transliterateMoroccanFullName(rest)}`.trim();
+      }
+    }
+    for (const [k, v] of Object.entries(OCRService.MOROCCAN_LAST_NAMES_MAP)) {
+      if (k.includes(' ') && upper.endsWith(k)) {
+        const first = upper.slice(0, upper.length - k.length).trim();
+        return `${this.transliterateMoroccanFullName(first)} ${v}`.trim();
+      }
+    }
+
+    const words = fullName.trim().split(/\s+/).filter(Boolean);
+    return words.map((w) => this.transliterateWord(w)).join(' ');
+  }
+
+  /**
    * Parse extracted OCR text for Moroccan National Identity Card (CNIE) fields
    */
   private parseMoroccanCINText(text: string): {
     idNumber?: string;
     idIssueDate?: string;
     idExpiryDate?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
     name?: string;
+    nameLatin?: string;
+    fatherName?: string;
+    motherName?: string;
+    address?: string;
     nationality?: string;
     confidence: number;
   } {
     let idNumber: string | undefined;
     let idIssueDate: string | undefined;
     let idExpiryDate: string | undefined;
+    let dateOfBirth: string | undefined;
+    let placeOfBirth: string | undefined;
     let name: string | undefined;
+    let nameLatin: string | undefined;
+    let fatherName: string | undefined;
+    let motherName: string | undefined;
+    let address: string | undefined;
     let confidence = 0;
 
-    // 1. High-precision MRZ Match (ICAO 9303 TD1 - Moroccan Identity Card Back)
-    const mrzMatch = text.match(/IDMAR[\s\S]*?[<0-9]([A-Z0-9]{1,2}[0-9A-Z]{4,8})</i);
-    if (mrzMatch && mrzMatch[1]) {
-      const sanitized = this.sanitizeBlurryCIN(mrzMatch[1]);
-      if (sanitized) {
-        idNumber = sanitized;
-        confidence = 98;
+    const lines = text.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+
+    // =========================================================================
+    // 1. HIGH-PRECISION MRZ PARSING (ICAO 9303 TD1 - Moroccan Identity Card Back)
+    // =========================================================================
+    let mrzLine2Index = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const norm = line.replace(/[«‹\(\)\[\]\{\}\*_\-–\\/:]/g, '<').replace(/\s+/g, '<').toUpperCase();
+
+      // MRZ Line 1: IDMAR or I<MAR followed by CIN and filler '<' (or end of line)
+      if (!idNumber) {
+        const mrz1 = norm.match(/(?:I[<D]|ID|IA|1D|LD)?MAR<*([A-Z0-9]{1,2}[0-9A-Z]{4,8})(?:<|$|\s)/);
+        if (mrz1 && mrz1[1]) {
+          const cleanCin = mrz1[1].replace(/[^A-Za-z0-9]/g, '');
+          const scored = this.sanitizeBlurryCIN(cleanCin);
+          if (scored) {
+            idNumber = scored;
+            confidence = Math.max(confidence, 98);
+          }
+        }
+      }
+
+      // MRZ Line 2: DOB, Sex, Expiry, Nationality (e.g. 6401078M3102042MAR<<<<<<<<<<<4)
+      if (!idExpiryDate || !dateOfBirth) {
+        const mrz2 = norm.match(/(\d{6})<*(\d)?<*([MF<])<*(\d{6})<*(\d)?<*MAR/);
+        if (mrz2) {
+          mrzLine2Index = i;
+          try {
+            const dobRaw = mrz2[1];
+            const expRaw = mrz2[4];
+            const yDob = parseInt(dobRaw.slice(0, 2), 10);
+            const fullYDob = yDob > 30 ? 1900 + yDob : 2000 + yDob;
+            dateOfBirth = `${fullYDob}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}`;
+            idIssueDate = dateOfBirth;
+
+            const yExp = parseInt(expRaw.slice(0, 2), 10);
+            const fullYExp = 2000 + yExp;
+            idExpiryDate = `${fullYExp}-${expRaw.slice(2, 4)}-${expRaw.slice(4, 6)}`;
+            confidence = Math.max(confidence, 95);
+          } catch {
+            // ignore decode failure
+          }
+        }
       }
     }
 
-    // Decode MRZ Line 2 (DOB and Expiry) e.g. 7207185M3010231MAR
-    const mrzLine2 = text.match(/(\d{6})\d([MF])(\d{6})/);
-    if (mrzLine2) {
-      try {
-        const dobRaw = mrzLine2[1];
-        const expRaw = mrzLine2[3];
-        const yDob = parseInt(dobRaw.slice(0, 2), 10);
-        const fullYDob = yDob > 30 ? 1900 + yDob : 2000 + yDob;
-        idIssueDate = `${fullYDob}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}`;
+    // MRZ Line 3 Extraction (Position-aware: directly following Line 2)
+    if (mrzLine2Index !== -1 && mrzLine2Index + 1 < lines.length && !nameLatin) {
+      const nextLine = lines[mrzLine2Index + 1];
+      const normNext = nextLine
+        .replace(/[«‹\(\)\[\]\{\}\*_\-–\\/:]/g, '<')
+        .replace(/[\s\t]+/g, '<')
+        .replace(/[^A-Za-z<]/g, '')
+        .toUpperCase();
 
-        const yExp = parseInt(expRaw.slice(0, 2), 10);
-        const fullYExp = 2000 + yExp;
-        idExpiryDate = `${fullYExp}-${expRaw.slice(2, 4)}-${expRaw.slice(4, 6)}`;
-      } catch {
-        // ignore decode failure
+      const parts = normNext.split(/<<+/).filter(Boolean);
+      if (parts.length >= 2) {
+        const surname = parts[0].replace(/<+/g, ' ').trim();
+        const givenName = parts[1].replace(/<+/g, ' ').trim();
+        if (surname.length >= 2 && givenName.length >= 2) {
+          nameLatin = `${givenName} ${surname}`.trim();
+          confidence = Math.max(confidence, 96);
+        }
+      } else if (normNext.length >= 5) {
+        const cleaned = nextLine.replace(/[^A-Za-z\s]/g, ' ').trim();
+        const words = cleaned.split(/\s+/).filter((w) => w.length >= 2);
+        if (words.length >= 2) {
+          nameLatin = `${words[1]} ${words[0]}`.trim();
+          confidence = Math.max(confidence, 92);
+        }
       }
     }
 
-    // Decode MRZ Name: e.g. EL<GHAYATI<<SAID
-    const mrzName = text.match(/([A-Z]+)<+([A-Z]+)<*/);
-    if (mrzName && text.includes('IDMAR')) {
-      name = `${mrzName[2]} ${mrzName[1]}`.trim();
+    // General MRZ Line 3 fallback across all lines
+    if (!nameLatin) {
+      for (const line of lines) {
+        if (/né\s*le|azdad|ازداد|valable|صالحة/i.test(line)) continue;
+        const normName = line
+          .replace(/[«‹\(\)\[\]\{\}\*_\-–\\/:]/g, '<')
+          .replace(/[\s\t]+/g, '<')
+          .replace(/[^A-Za-z<]/g, '')
+          .toUpperCase();
+
+        const parts = normName.split(/<<+/).filter(Boolean);
+        if (parts.length >= 2) {
+          const surname = parts[0].replace(/<+/g, ' ').trim();
+          const givenName = parts[1].replace(/<+/g, ' ').trim();
+          if (
+            surname.length >= 2 &&
+            givenName.length >= 2 &&
+            !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE/.test(surname + givenName)
+          ) {
+            nameLatin = `${givenName} ${surname}`.trim();
+            confidence = Math.max(confidence, 92);
+            break;
+          }
+        }
+      }
     }
 
-    // 2. Candidate collection and scoring across text lines
+    // =========================================================================
+    // 2. CANDIDATE COLLECTION & SCORING FOR CIN NUMBER (Front or Standalone)
+    // =========================================================================
     if (!idNumber) {
       const candidates: Array<{ raw: string; nearLabel: boolean }> = [];
-      const lines = text.split('\n');
 
       for (const line of lines) {
         if (/CAN\s*\d+/i.test(line)) continue;
 
-        // Pattern A: explicitly near label (N°, No, رقم, w, wv, »)
-        const labelMatch = line.match(/(?:N[°oº\.\s]*|رقم\s*[:\.]?|wv\s*|w\s*|»\s*)[:\s]*([A-Za-z0-9]{1,2}\s*[-–.]?\s*[0-9A-Za-z]{4,8})\b/i);
+        // Pattern A: explicitly near label (N°, No, رقم, CIN, wv, w, »)
+        const labelMatch = line.match(
+          /(?:N[°oº\.\s]*|رقم(?:\s*ب\.ت\.و)?\s*[:\.]?|CIN\s*[:\.]?|C\.I\.N\.\s*[:\.]?|wv\s*|w\s*|»\s*)[:\s]*([A-Za-z0-9]{1,2}\s*[-–.]?\s*[0-9A-Za-z]{4,8})\b/i
+        );
         if (labelMatch && labelMatch[1]) {
           candidates.push({ raw: labelMatch[1], nearLabel: true });
         }
@@ -276,14 +581,12 @@ export class OCRService {
         const words = line.split(/[\s,;:–-]+/);
         for (const w of words) {
           if (w.length >= 5 && w.length <= 10) {
-            // Ignore date fragments
             if (/\d{2}[.\/-]\d{2}[.\/-]\d{4}/.test(line) && line.includes(w)) continue;
             candidates.push({ raw: w, nearLabel: false });
           }
         }
       }
 
-      // Score candidates
       let bestCand: { cin: string; score: number } | null = null;
       for (const cand of candidates) {
         const scored = this.scoreAndNormalizeCandidate(cand);
@@ -298,7 +601,7 @@ export class OCRService {
       }
     }
 
-    // 3. Fallback anywhere in text (excluding CAN numbers)
+    // Fallback regex for CIN anywhere in text
     if (!idNumber) {
       const matches = text.matchAll(/\b([A-Z0-9]{1,2})\s*[-–.]?\s*([0-9A-Z]{4,8})\b/gi);
       for (const m of matches) {
@@ -314,50 +617,266 @@ export class OCRService {
       }
     }
 
-    // 4. Extract standard Moroccan card dates (DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY)
-    if (!idIssueDate || !idExpiryDate) {
-      const dateMatches = text.match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/g);
-      if (dateMatches && dateMatches.length > 0) {
-        const normalizeDate = (d: string) => {
-          const parts = d.split(/[.\/-]/);
-          return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        };
-        if (dateMatches.length === 1) {
-          if (/valable|صالحة/i.test(text)) {
-            idExpiryDate = normalizeDate(dateMatches[0]);
-          } else {
-            idIssueDate = normalizeDate(dateMatches[0]);
-          }
-        } else if (dateMatches.length >= 2) {
-          idIssueDate = normalizeDate(dateMatches[0]);
-          idExpiryDate = normalizeDate(dateMatches[1]);
+    // =========================================================================
+    // 3. CARD EXPIRY DATE EXTRACTION (Front or Back)
+    // =========================================================================
+    if (!idExpiryDate) {
+      const expiryMatch = text.match(
+        /(?:valable\s*jusqu['’]?\s*au|valable\s*au|صالحة\s*إلى\s*غاية|صالحة\s*الى\s*غاية|صالحة\s*إلى|صالحة\s*الى|إلى\s*غاية|exp(?:iry)?|valid(?:ity)?)\s*[:.\-–]?\s*(\d{1,2})[./\s-](\d{1,2})[./\s-](\d{2,4})/i
+      );
+      if (expiryMatch) {
+        const d = expiryMatch[1].padStart(2, '0');
+        const mo = expiryMatch[2].padStart(2, '0');
+        let y = expiryMatch[3];
+        if (y.length === 2) y = '20' + y;
+        idExpiryDate = `${y}-${mo}-${d}`;
+      }
+    }
+
+    // =========================================================================
+    // 4. DATE OF BIRTH EXTRACTION
+    // =========================================================================
+    if (!dateOfBirth) {
+      const dobMatch = text.match(
+        /(?:né(?:e)?\s*le|ne\s*le|azdad|ازداد(?:ت)?\s*(?:في|ب)?|تاريخ\s*الازدياد)\s*[:.\-–]?\s*(\d{1,2})[./\s-](\d{1,2})[./\s-](\d{2,4})/i
+      );
+      if (dobMatch) {
+        const d = dobMatch[1].padStart(2, '0');
+        const mo = dobMatch[2].padStart(2, '0');
+        let y = dobMatch[3];
+        if (y.length === 2) y = parseInt(y, 10) > 30 ? '19' + y : '20' + y;
+        dateOfBirth = `${y}-${mo}-${d}`;
+        if (!idIssueDate) idIssueDate = dateOfBirth;
+      }
+    }
+
+    // Fallback across all dates detected in the text
+    if (!idExpiryDate || !dateOfBirth) {
+      const allDates = [...text.matchAll(/\b(\d{1,2})[./\s-](\d{1,2})[./\s-](\d{4})\b/g)].map((m) => {
+        const d = m[1].padStart(2, '0');
+        const mo = m[2].padStart(2, '0');
+        const yr = parseInt(m[3], 10);
+        return { str: `${yr}-${mo}-${d}`, year: yr };
+      });
+
+      if (allDates.length > 0) {
+        const futureDates = allDates.filter((d) => d.year >= 2024).sort((a, b) => b.year - a.year);
+        const pastDates = allDates.filter((d) => d.year < 2024 && d.year > 1920).sort((a, b) => a.year - b.year);
+
+        if (!idExpiryDate && futureDates.length > 0) {
+          idExpiryDate = futureDates[0].str;
+        }
+        if (!dateOfBirth && pastDates.length > 0) {
+          dateOfBirth = pastDates[0].str;
+          if (!idIssueDate) idIssueDate = dateOfBirth;
         }
       }
     }
 
-    // 5. Extract Latin full name if present on front face (e.g. KHALID \n HIMDI)
-    if (!name) {
-      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      for (let i = 0; i < lines.length - 1; i++) {
-        const curr = lines[i];
-        const next = lines[i + 1];
-        if (
-          /^[A-Z]{3,15}$/.test(curr) &&
-          /^[A-Z]{3,15}$/.test(next) &&
-          !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|VALABLE|CHEIKH|AGDAL|BENI|MELLAL|FES/.test(curr) &&
-          !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|VALABLE|CHEIKH|AGDAL|BENI|MELLAL|FES/.test(next)
-        ) {
-          name = `${curr} ${next}`;
-          break;
+    // =========================================================================
+    // 5. ARABIC FULL NAME EXTRACTION (Front of Card)
+    // =========================================================================
+    let arLastName: string | undefined;
+    let arFirstName: string | undefined;
+
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+
+      // Match Last Name (النسب or الاسم العائلي)
+      const lastMatch = l.match(/(?:الـ?نـ?سـ?ب|الاسم\s*العائلي|اللقب)\s*[:.\-–]?\s*([\u0621-\u064A\s]{2,30})/);
+      if (lastMatch && lastMatch[1].trim().length >= 2) {
+        const cand = lastMatch[1].trim();
+        if (!/المملكة|المغربية|بطاقة|التعريف|الوطنية|الاسم|صالحة/i.test(cand)) {
+          arLastName = cand;
+        }
+      } else if (/(?:الـ?نـ?سـ?ب|الاسم\s*العائلي|اللقب)\b/i.test(l) && i + 1 < lines.length) {
+        const next = lines[i + 1].trim();
+        if (/^[\u0621-\u064A\s]{2,30}$/.test(next) && !/المملكة|المغربية|بطاقة|التعريف|الوطنية|الاسم|صالحة/i.test(next)) {
+          arLastName = next;
         }
       }
+
+      // Match First Name (الاسم الشخصي or الاسم)
+      const firstMatch = l.match(/(?:الاسم\s*الشخصي|الـ?شـ?خـ?صـ?ي|الاسم(?!\s*(?:العائلي|الكامل|الوطني)))\s*[:.\-–]?\s*([\u0621-\u064A\s]{2,30})/);
+      if (firstMatch && firstMatch[1].trim().length >= 2) {
+        const cand = firstMatch[1].trim();
+        if (!/المملكة|المغربية|بطاقة|التعريف|الوطنية|النسب|العائلي/i.test(cand)) {
+          arFirstName = cand;
+        }
+      } else if (/(?:الاسم\s*الشخصي|الـ?شـ?خـ?صـ?ي)\b/i.test(l) && i + 1 < lines.length) {
+        const next = lines[i + 1].trim();
+        if (/^[\u0621-\u064A\s]{2,30}$/.test(next) && !/المملكة|المغربية|بطاقة|التعريف|الوطنية|النسب|العائلي/i.test(next)) {
+          arFirstName = next;
+        }
+      }
+    }
+
+    if (arFirstName && arLastName) {
+      name = `${arFirstName} ${arLastName}`;
+    } else if (arFirstName) {
+      name = arFirstName;
+    } else if (arLastName) {
+      name = arLastName;
+    }
+
+    // Standalone clean Arabic lines (pairing consecutive lines if labels omitted)
+    if (!name) {
+      const cleanArabicLines = lines
+        .map((l) => l.trim())
+        .filter(
+          (l) =>
+            /^[\u0621-\u064A]{2,15}(?:\s+[\u0621-\u064A]{2,15}){0,2}$/.test(l) &&
+            !/المملكة|المغربية|بطاقة|التعريف|الوطنية|صالحة|غاية|ازداد|ازدادت|العنوان|المهنة|ابن|ابنة|الحالة|العائلية|جماعة|عمالة|إقليم/i.test(
+              l
+            )
+        );
+
+      if (cleanArabicLines.length >= 2) {
+        name = `${cleanArabicLines[1]} ${cleanArabicLines[0]}`;
+      } else if (cleanArabicLines.length === 1 && cleanArabicLines[0].includes(' ')) {
+        name = cleanArabicLines[0];
+      }
+    }
+
+    // =========================================================================
+    // 6. FRENCH / LATIN NAME EXTRACTION (Front of Card)
+    // =========================================================================
+    if (!nameLatin) {
+      let frLastName: string | undefined;
+      let frFirstName: string | undefined;
+
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+
+        if (/pr[eé]nom/i.test(l)) {
+          const m = l.match(/pr[eé]nom\s*[:.\-–]?\s*([A-Za-z\s]{2,30})/i);
+          if (m && m[1].trim().length >= 2) {
+            frFirstName = m[1].trim().toUpperCase();
+          } else if (i + 1 < lines.length) {
+            const next = lines[i + 1].trim().toUpperCase();
+            if (/^[A-Za-z\s]{2,30}$/.test(next) && !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|NOM/.test(next)) {
+              frFirstName = next;
+            }
+          }
+        } else if (/(?:^|[^a-zA-Z\u00C0-\u024F])Nom\b/i.test(l)) {
+          const m = l.match(/(?:^|[^a-zA-Z\u00C0-\u024F])Nom\s*[:.\-–]?\s*([A-Za-z\s]{2,30})/i);
+          if (m && m[1].trim().length >= 2) {
+            frLastName = m[1].trim().toUpperCase();
+          } else if (i + 1 < lines.length) {
+            const next = lines[i + 1].trim().toUpperCase();
+            if (/^[A-Za-z\s]{2,30}$/.test(next) && !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|PRENOM/.test(next)) {
+              frLastName = next;
+            }
+          }
+        }
+      }
+
+      if (frFirstName && frLastName) {
+        nameLatin = `${frFirstName} ${frLastName}`;
+      } else if (frLastName) {
+        nameLatin = frLastName;
+      } else if (frFirstName) {
+        nameLatin = frFirstName;
+      }
+    }
+
+    // Standalone clean Latin lines (pairing consecutive lines if labels omitted)
+    if (!nameLatin) {
+      const cleanLatinLines = lines
+        .map((l) => l.trim().toUpperCase())
+        .filter(
+          (l) =>
+            /^[A-Z]{2,15}(?:\s+[A-Z]{2,15})?$/.test(l) &&
+            !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|VALABLE|JUSQU|ADRESSE|RESIDENCE|FILS|FILLE|DATE|EXPIRY|BIRTH/i.test(
+              l
+            )
+        );
+
+      if (cleanLatinLines.length >= 2) {
+        nameLatin = `${cleanLatinLines[1]} ${cleanLatinLines[0]}`;
+      } else if (cleanLatinLines.length === 1 && cleanLatinLines[0].includes(' ')) {
+        nameLatin = cleanLatinLines[0];
+      }
+    }
+
+    // =========================================================================
+    // 7. PARENTS & PLACE OF BIRTH
+    // =========================================================================
+    const parentsMatch = text.match(/(?:ابن|ابنة)\s+([\u0621-\u064A\s]{2,20})\s+(?:و|بن)\s+([\u0621-\u064A\s]{2,20})/);
+    if (parentsMatch) {
+      fatherName = parentsMatch[1].trim();
+      motherName = parentsMatch[2].trim();
+    } else {
+      const frParents = text.match(/Fils\s+de\s+([A-Za-z\s]{2,20})\s+et\s+de\s+([A-Za-z\s]{2,20})/i);
+      if (frParents) {
+        fatherName = frParents[1].trim();
+        motherName = frParents[2].trim();
+      }
+    }
+
+    const pobMatch = text.match(/(?:azdad|ازداد|ازدادت)\s*(?:في|بـ|ب)?\s*[\d./-]*\s*(?:à|في|بـ|ب)\s*([^\r\n]{2,25})/i);
+    if (pobMatch) {
+      placeOfBirth = pobMatch[1].trim().replace(/^(?:à|في|بـ|ب)\s*/, '').replace(/[\r\n].*/g, '').trim();
+    }
+
+    // =========================================================================
+    // 8. ADDRESS EXTRACTION (Adresse / العنوان)
+    // =========================================================================
+    const addressMatch = text.match(/(?:ADRESSE|Adresse|العنوان)\s*[:.]?\s*([^\n\r]+(?:\n[^\n\r]+)?)/i);
+    if (addressMatch && addressMatch[1]) {
+      const cleaned = addressMatch[1]
+        .replace(/(?:ADRESSE|Adresse|العنوان)\s*[:.]?/gi, '')
+        .replace(/IDMAR[\s\S]*/i, '')
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/[\s:=|؛.,\-_]+$/, '')
+        .replace(/^[\s:=|؛.,\-_]+/, '')
+        .trim();
+      if (cleaned.length > 5 && !/ROYAUME|MAROC/i.test(cleaned)) {
+        address = cleaned;
+      }
+    }
+    if (!address) {
+      for (const line of lines) {
+        if (
+          !/ROYAUME|MAROC|CARTE|NATIONALE|IDENTITE|IDMAR|VALABLE/i.test(line) &&
+          /(?:RES|RESIDENCE|IMM|IMMEUBLE|APP|RUE|BD|BOULEVARD|AV|AVENUE|QUARTIER|HAY|DOUAR|LOT|LOTISSEMENT|DERB|زنقة|شارع|حي|دوار|تجزئة|عمارة|شقة)\b/i.test(
+            line
+          )
+        ) {
+          const cleaned = line
+            .replace(/(?:ADRESSE|Adresse|العنوان)\s*[:.]?/gi, '')
+            .replace(/[\s:=|؛.,\-_]+$/, '')
+            .replace(/^[\s:=|؛.,\-_]+/, '')
+            .trim();
+          if (cleaned.length > 5) {
+            address = cleaned;
+            break;
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // 9. BIDIRECTIONAL NAME TRANSLITERATION & SYNCHRONIZATION
+    // =========================================================================
+    if (!name && nameLatin) {
+      const transliterated = this.transliterateMoroccanFullName(nameLatin);
+      name = transliterated || nameLatin;
+    } else if (!nameLatin && name) {
+      nameLatin = this.transliterateArabicToLatinFullName(name) || name;
     }
 
     return {
       idNumber,
       idIssueDate,
       idExpiryDate,
+      dateOfBirth,
+      placeOfBirth,
       name,
+      nameLatin,
+      fatherName,
+      motherName,
+      address,
       nationality: 'مغربية',
       confidence,
     };
@@ -368,153 +887,176 @@ export class OCRService {
    */
   async extractMoroccanCINFromImage(file: Buffer, fileName?: string): Promise<MoroccanCINExtractionResult> {
     try {
+      const araWorker = await this.getWorker();
       const engWorker = await this.getEngWorker();
 
-      // Pass 1: PSM 6 (Uniform text block - optimal for front face cards and line recognition)
-      await engWorker.setParameters({ tessedit_pageseg_mode: '6' });
-      const resPsm6 = await engWorker.recognize(file);
-      const textPsm6 = resPsm6.data.text || '';
-      let parsed = this.parseMoroccanCINText(textPsm6);
-
-      if (parsed.idNumber && parsed.confidence >= 90) {
-        return {
-          rawText: textPsm6,
-          extractedFields: {
-            idNumber: parsed.idNumber,
-            idIssueDate: parsed.idIssueDate,
-            idExpiryDate: parsed.idExpiryDate,
-            name: parsed.name,
-            nationality: parsed.nationality || 'مغربية',
-          },
-          confidence: parsed.confidence,
-          errors: [],
-        };
-      }
-
-      // Pass 2: PSM 3 (Auto page segmentation - optimal for full ID card backs and MRZ)
-      await engWorker.setParameters({ tessedit_pageseg_mode: '3' });
-      const resPsm3 = await engWorker.recognize(file);
-      const textPsm3 = resPsm3.data.text || '';
-      const parsedPsm3 = this.parseMoroccanCINText(textPsm3);
-
-      if (parsedPsm3.idNumber && parsedPsm3.confidence >= (parsed.confidence || 0)) {
-        parsed = parsedPsm3;
-      }
-
-      if (parsed.idNumber && parsed.confidence >= 85) {
-        return {
-          rawText: textPsm6 + '\n' + textPsm3,
-          extractedFields: {
-            idNumber: parsed.idNumber,
-            idIssueDate: parsed.idIssueDate,
-            idExpiryDate: parsed.idExpiryDate,
-            name: parsed.name,
-            nationality: parsed.nationality || 'مغربية',
-          },
-          confidence: parsed.confidence,
-          errors: [],
-        };
-      }
-
-      // Pass 3: Multi-band scanning for mobile phone screenshots or double-sided documents
+      // Pass 0: Targeted Zonal OCR (isolates MRZ on back & text zones on front)
       const { width, height } = this.getImageDimensions(file);
-      const bandCount = 5;
-      const bandHeight = Math.floor(height * 0.22);
-      let cumulativeText = textPsm6 + '\n' + textPsm3;
+      let cumulativeText = '';
 
-      for (let i = 0; i < bandCount; i++) {
-        const top = Math.floor(i * height * 0.18);
-        const rect = {
-          top,
-          left: 10,
-          width: Math.max(width - 20, 100),
-          height: Math.min(bandHeight, height - top),
-        };
+      if (width >= 200 && height >= 200) {
         try {
-          const segRes = await engWorker.recognize(file, { rectangle: rect });
-          const segText = segRes.data.text || '';
-          cumulativeText += '\n' + segText;
-          const segParsed = this.parseMoroccanCINText(segText);
-
-          if (segParsed.idNumber && segParsed.confidence >= (parsed.confidence || 0)) {
-            parsed = segParsed;
+          // Zone A: MRZ Zone (Bottom ~40% of card) with English worker
+          await engWorker.setParameters({ tessedit_pageseg_mode: '6' }).catch(() => {});
+          const mrzZone = {
+            top: Math.round(height * 0.60),
+            left: 0,
+            width: width,
+            height: Math.round(height * 0.40),
+          };
+          const resMrzZone = await engWorker.recognize(file, { rectangle: mrzZone }).catch(() => ({ data: { text: '' } }));
+          const textMrzZone = resMrzZone.data?.text || '';
+          if (textMrzZone) {
+            cumulativeText += textMrzZone + '\n';
           }
         } catch {
-          // ignore band error and continue
+          // fallback to full image
         }
       }
 
-      if (parsed.idNumber && parsed.confidence >= 70) {
-        return {
-          rawText: cumulativeText,
-          extractedFields: {
-            idNumber: parsed.idNumber,
-            idIssueDate: parsed.idIssueDate,
-            idExpiryDate: parsed.idExpiryDate,
-            name: parsed.name,
-            nationality: 'مغربية',
-          },
-          confidence: parsed.confidence,
-          errors: [],
-        };
+      // Pass 1: Full image PSM 6 (Uniform text block - optimal for line-by-line card layout)
+      await Promise.all([
+        araWorker.setParameters({ tessedit_pageseg_mode: '6' }).catch(() => {}),
+        engWorker.setParameters({ tessedit_pageseg_mode: '6' }).catch(() => {}),
+      ]);
+
+      const [resAra6, resEng6] = await Promise.all([
+        araWorker.recognize(file).catch(() => ({ data: { text: '' } })),
+        engWorker.recognize(file).catch(() => ({ data: { text: '' } })),
+      ]);
+
+      const textAra6 = resAra6.data?.text || '';
+      const textEng6 = resEng6.data?.text || '';
+      cumulativeText += textAra6 + '\n' + textEng6;
+
+      const pAra6 = this.parseMoroccanCINText(textAra6);
+      const pEng6 = this.parseMoroccanCINText(textEng6);
+
+      let idNumber = pEng6.idNumber || pAra6.idNumber;
+      let name = pAra6.name || pEng6.name;
+      let nameLatin = pEng6.nameLatin || pAra6.nameLatin;
+      let address = pAra6.address || pEng6.address;
+      let idExpiryDate = pAra6.idExpiryDate || pEng6.idExpiryDate;
+      let idIssueDate = pAra6.idIssueDate || pEng6.idIssueDate;
+      let dateOfBirth = pAra6.dateOfBirth || pEng6.dateOfBirth;
+      let placeOfBirth = pAra6.placeOfBirth || pEng6.placeOfBirth;
+      let fatherName = pAra6.fatherName || pEng6.fatherName;
+      let motherName = pAra6.motherName || pEng6.motherName;
+      let confidence = Math.max(pEng6.confidence, pAra6.confidence);
+
+      // Pass 2: If key fields are missing, scan with PSM 3 (Auto page segmentation for full ID card / MRZ)
+      if (!idNumber || !name || !idExpiryDate) {
+        await Promise.all([
+          araWorker.setParameters({ tessedit_pageseg_mode: '3' }).catch(() => {}),
+          engWorker.setParameters({ tessedit_pageseg_mode: '3' }).catch(() => {}),
+        ]);
+
+        const [resAra3, resEng3] = await Promise.all([
+          araWorker.recognize(file).catch(() => ({ data: { text: '' } })),
+          engWorker.recognize(file).catch(() => ({ data: { text: '' } })),
+        ]);
+
+        const textAra3 = resAra3.data?.text || '';
+        const textEng3 = resEng3.data?.text || '';
+        cumulativeText += '\n' + textAra3 + '\n' + textEng3;
+
+        const pAra3 = this.parseMoroccanCINText(textAra3);
+        const pEng3 = this.parseMoroccanCINText(textEng3);
+
+        idNumber = idNumber || pEng3.idNumber || pAra3.idNumber;
+        name = name || pAra3.name || pEng3.name;
+        nameLatin = nameLatin || pEng3.nameLatin || pAra3.nameLatin;
+        address = address || pAra3.address || pEng3.address;
+        idExpiryDate = idExpiryDate || pAra3.idExpiryDate || pEng3.idExpiryDate;
+        idIssueDate = idIssueDate || pAra3.idIssueDate || pEng3.idIssueDate;
+        dateOfBirth = dateOfBirth || pAra3.dateOfBirth || pEng3.dateOfBirth;
+        placeOfBirth = placeOfBirth || pAra3.placeOfBirth || pEng3.placeOfBirth;
+        fatherName = fatherName || pAra3.fatherName || pEng3.fatherName;
+        motherName = motherName || pAra3.motherName || pEng3.motherName;
+        confidence = Math.max(confidence, pAra3.confidence, pEng3.confidence);
       }
 
-      // Pass 4: Restricted character whitelist scan for blurry/noisy photos
-      try {
-        await engWorker.setParameters({
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789< -N°.:/',
-        });
-        const pass3Res = await engWorker.recognize(file);
-        await engWorker.setParameters({
-          tessedit_char_whitelist: '',
-        });
-        const pass3Text = pass3Res.data.text || '';
-        cumulativeText += '\n' + pass3Text;
-        const pass3Parsed = this.parseMoroccanCINText(pass3Text);
+      // Pass 3: Cumulative text analysis across all passes to capture multi-block combinations
+      const pCumulative = this.parseMoroccanCINText(cumulativeText);
+      idNumber = idNumber || pCumulative.idNumber;
+      name = name || pCumulative.name;
+      nameLatin = nameLatin || pCumulative.nameLatin;
+      address = address || pCumulative.address;
+      idExpiryDate = idExpiryDate || pCumulative.idExpiryDate;
+      idIssueDate = idIssueDate || pCumulative.idIssueDate;
+      dateOfBirth = dateOfBirth || pCumulative.dateOfBirth;
+      placeOfBirth = placeOfBirth || pCumulative.placeOfBirth;
+      fatherName = fatherName || pCumulative.fatherName;
+      motherName = motherName || pCumulative.motherName;
+      confidence = Math.max(confidence, pCumulative.confidence);
 
-        if (pass3Parsed.idNumber) {
-          return {
-            rawText: cumulativeText,
-            extractedFields: {
-              idNumber: pass3Parsed.idNumber,
-              idIssueDate: pass3Parsed.idIssueDate || parsed.idIssueDate,
-              idExpiryDate: pass3Parsed.idExpiryDate || parsed.idExpiryDate,
-              name: pass3Parsed.name || parsed.name,
-              nationality: 'مغربية',
-            },
-            confidence: pass3Parsed.confidence,
-            errors: [],
-          };
-        }
-      } catch {
+      // Pass 4: Character whitelist fallback for blurry ID numbers if still missing
+      if (!idNumber) {
         try {
+          await engWorker.setParameters({
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789< -N°.:/',
+          });
+          const resWhitelist = await engWorker.recognize(file);
           await engWorker.setParameters({ tessedit_char_whitelist: '' });
-        } catch {}
+          const textWhitelist = resWhitelist.data?.text || '';
+          cumulativeText += '\n' + textWhitelist;
+          const pWl = this.parseMoroccanCINText(textWhitelist);
+          if (pWl.idNumber) {
+            idNumber = pWl.idNumber;
+            confidence = Math.max(confidence, pWl.confidence);
+          }
+        } catch {
+          try {
+            await engWorker.setParameters({ tessedit_char_whitelist: '' });
+          } catch {}
+        }
       }
 
-      // If no CIN found via OCR, check if fileName contains Moroccan CIN pattern (e.g. CIN_AB123456.jpg)
-      if (fileName) {
+      // Pass 5: Check if fileName contains Moroccan CIN pattern (e.g. CIN_AB123456.jpg)
+      if (!idNumber && fileName) {
         const fnMatch = fileName.match(/\b([A-Z]{1,2}\d{5,7})\b/i);
         if (fnMatch) {
-          return {
-            rawText: cumulativeText,
-            extractedFields: {
-              idNumber: fnMatch[1].toUpperCase(),
-              nationality: 'مغربية',
-            },
-            confidence: 75,
-            errors: [],
-          };
+          idNumber = fnMatch[1].toUpperCase();
+          confidence = Math.max(confidence, 75);
         }
       }
+
+      // Final synchronization between name and nameLatin if one is missing
+      if (!name && nameLatin) {
+        name = this.transliterateMoroccanFullName(nameLatin) || nameLatin;
+      } else if (!nameLatin && name) {
+        nameLatin = this.transliterateArabicToLatinFullName(name) || name;
+      }
+
+      // Calculate composite confidence score
+      if (idNumber) {
+        let score = 65;
+        if (name) score += 15;
+        if (idExpiryDate) score += 10;
+        if (address) score += 5;
+        if (dateOfBirth) score += 5;
+        confidence = Math.min(98, score);
+      }
+
+      const hasAnyData = Boolean(idNumber || name || address || idExpiryDate);
 
       return {
         rawText: cumulativeText,
         extractedFields: {
+          idNumber,
+          idIssueDate: idIssueDate || dateOfBirth,
+          idExpiryDate,
+          dateOfBirth,
+          placeOfBirth,
+          name: name || nameLatin,
+          nameLatin: nameLatin || name,
+          fatherName,
+          motherName,
+          address,
           nationality: 'مغربية',
         },
-        confidence: 0,
-        errors: ['لم نتمكن من قراءة رقم بطاقة التعريف الوطنية بدقة من هذه الصورة'],
+        confidence: hasAnyData ? confidence : 0,
+        errors: hasAnyData ? [] : ['لم نتمكن من قراءة بيانات بطاقة التعريف الوطنية بدقة من هذه الصورة'],
       };
     } catch (error) {
       console.error('extractMoroccanCINFromImage error:', error);

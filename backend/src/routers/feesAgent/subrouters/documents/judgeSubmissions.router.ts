@@ -697,7 +697,10 @@ export const judgeSubmissionsProcedures = {
       }),
 
     listMyJudgeSubmissions: publicProcedure
-      .input(z.object({ sessionToken: z.string() }))
+      .input(z.object({
+        sessionToken: z.string(),
+        limit: z.number().min(1).max(200).optional(),
+      }))
       .output(z.array(z.object({
         id: z.string(),
         fileNumber: z.string().nullable(),
@@ -718,14 +721,16 @@ export const judgeSubmissionsProcedures = {
         const user = await requireNotary(input.sessionToken);
 
         const userFullName = String(user.full_name || '').trim();
+        const limit = input.limit || 100;
 
-          // Security: Filter by notary_user_id at the database level.
+        // Security: Filter by notary_user_id at the database level with limit.
         // If no results, attempt name-based fallback for migration records.
         let { data: rawData, error } = await supabase
           .from('judge_submissions')
           .select('id,file_number,document_type,summary,status,decision,judge_notes,decided_at,notary_stage,notary_completed_at,created_at,updated_at,payload,notary_name,notary_user_id')
           .eq('notary_user_id', user.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(limit);
 
         if (error) {
           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
@@ -741,7 +746,8 @@ export const judgeSubmissionsProcedures = {
             .select('id,file_number,document_type,summary,status,decision,judge_notes,decided_at,notary_stage,notary_completed_at,created_at,updated_at,payload,notary_name,notary_user_id')
             .is('notary_user_id', null)
             .eq('notary_name', userFullName)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(limit);
           
           if (!fallbackRes.error && fallbackRes.data?.length) {
             // Apply defensive filtering to fallback results as well
@@ -755,22 +761,41 @@ export const judgeSubmissionsProcedures = {
           }
         }
 
-        return (data ?? []).map((row) => ({
-          id: row.id,
-          fileNumber: (row.file_number ?? null),
-          documentType: (row.document_type ?? null),
-          summary: (row.summary ?? null),
-          status: row.status,
-          decision: (row.decision ?? null),
-          judgeNotes: (row.judge_notes ?? null),
-          decidedAt: (row.decided_at ?? null),
-          notaryStage: (row.notary_stage ?? 'sending'),
-          notaryCompletedAt: (row.notary_completed_at ?? null),
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-          payload: (row.payload as any ?? null),
-          notaryName: (row.notary_name ?? null),
-        }));
+        return (data ?? []).map((row) => {
+          let sanitizedPayload: Record<string, unknown> | null = null;
+          if (row.payload && typeof row.payload === 'object') {
+            const {
+              attachment,
+              attachments,
+              step7JudgeAttachment,
+              rasmHtml,
+              manualRasmFile,
+              ...rest
+            } = row.payload as Record<string, unknown>;
+
+            sanitizedPayload = {
+              ...rest,
+              hasAttachment: !!(attachment || (Array.isArray(attachments) && attachments.length > 0) || step7JudgeAttachment),
+            };
+          }
+
+          return {
+            id: row.id,
+            fileNumber: (row.file_number ?? null),
+            documentType: (row.document_type ?? null),
+            summary: (row.summary ?? null),
+            status: row.status,
+            decision: (row.decision ?? null),
+            judgeNotes: (row.judge_notes ?? null),
+            decidedAt: (row.decided_at ?? null),
+            notaryStage: (row.notary_stage ?? 'sending'),
+            notaryCompletedAt: (row.notary_completed_at ?? null),
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            payload: sanitizedPayload,
+            notaryName: (row.notary_name ?? null),
+          };
+        });
       }),
 
     getLatestApprovedJudgeSubmissionByFileNumber: publicProcedure

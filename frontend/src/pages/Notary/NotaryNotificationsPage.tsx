@@ -136,14 +136,14 @@ const NotaryNotificationsPage: React.FC = () => {
   );
 
   // 2. Judge Submissions Decisions
-  const judgeSubmissionsQuery = trpc.feesAgent.listMyJudgeSubmissions.useQuery(
+  const judgeSubmissionsQuery = trpc.feesAgent.documents.listMyJudgeSubmissions.useQuery(
     { sessionToken: sessionToken || '' },
     {
       enabled: !!sessionToken && !!user?.id,
-      staleTime: 15_000,
-      refetchInterval: 10_000,
-      refetchIntervalInBackground: true,
-      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+      refetchInterval: 35_000,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: false,
       retry: 2,
     }
   );

@@ -90,7 +90,7 @@ export async function enhanceCardImageForOCR(file: File): Promise<string> {
           mono[p] = Math.max(0, Math.min(255, val));
         }
 
-        // Step 3: Unsharp mask convolution (3x3 kernel: [0, -0.5, 0; -0.5, 3.0, -0.5; 0, -0.5, 0])
+        // Step 3: Gentle edge-preserving enhancement (avoids JPEG noise while keeping cursive text crisp)
         for (let y = 1; y < height - 1; y++) {
           for (let x = 1; x < width - 1; x++) {
             const p = y * width + x;
@@ -100,7 +100,7 @@ export async function enhanceCardImageForOCR(file: File): Promise<string> {
             const left = mono[p - 1];
             const right = mono[p + 1];
 
-            const sharpened = 3.0 * center - 0.5 * (up + down + left + right);
+            const sharpened = 1.4 * center - 0.1 * (up + down + left + right);
             const clamped = Math.max(0, Math.min(255, Math.round(sharpened)));
 
             const idx = p * 4;

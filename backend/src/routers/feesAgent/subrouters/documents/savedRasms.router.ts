@@ -26,11 +26,63 @@ import {
   extractPartiesFromPayload,
 } from '../../extractors';
 import { finalizeDirectDocxForSavedRasm, finalizeSigningVersionForUser } from './documentFinalizers';
+import { getDualSigningSessionPdf } from './dualSigning.router';
 
 async function requireNotary(sessionToken: string, message = 'Only notaries can perform this operation') {
   const user = await resolveSessionUser(sessionToken);
   if (user.role !== 'notary') throw new TRPCError({ code: 'FORBIDDEN', message });
   return user;
+}
+
+async function isAuthorizedForRasm(
+  user: { id: string; full_name?: string | null; role: string },
+  row: { id: string; notary_user_id?: string | null; notary_name?: string | null }
+): Promise<boolean> {
+  if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'authentication_judge') {
+    return true;
+  }
+
+  const userFullName = String(user.full_name || '').trim();
+  const rowNotaryName = String(row.notary_name || '').trim();
+
+  // 1. Primary owner match
+  if (
+    row.notary_user_id === user.id ||
+    (row.notary_user_id === null && userFullName !== '' && rowNotaryName === userFullName) ||
+    (userFullName !== '' && rowNotaryName === userFullName)
+  ) {
+    return true;
+  }
+
+  // 2. Dual Signing Co-Notary (العدل الثاني المضمم) match via signing_sessions
+  const { data: session } = await supabase
+    .from('signing_sessions')
+    .select('id, notary_2_id, notary_2_name')
+    .eq('act_id', row.id)
+    .maybeSingle();
+
+  if (
+    session &&
+    (session.notary_2_id === user.id || (userFullName !== '' && session.notary_2_name && session.notary_2_name.includes(userFullName)))
+  ) {
+    return true;
+  }
+
+  // 3. Dual Signing Co-Notary match via signing_tasks
+  const { data: task } = await supabase
+    .from('signing_tasks')
+    .select('id, assigned_to_notary_id, assigned_to_notary_name')
+    .eq('act_id', row.id)
+    .maybeSingle();
+
+  if (
+    task &&
+    (task.assigned_to_notary_id === user.id || (userFullName !== '' && task.assigned_to_notary_name && task.assigned_to_notary_name.includes(userFullName)))
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 
@@ -930,18 +982,11 @@ export const savedRasmsProcedures = {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Rasm not found in database' });
         }
 
-        const userFullName = String((user as any)?.full_name || '').trim();
-        const rowNotaryName = String((row as any)?.notary_name || '').trim();
-
-        // Check ownership: ID match OR (ID is null AND Name matches) OR (Legacy: Name matches for backwards compatibility)
-        const isOwner = row.notary_user_id === user.id || 
-                       (row.notary_user_id === null && userFullName !== '' && rowNotaryName === userFullName) ||
-                       (userFullName !== '' && rowNotaryName === userFullName);
-
-        if (!isAdminOrJudge && !isOwner) {
+        const authorized = await isAuthorizedForRasm(user, row);
+        if (!authorized) {
           throw new TRPCError({ 
             code: 'FORBIDDEN', 
-            message: 'You do not own this rasm. User ID: ' + user.id + ', Rasm Owner: ' + row.notary_user_id 
+            message: 'You do not own this rasm and are not assigned as co-notary. User ID: ' + user.id + ', Rasm Owner: ' + row.notary_user_id 
           });
         }
 
@@ -1525,9 +1570,10 @@ export const savedRasmsProcedures = {
           .select('id, notary_user_id, payload')
           .eq('id', input.id)
           .single();
-
         if (rowError || !row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Rasm not found' });
-        if (row.notary_user_id !== user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this rasm' });
+
+        const authorized = await isAuthorizedForRasm(user, row);
+        if (!authorized) throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this rasm and are not assigned as co-notary' });
 
         const payloadObj = row.payload && typeof row.payload === 'object' ? { ...(row.payload as any) } : {};
         delete payloadObj.auditDocVersionId;
@@ -1834,7 +1880,9 @@ export const savedRasmsProcedures = {
           .single();
 
         if (error || !row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Rasm not found in database' });
-        if (row.notary_user_id !== user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this rasm' });
+
+        const authorized = await isAuthorizedForRasm(user, row);
+        if (!authorized) throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this rasm and are not assigned as co-notary' });
 
         const payloadObj = (row.payload && typeof row.payload === 'object') ? (row.payload as any) : {};
 
@@ -1853,6 +1901,43 @@ export const savedRasmsProcedures = {
         const payloadLatestDocumentVersionId = (payloadObj?.latestDocumentVersionId ? String(payloadObj.latestDocumentVersionId) : null);
         const payloadLatestDocumentUpdatedAt = (payloadObj?.latestDocumentUpdatedAt ? String(payloadObj.latestDocumentUpdatedAt) : null);
         const payloadLatestSigningPdfUrl = (payloadObj?.latestSigningPdfUrl ? String(payloadObj.latestSigningPdfUrl) : null);
+
+        // Priority 1: Check if deed has an active/completed dual signing session with a signed PDF package
+        let sessionSignedPdfUrl: string | null = getDualSigningSessionPdf(row.id);
+        if (!sessionSignedPdfUrl) {
+          try {
+            const { data: sessRow } = await supabase
+              .from('signing_sessions')
+              .select('final_package_url')
+              .eq('act_id', row.id)
+              .not('final_package_url', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (sessRow?.final_package_url) {
+              sessionSignedPdfUrl = String(sessRow.final_package_url);
+            }
+          } catch (e) {
+            // best-effort fallback
+          }
+        }
+        if (!sessionSignedPdfUrl && payloadLatestSigningPdfUrl) {
+          sessionSignedPdfUrl = payloadLatestSigningPdfUrl;
+        }
+        if (!sessionSignedPdfUrl && payloadObj?.pdf_preview_url && String(payloadObj.pdf_preview_url).toLowerCase().includes('.pdf')) {
+          sessionSignedPdfUrl = String(payloadObj.pdf_preview_url);
+        }
+
+        if (mode === 'pdf' && sessionSignedPdfUrl) {
+          return {
+            rasmId: row.id,
+            effectiveUrl: sessionSignedPdfUrl,
+            source: 'saved_pdf',
+            versionId: latestDraftVersionId || null,
+            updatedAt: latestDraftUpdatedAt || (row.created_at ? String(row.created_at) : null),
+            attachmentId: null,
+          };
+        }
 
         const { data: attachments } = await supabase
           .from('deed_attachments')

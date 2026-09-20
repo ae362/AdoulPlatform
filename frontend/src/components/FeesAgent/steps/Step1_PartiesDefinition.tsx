@@ -121,18 +121,44 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         fileName: file.name,
       });
 
-      if (res?.extractedFields?.idNumber) {
-        const extractedNumber = res.extractedFields.idNumber.toUpperCase();
-        const extractedDate = res.extractedFields.idIssueDate;
+      const extractedFields = res?.extractedFields || {};
+      const extractedNumber = extractedFields.idNumber ? String(extractedFields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = extractedFields.name ? String(extractedFields.name).trim() : undefined;
+      const extractedNameLatin = extractedFields.nameLatin ? String(extractedFields.nameLatin).trim() : undefined;
+      const extractedAddress = extractedFields.address ? String(extractedFields.address).trim() : undefined;
+      const extractedExpiry = extractedFields.idExpiryDate || extractedFields.idIssueDate;
+      const extractedIssue = extractedFields.idIssueDate;
+      const extractedDOB = extractedFields.dateOfBirth;
+      const extractedPOB = extractedFields.placeOfBirth;
+      const extractedFather = extractedFields.fatherName;
+      const extractedMother = extractedFields.motherName;
 
+      const finalName = extractedName || extractedNameLatin;
+      const hasExtractedData = Boolean(extractedNumber || finalName || extractedAddress || extractedExpiry);
+
+      if (hasExtractedData) {
         if (partyType === 'seller') {
           setTempSellers((prev) =>
             prev.map((seller, idx) =>
               idx === index
                 ? {
                     ...seller,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !seller.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || seller.ocrExtracted?.name,
+                      idNumber: extractedNumber || seller.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || seller.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || seller.ocrExtracted?.expiryDate,
+                      address: extractedAddress || seller.ocrExtracted?.address,
+                    },
                   }
                 : seller
             )
@@ -143,8 +169,22 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               idx === index
                 ? {
                     ...seller,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !seller.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || seller.ocrExtracted?.name,
+                      idNumber: extractedNumber || seller.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || seller.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || seller.ocrExtracted?.expiryDate,
+                      address: extractedAddress || seller.ocrExtracted?.address,
+                    },
                   }
                 : seller
             ),
@@ -155,8 +195,22 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               idx === index
                 ? {
                     ...buyer,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !buyer.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || buyer.ocrExtracted?.name,
+                      idNumber: extractedNumber || buyer.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || buyer.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || buyer.ocrExtracted?.expiryDate,
+                      address: extractedAddress || buyer.ocrExtracted?.address,
+                    },
                   }
                 : buyer
             )
@@ -167,8 +221,22 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               idx === index
                 ? {
                     ...buyer,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !buyer.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || buyer.ocrExtracted?.name,
+                      idNumber: extractedNumber || buyer.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || buyer.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || buyer.ocrExtracted?.expiryDate,
+                      address: extractedAddress || buyer.ocrExtracted?.address,
+                    },
                   }
                 : buyer
             ),
@@ -176,16 +244,44 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         } else if (partyType === 'applicant') {
           setTempApplicant((prev) => ({
             ...prev,
-            idNumber: extractedNumber,
-            ...(extractedDate && !prev.idIssueDate ? { idIssueDate: extractedDate } : {}),
+            ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+            ...(finalName ? { name: finalName } : {}),
+            ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+            ...(extractedAddress ? { address: extractedAddress } : {}),
+            ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+            ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+            ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+            ...(extractedFather ? { fatherName: extractedFather } : {}),
+            ...(extractedMother ? { motherName: extractedMother } : {}),
+            ocrExtracted: {
+              name: finalName || prev.ocrExtracted?.name,
+              idNumber: extractedNumber || prev.ocrExtracted?.idNumber,
+              issueDate: extractedIssue || prev.ocrExtracted?.issueDate,
+              expiryDate: extractedExpiry || prev.ocrExtracted?.expiryDate,
+              address: extractedAddress || prev.ocrExtracted?.address,
+            },
           }));
           setState((prev) => ({
             ...prev,
             applicant: prev.applicant
               ? {
                   ...prev.applicant,
-                  idNumber: extractedNumber,
-                  ...(extractedDate && !prev.applicant.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                  ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                  ...(finalName ? { name: finalName } : {}),
+                  ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                  ...(extractedAddress ? { address: extractedAddress } : {}),
+                  ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                  ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                  ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                  ...(extractedFather ? { fatherName: extractedFather } : {}),
+                  ...(extractedMother ? { motherName: extractedMother } : {}),
+                  ocrExtracted: {
+                    name: finalName || prev.applicant.ocrExtracted?.name,
+                    idNumber: extractedNumber || prev.applicant.ocrExtracted?.idNumber,
+                    issueDate: extractedIssue || prev.applicant.ocrExtracted?.issueDate,
+                    expiryDate: extractedExpiry || prev.applicant.ocrExtracted?.expiryDate,
+                    address: extractedAddress || prev.applicant.ocrExtracted?.address,
+                  },
                 }
               : prev.applicant,
           }));
@@ -195,8 +291,22 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               idx === index
                 ? {
                     ...app,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !app.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || app.ocrExtracted?.name,
+                      idNumber: extractedNumber || app.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || app.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || app.ocrExtracted?.expiryDate,
+                      address: extractedAddress || app.ocrExtracted?.address,
+                    },
                   }
                 : app
             )
@@ -207,19 +317,40 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
               idx === index
                 ? {
                     ...app,
-                    idNumber: extractedNumber,
-                    ...(extractedDate && !app.idIssueDate ? { idIssueDate: extractedDate } : {}),
+                    ...(extractedNumber ? { idNumber: extractedNumber } : {}),
+                    ...(finalName ? { name: finalName } : {}),
+                    ...(extractedNameLatin ? { nameLatin: extractedNameLatin } : {}),
+                    ...(extractedAddress ? { address: extractedAddress } : {}),
+                    ...(extractedExpiry ? { idExpiryDate: extractedExpiry, idIssueDate: extractedExpiry } : {}),
+                    ...(extractedDOB ? { dateOfBirth: extractedDOB } : {}),
+                    ...(extractedPOB ? { placeOfBirth: extractedPOB } : {}),
+                    ...(extractedFather ? { fatherName: extractedFather } : {}),
+                    ...(extractedMother ? { motherName: extractedMother } : {}),
+                    ocrExtracted: {
+                      name: finalName || app.ocrExtracted?.name,
+                      idNumber: extractedNumber || app.ocrExtracted?.idNumber,
+                      issueDate: extractedIssue || app.ocrExtracted?.issueDate,
+                      expiryDate: extractedExpiry || app.ocrExtracted?.expiryDate,
+                      address: extractedAddress || app.ocrExtracted?.address,
+                    },
                   }
                 : app
             ),
           }));
         }
 
+        const details: string[] = [];
+        if (finalName) details.push(`الاسم: ${finalName}`);
+        if (extractedNumber) details.push(`رقم البطاقة: ${extractedNumber}`);
+        if (extractedAddress) details.push(`العنوان: ${extractedAddress}`);
+        if (extractedExpiry) details.push(`تاريخ الصلاحية: ${extractedExpiry}`);
+        if (extractedDOB) details.push(`تاريخ الازدياد: ${extractedDOB}`);
+
         setExtractedCINNotice((prev) => ({
           ...prev,
           [partyKey]: {
-            cin: extractedNumber,
-            message: `تم استخراج رقم البطاقة الوطنية تلقائياً: ${extractedNumber}`,
+            cin: extractedNumber || '',
+            message: `تم استخراج البيانات تلقائياً بنجاح: ${details.join(' | ')}`,
             success: true,
           },
         }));
@@ -228,7 +359,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
           ...prev,
           [partyKey]: {
             cin: '',
-            message: res?.errors?.[0] || 'تعذر استخراج رقم البطاقة بدقة، يرجى كتابته يدوياً.',
+            message: res?.errors?.[0] || 'تعذر استخراج بيانات البطاقة بدقة، يرجى كتابتها يدوياً.',
             success: false,
           },
         }));
@@ -239,13 +370,149 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
         ...prev,
         [partyKey]: {
           cin: '',
-          message: 'حدث خطأ أثناء قراءة صورة البطاقة، يمكنك كتابة الرقم يدوياً.',
+          message: 'حدث خطأ أثناء قراءة صورة البطاقة، يمكنك كتابة البيانات يدوياً.',
           success: false,
         },
       }));
     } finally {
       setScanningCIN((prev) => ({ ...prev, [partyKey]: false }));
     }
+  };
+
+  const renderCINUploadSection = (
+    partyKey: string,
+    party: Party | Applicant,
+    themeColor: 'blue' | 'emerald' | 'amber',
+    onFileSelected: (file: File) => void,
+    onRemove: () => void
+  ) => {
+    const isScanning = !!scanningCIN[partyKey];
+    const notice = extractedCINNotice[partyKey];
+    const fileName = (party.idImage as any)?.name || (party.idImage instanceof File ? party.idImage.name : null);
+
+    const themeStyles = {
+      blue: {
+        border: 'border-blue-200 hover:border-blue-400 bg-gradient-to-br from-blue-50/50 to-indigo-50/30',
+        badge: 'bg-blue-100 text-blue-800 border-blue-200',
+        iconBg: 'bg-blue-600 text-white',
+        activeRing: 'focus-within:ring-blue-500/20',
+      },
+      emerald: {
+        border: 'border-emerald-200 hover:border-emerald-400 bg-gradient-to-br from-emerald-50/50 to-teal-50/30',
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        iconBg: 'bg-emerald-600 text-white',
+        activeRing: 'focus-within:ring-emerald-500/20',
+      },
+      amber: {
+        border: 'border-amber-200 hover:border-amber-400 bg-gradient-to-br from-amber-50/50 to-orange-50/30',
+        badge: 'bg-amber-100 text-amber-800 border-amber-200',
+        iconBg: 'bg-amber-600 text-white',
+        activeRing: 'focus-within:ring-amber-500/20',
+      },
+    }[themeColor];
+
+    return (
+      <div className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 mb-5 ${themeStyles.border} ${themeStyles.activeRing}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${themeStyles.iconBg}`}>
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-black text-slate-800">
+                  صورة البطاقة الوطنية للتعريف (CIN)
+                </span>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${themeStyles.badge}`}>
+                  ⚡ ملء تلقائي ذكي
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                ارفع صورة البطاقة للملء التلقائي للاسم، رقم البطاقة، العنوان، وتاريخ الصلاحية
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {fileName ? (
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-xs">
+                <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="font-semibold text-slate-700 max-w-[160px] truncate" title={fileName}>
+                  {fileName}
+                </span>
+                <label className="cursor-pointer text-[11px] font-bold text-blue-600 hover:text-blue-800 px-1 hover:underline">
+                  تغيير
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) onFileSelected(f);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="text-rose-500 hover:text-rose-700 font-bold px-1 hover:bg-rose-50 rounded"
+                  title="حذف الملف"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-xl text-xs font-bold text-slate-700 shadow-xs hover:shadow transition-all">
+                <Upload className="w-3.5 h-3.5 text-slate-500" />
+                <span>رفع صورة البطاقة</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onFileSelected(f);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* Loading status */}
+        {isScanning && (
+          <div className="mt-3 flex items-center gap-2 text-xs font-bold text-indigo-900 bg-white/85 border border-indigo-200 px-3.5 py-2 rounded-xl animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" />
+            <span>⚡ جاري قراءة بيانات البطاقة الوطنية بالذكاء الاصطناعي (الاسم، رقم البطاقة، العنوان، تاريخ الانتهاء)...</span>
+          </div>
+        )}
+
+        {/* Notification result */}
+        {notice && (
+          <div className={`mt-3 flex items-start justify-between text-xs font-medium px-3.5 py-2 rounded-xl border ${
+            notice.success
+              ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900'
+              : 'bg-amber-50/90 border-amber-300 text-amber-900'
+          }`}>
+            <span className="leading-relaxed">{notice.message}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setExtractedCINNotice((prev) => {
+                  const next = { ...prev };
+                  delete next[partyKey];
+                  return next;
+                });
+              }}
+              className="text-slate-400 hover:text-slate-600 font-bold px-1 mr-2 shrink-0"
+              title="إغلاق"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleSellerChange = (index: number, field: keyof Party, value: any) => {
@@ -1587,6 +1854,14 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 )}
               </div>
 
+              {renderCINUploadSection(
+                `seller_${index}`,
+                seller,
+                'blue',
+                (file) => handleSellerChange(index, 'idImage', file),
+                () => handleSellerChange(index, 'idImage', null)
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Name Fields - Modified for Foreign Partner */}
                 {state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband' ? (
@@ -1818,28 +2093,11 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'husband') && (
                   <>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                          <CreditCard className="w-3.5 h-3.5 text-purple-600" />
-                          <span>رقم البطاقة الوطنية</span>
-                          <span className="text-rose-500 font-bold">*</span>
-                        </label>
-                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-xs">
-                          <Camera className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>مسح من الصورة</span>
-                          <input
-                            type="file"
-                            accept="image/*,application/pdf"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleSellerChange(index, 'idImage', file);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                        <span>رقم البطاقة الوطنية</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={seller.idNumber}
@@ -1848,41 +2106,6 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         maxLength={10}
                         placeholder="مثال: AB123456"
                       />
-                      {scanningCIN[`seller_${index}`] && (
-                        <div className="mt-2 flex items-center gap-2 text-xs font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl animate-pulse">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                          <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
-                        </div>
-                      )}
-                      {extractedCINNotice[`seller_${index}`] && (
-                        <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
-                          extractedCINNotice[`seller_${index}`].success
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
-                        }`}>
-                          <span className="flex items-center gap-1.5 truncate">
-                            {extractedCINNotice[`seller_${index}`].success ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                            ) : (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                            )}
-                            <span>{extractedCINNotice[`seller_${index}`].message}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExtractedCINNotice((prev) => {
-                                const next = { ...prev };
-                                delete next[`seller_${index}`];
-                                return next;
-                              });
-                            }}
-                            className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
                       {errors[`seller_${index}_id`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_id`]}</p>}
                     </div>
                     <div>
@@ -1892,8 +2115,11 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       </label>
                       <input
                         type="date"
-                        value={seller.idIssueDate}
-                        onChange={(e) => handleSellerChange(index, 'idIssueDate', e.target.value)}
+                        value={seller.idExpiryDate || seller.idIssueDate}
+                        onChange={(e) => {
+                          handleSellerChange(index, 'idExpiryDate', e.target.value);
+                          handleSellerChange(index, 'idIssueDate', e.target.value);
+                        }}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
                       />
                     </div>
@@ -2975,40 +3201,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   {errors[`seller_${index}_share`] && <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`seller_${index}_share`]}</p>}
                 </div>
                 )}
-                <div className="col-span-1 md:col-span-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
-                    <Upload className="w-3.5 h-3.5 text-blue-600" />
-                    <span>صورة البطاقة الوطنية (اختياري)</span>
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => handleSellerChange(index, 'idImage', e.target.files?.[0] || null)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
-                  />
-                  {scanningCIN[`seller_${index}`] && (
-                    <div className="mt-2 flex items-center gap-2 text-xs font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl animate-pulse">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                      <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي وملء الحقول تلقائياً...</span>
-                    </div>
-                  )}
-                  {seller.idImage && (
-                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
-                      <span className="truncate font-bold flex items-center gap-1.5">
-                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>تم إرفاق: {(seller.idImage as any)?.name || 'صورة البطاقة'}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleSellerChange(index, 'idImage', null)}
-                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
-                        title="حذف المرفق"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
+
 
                 {isInheritanceType && state.documentType !== 'ملكية' && state.documentType !== 'حيازة' && (
                   <div className="col-span-1 md:col-span-2 bg-rose-50/70 p-5 rounded-2xl border border-rose-200 mt-2 space-y-4">
@@ -3142,7 +3335,14 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       )}
                     </div>
                     <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {renderCINUploadSection(
+                        `applicants_${index}`,
+                        app,
+                        'amber',
+                        (file) => handleApplicantsChange(index, 'idImage', file),
+                        () => handleApplicantsChange(index, 'idImage', null)
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="col-span-1 md:col-span-2">
                         <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-amber-500" />الاسم الكامل *</label>
                         <input
@@ -3216,27 +3416,10 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         {errors[`applicant_${index}_address`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_address`]}</p>}
                       </div>
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                            <CreditCard className="w-3.5 h-3.5 text-amber-500" />
-                            <span>رقم البطاقة الوطنية *</span>
-                          </label>
-                          <label className="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all shadow-xs">
-                            <Camera className="w-3.5 h-3.5 text-amber-600" />
-                            <span>مسح من الصورة</span>
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  handleApplicantsChange(index, 'idImage', file);
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                          <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                          <span>رقم البطاقة الوطنية *</span>
+                        </label>
                         <input
                           type="text"
                           value={app.idNumber}
@@ -3244,49 +3427,17 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_${index}_id`] ? 'border-red-400' : 'border-slate-200'}`}
                           maxLength={10}
                         />
-                        {scanningCIN[`applicants_${index}`] && (
-                          <div className="mt-2 flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl animate-pulse">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                            <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
-                          </div>
-                        )}
-                        {extractedCINNotice[`applicants_${index}`] && (
-                          <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
-                            extractedCINNotice[`applicants_${index}`].success
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                              : 'bg-amber-50 border-amber-200 text-amber-800'
-                          }`}>
-                            <span className="flex items-center gap-1.5 truncate">
-                              {extractedCINNotice[`applicants_${index}`].success ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                              ) : (
-                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                              )}
-                              <span>{extractedCINNotice[`applicants_${index}`].message}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExtractedCINNotice((prev) => {
-                                  const next = { ...prev };
-                                  delete next[`applicants_${index}`];
-                                  return next;
-                                });
-                              }}
-                              className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
                         {errors[`applicant_${index}_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_${index}_id`]}</p>}
                       </div>
                       <div>
                         <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ صلاحية البطاقة</label>
                         <input
                           type="date"
-                          value={app.idIssueDate}
-                          onChange={(e) => handleApplicantsChange(index, 'idIssueDate', e.target.value)}
+                          value={app.idExpiryDate || app.idIssueDate}
+                          onChange={(e) => {
+                            handleApplicantsChange(index, 'idExpiryDate', e.target.value);
+                            handleApplicantsChange(index, 'idIssueDate', e.target.value);
+                          }}
                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                         />
                       </div>
@@ -3334,29 +3485,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                           />
                         </div>
                       )}
-                      <div className="col-span-1 md:col-span-2">
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />صورة البطاقة (اختياري)</label>
-                        <input
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => handleApplicantsChange(index, 'idImage', e.target.files?.[0] || null)}
-                          className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition-all"
-                        />
-                        {app.idImage && (
-                          <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
-                            <span className="truncate font-bold flex items-center gap-1.5">
-                              <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>تم إرفاق: {(app.idImage as any)?.name || 'صورة البطاقة'}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleApplicantsChange(index, 'idImage', null)}
-                              className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
-                              title="حذف المرفق"
-                            >✕</button>
-                          </div>
-                        )}
-                      </div>
+
                       <div className="col-span-1 md:col-span-2">
                         <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Shield className="w-3.5 h-3.5 text-amber-500" />بصفته *</label>
                         <div className="flex gap-2 flex-wrap">
@@ -3454,6 +3583,13 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 <span className="text-white font-black text-sm">بيانات طالب الشهادة</span>
               </div>
               <div className="p-6">
+                {renderCINUploadSection(
+                  'applicant_0',
+                  tempApplicant,
+                  'amber',
+                  (file) => handleApplicantChange('idImage', file),
+                  () => handleApplicantChange('idImage', null)
+                )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="col-span-1 md:col-span-2">
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><User className="w-3.5 h-3.5 text-amber-500" />الاسم الكامل *</label>
@@ -3528,27 +3664,10 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   {errors[`applicant_address`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_address`]}</p>}
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                      <CreditCard className="w-3.5 h-3.5 text-amber-500" />
-                      <span>رقم البطاقة الوطنية *</span>
-                    </label>
-                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all shadow-xs">
-                      <Camera className="w-3.5 h-3.5 text-amber-600" />
-                      <span>مسح من الصورة</span>
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleApplicantChange('idImage', file);
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                    <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                    <span>رقم البطاقة الوطنية *</span>
+                  </label>
                   <input
                     type="text"
                     value={tempApplicant.idNumber}
@@ -3556,49 +3675,17 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium ${errors[`applicant_id`] ? 'border-red-400' : 'border-slate-200'}`}
                     maxLength={10}
                   />
-                  {scanningCIN['applicant_0'] && (
-                    <div className="mt-2 flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl animate-pulse">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                      <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
-                    </div>
-                  )}
-                  {extractedCINNotice['applicant_0'] && (
-                    <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
-                      extractedCINNotice['applicant_0'].success
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-amber-50 border-amber-200 text-amber-800'
-                    }`}>
-                      <span className="flex items-center gap-1.5 truncate">
-                        {extractedCINNotice['applicant_0'].success ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        ) : (
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                        )}
-                        <span>{extractedCINNotice['applicant_0'].message}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExtractedCINNotice((prev) => {
-                            const next = { ...prev };
-                            delete next['applicant_0'];
-                            return next;
-                          });
-                        }}
-                        className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
                   {errors[`applicant_id`] && <p className="text-red-500 text-xs mt-1">{errors[`applicant_id`]}</p>}
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Calendar className="w-3.5 h-3.5 text-slate-400" />تاريخ صلاحية البطاقة</label>
                   <input
                     type="date"
-                    value={tempApplicant.idIssueDate}
-                    onChange={(e) => handleApplicantChange('idIssueDate', e.target.value)}
+                    value={tempApplicant.idExpiryDate || tempApplicant.idIssueDate}
+                    onChange={(e) => {
+                      handleApplicantChange('idExpiryDate', e.target.value);
+                      handleApplicantChange('idIssueDate', e.target.value);
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 outline-none transition-all text-slate-800 text-sm font-medium"
                   />
                 </div>
@@ -3669,29 +3756,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                     </div>
                   )}
                 </div>
-                <div className="col-span-1 md:col-span-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Upload className="w-3.5 h-3.5 text-slate-400" />صورة البطاقة (اختياري)</label>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => handleApplicantChange('idImage', e.target.files?.[0] || null)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition-all"
-                  />
-                  {tempApplicant.idImage && (
-                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
-                      <span className="truncate font-bold flex items-center gap-1.5">
-                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>تم إرفاق: {(tempApplicant.idImage as any)?.name || 'صورة البطاقة'}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleApplicantChange('idImage', null)}
-                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
-                        title="حذف المرفق"
-                      >✕</button>
-                    </div>
-                  )}
-                </div>
+
 
                 <div className="col-span-1 md:col-span-2">
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2"><Shield className="w-3.5 h-3.5 text-amber-500" />بصفته *</label>
@@ -3925,6 +3990,14 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   </button>
                 )}
               </div>
+
+              {renderCINUploadSection(
+                `buyer_${index}`,
+                buyer,
+                'emerald',
+                (file) => handleBuyerChange(index, 'idImage', file),
+                () => handleBuyerChange(index, 'idImage', null)
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Name Fields - Modified for Foreign Partner (Wife) */}
@@ -4193,28 +4266,11 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                 {!(state.documentType === 'زواج_مختلط' && state.marriageDetails?.mixedMarriageForeignParty === 'wife') && (
                   <>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                          <CreditCard className="w-3.5 h-3.5 text-purple-600" />
-                          <span>رقم البطاقة الوطنية</span>
-                          <span className="text-rose-500 font-bold">*</span>
-                        </label>
-                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-xs">
-                          <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>مسح من الصورة</span>
-                          <input
-                            type="file"
-                            accept="image/*,application/pdf"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleBuyerChange(index, 'idImage', file);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                        <span>رقم البطاقة الوطنية</span>
+                        <span className="text-rose-500 font-bold">*</span>
+                      </label>
                       <input
                         type="text"
                         value={buyer.idNumber}
@@ -4223,41 +4279,6 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                         maxLength={10}
                         placeholder="مثال: CD654321"
                       />
-                      {scanningCIN[`buyer_${index}`] && (
-                        <div className="mt-2 flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl animate-pulse">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                          <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي...</span>
-                        </div>
-                      )}
-                      {extractedCINNotice[`buyer_${index}`] && (
-                        <div className={`mt-2 flex items-center justify-between text-xs font-bold px-3 py-1.5 rounded-xl border ${
-                          extractedCINNotice[`buyer_${index}`].success
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
-                        }`}>
-                          <span className="flex items-center gap-1.5 truncate">
-                            {extractedCINNotice[`buyer_${index}`].success ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                            ) : (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                            )}
-                            <span>{extractedCINNotice[`buyer_${index}`].message}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExtractedCINNotice((prev) => {
-                                const next = { ...prev };
-                                delete next[`buyer_${index}`];
-                                return next;
-                              });
-                            }}
-                            className="text-slate-400 hover:text-slate-600 font-bold px-1 ml-1"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
                       {errors[`buyer_${index}_id`] && (
                         <p className="text-rose-500 text-xs font-semibold mt-1">{errors[`buyer_${index}_id`]}</p>
                       )}
@@ -4269,8 +4290,11 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                       </label>
                       <input
                         type="date"
-                        value={buyer.idIssueDate}
-                        onChange={(e) => handleBuyerChange(index, 'idIssueDate', e.target.value)}
+                        value={buyer.idExpiryDate || buyer.idIssueDate}
+                        onChange={(e) => {
+                          handleBuyerChange(index, 'idExpiryDate', e.target.value);
+                          handleBuyerChange(index, 'idIssueDate', e.target.value);
+                        }}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-800 text-sm font-medium focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                       />
                     </div>
@@ -5475,40 +5499,7 @@ export const Step1_PartiesDefinition: React.FC<DocumentWizardProps> = ({ state, 
                   />
                 </div>
                 )}
-                <div className="col-span-1 md:col-span-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 mb-2">
-                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>صورة البطاقة الوطنية (اختياري)</span>
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => handleBuyerChange(index, 'idImage', e.target.files?.[0] || null)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white text-slate-700 text-xs font-medium focus:outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all"
-                  />
-                  {scanningCIN[`buyer_${index}`] && (
-                    <div className="mt-2 flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl animate-pulse">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                      <span>⚡ جاري قراءة رقم البطاقة الوطنية بالذكاء الاصطناعي وملء الحقول تلقائياً...</span>
-                    </div>
-                  )}
-                  {buyer.idImage && (
-                    <div className="mt-2 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl">
-                      <span className="truncate font-bold flex items-center gap-1.5">
-                        <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>تم إرفاق: {(buyer.idImage as any)?.name || 'صورة البطاقة'}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleBuyerChange(index, 'idImage', null)}
-                        className="text-rose-500 hover:text-rose-700 font-black px-2 py-0.5 rounded-lg hover:bg-rose-50 transition"
-                        title="حذف المرفق"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
+
               </div>
             </div>
           ))}
