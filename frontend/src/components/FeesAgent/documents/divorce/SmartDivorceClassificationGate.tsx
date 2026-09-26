@@ -9,6 +9,7 @@ import {
   FileCheck2,
   GitBranch,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   AlertTriangle,
   FileText,
@@ -252,6 +253,18 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
       activeBorder: 'border-rose-500 ring-4 ring-rose-100 bg-rose-50/40',
       desc: 'إشهاد الزوجة على طلاق نفسها بناءً على ما مُلّكت به من زوجها بسند معتمد.',
       legalBasis: 'المادة 89 من مدونة الأسرة'
+    },
+    {
+      id: 'completed_three' as DivorceClassificationType,
+      code: 'D-08' as DivorceStatisticalCode,
+      title: 'الطلاق المكمل للثلاث',
+      badge: 'بائن بينونة كبرى',
+      badgeColor: 'bg-red-100 text-red-800 border-red-300',
+      icon: ShieldAlert,
+      iconColor: 'text-red-600',
+      activeBorder: 'border-red-500 ring-4 ring-red-100 bg-red-50/40',
+      desc: 'طلاق يوقع الطلقة الثالثة المكملة للثلاث بائناً بينونة كبرى (يزيل الحل والملك نهائياً).',
+      legalBasis: 'المادتان 123 و127 من مدونة الأسرة'
     }
   ];
 
@@ -275,6 +288,7 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
     if (selectedType === 'revocable') return 'D-03';
     if (selectedType === 'khul') return 'D-04';
     if (selectedType === 'tamlik') return 'D-05';
+    if (selectedType === 'completed_three') return 'D-08';
     return 'D-06';
   }, [selectedType]);
 
