@@ -6,6 +6,12 @@ import type {
 } from '../../../../types/feesAgentTypes';
 import { generateConsensualDivorceDraft } from '../../../../utils/divorceTemplateEngine';
 import {
+  BeforeConsummationDuesForm,
+  BeforeConsummationChildrenNotice,
+  BeforeConsummationPregnancyNotice,
+  DowryStatusType
+} from './BeforeConsummationAdaptations';
+import {
   Scale,
   CheckCircle2,
   AlertTriangle,
@@ -95,8 +101,6 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   const existingWf = state.divorceClassification?.consensualWorkflow;
   const husbandExisting = state.sellers?.[0];
   const wifeExisting = state.buyers?.[0];
-  // واقعة البناء — مُسجَّلة من الشاشة التمهيدية
-  const isBeforeConsummation = state.divorceClassification?.consummationStatus === 'before_consummation';
 
   const [currentStage, setCurrentStage] = useState<number>(1);
 
@@ -275,7 +279,22 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   // Stage 07: التحقق من واقعة البناء
   // -------------------------------------------------------------
   const [consummationHappened, setConsummationHappened] = useState<boolean>(
-    existingWf?.consummationHappened ?? true
+    state.divorceClassification?.consummationStatus === 'before_consummation'
+      ? false
+      : existingWf?.consummationHappened ?? true
+  );
+
+  // واقعة البناء — تتحدد إما من الشاشة التمهيدية أو من المرحلة 7
+  const isBeforeConsummation =
+    state.divorceClassification?.consummationStatus === 'before_consummation' ||
+    consummationHappened === false;
+
+  // مستحقات الطلاق قبل الدخول (المادة 71 و135)
+  const [dowryStatus, setDowryStatus] = useState<DowryStatusType>(
+    (existingWf as any)?.dowryStatus || 'half_prescribed'
+  );
+  const [mutaaOrCompensation, setMutaaOrCompensation] = useState<number>(
+    (existingWf as any)?.mutaaOrCompensation ?? (existingWf?.dues?.wifeAgreedDues || 10000)
   );
 
   // -------------------------------------------------------------
@@ -403,10 +422,10 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
       case 10:
         return !duesExecutionStatus || (executedAmount > 0 && !!receiptOrDeliveryRef);
       case 11:
-        if (!hasChildren) return true;
+        if (isBeforeConsummation || !hasChildren) return true;
         return totalChildrenCount > 0 && boysCount + girlsCount === totalChildrenCount;
       case 12:
-        if (!hasChildren) return true;
+        if (isBeforeConsummation || !hasChildren) return true;
         return childrenList.length > 0 && childrenList.every((c) => !!c.firstName && !!c.birthDate);
       case 13:
         return true;
@@ -447,10 +466,8 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   const handleNextStage = () => {
     if (currentStage < 14) {
       let next = currentStage + 1;
-      // Auto-skip children (11,12) and pregnancy (13) when before consummation
-      if (isBeforeConsummation && next === 11) next = 14;
-      if (isBeforeConsummation && next === 12) next = 14;
-      if (isBeforeConsummation && next === 13) next = 14;
+      // Skip stage 12 (child cards) when before consummation since stage 11 already conveys the notice
+      if (isBeforeConsummation && currentStage === 11) next = 13;
       setCurrentStage(Math.min(next, 14));
     }
   };
@@ -458,10 +475,7 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   const handlePrevStage = () => {
     if (currentStage > 1) {
       let prev = currentStage - 1;
-      // Skip back over children/pregnancy when before consummation
-      if (isBeforeConsummation && prev === 13) prev = 10;
-      if (isBeforeConsummation && prev === 12) prev = 10;
-      if (isBeforeConsummation && prev === 11) prev = 10;
+      if (isBeforeConsummation && currentStage === 13) prev = 11;
       setCurrentStage(Math.max(prev, 1));
     }
   };
@@ -1802,128 +1816,104 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
               </div>
             </div>
 
-            {/* 🔔 Before-consummation adaptive dues notice */}
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 space-y-3">
-                <p className="text-xs font-extrabold text-amber-900 flex items-center gap-2">
-                  ⚠️ تكييف آلي — الطلاق قبل الدخول (المادة 71 من مدونة الأسرة)
-                </p>
-                <div className="space-y-3 text-sm">
+            {isBeforeConsummation ? (
+              <BeforeConsummationDuesForm
+                dowryStatus={dowryStatus}
+                onDowryStatusChange={setDowryStatus}
+                mutaaAmount={mutaaOrCompensation}
+                onMutaaAmountChange={setMutaaOrCompensation}
+                labelVariant="consensual"
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
+                  <span className="text-xs font-bold text-slate-800">هل تم إرفاق شروط اتفاق الطلاق المصادق عليه والمأذون به من المحكمة؟</span>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hasAgreementAttached"
+                        checked={hasAgreementAttached === true}
+                        onChange={() => setHasAgreementAttached(true)}
+                      />
+                      <span>🔘 نعم</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hasAgreementAttached"
+                        checked={hasAgreementAttached === false}
+                        onChange={() => setHasAgreementAttached(false)}
+                      />
+                      <span>🔘 لا</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">موقف الصداق / المهر:</label>
-                    <div className="flex flex-col gap-2">
-                      {(['تم قبضه كاملاً', 'تجب نصف الفريضة (نصف الصداق)', 'لم يحدد صداق (مهر المثل/المتعة)'] as const).map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs font-semibold text-amber-900 cursor-pointer">
-                          <input type="radio" name="mahrStatus" className="w-4 h-4 accent-amber-600" />
-                          {opt}
-                        </label>
-                      ))}
+                    <label className="block text-xs font-bold text-slate-700 mb-1">مستحقات الزوجة المتفق عليها (إن وجدت):</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={wifeAgreedDues || ''}
+                        onChange={(e) => setWifeAgreedDues(Number(e.target.value))}
+                        className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم</span>
                     </div>
                   </div>
-                  <div className="p-2.5 bg-amber-100 rounded-lg text-xs text-amber-900 font-semibold">
-                    🔒 نفقة العدة: <strong>غير مستحقة</strong> — لا عدة على المطلقة قبل الدخول (المادة 135 من مدونة الأسرة).
-                  </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">المتعة أو التعويض الاتفاقي / القضائي (درهم):</label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-sm focus:border-amber-500 focus:outline-none"
-                      placeholder="0"
-                    />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">واجبات السكنى أو التعويض المالي المتفق عليه:</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={housingOrCompDues || ''}
+                        onChange={(e) => setHousingOrCompDues(Number(e.target.value))}
+                        className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">مستحقات الأبناء والنفقة الاتفاقية الشهرية:</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={childrenMonthlySupport || ''}
+                        onChange={(e) => setChildrenMonthlySupport(Number(e.target.value))}
+                        className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم/ش</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">شروط أخرى (مثل التنازلات أو مؤخر الصداق):</label>
+                  <textarea
+                    value={otherConditions}
+                    onChange={(e) => setOtherConditions(e.target.value)}
+                    placeholder="بيان التنازلات، أثاث بيت الزوجية، مؤخر الصداق، أو أي التزامات أخرى..."
+                    className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:border-blue-600 focus:outline-none h-20"
+                  />
+                </div>
+
+                {/* إجمالي المبالغ */}
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-amber-950">الإجمالي المالي الموثق بالأرقام:</span>
+                    <span className="font-extrabold text-base text-amber-900">{duesTotal.toLocaleString('ar-MA')} درهم</span>
+                  </div>
+                  <div className="text-xs text-amber-800">
+                    <span>الإجمالي بالحروف (يولد تلقائياً): </span>
+                    <strong>{duesTotalInWords}</strong>
                   </div>
                 </div>
               </div>
             )}
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
-                <span className="text-xs font-bold text-slate-800">هل تم إرفاق شروط اتفاق الطلاق المصادق عليه والمأذون به من المحكمة؟</span>
-                <div className="flex gap-3">
-                  <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasAgreementAttached"
-                      checked={hasAgreementAttached === true}
-                      onChange={() => setHasAgreementAttached(true)}
-                    />
-                    <span>🔘 نعم</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      name="hasAgreementAttached"
-                      checked={hasAgreementAttached === false}
-                      onChange={() => setHasAgreementAttached(false)}
-                    />
-                    <span>🔘 لا</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">مستحقات الزوجة المتفق عليها (إن وجدت):</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={wifeAgreedDues || ''}
-                      onChange={(e) => setWifeAgreedDues(Number(e.target.value))}
-                      className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
-                    />
-                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">واجبات السكنى أو التعويض المالي المتفق عليه:</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={housingOrCompDues || ''}
-                      onChange={(e) => setHousingOrCompDues(Number(e.target.value))}
-                      className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
-                    />
-                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">مستحقات الأبناء والنفقة الاتفاقية الشهرية:</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={childrenMonthlySupport || ''}
-                      onChange={(e) => setChildrenMonthlySupport(Number(e.target.value))}
-                      className="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:outline-none"
-                    />
-                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">درهم/ش</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">شروط أخرى (مثل التنازلات أو مؤخر الصداق):</label>
-                <textarea
-                  value={otherConditions}
-                  onChange={(e) => setOtherConditions(e.target.value)}
-                  placeholder="بيان التنازلات، أثاث بيت الزوجية، مؤخر الصداق، أو أي التزامات أخرى..."
-                  className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:border-blue-600 focus:outline-none h-20"
-                />
-              </div>
-
-              {/* إجمالي المبالغ */}
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold text-amber-950">الإجمالي المالي الموثق بالأرقام:</span>
-                  <span className="font-extrabold text-base text-amber-900">{duesTotal.toLocaleString('ar-MA')} درهم</span>
-                </div>
-                <div className="text-xs text-amber-800">
-                  <span>الإجمالي بالحروف (يولد تلقائياً): </span>
-                  <strong>{duesTotalInWords}</strong>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -2047,86 +2037,80 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
               </div>
             </div>
 
-            {/* Auto-skip notice when before consummation */}
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
-                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
-                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
-                  <strong>تنبيه النظام:</strong> تم إلغاء مرحلة بيانات الأبناء والحضانة تلقائياً لعدم وجود دخلة شرعية. لا تنشأ روابط الأبناء إلا بعد البناء.
-                </p>
+            {isBeforeConsummation ? (
+              <BeforeConsummationChildrenNotice />
+            ) : (
+              <div className="space-y-4">
+                <label className="block text-sm font-bold text-slate-800">هل للزوجين أبناء؟</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 p-3.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-all font-bold text-sm">
+                    <input
+                      type="radio"
+                      name="hasChildren"
+                      checked={hasChildren === true}
+                      onChange={() => setHasChildren(true)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span>🔘 نعم</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-all font-bold text-sm">
+                    <input
+                      type="radio"
+                      name="hasChildren"
+                      checked={hasChildren === false}
+                      onChange={() => setHasChildren(false)}
+                      className="w-4 h-4 text-slate-600"
+                    />
+                    <span>🔘 لا</span>
+                  </label>
+                </div>
+
+                {hasChildren && (
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">إجمالي عدد الأبناء:</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={totalChildrenCount || ''}
+                          onChange={(e) => setTotalChildrenCount(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">ذكور 👦:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={boysCount}
+                          onChange={(e) => setBoysCount(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">إناث 👧:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={girlsCount}
+                          onChange={(e) => setGirlsCount(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
+                        />
+                      </div>
+                    </div>
+
+                    {boysCount + girlsCount !== totalChildrenCount && (
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>تنبيه: مجموع الذكور والإناث ({boysCount + girlsCount}) لا يطابق الإجمالي المحدد ({totalChildrenCount}). يتعين تصحيح العدد للمتابعة.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-slate-800">هل للزوجين أبناء؟</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 p-3.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-all font-bold text-sm">
-                  <input
-                    type="radio"
-                    name="hasChildren"
-                    checked={hasChildren === true}
-                    onChange={() => setHasChildren(true)}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span>🔘 نعم</span>
-                </label>
-
-                <label className="flex items-center gap-2 p-3.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-all font-bold text-sm">
-                  <input
-                    type="radio"
-                    name="hasChildren"
-                    checked={hasChildren === false}
-                    onChange={() => setHasChildren(false)}
-                    className="w-4 h-4 text-slate-600"
-                  />
-                  <span>🔘 لا</span>
-                </label>
-              </div>
-
-              {hasChildren && (
-                <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">إجمالي عدد الأبناء:</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={totalChildrenCount || ''}
-                        onChange={(e) => setTotalChildrenCount(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">ذكور 👦:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={boysCount}
-                        onChange={(e) => setBoysCount(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">إناث 👧:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={girlsCount}
-                        onChange={(e) => setGirlsCount(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-center"
-                      />
-                    </div>
-                  </div>
-
-                  {boysCount + girlsCount !== totalChildrenCount && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>تنبيه: مجموع الذكور والإناث ({boysCount + girlsCount}) لا يطابق الإجمالي المحدد ({totalChildrenCount}). يتعين تصحيح العدد للمتابعة.</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -2135,148 +2119,154 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
         {/* ========================================================= */}
         {currentStage === 12 && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">👦👧</span>
-                <div>
-                  <h3 className="font-bold text-blue-950 text-base">المرحلة 12 — بطاقة كل ابن وحضانته الاتفاقية</h3>
-                  <p className="text-xs text-blue-800 mt-1">
-                    ينشئ النظام تلقائياً بطاقة لكل ابن لتدوين بياناته وإسناد الحضانة الاتفاقية وحق الزيارة.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddChild}
-                className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إضافة ابن</span>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {childrenList.map((child, idx) => (
-                <div key={child.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4 relative">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                    <span className="font-bold text-xs text-slate-800">
-                      {child.gender === 'ذكر' ? '👦' : '👧'} الابن رقم 0{idx + 1}
-                    </span>
-                    {childrenList.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveChild(child.id)}
-                        className="text-rose-600 hover:text-rose-800 p-1 text-xs"
-                        title="حذف هذا الابن"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+            {isBeforeConsummation ? (
+              <BeforeConsummationChildrenNotice />
+            ) : (
+              <>
+                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">👦👧</span>
+                    <div>
+                      <h3 className="font-bold text-blue-950 text-base">المرحلة 12 — بطاقة كل ابن وحضانته الاتفاقية</h3>
+                      <p className="text-xs text-blue-800 mt-1">
+                        ينشئ النظام تلقائياً بطاقة لكل ابن لتدوين بياناته وإسناد الحضانة الاتفاقية وحق الزيارة.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">الاسم الشخصي:</label>
-                      <input
-                        type="text"
-                        value={child.firstName}
-                        onChange={(e) => handleUpdateChild(child.id, { firstName: e.target.value })}
-                        placeholder="يوسف"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">الاسم العائلي:</label>
-                      <input
-                        type="text"
-                        value={child.lastName}
-                        onChange={(e) => handleUpdateChild(child.id, { lastName: e.target.value })}
-                        placeholder="المنصوري"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">الجنس:</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateChild(child.id, { gender: 'ذكر' })}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                            child.gender === 'ذكر' ? 'bg-blue-900 text-white border-blue-900' : 'bg-white text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          ذكر
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateChild(child.id, { gender: 'أنثى' })}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                            child.gender === 'أنثى' ? 'bg-rose-700 text-white border-rose-700' : 'bg-white text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          أنثى
-                        </button>
+                  <button
+                    type="button"
+                    onClick={handleAddChild}
+                    className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>إضافة ابن</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {childrenList.map((child, idx) => (
+                    <div key={child.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4 relative">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <span className="font-bold text-xs text-slate-800">
+                          {child.gender === 'ذكر' ? '👦' : '👧'} الابن رقم 0{idx + 1}
+                        </span>
+                        {childrenList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveChild(child.id)}
+                            className="text-rose-600 hover:text-rose-800 p-1 text-xs"
+                            title="حذف هذا الابن"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">الاسم الشخصي:</label>
+                          <input
+                            type="text"
+                            value={child.firstName}
+                            onChange={(e) => handleUpdateChild(child.id, { firstName: e.target.value })}
+                            placeholder="يوسف"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">الاسم العائلي:</label>
+                          <input
+                            type="text"
+                            value={child.lastName}
+                            onChange={(e) => handleUpdateChild(child.id, { lastName: e.target.value })}
+                            placeholder="المنصوري"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">الجنس:</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateChild(child.id, { gender: 'ذكر' })}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                child.gender === 'ذكر' ? 'bg-blue-900 text-white border-blue-900' : 'bg-white text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              ذكر
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateChild(child.id, { gender: 'أنثى' })}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                child.gender === 'أنثى' ? 'bg-rose-700 text-white border-rose-700' : 'bg-white text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              أنثى
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ الازدياد (العمر: {calculateAge(child.birthDate)} سنة):</label>
+                          <input
+                            type="date"
+                            value={child.birthDate}
+                            onChange={(e) => handleUpdateChild(child.id, { birthDate: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">إسناد الحضانة الاتفاقية:</label>
+                          <div className="flex gap-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'mother' })}
+                              className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
+                                child.custodyAssignment === 'mother' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              للأم
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'father' })}
+                              className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
+                                child.custodyAssignment === 'father' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              للزوج
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'other_agreed' })}
+                              className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
+                                child.custodyAssignment === 'other_agreed' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              ترتيب آخر متفق عليه
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">حق زيارة وصلة الرحم الاتفاقي:</label>
+                          <input
+                            type="text"
+                            value={child.visitationRights}
+                            onChange={(e) => handleUpdateChild(child.id, { visitationRights: e.target.value })}
+                            placeholder="عطل نهاية الأسبوع والعطل المدرسية بالاتفاق"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">تاريخ الازدياد (العمر: {calculateAge(child.birthDate)} سنة):</label>
-                      <input
-                        type="date"
-                        value={child.birthDate}
-                        onChange={(e) => handleUpdateChild(child.id, { birthDate: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">إسناد الحضانة الاتفاقية:</label>
-                      <div className="flex gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'mother' })}
-                          className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
-                            child.custodyAssignment === 'mother' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          للأم
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'father' })}
-                          className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
-                            child.custodyAssignment === 'father' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          للزوج
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateChild(child.id, { custodyAssignment: 'other_agreed' })}
-                          className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
-                            child.custodyAssignment === 'other_agreed' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          ترتيب آخر متفق عليه
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">حق زيارة وصلة الرحم الاتفاقي:</label>
-                      <input
-                        type="text"
-                        value={child.visitationRights}
-                        onChange={(e) => handleUpdateChild(child.id, { visitationRights: e.target.value })}
-                        placeholder="عطل نهاية الأسبوع والعطل المدرسية بالاتفاق"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -2293,71 +2283,65 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
               </div>
             </div>
 
-            {/* Auto-skip notice when before consummation */}
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
-                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
-                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
-                  <strong>تنبيه النظام:</strong> تم تجاوز مرحلة التحقق من الحمل تلقائياً — لا عدة على المطلقة قبل الدخول، ومن ثم لا حمل يُعتدّ به (المادة 135 من مدونة الأسرة).
-                </p>
+            {isBeforeConsummation ? (
+              <BeforeConsummationPregnancyNotice />
+            ) : (
+              <div className="space-y-4">
+                <label className="block text-sm font-bold text-slate-800">هل الزوجة حامل وقت الإشهاد؟</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    pregnancyStatus === 'yes' ? 'border-amber-500 bg-amber-50/50' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="pregnancyStatus"
+                      checked={pregnancyStatus === 'yes'}
+                      onChange={() => setPregnancyStatus('yes')}
+                      className="w-4 h-4 text-amber-600"
+                    />
+                    <span className="font-bold text-sm">🔘 نعم</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    pregnancyStatus === 'no' ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="pregnancyStatus"
+                      checked={pregnancyStatus === 'no'}
+                      onChange={() => setPregnancyStatus('no')}
+                      className="w-4 h-4 text-emerald-600"
+                    />
+                    <span className="font-bold text-sm">🔘 لا (براءة الرحم)</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    pregnancyStatus === 'unknown' ? 'border-slate-400 bg-slate-100' : 'border-slate-200 hover:bg-slate-50'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="pregnancyStatus"
+                      checked={pregnancyStatus === 'unknown'}
+                      onChange={() => setPregnancyStatus('unknown')}
+                      className="w-4 h-4 text-slate-600"
+                    />
+                    <span className="font-bold text-sm">🔘 غير معلوم</span>
+                  </label>
+                </div>
+
+                {pregnancyStatus === 'yes' && (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-xs text-amber-900">
+                      <span>🟠</span>
+                      <h4>تنبيه: أثر الحمل على الطلاق الاتفاقي</h4>
+                    </div>
+                    <p className="text-xs leading-relaxed">
+                      تم تسجيل حالة الحمل. يرجى التأكد من تضمين نفقة الحمل ومشتملاته ورعاية المولد ضمن اتفاق الطرفين المأذون به.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-slate-800">هل الزوجة حامل وقت الإشهاد؟</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  pregnancyStatus === 'yes' ? 'border-amber-500 bg-amber-50/50' : 'border-slate-200 hover:bg-slate-50'
-                }`}>
-                  <input
-                    type="radio"
-                    name="pregnancyStatus"
-                    checked={pregnancyStatus === 'yes'}
-                    onChange={() => setPregnancyStatus('yes')}
-                    className="w-4 h-4 text-amber-600"
-                  />
-                  <span className="font-bold text-sm">🔘 نعم</span>
-                </label>
-
-                <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  pregnancyStatus === 'no' ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-200 hover:bg-slate-50'
-                }`}>
-                  <input
-                    type="radio"
-                    name="pregnancyStatus"
-                    checked={pregnancyStatus === 'no'}
-                    onChange={() => setPregnancyStatus('no')}
-                    className="w-4 h-4 text-emerald-600"
-                  />
-                  <span className="font-bold text-sm">🔘 لا (براءة الرحم)</span>
-                </label>
-
-                <label className={`flex items-center gap-2 p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  pregnancyStatus === 'unknown' ? 'border-slate-400 bg-slate-100' : 'border-slate-200 hover:bg-slate-50'
-                }`}>
-                  <input
-                    type="radio"
-                    name="pregnancyStatus"
-                    checked={pregnancyStatus === 'unknown'}
-                    onChange={() => setPregnancyStatus('unknown')}
-                    className="w-4 h-4 text-slate-600"
-                  />
-                  <span className="font-bold text-sm">🔘 غير معلوم</span>
-                </label>
-              </div>
-
-              {pregnancyStatus === 'yes' && (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-xs text-amber-900">
-                    <span>🟠</span>
-                    <h4>تنبيه: أثر الحمل على الطلاق الاتفاقي</h4>
-                  </div>
-                  <p className="text-xs leading-relaxed">
-                    تم تسجيل حالة الحمل. يرجى التأكد من تضمين نفقة الحمل ومشتملاته ورعاية المولد ضمن اتفاق الطرفين المأذون به.
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

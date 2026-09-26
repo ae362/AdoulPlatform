@@ -5,6 +5,12 @@ import type {
   RevocableChildData
 } from '../../../../types/feesAgentTypes';
 import {
+  BeforeConsummationDuesForm,
+  BeforeConsummationChildrenNotice,
+  BeforeConsummationPregnancyNotice,
+  DowryStatusType
+} from './BeforeConsummationAdaptations';
+import {
   Scale,
   CheckCircle2,
   AlertTriangle,
@@ -111,6 +117,17 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
   const existingKhul = classification?.khulWorkflow;
   const defaultHusband = state.sellers?.[0];
   const defaultWife = state.buyers?.[0];
+
+  // واقعة البناء — مُسجَّلة من الشاشة التمهيدية
+  const isBeforeConsummation = state.divorceClassification?.consummationStatus === 'before_consummation';
+
+  // مستحقات الطلاق قبل الدخول (المادة 71 و135)
+  const [dowryStatus, setDowryStatus] = useState<DowryStatusType>(
+    (existingKhul as any)?.dowryStatus || 'half_prescribed'
+  );
+  const [mutaaOrCompensation, setMutaaOrCompensation] = useState<number>(
+    (existingKhul as any)?.mutaaOrCompensation ?? (existingKhul?.compensation?.totalAmount || 10000)
+  );
 
   // Stage 1: الإذن القضائي بالإشهاد بالخلع
   const [hasJudicialPermission, setHasJudicialPermission] = useState<boolean>(
@@ -532,13 +549,16 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
         totalAmountInWords: totalCompensationInWords
       },
       wifeConfirmedDuesDeclaration,
-      pregnancyStatus,
-      pregnancyStartDate: pregnancyStatus === 'yes' ? pregnancyStartDate : undefined,
-      hasChildren,
-      totalChildrenCount,
-      boysCount,
-      girlsCount,
-      childrenList,
+      isBeforeConsummation,
+      dowryStatus: isBeforeConsummation ? dowryStatus : undefined,
+      mutaaOrCompensation: isBeforeConsummation ? mutaaOrCompensation : undefined,
+      pregnancyStatus: isBeforeConsummation ? 'no' : pregnancyStatus,
+      pregnancyStartDate: (!isBeforeConsummation && pregnancyStatus === 'yes') ? pregnancyStartDate : undefined,
+      hasChildren: isBeforeConsummation ? false : hasChildren,
+      totalChildrenCount: isBeforeConsummation ? 0 : totalChildrenCount,
+      boysCount: isBeforeConsummation ? 0 : boysCount,
+      girlsCount: isBeforeConsummation ? 0 : girlsCount,
+      childrenList: isBeforeConsummation ? [] : childrenList,
       motherSpendingCapacity,
       motherIncomeTypes,
       motherIncomeNature,
@@ -589,10 +609,12 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
       case 10:
         return true;
       case 11:
+        if (isBeforeConsummation) return true;
         return wifeConfirmedDuesDeclaration;
       case 12:
         return true;
       case 13:
+        if (isBeforeConsummation) return true;
         return !hasChildren || isChildrenCountMatching;
       case 14:
         return true;
@@ -633,15 +655,13 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
     motherCommittedToCare,
     motherCommittedToCustody,
     freeWillConsent,
-    husbandCoercionReported
+    husbandCoercionReported,
+    isBeforeConsummation
   ]);
 
-  // واقعة البناء — مُسجَّلة من الشاشة التمهيدية
-  const isBeforeConsummation = state.divorceClassification?.consummationStatus === 'before_consummation';
-
   const handleNextStage = () => {
-    // Before consummation: skip pregnancy (12) and children (13-20) directly to 21
-    if (isBeforeConsummation && currentStage === 11) {
+    // Before consummation: allow viewing pregnancy (12) and children notice (13), then jump to 21
+    if (isBeforeConsummation && currentStage === 13) {
       setCurrentStage(21);
       return;
     }
@@ -656,7 +676,7 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
 
   const handlePrevStage = () => {
     if (isBeforeConsummation && currentStage === 21) {
-      setCurrentStage(11);
+      setCurrentStage(13);
       return;
     }
     if (currentStage === 21 && !hasChildren) {
@@ -2049,84 +2069,67 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
               </p>
             </div>
 
-            {/* 🔔 Before-consummation adaptive dues */}
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 space-y-3">
-                <p className="text-xs font-extrabold text-amber-900">⚠️ تكييف آلي — الطلاق قبل الدخول (المادة 71 من مدونة الأسرة)</p>
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">موقف الصداق / المهر:</label>
-                    <div className="flex flex-col gap-2">
-                      {(['تم قبضه كاملاً', 'تجب نصف الفريضة (نصف الصداق)', 'لم يحدد صداق (مهر المثل/المتعة)'] as const).map((opt) => (
-                        <label key={opt} className="flex items-center gap-2 text-xs font-semibold text-amber-900 cursor-pointer">
-                          <input type="radio" name="mahrStatusKhul" className="w-4 h-4 accent-amber-600" />
-                          {opt}
-                        </label>
-                      ))}
+            {isBeforeConsummation ? (
+              <BeforeConsummationDuesForm
+                dowryStatus={dowryStatus}
+                onDowryStatusChange={setDowryStatus}
+                mutaaAmount={mutaaOrCompensation}
+                onMutaaAmountChange={setMutaaOrCompensation}
+                labelVariant="khul"
+              />
+            ) : (
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">
+                  تصرح الزوجة بأنها تخالع من عصمة زوجها مقابل ما تم الاتفاق عليه، وتشمل المستحقات التي تدخل في بدل الخلع ما يلي:
+                </p>
+
+                <div className="space-y-2 text-xs bg-white p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>مؤخر الصداق وقدره: <strong className="font-mono">{deferredDowryIncluded ? `${deferredDowryAmount} درهم` : 'غير مشمول'}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>نفقة العدة: <strong className="font-mono">{iddahMaintenanceWaived ? 'تنازلت عنها ضمن البدل' : 'مستحقة قانوناً'}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>المتعة: <strong className="font-mono">{mutahIncluded ? `${mutahAmount} درهم` : 'غير مشمولة'}</strong></span>
+                  </div>
+                  {otherCompensationIncluded && (
+                    <div className="flex items-center gap-2 text-slate-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>بدل آخر: <strong className="font-mono">{otherCompensationDesc} ({otherCompensationAmount} درهم)</strong></span>
                     </div>
-                  </div>
-                  <div className="p-2.5 bg-amber-100 rounded-lg text-xs text-amber-900 font-semibold">
-                    🔒 نفقة العدة: <strong>غير مستحقة</strong> — لا عدة على المطلقة قبل الدخول (المادة 135).
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">المتعة أو التعويض الاتفاقي (درهم):</label>
-                    <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-sm focus:outline-none" placeholder="0" />
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-800 mb-2">
+                    هل تقر الزوجة بهذه العناصر كما هي دون زيادة أو نقصان؟
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setWifeConfirmedDuesDeclaration(true)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                        wifeConfirmedDuesDeclaration ? 'bg-emerald-600 text-white' : 'bg-white border text-slate-700'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>نعم، أقر بها تماماً</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStage(9)}
+                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                    >
+                      مراجعة وتعديل العناصر ↩
+                    </button>
                   </div>
                 </div>
               </div>
             )}
-
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">
-                تصرح الزوجة بأنها تخالع من عصمة زوجها مقابل ما تم الاتفاق عليه، وتشمل المستحقات التي تدخل في بدل الخلع ما يلي:
-              </p>
-
-              <div className="space-y-2 text-xs bg-white p-4 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-2 text-slate-800">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>مؤخر الصداق وقدره: <strong className="font-mono">{deferredDowryIncluded ? `${deferredDowryAmount} درهم` : 'غير مشمول'}</strong></span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-800">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>نفقة العدة: <strong className="font-mono">{iddahMaintenanceWaived ? 'تنازلت عنها ضمن البدل' : 'مستحقة قانوناً'}</strong></span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-800">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>المتعة: <strong className="font-mono">{mutahIncluded ? `${mutahAmount} درهم` : 'غير مشمولة'}</strong></span>
-                </div>
-                {otherCompensationIncluded && (
-                  <div className="flex items-center gap-2 text-slate-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>بدل آخر: <strong className="font-mono">{otherCompensationDesc} ({otherCompensationAmount} درهم)</strong></span>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-800 mb-2">
-                  هل تقر الزوجة بهذه العناصر كما هي دون زيادة أو نقصان؟
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWifeConfirmedDuesDeclaration(true)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                      wifeConfirmedDuesDeclaration ? 'bg-emerald-600 text-white' : 'bg-white border text-slate-700'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>نعم، أقر بها تماماً</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStage(9)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
-                  >
-                    مراجعة وتعديل العناصر ↩
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -2147,92 +2150,87 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
               </p>
             </div>
 
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
-                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
-                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
-                  <strong>تنبيه النظام:</strong> تم تجاوز مرحلة التحقق من الحمل تلقائياً — لا عدة على المطلقة قبل الدخول (المادة 135 من مدونة الأسرة).
-                </p>
-              </div>
-            )}
+            {isBeforeConsummation ? (
+              <BeforeConsummationPregnancyNotice />
+            ) : (
+              <div className="space-y-4">
+                <label className="block text-xs font-bold text-slate-800">
+                  هل تصرح الزوجة بوجود حمل وقت الإشهاد؟
+                </label>
 
-            <div className="space-y-4">
-              <label className="block text-xs font-bold text-slate-800">
-                هل تصرح الزوجة بوجود حمل وقت الإشهاد؟
-              </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPregnancyStatus('no')}
+                    className={`p-4 rounded-xl border text-right transition-all ${
+                      pregnancyStatus === 'no'
+                        ? 'bg-blue-600 text-white border-blue-700 shadow-sm font-bold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="block text-sm mb-1">لا، أصرح بعدم وجود حمل</span>
+                    <span className="text-[11px] opacity-80 font-normal">براءة الرحم من الحمل</span>
+                  </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPregnancyStatus('no')}
-                  className={`p-4 rounded-xl border text-right transition-all ${
-                    pregnancyStatus === 'no'
-                      ? 'bg-blue-600 text-white border-blue-700 shadow-sm font-bold'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block text-sm mb-1">لا، أصرح بعدم وجود حمل</span>
-                  <span className="text-[11px] opacity-80 font-normal">براءة الرحم من الحمل</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setPregnancyStatus('yes')}
+                    className={`p-4 rounded-xl border text-right transition-all ${
+                      pregnancyStatus === 'yes'
+                        ? 'bg-amber-600 text-white border-amber-700 shadow-sm font-bold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="block text-sm mb-1">نعم، أصرح بوجود حمل</span>
+                    <span className="text-[11px] opacity-80 font-normal">حامل وقت الإشهاد بالخلع</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setPregnancyStatus('yes')}
-                  className={`p-4 rounded-xl border text-right transition-all ${
-                    pregnancyStatus === 'yes'
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-sm font-bold'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block text-sm mb-1">نعم، أصرح بوجود حمل</span>
-                  <span className="text-[11px] opacity-80 font-normal">حامل وقت الإشهاد بالخلع</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPregnancyStatus('cannot_declare')}
-                  className={`p-4 rounded-xl border text-right transition-all ${
-                    pregnancyStatus === 'cannot_declare'
-                      ? 'bg-slate-700 text-white border-slate-800 shadow-sm font-bold'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block text-sm mb-1">لا أستطيع التصريح</span>
-                  <span className="text-[11px] opacity-80 font-normal">عدم التيقن / يحتاج فحص</span>
-                </button>
-              </div>
-
-              {pregnancyStatus === 'no' && (
-                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                  <span>🟢 تم تسجيل تصريح الزوجة بعدم وجود حمل.</span>
+                  <button
+                    type="button"
+                    onClick={() => setPregnancyStatus('cannot_declare')}
+                    className={`p-4 rounded-xl border text-right transition-all ${
+                      pregnancyStatus === 'cannot_declare'
+                        ? 'bg-slate-700 text-white border-slate-800 shadow-sm font-bold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="block text-sm mb-1">لا أستطيع التصريح</span>
+                    <span className="text-[11px] opacity-80 font-normal">عدم التيقن / يحتاج فحص</span>
+                  </button>
                 </div>
-              )}
 
-              {pregnancyStatus === 'yes' && (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-bold">⚠️ تم تسجيل وجود حمل</h4>
-                      <p className="mt-1 leading-relaxed text-amber-900">
-                        يرجى التأكد من إدراج الآثار والالتزامات المتعلقة بالمولود. الحقوق القانونية للمولود ونفقته لا يجوز أن تُختزل في عبارة تنازل عامة.
-                      </p>
+                {pregnancyStatus === 'no' && (
+                  <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    <span>🟢 تم تسجيل تصريح الزوجة بعدم وجود حمل.</span>
+                  </div>
+                )}
+
+                {pregnancyStatus === 'yes' && (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-bold">⚠️ تم تسجيل وجود حمل</h4>
+                        <p className="mt-1 leading-relaxed text-amber-900">
+                          يرجى التأكد من إدراج الآثار والالتزامات المتعلقة بالمولود. الحقوق القانونية للمولود ونفقته لا يجوز أن تُختزل في عبارة تنازل عامة.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="max-w-xs">
+                      <label className="block text-[11px] font-bold text-amber-900 mb-1">تاريخ بداية الحمل إن كان معلوماً:</label>
+                      <input
+                        type="date"
+                        value={pregnancyStartDate}
+                        onChange={(e) => setPregnancyStartDate(e.target.value)}
+                        className="w-full p-2 text-xs bg-white border border-amber-300 rounded-lg font-mono"
+                      />
                     </div>
                   </div>
-
-                  <div className="max-w-xs">
-                    <label className="block text-[11px] font-bold text-amber-900 mb-1">تاريخ بداية الحمل إن كان معلوماً:</label>
-                    <input
-                      type="date"
-                      value={pregnancyStartDate}
-                      onChange={(e) => setPregnancyStartDate(e.target.value)}
-                      className="w-full p-2 text-xs bg-white border border-amber-300 rounded-lg font-mono"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -2253,16 +2251,10 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
               </p>
             </div>
 
-            {isBeforeConsummation && (
-              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
-                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
-                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
-                  <strong>تنبيه النظام:</strong> تم إلغاء مرحلة بيانات الأبناء والحضانة تلقائياً لعدم وجود دخلة شرعية.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-4">
+            {isBeforeConsummation ? (
+              <BeforeConsummationChildrenNotice />
+            ) : (
+              <div className="space-y-4">
               <label className="block text-xs font-bold text-slate-800">هل للزوجين أبناء؟</label>
               <div className="flex items-center gap-3">
                 <button
@@ -2410,8 +2402,9 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
         {/* ========================================================================= */}
         {/* المرحلة 14 — قدرة الأم المختلعة على الإنفاق */}

@@ -1962,6 +1962,9 @@ export interface KhulDivorceWorkflowData {
     insolventMotherProtected: boolean;
     noCoercionSuspected: boolean;
   };
+  isBeforeConsummation?: boolean;
+  dowryStatus?: string;
+  mutaaOrCompensation?: number;
   completedAt?: string;
 }
 
@@ -2119,6 +2122,10 @@ export interface TamlikDivorceWorkflowData {
 
   husbandRevocationAttempted: boolean;
   isRepresentationOrAgency: boolean;
+
+  isBeforeConsummation?: boolean;
+  dowryStatus?: string;
+  mutaaOrCompensation?: number;
 
   completedAt?: string;
 }
@@ -2369,6 +2376,10 @@ export interface DiscordDivorceWorkflowData {
 
   // المرحلة 13: حالة الحمل
   pregnancyStatus: 'yes' | 'no' | 'unknown';
+
+  isBeforeConsummation?: boolean;
+  dowryStatus?: string;
+  mutaaOrCompensation?: number;
 
   // المرحلة 14: المراجعة الشاملة والتأكيد
   completedAt?: string;
