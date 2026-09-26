@@ -95,6 +95,8 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   const existingWf = state.divorceClassification?.consensualWorkflow;
   const husbandExisting = state.sellers?.[0];
   const wifeExisting = state.buyers?.[0];
+  // واقعة البناء — مُسجَّلة من الشاشة التمهيدية
+  const isBeforeConsummation = state.divorceClassification?.consummationStatus === 'before_consummation';
 
   const [currentStage, setCurrentStage] = useState<number>(1);
 
@@ -444,13 +446,23 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   // Stepper navigation
   const handleNextStage = () => {
     if (currentStage < 14) {
-      setCurrentStage((prev) => prev + 1);
+      let next = currentStage + 1;
+      // Auto-skip children (11,12) and pregnancy (13) when before consummation
+      if (isBeforeConsummation && next === 11) next = 14;
+      if (isBeforeConsummation && next === 12) next = 14;
+      if (isBeforeConsummation && next === 13) next = 14;
+      setCurrentStage(Math.min(next, 14));
     }
   };
 
   const handlePrevStage = () => {
     if (currentStage > 1) {
-      setCurrentStage((prev) => prev - 1);
+      let prev = currentStage - 1;
+      // Skip back over children/pregnancy when before consummation
+      if (isBeforeConsummation && prev === 13) prev = 10;
+      if (isBeforeConsummation && prev === 12) prev = 10;
+      if (isBeforeConsummation && prev === 11) prev = 10;
+      setCurrentStage(Math.max(prev, 1));
     }
   };
 
@@ -1790,6 +1802,40 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
               </div>
             </div>
 
+            {/* 🔔 Before-consummation adaptive dues notice */}
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 space-y-3">
+                <p className="text-xs font-extrabold text-amber-900 flex items-center gap-2">
+                  ⚠️ تكييف آلي — الطلاق قبل الدخول (المادة 71 من مدونة الأسرة)
+                </p>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">موقف الصداق / المهر:</label>
+                    <div className="flex flex-col gap-2">
+                      {(['تم قبضه كاملاً', 'تجب نصف الفريضة (نصف الصداق)', 'لم يحدد صداق (مهر المثل/المتعة)'] as const).map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-xs font-semibold text-amber-900 cursor-pointer">
+                          <input type="radio" name="mahrStatus" className="w-4 h-4 accent-amber-600" />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-amber-100 rounded-lg text-xs text-amber-900 font-semibold">
+                    🔒 نفقة العدة: <strong>غير مستحقة</strong> — لا عدة على المطلقة قبل الدخول (المادة 135 من مدونة الأسرة).
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">المتعة أو التعويض الاتفاقي / القضائي (درهم):</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-sm focus:border-amber-500 focus:outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
                 <span className="text-xs font-bold text-slate-800">هل تم إرفاق شروط اتفاق الطلاق المصادق عليه والمأذون به من المحكمة؟</span>
@@ -1992,7 +2038,7 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
         {currentStage === 11 && (
           <div className="space-y-6 animate-fadeIn">
             <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 flex items-start gap-3">
-              <span className="text-2xl">👨👩👧👦</span>
+              <span className="text-2xl">👨‍👩‍👧‍👦</span>
               <div>
                 <h3 className="font-bold text-blue-950 text-base">المرحلة 11 — أبناء الزوجين</h3>
                 <p className="text-xs text-blue-800 mt-1 leading-relaxed">
@@ -2000,6 +2046,16 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
                 </p>
               </div>
             </div>
+
+            {/* Auto-skip notice when before consummation */}
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
+                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
+                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                  <strong>تنبيه النظام:</strong> تم إلغاء مرحلة بيانات الأبناء والحضانة تلقائياً لعدم وجود دخلة شرعية. لا تنشأ روابط الأبناء إلا بعد البناء.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               <label className="block text-sm font-bold text-slate-800">هل للزوجين أبناء؟</label>
@@ -2236,6 +2292,16 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
                 <p className="text-xs text-blue-800 mt-1">التحقق من حالة الحمل وقت الإشهاد لترتيب آثاره على نفقة الحمل ومشتملاته.</p>
               </div>
             </div>
+
+            {/* Auto-skip notice when before consummation */}
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
+                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
+                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                  <strong>تنبيه النظام:</strong> تم تجاوز مرحلة التحقق من الحمل تلقائياً — لا عدة على المطلقة قبل الدخول، ومن ثم لا حمل يُعتدّ به (المادة 135 من مدونة الأسرة).
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               <label className="block text-sm font-bold text-slate-800">هل الزوجة حامل وقت الإشهاد؟</label>

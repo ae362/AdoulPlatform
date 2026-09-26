@@ -636,7 +636,15 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
     husbandCoercionReported
   ]);
 
+  // واقعة البناء — مُسجَّلة من الشاشة التمهيدية
+  const isBeforeConsummation = state.divorceClassification?.consummationStatus === 'before_consummation';
+
   const handleNextStage = () => {
+    // Before consummation: skip pregnancy (12) and children (13-20) directly to 21
+    if (isBeforeConsummation && currentStage === 11) {
+      setCurrentStage(21);
+      return;
+    }
     if (currentStage === 13 && !hasChildren) {
       setCurrentStage(21); // Skip children details, spending capacity, custody if no children
       return;
@@ -647,6 +655,10 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
   };
 
   const handlePrevStage = () => {
+    if (isBeforeConsummation && currentStage === 21) {
+      setCurrentStage(11);
+      return;
+    }
     if (currentStage === 21 && !hasChildren) {
       setCurrentStage(13);
       return;
@@ -2037,6 +2049,33 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
               </p>
             </div>
 
+            {/* 🔔 Before-consummation adaptive dues */}
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 space-y-3">
+                <p className="text-xs font-extrabold text-amber-900">⚠️ تكييف آلي — الطلاق قبل الدخول (المادة 71 من مدونة الأسرة)</p>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">موقف الصداق / المهر:</label>
+                    <div className="flex flex-col gap-2">
+                      {(['تم قبضه كاملاً', 'تجب نصف الفريضة (نصف الصداق)', 'لم يحدد صداق (مهر المثل/المتعة)'] as const).map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-xs font-semibold text-amber-900 cursor-pointer">
+                          <input type="radio" name="mahrStatusKhul" className="w-4 h-4 accent-amber-600" />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-amber-100 rounded-lg text-xs text-amber-900 font-semibold">
+                    🔒 نفقة العدة: <strong>غير مستحقة</strong> — لا عدة على المطلقة قبل الدخول (المادة 135).
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">المتعة أو التعويض الاتفاقي (درهم):</label>
+                    <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-sm focus:outline-none" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
               <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">
                 تصرح الزوجة بأنها تخالع من عصمة زوجها مقابل ما تم الاتفاق عليه، وتشمل المستحقات التي تدخل في بدل الخلع ما يلي:
@@ -2107,6 +2146,15 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
                 خانة أساسية للتحقق من آثار الحمل والالتزامات المرتبطة بالمولود.
               </p>
             </div>
+
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
+                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
+                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                  <strong>تنبيه النظام:</strong> تم تجاوز مرحلة التحقق من الحمل تلقائياً — لا عدة على المطلقة قبل الدخول (المادة 135 من مدونة الأسرة).
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               <label className="block text-xs font-bold text-slate-800">
@@ -2204,6 +2252,15 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
                 حصر دقيق للأبناء وتوزيعهم وبطاقة تعريفية لكل ابن لحماية حقوقهم في النفقة والحضانة.
               </p>
             </div>
+
+            {isBeforeConsummation && (
+              <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
+                <span className="text-blue-600 text-lg flex-shrink-0">ℹ️</span>
+                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                  <strong>تنبيه النظام:</strong> تم إلغاء مرحلة بيانات الأبناء والحضانة تلقائياً لعدم وجود دخلة شرعية.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               <label className="block text-xs font-bold text-slate-800">هل للزوجين أبناء؟</label>
