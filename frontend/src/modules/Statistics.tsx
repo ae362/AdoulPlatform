@@ -108,7 +108,7 @@ export function StatisticsModule() {
             </thead>
             <tbody>
               <tr>
-                <td className="p-2">الطلاق للشقاق</td>
+                <td className="p-2">التطليق للشقاق</td>
                 <td className="p-2">{marriageDivorce?.divorceStats.shiqaq ?? 0}</td>
               </tr>
               <tr>

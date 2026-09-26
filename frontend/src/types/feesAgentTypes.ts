@@ -1611,15 +1611,35 @@ export interface SmartMarriageClassificationData {
 
 export type DivorceClassificationType =
   | 'consensual'          // 🤝 الطلاق الاتفاقي (D-01)
-  | 'discord'             // ⚖️ الطلاق للشقاق (D-02)
+  | 'discord'             // ⚖️ التطليق للشقاق (D-02)
   | 'revocable'           // 🔄 الطلاق الرجعي (D-03)
   | 'khul'                // 💰 الطلاق الخلعي (D-04)
   | 'tamlik'              // 👩 الطلاق المملك (D-05)
-  | 'revocation_return';  // 🔁 الرجعة أو المراجعة (D-06)
+  | 'completed_three'     // 🛑 الطلاق المكمل للثلاث (D-08)
+  | 'rajah'               // 🔁 رسم الرجعة (D-06)
+  | 'murajaah'            // 💍 رسم المراجعة (D-07)
+  | 'revocation_return';  // 🔁 الرجعة أو المراجعة (D-06/D-07)
 
-export type DivorceStatisticalCode = 'D-01' | 'D-02' | 'D-03' | 'D-04' | 'D-05' | 'D-06';
+export type DivorceStatisticalCode = 'D-01' | 'D-02' | 'D-03' | 'D-04' | 'D-05' | 'D-06' | 'D-07' | 'D-08';
 
 export type DivorceCountType = 'first' | 'second' | 'third' | 'other';
+
+export interface RajahDetails {
+  previousDeedNumber?: string;
+  iddahConfirmed?: boolean;
+  courtNotified?: boolean;
+  isLinked?: boolean;
+}
+
+export interface MurajaahDetails {
+  previousDeedNumber?: string;
+  previousDivorceType?: 'khul' | 'consensual' | 'revocable_expired' | 'discord';
+  dowryAmount?: number;
+  dowryInWords?: string;
+  dowryNature?: string;
+  lessThanThreeTalaqsConfirmed?: boolean;
+  isLinked?: boolean;
+}
 
 export interface TamlikBasisDetails {
   sourceType: 'marriage_deed' | 'voluntary_deed' | 'family_booklet' | 'other_document';
@@ -1657,6 +1677,845 @@ export interface ReturnRevocationDetails {
   iddahStatus?: 'valid' | 'expired';
 }
 
+export interface RevocableChildData {
+  id: string;
+  fullName?: string;
+  firstName: string;
+  lastName: string;
+  gender: 'ذكر' | 'أنثى';
+  birthDate: string;
+  birthPlace: string;
+  age?: number;
+  healthStatus: string;
+  educationStatus: string;
+}
+
+export interface RevocableDivorceWorkflowData {
+  // المرحلة 01: الإذن القضائي بالإشهاد بالطلاق
+  hasJudicialPermission: boolean;
+  court: string;
+  section: string;
+  fileNumber: string;
+  permissionNumber: string;
+  permissionDate: string;
+  receptionDate: string;
+  adoulNotes?: string;
+
+  // المرحلة 02: تحديد الحاضر وطالب الإشهاد
+  attendeeType: 'husband' | 'wife' | 'both';
+
+  // المرحلة 03: بيانات الزوج
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 04: بيانات الزوجة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 05: مرجع رسم الزواج
+  marriageRef: {
+    marriageDeedType: string;
+    bookType: string;
+    bookNumber: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    issuingCourt: string;
+  };
+
+  // المرحلة 06: بيانات الطلاق الرجعي
+  divorceCount: 'first' | 'second' | 'third';
+  divorceNature: 'طلاق رجعي';
+
+  // المرحلة 07: التحقق من واقعة البناء
+  consummationHappened: boolean;
+
+  // المرحلة 08: التحقق من حالة الزوج وقت إيقاع الطلاق
+  husbandCapacity: {
+    freeWill: boolean;
+    coerced: boolean;
+    intoxicated: boolean;
+    extremeAnger: boolean;
+  };
+
+  // المرحلة 09: المستحقات
+  duesSpecifiedByCourt: boolean;
+  dues: {
+    deferredDowry: number;
+    iddahMaintenance: number;
+    mutah: number;
+    housingDuringIddah: number;
+    childrenDues: number;
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 10: إيداع المستحقات بكتابة الضبط
+  duesDeposited: boolean;
+  depositDetails: {
+    depositAmount: number;
+    depositAmountInWords: string;
+    receiptNumber: string;
+    depositDate: string;
+    depositCourt: string;
+    deadlineDays: number;
+    isWithinDeadline: boolean;
+  };
+
+  // المرحلة 11 و 12: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+  childrenList: RevocableChildData[];
+
+  // المرحلة 13: حالة الحمل
+  pregnancyStatus: 'yes' | 'no' | 'unknown';
+
+  // المرحلة 14: المراجعة الشاملة
+  completedAt?: string;
+}
+
+export interface KhulDivorceWorkflowData {
+  // المرحلة 01: الإذن القضائي بالإشهاد بالخلع
+  hasJudicialPermission: boolean;
+  court: string;
+  section: string;
+  fileNumber: string;
+  permissionNumber: string;
+  permissionDate: string;
+  receptionDate: string;
+  adoulNotes?: string;
+
+  // المرحلة 02: أطراف الخلع
+  attendeeType: 'both' | 'wife_only' | 'husband_only';
+
+  // المرحلة 03: بيانات الزوجة المختلعة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    incomeResource?: string;
+    address: string;
+    city: string;
+    country: string;
+    isAdult?: boolean;
+    legalGuardianName?: string;
+  };
+
+  // المرحلة 04: بيانات الزوج (الطرف الموافق على الخلع)
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 05: مرجع الزواج
+  marriageDeed: {
+    deedType: string;
+    registryBook: string;
+    registryBookNumber: string;
+    page: string;
+    count: string;
+    deedDate: string;
+    courtName: string;
+  };
+
+  // المرحلة 06: تاريخ الطلاق وعدده
+  divorceCount: 'first' | 'second' | 'third';
+  divorceNature: 'بائن بالخلع';
+
+  // المرحلة 07: طلب الزوجة للخلع
+  wifeRequestedKhul: boolean;
+
+  // المرحلة 08: موافقة الزوج على الخلع
+  husbandAgreedKhul: boolean;
+
+  // المرحلة 09 و 10: مقابل الخلع ومجموعه
+  compensation: {
+    deferredDowryIncluded: boolean;
+    deferredDowryAmount: number;
+    deferredDowryInWords?: string;
+
+    iddahMaintenanceWaived: boolean;
+
+    mutahIncluded: boolean;
+    mutahAmount: number;
+
+    otherCompensationIncluded: boolean;
+    otherCompensationDesc: string;
+    otherCompensationAmount: number;
+
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 11: تصريح الزوجة بالمستحقات
+  wifeConfirmedDuesDeclaration: boolean;
+
+  // المرحلة 12: الحمل
+  pregnancyStatus: 'no' | 'yes' | 'cannot_declare';
+  pregnancyStartDate?: string;
+
+  // المرحلة 13: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+  childrenList: RevocableChildData[];
+
+  // المرحلة 14 و 15: قدرة الأم المختلعة على الإنفاق وإعسارها
+  motherSpendingCapacity: 'yes' | 'no' | 'unproven';
+  motherIncomeTypes?: string[];
+  motherIncomeNature?: string;
+  motherApproxMonthlyIncome?: string;
+  isMotherInsolvent?: boolean;
+
+  // المرحلة 16: بيانات الأب والتزامه عند إعسار الأم
+  fatherCommitmentDetails?: string;
+  maternalGrandfatherCommitment?: string;
+
+  // المرحلة 17: تصريح والتزام الأم
+  motherCommittedToCare: boolean;
+  motherCommittedToCustody: boolean;
+
+  // المرحلة 18: الحضانة
+  custodianParty: 'mother' | 'father' | 'other_judicial';
+
+  // المرحلة 19: سكن المحضونين
+  custodyResidence: 'with_mother' | 'with_father' | 'independent' | 'other';
+  custodyAddress: string;
+  custodyCity: string;
+
+  // المرحلة 20: الزيارة والرؤية
+  visitationAgreed: boolean;
+  visitationDays?: string;
+  visitationHours?: string;
+  visitationLocation?: string;
+  visitationHolidays?: string;
+
+  // المرحلة 21: الإرادة الحرة والإكراه والإضرار
+  freeWillConsent: boolean;
+  husbandCoercionReported: boolean;
+  compensationAgreedWithoutCoercion: boolean;
+
+  // المرحلة 22: الحارس القانوني الخماسي والمراجعة
+  legalGuardChecks: {
+    isWifeAdult: boolean;
+    hasMutualConsent: boolean;
+    childRightsProtected: boolean;
+    insolventMotherProtected: boolean;
+    noCoercionSuspected: boolean;
+  };
+  completedAt?: string;
+}
+
+export interface TamlikConditionCheck {
+  id: string;
+  conditionText: string;
+  status: 'fulfilled' | 'unfulfilled' | 'needs_review';
+}
+
+export interface TamlikDivorceWorkflowData {
+  // المرحلة 01: الإذن القضائي
+  hasJudicialPermission: boolean;
+  court: string;
+  section: string;
+  fileNumber: string;
+  permissionNumber: string;
+  permissionDate: string;
+  receptionDate: string;
+
+  // المرحلة 02: صاحبة حق التمليك
+  initiator: 'wife';
+
+  // المرحلة 03: بيانات الزوجة المملَّكة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr: string;
+    lastNameFr: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 04: بيانات الزوج المالك لحق التمليك
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr: string;
+    lastNameFr: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+    presenceStatus: 'present' | 'absent';
+  };
+
+  // المرحلة 05: رسم الزواج
+  marriageRef: {
+    deedType: string;
+    bookType: string;
+    bookNumber: string;
+    bookLetter: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    issuingCourt: string;
+  };
+
+  // المرحلة 06: سند التمليك
+  tamlikSource: 'marriage_deed' | 'independent_deed' | 'case_file_document';
+  independentDeedRef?: {
+    deedType: string;
+    bookNumber: string;
+    bookLetter: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    courtName: string;
+  };
+
+  // المرحلة 07: مضمون شرط التمليك
+  explicitTamlikGranted: boolean;
+  hasSpecialConditions: boolean;
+  conditionsList: TamlikConditionCheck[];
+
+  // المرحلة 08: نطاق حق التمليك
+  tamlikScope: 'unconditional' | 'conditional';
+
+  // المرحلة 09: التحقق من الأساس القانوني
+  basisVerified: boolean;
+
+  // المرحلة 10: ترتيب الطلاق
+  divorceCount: 'first' | 'second' | 'third';
+
+  // المرحلة 11: حالة البناء
+  consummationHappened: boolean;
+
+  // المرحلة 12: تصريح الزوجة بإعمال حق التمليك
+  wifeExercisedTamlik: boolean;
+  wifeStatementText: string;
+
+  // المرحلة 13: حضور أو غياب الزوج
+  husbandPresentDuringAct: boolean;
+
+  // المرحلة 14: تصريح الحمل
+  pregnancyStatus: 'no' | 'yes' | 'uncertain';
+
+  // المرحلة 15: المستحقات
+  dues: {
+    deferredDowry: number;
+    iddahMaintenance: number;
+    mutah: number;
+    housingDuringIddah: number;
+    childrenDues: number;
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 16: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+  childrenList: RevocableChildData[];
+
+  // المرحلة 17: الحضانة والسكن والنفقة
+  custodyParty: string;
+  custodyResidence: string;
+  hasCourtOrderedChildDues: boolean;
+  childDuesDetails?: {
+    amount: number;
+    period: string;
+    paymentMethod: string;
+  };
+
+  // المرحلة 18: الحراس القانونيون التسعة
+  legalGuardVerification: {
+    tamlikRightProven: boolean;
+    conditionsFulfilled: boolean;
+    judicialPermissionIssued: boolean;
+    wifeIsAuthorizedHolder: boolean;
+    exerciseDeclared: boolean;
+    divorceOrderRecorded: boolean;
+    consummationRecorded: boolean;
+    pregnancyRecorded: boolean;
+    duesRecorded: boolean;
+  };
+
+  husbandRevocationAttempted: boolean;
+  isRepresentationOrAgency: boolean;
+
+  completedAt?: string;
+}
+
+export interface ConsensualChildData {
+  id: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  gender: 'ذكر' | 'أنثى';
+  birthDate: string;
+  age?: number;
+  custodyAssignment: 'mother' | 'father' | 'other_agreed';
+  visitationRights: string;
+}
+
+export interface ConsensualDivorceWorkflowData {
+  // المرحلة 01: الإذن القضائي بالإشهاد بالطلاق الاتفاقي
+  hasJudicialPermission: boolean;
+  court: string;
+  section: string;
+  fileNumber: string;
+  permissionNumber: string;
+  permissionDate: string;
+  receptionDate: string;
+  adoulNotes?: string;
+
+  // المرحلة 02: تحديد الحاضرين وطالبي الإشهاد
+  attendeeType: 'both_spouses' | 'proxies' | 'husband_only' | 'wife_only';
+
+  // المرحلة 03: بيانات الزوج
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 04: بيانات الزوجة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 05: مرجع رسم الزواج
+  marriageRef: {
+    deedType: string;
+    registryBook: string;
+    bookNumber: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    issuingAuthority: string;
+  };
+
+  // المرحلة 06: بيانات الطلاق الاتفاقي وطبيعته القانونية
+  divorceCount: 'first' | 'second';
+  divorceNature: 'طلاق اتفاقي';
+  legalEffect: 'طلاق بائن بينونة صغرى';
+
+  // المرحلة 07: التحقق من واقعة البناء
+  consummationHappened: boolean;
+
+  // المرحلة 08: أهلية الطرفين وحرية الإرادة والتراضي
+  consentChecks: {
+    isFreeWillConsent: boolean;
+    hasCoercionOrDefect: boolean;
+    hasIncompetenceOrLackOfDiscernment: boolean;
+  };
+
+  // المرحلة 09: مستحقات وشروط اتفاق الطلاق
+  hasAgreementAttached: boolean;
+  dues: {
+    wifeAgreedDues: number;
+    housingOrCompDues: number;
+    childrenMonthlySupport: number;
+    otherConditions: string;
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 10: إيداع المستحقات أو تنفيذ الشروط المالية
+  duesExecutionStatus: boolean;
+  executionDetails: {
+    executedAmount: number;
+    executedAmountInWords: string;
+    receiptOrDeliveryRef: string;
+    executionDate: string;
+    authorityOrCourt: string;
+  };
+
+  // المرحلة 11 و 12: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+  childrenList: ConsensualChildData[];
+
+  // المرحلة 13: حالة الحمل
+  pregnancyStatus: 'yes' | 'no' | 'unknown';
+
+  // المرحلة 14: المراجعة الشاملة والتأكيد
+  completedAt?: string;
+}
+
+export interface DiscordChildData {
+  id: string;
+  fullName?: string;
+  firstName: string;
+  lastName: string;
+  gender: 'ذكر' | 'أنثى';
+  birthDate: string;
+  age?: number;
+  custodyAssignment: 'mother' | 'father' | 'other';
+  monthlySupport: number;
+  visitationRights: string;
+}
+
+export interface DiscordDivorceWorkflowData {
+  // المرحلة 01: الحكم القضائي النهائي بتطليق الشقاق
+  hasJudgment: boolean;
+  courtCity: string;
+  familySectionCity: string;
+  caseNumber: string;
+  judgmentNumber: string;
+  judgmentDate: string;
+  notificationDate?: string;
+  adoulNotes?: string;
+
+  // المرحلة 02: تحديد رافع الدعوى والحاضر أمام العدل
+  applicantInJudgment: 'husband' | 'wife' | 'both';
+  attendeeForCertification: 'husband' | 'wife' | 'both';
+
+  // المرحلة 03: بيانات الزوج
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 04: بيانات الزوجة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 05: مرجع رسم الزواج المراد إنهاؤه
+  marriageRef: {
+    deedType: string;
+    registryBook: string;
+    bookNumber: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    issuingAuthority: string;
+  };
+
+  // المرحلة 06: بيانات تطليق الشقاق وطبيعته القانونية
+  divorceCount: 'first' | 'second';
+  divorceNature: 'تطليق قضائي للشقاق';
+  legalEffect: 'طلاق بائن بينونة صغرى';
+
+  // المرحلة 07: التحقق من واقعة البناء
+  consummationHappened: boolean;
+
+  // المرحلة 08: محاولات الصلح ومسؤولية الشقاق
+  reconciliationExhausted: boolean;
+  responsibleParty: 'husband' | 'wife' | 'shared_or_unspecified';
+
+  // المرحلة 09: المستحقات المالية والتعويض عن الضرر
+  dues: {
+    wifeDues: number;
+    damageCompensation: number;
+    childSupport: number;
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 10: إيداع المستحقات أو التنفيذ القضائي
+  duesExecutionStatus: boolean;
+  executionDetails: {
+    depositAmount: number;
+    depositAmountInWords: string;
+    receiptNumber: string;
+    depositDate: string;
+    courtName: string;
+  };
+
+  // المرحلة 11 و 12: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+  childrenList: DiscordChildData[];
+
+  // المرحلة 13: حالة الحمل
+  pregnancyStatus: 'yes' | 'no' | 'unknown';
+
+  // المرحلة 14: المراجعة الشاملة والتأكيد
+  completedAt?: string;
+}
+
+export interface CompletedThreeChildData {
+  id: string;
+  fullName?: string;
+  firstName: string;
+  lastName: string;
+  gender: 'ذكر' | 'أنثى';
+  birthDate: string;
+  age?: number;
+  healthStatus?: string;
+  academicStatus?: string;
+}
+
+export interface CompletedThreeDivorceWorkflowData {
+  // المرحلة 01: الإذن القضائي بالإشهاد بالطلاق المكمل للثلاث
+  hasJudicialPermission: boolean;
+  court: string;
+  section: string;
+  fileNumber: string;
+  permissionNumber: string;
+  permissionDate: string;
+  receptionDate: string;
+  adoulNotes?: string;
+
+  // المرحلة 02: تحديد الحاضر وطالب الإشهاد
+  attendeeType: 'husband_or_proxy' | 'both_spouses' | 'wife_only';
+
+  // المرحلة 03: بيانات الزوج
+  husband: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 04: بيانات الزوجة
+  wife: {
+    firstNameAr: string;
+    lastNameAr: string;
+    firstNameFr?: string;
+    lastNameFr?: string;
+    nationality: string;
+    birthDate: string;
+    birthPlace: string;
+    fatherName: string;
+    motherName: string;
+    idType: 'cin' | 'passport' | 'other';
+    idNumber: string;
+    idExpiryDate: string;
+    profession: string;
+    address: string;
+    city: string;
+    country: string;
+  };
+
+  // المرحلة 05: مرجع رسم الزواج القائم
+  marriageRef: {
+    deedType: string;
+    registryBook: string;
+    bookNumber: string;
+    pageNumber: string;
+    deedNumber: string;
+    deedDate: string;
+    issuingAuthority: string;
+  };
+
+  // المرحلة 06: التثبت من الطلقات السابقة والتكييف القانوني
+  firstDivorceRef: {
+    deedNumber: string;
+    deedDate: string;
+    issuingAuthority: string;
+  };
+  secondDivorceRef: {
+    deedNumber: string;
+    deedDate: string;
+    issuingAuthority: string;
+  };
+  divorceCount: 'third';
+  divorceNature: 'طلاق مكمل للثلاث';
+  legalEffect: 'طلاق بائن بينونة كبرى';
+
+  // المرحلة 07: التحقق من واقعة البناء
+  consummationHappened: boolean;
+
+  // المرحلة 08: التحقق من حالة الزوج وقت إيقاع الطلاق
+  husbandStateChecks: {
+    isFreeWillChoice: boolean;
+    isCoerced: boolean;
+    isInebriated: boolean;
+    isInExtremeAnger: boolean;
+  };
+
+  // المرحلة 09: المستحقات المحددة من المحكمة
+  hasCourtDuesSpecified: boolean;
+  dues: {
+    deferredMahr: number;
+    iddahSupport: number;
+    mutah: number;
+    housingDuringIddah: number;
+    childrenDues: number;
+    totalAmount: number;
+    totalAmountInWords: string;
+  };
+
+  // المرحلة 10: إيداع المستحقات بكتابة الضبط
+  isDepositedInCourt: boolean;
+  depositDetails: {
+    depositAmount: number;
+    depositAmountInWords: string;
+    receiptNumber: string;
+    depositDate: string;
+    courtName: string;
+    isWithinLegalDeadline: boolean;
+  };
+
+  // المرحلة 11: الأبناء
+  hasChildren: boolean;
+  totalChildrenCount: number;
+  boysCount: number;
+  girlsCount: number;
+
+  // المرحلة 12: بطاقة كل ابن
+  childrenList: CompletedThreeChildData[];
+
+  // المرحلة 13: حالة الحمل
+  pregnancyStatus: 'yes' | 'no' | 'unknown';
+
+  // المرحلة 14: المراجعة الشاملة والتأكيد النهائي
+  completedAt?: string;
+}
+
 export interface SmartDivorceClassificationData {
   primaryType: DivorceClassificationType;
   statisticalCode: DivorceStatisticalCode;
@@ -1666,6 +2525,14 @@ export interface SmartDivorceClassificationData {
   tamlikBasis?: TamlikBasisDetails;
   khulDetails?: KhulDetails;
   returnRevocation?: ReturnRevocationDetails;
+  rajahDetails?: RajahDetails;
+  murajaahDetails?: MurajaahDetails;
+  revocableWorkflow?: RevocableDivorceWorkflowData;
+  khulWorkflow?: KhulDivorceWorkflowData;
+  tamlikWorkflow?: TamlikDivorceWorkflowData;
+  consensualWorkflow?: ConsensualDivorceWorkflowData;
+  discordWorkflow?: DiscordDivorceWorkflowData;
+  completedThreeWorkflow?: CompletedThreeDivorceWorkflowData;
   consensualAgreement?: {
     terms?: string[];
     childrenCustodyAgreed?: boolean;

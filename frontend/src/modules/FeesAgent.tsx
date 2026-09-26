@@ -214,7 +214,16 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
   }, [scrollToTop]);
 
   const handleBack = useCallback(() => {
-    setState((prev) => ({ ...prev, step: Math.max(0, (prev.step || 0) - 1) }));
+    setState((prev) => {
+      const isCustomDivorce =
+        prev.divorceClassification?.primaryType === 'revocable' ||
+        prev.divorceClassification?.primaryType === 'khul' ||
+        prev.divorceClassification?.primaryType === 'tamlik';
+      if (prev.step === 7 && isCustomDivorce) {
+        return { ...prev, step: 1 };
+      }
+      return { ...prev, step: Math.max(0, (prev.step || 0) - 1) };
+    });
     scrollToTop();
   }, [scrollToTop]);
 

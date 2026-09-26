@@ -670,7 +670,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       try {
         let bytes: ArrayBuffer;
         if (editedPdfBytes && editedPdfBytes.byteLength > 0) {
-          bytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength);
+          bytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength) as ArrayBuffer;
         } else {
           const resp = await fetch(sourceUrl);
           const ct = resp.headers.get('content-type') || '';
@@ -1522,7 +1522,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       try {
         let pdfBytes: ArrayBuffer;
         if (editedPdfBytes && editedPdfBytes.byteLength > 0) {
-          pdfBytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength);
+          pdfBytes = editedPdfBytes.buffer.slice(editedPdfBytes.byteOffset, editedPdfBytes.byteOffset + editedPdfBytes.byteLength) as ArrayBuffer;
         } else {
           const resp = await fetch(pdfSourceUrl);
           if (!resp.ok) throw new Error(`PDF fetch failed (${resp.status})`);

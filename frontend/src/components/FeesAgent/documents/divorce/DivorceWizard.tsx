@@ -9,6 +9,12 @@ import {
 import { Step6_Dates } from '../../steps/Step6_Dates';
 import { SmartDivorceClassificationGate } from './SmartDivorceClassificationGate';
 import { NationalDivorceStatsModal } from './NationalDivorceStatsModal';
+import { RevocableDivorceWorkflow } from './RevocableDivorceWorkflow';
+import { KhulDivorceWorkflow } from './KhulDivorceWorkflow';
+import { TamlikDivorceWorkflow } from './TamlikDivorceWorkflow';
+import { ConsensualDivorceWorkflow } from './ConsensualDivorceWorkflow';
+import { DiscordDivorceWorkflow } from './DiscordDivorceWorkflow';
+import { CompletedThreeDivorceWorkflow } from './CompletedThreeDivorceWorkflow';
 import type { DivorceClassificationType, DivorceStatisticalCode } from '../../../../types/feesAgentTypes';
 
 export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
@@ -32,6 +38,109 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
 
   // Active classification summary for persistent header
   const classification = state.divorceClassification;
+
+  // 🏛️ Dedicated 14-Stage Complete Legal Workflow for الطلاق الرجعي (D-03)
+  if (classification?.primaryType === 'revocable' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <RevocableDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated 22-Stage Complete Legal Workflow for الطلاق بالخلع (D-04)
+  if (classification?.primaryType === 'khul' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <KhulDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 22, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated 19-Stage Complete Legal Workflow for الطلاق المملك (D-05)
+  if (classification?.primaryType === 'tamlik' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <TamlikDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 19, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated 14-Stage Complete Legal Workflow for الطلاق الاتفاقي (D-01)
+  if (classification?.primaryType === 'consensual' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <ConsensualDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated 14-Stage Complete Legal Workflow for التطليق للشقاق (D-02)
+  if (classification?.primaryType === 'discord' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <DiscordDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated 14-Stage Complete Legal Workflow for الطلاق المكمل للثلاث (D-08)
+  if (classification?.primaryType === 'completed_three' && state.step < 7) {
+    return (
+      <div className="w-full">
+        <CompletedThreeDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
+            setState((prev) => ({ ...prev, step: 7 }));
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
   const classificationDetails: Record<
     DivorceClassificationType,
     { title: string; code: DivorceStatisticalCode; badge: string; color: string; icon: string }
@@ -44,11 +153,18 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
       icon: '🤝'
     },
     discord: {
-      title: 'الطلاق للشقاق',
+      title: 'التطليق للشقاق',
       code: 'D-02',
       badge: 'مسطرة قضائية',
       color: 'bg-indigo-100 text-indigo-800 border-indigo-300',
       icon: '⚖️'
+    },
+    completed_three: {
+      title: 'الطلاق المكمل للثلاث',
+      code: 'D-08',
+      badge: 'بائن بينونة كبرى',
+      color: 'bg-red-100 text-red-800 border-red-300',
+      icon: '🛑'
     },
     revocable: {
       title: 'الطلاق الرجعي',
@@ -77,6 +193,20 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
       badge: classification?.returnRevocation?.scenario === 'khul_reconciliation' ? 'مراجعة بعد خلع' : 'رجعة في عدة',
       color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       icon: '🔁'
+    },
+    rajah: {
+      title: 'رسم الرجعة',
+      code: 'D-06',
+      badge: classification?.rajahDetails?.iddahConfirmed ? 'داخل العدة' : 'إشهاد رجعة',
+      color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      icon: '🔁'
+    },
+    murajaah: {
+      title: 'رسم المراجعة',
+      code: 'D-07',
+      badge: classification?.murajaahDetails?.dowryAmount ? `صداق: ${classification.murajaahDetails.dowryAmount} درهم` : 'عقد وصداق جديدان',
+      color: 'bg-teal-100 text-teal-800 border-teal-300',
+      icon: '💍'
     }
   };
 
@@ -110,6 +240,33 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
         </div>
 
         <div className="flex items-center gap-2">
+          {classification?.primaryType === 'revocable' && (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
+              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+            >
+              <span>↩ مراجعة مراحل الطلاق الرجعي (14 مرحلة)</span>
+            </button>
+          )}
+          {classification?.primaryType === 'khul' && (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
+              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+            >
+              <span>↩ مراجعة مراحل الطلاق بالخلع (22 مرحلة)</span>
+            </button>
+          )}
+          {classification?.primaryType === 'tamlik' && (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+            >
+              <span>↩ مراجعة مراحل الطلاق المملك (19 مرحلة)</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowStatsModal(true)}

@@ -37,7 +37,8 @@ import type {
   SmartDivorceClassificationData,
   TamlikBasisDetails,
   KhulDetails,
-  ReturnRevocationDetails
+  ReturnRevocationDetails,
+  CompletedThreeDivorceWorkflowData
 } from '../../../../types/feesAgentTypes';
 import { NationalDivorceStatsModal } from './NationalDivorceStatsModal';
 
@@ -516,6 +517,100 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
               judgmentDate,
               isLinkedToCourtFile
             }
+          : undefined,
+      completedThreeWorkflow:
+        selectedType === 'completed_three'
+          ? ({
+              hasJudicialPermission: false,
+              court: '',
+              section: '',
+              fileNumber: '',
+              permissionNumber: '',
+              permissionDate: '',
+              receptionDate: '',
+              attendeeType: 'husband_or_proxy',
+              husband: {
+                firstNameAr: husbandName,
+                lastNameAr: '',
+                nationality: 'مغربية',
+                birthDate: '',
+                birthPlace: '',
+                fatherName: '',
+                motherName: '',
+                idType: 'cin',
+                idNumber: husbandCin,
+                idExpiryDate: '',
+                profession: '',
+                address: '',
+                city: '',
+                country: 'المغرب'
+              },
+              wife: {
+                firstNameAr: wifeName,
+                lastNameAr: '',
+                nationality: 'مغربية',
+                birthDate: '',
+                birthPlace: '',
+                fatherName: wifeFatherName,
+                motherName: '',
+                idType: 'cin',
+                idNumber: wifeCin,
+                idExpiryDate: '',
+                profession: '',
+                address: '',
+                city: '',
+                country: 'المغرب'
+              },
+              marriageRef: {
+                deedType: 'رسم زواج',
+                registryBook: '',
+                bookNumber: '',
+                pageNumber: '',
+                deedNumber: '',
+                deedDate: '',
+                issuingAuthority: ''
+              },
+              firstDivorceRef: {
+                deedNumber: '',
+                deedDate: '',
+                courtOrAuthority: '',
+                divorceType: 'طلاق رجعي'
+              },
+              secondDivorceRef: {
+                deedNumber: '',
+                deedDate: '',
+                courtOrAuthority: '',
+                divorceType: 'طلاق رجعي'
+              },
+              consummationHappened: true,
+              willAndCapacity: {
+                freeWill: true,
+                coercion: false,
+                intoxication: false,
+                severeAnger: false
+              },
+              dues: {
+                deferredMahr: 0,
+                iddahSupport: 0,
+                mutaa: 0,
+                housing: 0,
+                childrenSupport: 0,
+                totalAmount: 0,
+                totalAmountInWords: ''
+              },
+              deposit: {
+                amount: 0,
+                receiptNumber: '',
+                depositDate: '',
+                courtName: ''
+              },
+              hasChildren: false,
+              totalChildrenCount: 0,
+              boysCount: 0,
+              girlsCount: 0,
+              childrenList: [],
+              pregnancyStatus: 'no'
+            } as unknown as CompletedThreeDivorceWorkflowData)
           : undefined,
       generatedFormulaText: `${generatedFormula.fixedPrefix} ${generatedFormula.dynamicPart} ${generatedFormula.conditionPart} ${generatedFormula.fixedSuffix}`,
       customFormulaText: isCustomFormula ? customFormula : undefined,
