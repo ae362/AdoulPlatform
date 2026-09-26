@@ -68,6 +68,102 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           </div>
         </div>
 
+        {/* ⚠️ تنبيه توثيقي هام: انقضاء الأجل القانوني للإذن بالإشهاد (المادة 87 من مدونة الأسرة) */}
+        {primaryType && ['consensual', 'revocable', 'khul', 'tamlik'].includes(primaryType) && (
+          <div className="mb-6 p-5 rounded-2xl bg-amber-50/90 border-2 border-amber-400 text-amber-950 shadow-md space-y-3 font-sans">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">⚠️</span>
+              <div>
+                <h3 className="text-sm font-black text-amber-950">
+                  تنبيه توثيقي هام: انقضاء الأجل القانوني للإذن بالإشهاد (المادة 87 من مدونة الأسرة)
+                </h3>
+                <p className="text-xs text-amber-900 mt-1 leading-relaxed font-medium">
+                  <strong>أخي العدل:</strong> يُرجى التحقق الدقيق من تاريخ صدور الإذن القضائي قبل الشروع في تلقي الشهادة بالإشهاد، حيث سقوط الإذن يتم بقوة القانون (بقوة النص) بمضي 15 يوماً كاملة دون الإشهاد.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-amber-200/80">
+              <span className="text-xs font-bold text-amber-950 block mb-2">
+                أنواع الإشهادات المشمولة حتماً بأجل 15 يوماً:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                    primaryType === 'revocable'
+                      ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                      : 'bg-white/80 border-amber-200 text-amber-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>🔹</span>
+                    <span>الطلاق بالإرادة المنفردة للزوج (المادة 78 وما يليها)</span>
+                  </div>
+                  {primaryType === 'revocable' && (
+                    <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                      المسار الحالي
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                    primaryType === 'consensual'
+                      ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                      : 'bg-white/80 border-amber-200 text-amber-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>🔹</span>
+                    <span>الطلاق الاتفاقي (المادة 114)</span>
+                  </div>
+                  {primaryType === 'consensual' && (
+                    <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                      المسار الحالي
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                    primaryType === 'khul'
+                      ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                      : 'bg-white/80 border-amber-200 text-amber-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>🔹</span>
+                    <span>الطلاق الخلعي بالتراضي (المادة 115)</span>
+                  </div>
+                  {primaryType === 'khul' && (
+                    <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                      المسار الحالي
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                    primaryType === 'tamlik'
+                      ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                      : 'bg-white/80 border-amber-200 text-amber-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>🔹</span>
+                    <span>طلاق التمليك / المُمَلَّك (المادة 89)</span>
+                  </div>
+                  {primaryType === 'tamlik' && (
+                    <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                      المسار الحالي
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           {/* Intro */}
@@ -148,13 +244,23 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
 
           {/* Legal warning – before consummation */}
           {consummationAnswer === 'no' && (
-            <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
-              <span className="text-amber-600 text-base flex-shrink-0">⚠️</span>
-              <div className="leading-relaxed">
-                <span className="font-bold block mb-0.5">تنبيه قانوني — المادة 71 من مدونة الأسرة:</span>
-                الطلاق قبل الدخول يخوّل الزوجةَ نصفَ الصداق المسمى فقط إن كان قد سُمّي، أو المتعة المناسبة إن لم يُسمَّ. كما لا تجب عليها عدة ولا نفقة عدة، ولا تحسب طلقة من حق الزوج.
+            primaryType === 'revocable' ? (
+              <div className="flex items-start gap-2.5 p-4 bg-rose-50 border-2 border-rose-300 rounded-xl text-xs text-rose-950 shadow-sm animate-fadeIn">
+                <span className="text-rose-600 text-lg flex-shrink-0">🛑</span>
+                <div className="leading-relaxed">
+                  <span className="font-extrabold text-rose-900 block mb-1">تحذير تكييف قانوني:</span>
+                  اخترتم طلاقاً قبل الدخول. ينبه النظام إلى أن الطلاق قبل البناء بائن بينونة صغرى بقوة القانون (المادة 123)، ولا تنطبق عليه أحكام الرجعة. يرجى تحويل المسطرة لبيت الطلاق الاتفاقي أو البائن.
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+                <span className="text-amber-600 text-base flex-shrink-0">⚠️</span>
+                <div className="leading-relaxed">
+                  <span className="font-bold block mb-0.5">تنبيه قانوني — المادة 71 من مدونة الأسرة:</span>
+                  الطلاق قبل الدخول يخوّل الزوجةَ نصفَ الصداق المسمى فقط إن كان قد سُمّي، أو المتعة المناسبة إن لم يُسمَّ. كما لا تجب عليها عدة ولا نفقة عدة، ولا تحسب طلقة من حق الزوج.
+                </div>
+              </div>
+            )
           )}
 
           {/* Confirm */}
