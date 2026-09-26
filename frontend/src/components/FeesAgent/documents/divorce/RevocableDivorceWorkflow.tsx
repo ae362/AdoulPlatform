@@ -752,6 +752,35 @@ export const RevocableDivorceWorkflow: React.FC<RevocableDivorceWorkflowProps> =
         </div>
       </div>
 
+      {/* 🛑 LEGAL WARNING: Divorce before consummation is not revocable */}
+      {classification?.consummationStatus === 'before_consummation' && (
+        <div className="flex items-start gap-4 p-5 bg-red-50 border-2 border-red-400 rounded-2xl shadow-sm" dir="rtl">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-100 border border-red-300 flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-red-700" />
+          </div>
+          <div className="flex-1 space-y-2">
+            <h4 className="text-sm font-extrabold text-red-900 flex items-center gap-2">
+              🛑 تحذير تكييف قانوني
+            </h4>
+            <p className="text-xs text-red-800 leading-relaxed">
+              اخترتم طلاقاً <strong>قبل الدخول والبناء</strong>. ينبّه النظام إلى أن الطلاق قبل البناء هو بائن بينونة صغرى بقوة القانون طبقاً للمادة 123 من مدونة الأسرة، <strong>ولا تنطبق عليه أحكام الرجعة</strong>، إذ لا رجعة إلا لمن طلّق بعد الدخول.
+            </p>
+            <p className="text-xs text-red-700 font-bold">
+              يرجى العودة إلى تصنيف المسطرة واختيار بيت الطلاق الاتفاقي أو البائن المناسب.
+            </p>
+            {onBackToClassification && (
+              <button
+                type="button"
+                onClick={onBackToClassification}
+                className="mt-1 inline-flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-extrabold rounded-xl transition-all shadow-sm"
+              >
+                <span>⚙️ العودة لتغيير مسار الطلاق</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 🧭 Horizontal Quick Nav Pills (All 14 Stages in a clean, scrollable horizontal bar) */}
       <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar">
