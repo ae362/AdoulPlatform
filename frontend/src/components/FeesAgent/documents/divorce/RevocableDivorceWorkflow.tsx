@@ -13,6 +13,7 @@ import {
   Check,
   UserCheck
 } from 'lucide-react';
+import { Article87LegalDeadlineNotice } from './BeforeConsummationAdaptations';
 
 interface RevocableDivorceWorkflowProps {
   state: FeesAgentState;
@@ -837,6 +838,8 @@ export const RevocableDivorceWorkflow: React.FC<RevocableDivorceWorkflowProps> =
                 يرجى إدخال بيانات الإذن القضائي الصادر بالإشهاد بالطلاق، قبل الانتقال إلى استكمال باقي بيانات الرسم.
               </p>
             </div>
+
+            <Article87LegalDeadlineNotice currentType="revocable" />
 
             <div className="space-y-4">
               <label className="block text-sm font-bold text-slate-900">
@@ -1699,6 +1702,8 @@ export const RevocableDivorceWorkflow: React.FC<RevocableDivorceWorkflowProps> =
                 التحقق من الدخول الشرعي بالزوجة لكون الطلاق قبل البناء يقع بائناً لا رجعياً.
               </p>
             </div>
+
+            <Article87LegalDeadlineNotice currentType="revocable" />
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 max-w-md">

@@ -201,3 +201,110 @@ export const BeforeConsummationPregnancyNotice: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * ⚠️ تنبيه توثيقي هام: انقضاء الأجل القانوني للإذن بالإشهاد (المادة 87 من مدونة الأسرة)
+ */
+export const Article87LegalDeadlineNotice: React.FC<{
+  currentType?: 'consensual' | 'revocable' | 'khul' | 'tamlik' | string;
+  className?: string;
+}> = ({ currentType = 'consensual', className = '' }) => {
+  return (
+    <div
+      className={`p-5 rounded-2xl bg-amber-50/95 border-2 border-amber-400 text-amber-950 shadow-md space-y-3 font-sans ${className}`}
+      dir="rtl"
+    >
+      <div className="flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0">⚠️</span>
+        <div>
+          <h3 className="text-sm sm:text-base font-black text-amber-950">
+            ⚠️ تنبيه توثيقي هام: انقضاء الأجل القانوني للإذن بالإشهاد (المادة 87 من مدونة الأسرة)
+          </h3>
+          <p className="text-xs sm:text-sm text-amber-900 mt-1 leading-relaxed font-medium">
+            <strong>أخي العدل:</strong> يُرجى التحقق الدقيق من تاريخ صدور الإذن القضائي قبل الشروع في تلقي الشهادة بالإشهاد، حيث سقوط الإذن يتم بقوة القانون (بقوة النص) بمضي 15 يوماً كاملة دون الإشهاد.
+          </p>
+        </div>
+      </div>
+
+      <div className="pt-2 border-t border-amber-200/80">
+        <span className="text-xs font-bold text-amber-950 block mb-2">
+          أنواع الإشهادات المشمولة حتماً بأجل 15 يوماً:
+        </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div
+            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+              currentType === 'revocable'
+                ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                : 'bg-white/80 border-amber-200 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <span>🔹</span>
+              <span>الطلاق بالإرادة المنفردة للزوج (المادة 78 وما يليها)</span>
+            </div>
+            {currentType === 'revocable' && (
+              <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                المسار الحالي
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+              currentType === 'consensual' || !currentType
+                ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                : 'bg-white/80 border-amber-200 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <span>🔹</span>
+              <span>الطلاق الاتفاقي (المادة 114)</span>
+            </div>
+            {(currentType === 'consensual' || !currentType) && (
+              <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                المسار الحالي
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+              currentType === 'khul'
+                ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                : 'bg-white/80 border-amber-200 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <span>🔹</span>
+              <span>الطلاق الخلعي بالتراضي (المادة 115)</span>
+            </div>
+            {currentType === 'khul' && (
+              <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                المسار الحالي
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+              currentType === 'tamlik'
+                ? 'bg-amber-100/90 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400 shadow-sm'
+                : 'bg-white/80 border-amber-200 text-amber-900'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <span>🔹</span>
+              <span>طلاق التمليك / المُمَلَّك (المادة 89)</span>
+            </div>
+            {currentType === 'tamlik' && (
+              <span className="text-[10px] bg-amber-700 text-white px-1.5 py-0.5 rounded font-bold shrink-0">
+                المسار الحالي
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+

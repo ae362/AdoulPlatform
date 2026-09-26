@@ -29,6 +29,7 @@ import {
   BeforeConsummationDuesForm,
   BeforeConsummationChildrenNotice,
   BeforeConsummationPregnancyNotice,
+  Article87LegalDeadlineNotice,
   type DowryStatusType
 } from './BeforeConsummationAdaptations';
 
@@ -959,6 +960,8 @@ ${hasChildren ? `وللزوجين من الأبناء المشتركين عدد�
                 يرجى إدخال بيانات الإذن القضائي الصادر للزوجة بالإشهاد على الطلاق، ثم الانتقال إلى التحقق من سند التمليك.
               </p>
             </div>
+
+            <Article87LegalDeadlineNotice currentType="tamlik" />
 
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <label className="block text-xs font-extrabold text-slate-900">

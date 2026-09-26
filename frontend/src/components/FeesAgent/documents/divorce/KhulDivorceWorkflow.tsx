@@ -8,6 +8,7 @@ import {
   BeforeConsummationDuesForm,
   BeforeConsummationChildrenNotice,
   BeforeConsummationPregnancyNotice,
+  Article87LegalDeadlineNotice,
   DowryStatusType
 } from './BeforeConsummationAdaptations';
 import {
@@ -904,6 +905,8 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
                 يرجى إدخال بيانات الإذن القضائي قبل الشروع في استكمال بيانات الزوجين ومقتضيات الخلع.
               </p>
             </div>
+
+            <Article87LegalDeadlineNotice currentType="khul" />
 
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
               <label className="block text-xs font-bold text-slate-800">

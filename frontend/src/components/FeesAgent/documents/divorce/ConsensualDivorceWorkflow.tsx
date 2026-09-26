@@ -9,6 +9,7 @@ import {
   BeforeConsummationDuesForm,
   BeforeConsummationChildrenNotice,
   BeforeConsummationPregnancyNotice,
+  Article87LegalDeadlineNotice,
   DowryStatusType
 } from './BeforeConsummationAdaptations';
 import {
@@ -877,6 +878,8 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>🟢 تم تسجيل بيانات الإذن القضائي بنجاح.</span>
                   </div>
+
+                  <Article87LegalDeadlineNotice currentType="consensual" className="mt-4" />
                 </div>
               )}
             </div>
@@ -1650,6 +1653,8 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
                 <p className="text-xs text-blue-800 mt-1">تحديد ما إذا كان الطلاق الاتفاقي قد وقع قبل البناء الشرعي أو بعده لترتيب آثاره القانونية.</p>
               </div>
             </div>
+
+            <Article87LegalDeadlineNotice currentType="consensual" />
 
             <div className="space-y-4">
               <label className="block text-sm font-bold text-slate-800">هل حصل البناء بالزوجة؟</label>
