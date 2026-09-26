@@ -20,6 +20,8 @@ import type { DivorceClassificationType, DivorceStatisticalCode } from '../../..
 export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
   const [showGateOverride, setShowGateOverride] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+  const [consummationConfirmed, setConsummationConfirmed] = useState<boolean>(false);
+  const [consummationAnswer, setConsummationAnswer] = useState<'yes' | 'no' | null>(null);
 
   const isGateOpen = showGateOverride || !state.divorceClassification?.confirmedAt;
 
@@ -29,9 +31,161 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
         <SmartDivorceClassificationGate
           state={state}
           setState={setState}
-          onConfirm={() => setShowGateOverride(false)}
+          onConfirm={() => {
+            setShowGateOverride(false);
+            setConsummationConfirmed(false);
+            setConsummationAnswer(null);
+          }}
           onCancel={state.divorceClassification?.confirmedAt ? () => setShowGateOverride(false) : onBack}
         />
+      </div>
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 💍 INTERSTITIAL: واقعة البناء والدخول
+  // Shown once after classification is confirmed, before any guided workflow
+  // ──────────────────────────────────────────────────────────────────────────
+  const primaryType = state.divorceClassification?.primaryType;
+  const workflowTypes: DivorceClassificationType[] = [
+    'revocable', 'khul', 'tamlik', 'consensual', 'discord', 'completed_three'
+  ];
+  const isWorkflowType = primaryType && workflowTypes.includes(primaryType);
+
+  if (isWorkflowType && !consummationConfirmed && state.step < 7) {
+    return (
+      <div className="w-full max-w-2xl mx-auto py-8 px-4 font-sans animate-fadeIn" dir="rtl">
+        {/* Header Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-6 rounded-2xl shadow-xl border border-blue-900/40 mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">💍</span>
+            <div>
+              <h2 className="text-lg font-extrabold">التحقق من واقعة البناء والدخول</h2>
+              <p className="text-blue-200 text-xs mt-0.5">
+                خطوة تمهيدية لازمة قبل الشروع في استكمال بيانات الرسم
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+          {/* Intro */}
+          <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <span className="text-blue-600 text-xl flex-shrink-0 mt-0.5">⚖️</span>
+            <div className="text-sm text-blue-900 leading-relaxed">
+              <span className="font-bold block mb-1">حالة الزوجين من حيث البناء والدخول</span>
+              يرجى تحديد ما إذا كان الطلاق موضوع الرسم قد وقع قبل الدخول أو بعده، إذ يترتب على ذلك اختلاف في الآثار الشرعية والمستحقات المالية المترتبة.
+            </div>
+          </div>
+
+          {/* Question */}
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-gray-800">هل حصل البناء / الدخول بالزوجة؟</p>
+
+            {/* Option YES */}
+            <button
+              type="button"
+              onClick={() => setConsummationAnswer('yes')}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-right transition-all duration-150 ${
+                consummationAnswer === 'yes'
+                  ? 'bg-emerald-600 border-emerald-700 text-white shadow-md'
+                  : 'bg-white border-gray-200 text-gray-800 hover:border-emerald-400 hover:bg-emerald-50'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                  consummationAnswer === 'yes' ? 'border-white bg-white' : 'border-gray-400'
+                }`}
+              >
+                {consummationAnswer === 'yes' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 block" />
+                )}
+              </span>
+              <div>
+                <span className="font-bold text-sm block">نعم — بعد الدخول والبناء</span>
+                <span
+                  className={`text-xs block mt-0.5 ${
+                    consummationAnswer === 'yes' ? 'text-emerald-100' : 'text-gray-500'
+                  }`}
+                >
+                  الطلاق واقع بعد الدخول الفعلي بالزوجة، وتترتب على ذلك كافة الآثار الشرعية والمالية الكاملة.
+                </span>
+              </div>
+            </button>
+
+            {/* Option NO */}
+            <button
+              type="button"
+              onClick={() => setConsummationAnswer('no')}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-right transition-all duration-150 ${
+                consummationAnswer === 'no'
+                  ? 'bg-amber-600 border-amber-700 text-white shadow-md'
+                  : 'bg-white border-gray-200 text-gray-800 hover:border-amber-400 hover:bg-amber-50'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                  consummationAnswer === 'no' ? 'border-white bg-white' : 'border-gray-400'
+                }`}
+              >
+                {consummationAnswer === 'no' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600 block" />
+                )}
+              </span>
+              <div>
+                <span className="font-bold text-sm block">لا — قبل الدخول والبناء</span>
+                <span
+                  className={`text-xs block mt-0.5 ${
+                    consummationAnswer === 'no' ? 'text-amber-100' : 'text-gray-500'
+                  }`}
+                >
+                  الطلاق واقع قبل حصول الدخول الفعلي، ولها نصف الصداق المسمى ولا عدة عليها (المادة 71 من مدونة الأسرة).
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Legal warning – before consummation */}
+          {consummationAnswer === 'no' && (
+            <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+              <span className="text-amber-600 text-base flex-shrink-0">⚠️</span>
+              <div className="leading-relaxed">
+                <span className="font-bold block mb-0.5">تنبيه قانوني — المادة 71 من مدونة الأسرة:</span>
+                الطلاق قبل الدخول يخوّل الزوجةَ نصفَ الصداق المسمى فقط إن كان قد سُمّي، أو المتعة المناسبة إن لم يُسمَّ. كما لا تجب عليها عدة ولا نفقة عدة، ولا تحسب طلقة من حق الزوج.
+              </div>
+            </div>
+          )}
+
+          {/* Confirm */}
+          <button
+            type="button"
+            disabled={!consummationAnswer}
+            onClick={() => {
+              setState((prev) => ({
+                ...prev,
+                divorceClassification: prev.divorceClassification
+                  ? {
+                      ...prev.divorceClassification,
+                      consummationStatus:
+                        consummationAnswer === 'yes'
+                          ? ('after_consummation' as const)
+                          : ('before_consummation' as const)
+                    }
+                  : prev.divorceClassification
+              }));
+              setConsummationConfirmed(true);
+            }}
+            className={`w-full py-3 rounded-xl text-sm font-extrabold transition-all shadow-sm flex items-center justify-center gap-2 ${
+              consummationAnswer
+                ? 'bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white cursor-pointer'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <span>تسجيل الإجابة والانتقال إلى بيانات الرسم</span>
+            <span>←</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -47,7 +201,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -64,7 +217,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 22, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -81,7 +233,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 19, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -98,7 +249,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -115,7 +265,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -132,7 +281,6 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
           state={state}
           setState={setState}
           onComplete={() => {
-            // After finishing Stage 14, advance directly to Step 7 (Final Review & Smart Drafting)
             setState((prev) => ({ ...prev, step: 7 }));
           }}
           onBackToClassification={() => setShowGateOverride(true)}
@@ -176,21 +324,28 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
     khul: {
       title: 'الطلاق الخلعي',
       code: 'D-04',
-      badge: classification?.khulDetails?.compensationAmount ? `${classification.khulDetails.compensationAmount.toLocaleString('ar-MA')} درهم` : 'على بدل',
+      badge: classification?.khulDetails?.compensationAmount
+        ? `${classification.khulDetails.compensationAmount.toLocaleString('ar-MA')} درهم`
+        : 'على بدل',
       color: 'bg-amber-100 text-amber-900 border-amber-300',
       icon: '💰'
     },
     tamlik: {
       title: 'الطلاق المملك',
       code: 'D-05',
-      badge: classification?.tamlikBasis?.deedNumber ? `سند تمليك رقم ${classification.tamlikBasis.deedNumber}` : 'المادة 89',
+      badge: classification?.tamlikBasis?.deedNumber
+        ? `سند تمليك رقم ${classification.tamlikBasis.deedNumber}`
+        : 'المادة 89',
       color: 'bg-rose-100 text-rose-800 border-rose-300',
       icon: '👩'
     },
     revocation_return: {
       title: 'رسم الرجعة أو المراجعة',
       code: 'D-06',
-      badge: classification?.returnRevocation?.scenario === 'khul_reconciliation' ? 'مراجعة بعد خلع' : 'رجعة في عدة',
+      badge:
+        classification?.returnRevocation?.scenario === 'khul_reconciliation'
+          ? 'مراجعة بعد خلع'
+          : 'رجعة في عدة',
       color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       icon: '🔁'
     },
@@ -204,7 +359,9 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
     murajaah: {
       title: 'رسم المراجعة',
       code: 'D-07',
-      badge: classification?.murajaahDetails?.dowryAmount ? `صداق: ${classification.murajaahDetails.dowryAmount} درهم` : 'عقد وصداق جديدان',
+      badge: classification?.murajaahDetails?.dowryAmount
+        ? `صداق: ${classification.murajaahDetails.dowryAmount} درهم`
+        : 'عقد وصداق جديدان',
       color: 'bg-teal-100 text-teal-800 border-teal-300',
       icon: '💍'
     }
@@ -234,7 +391,10 @@ export const DivorceWizard: React.FC<DocumentWizardProps> = ({ state, setState, 
               </span>
             </div>
             <div className="text-[11px] text-gray-500 mt-0.5">
-              <span>تم تفعيل مُنشئ الشهادة الذكي واعتماد الكود المعياري الوطني ({currentInfo.code}) في الإحصائيات الرسمية</span>
+              <span>
+                تم تفعيل مُنشئ الشهادة الذكي واعتماد الكود المعياري الوطني ({currentInfo.code}) في
+                الإحصائيات الرسمية
+              </span>
             </div>
           </div>
         </div>

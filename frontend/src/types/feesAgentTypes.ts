@@ -2567,6 +2567,8 @@ export interface SmartDivorceClassificationData {
     details?: string;
   }[];
   confirmedAt?: string;
+  // واقعة البناء والدخول — مُسجَّلة من شاشة التحقق التمهيدية
+  consummationStatus?: 'after_consummation' | 'before_consummation';
 }
 
 export interface MarriageDetails {
