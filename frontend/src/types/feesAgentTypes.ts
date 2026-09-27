@@ -1499,6 +1499,96 @@ export interface BilingualPersonIdentity {
   lat?: PersonIdentityFields;
 }
 
+export interface MarriageJudicialRulingDeed {
+  rulingSource?: 'import' | 'manual';
+  courtData?: {
+    court?: string;
+    section?: string;
+    fileNumber?: string;
+    rulingNumber?: string;
+    rulingDate?: string;
+    rulingType?: string;
+    rulingStatus?: 'حكم نهائي' | 'حائز لقوة الشيء المقضي به' | 'مرفق بما يفيد صيرورته نهائيًا/قابلاً للتوثيق' | 'حالة أخرى حسب الوثيقة القضائية';
+    rulingStatusOther?: string;
+    attachedDocumentName?: string;
+  };
+  identityVerification?: {
+    matchesIdentityDocs?: boolean;
+    discrepancyReason?: string;
+    hasSubstantialDiscrepancy?: boolean;
+  };
+  rulingOriginalNames?: {
+    husbandFullName?: string;
+    wifeFullName?: string;
+  };
+  husband?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    nationality?: string;
+    idNumber?: string;
+    profession?: string;
+    currentAddress?: string;
+    isAbroad?: boolean;
+    abroadCountry?: string;
+    abroadCity?: string;
+    abroadAddressAr?: string;
+    abroadAddressLat?: string;
+    latinName?: string;
+  };
+  wife?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    nationality?: string;
+    idNumber?: string;
+    profession?: string;
+    currentAddress?: string;
+    isAbroad?: boolean;
+    abroadCountry?: string;
+    abroadCity?: string;
+    abroadAddressAr?: string;
+    abroadAddressLat?: string;
+    latinName?: string;
+  };
+  marriageDuration?: {
+    startDateType?: 'year' | 'exact_date' | 'custom_phrase';
+    startYear?: string;
+    startDate?: string;
+    customPhrase?: string;
+    rulingRecordedText?: string;
+    deedDate?: string;
+    calculatedSummary?: string;
+  };
+  dowry?: {
+    amountNumber?: number | string;
+    amountWords?: string;
+    currency?: string;
+    paymentStatus?: 'مقبوض' | 'مؤجل' | 'مقبوض_بعضه_ومؤجل_باقيه' | 'غير_محدد_بالحكم';
+    detailsInRuling?: string;
+    isWordCountMatching?: boolean;
+  };
+  rulingPronouncement?: {
+    verdictOriginalText?: string; // منطوق الحكم
+    verdictApproved?: boolean;
+    rulingSubstance?: string; // فحوى الحكم
+  };
+  deedDraft?: {
+    customDraftText?: string;
+    notaryNotes?: string;
+  };
+  postHomologationCivilStatus?: {
+    isCompleted?: boolean;
+    isHomologated?: boolean;
+    isCopyPrepared?: boolean;
+    sendingStatus?: 'في انتظار الإرسال للحالة المدنية' | 'تم الإرسال';
+    sentDate?: string;
+    dispatchReference?: string;
+  };
+}
+
 export interface MarriageContinuityDeed {
   spouses?: {
     husband?: BilingualPersonIdentity;
@@ -2714,7 +2804,201 @@ export interface TawkilScope {
     [key: string]: any;
   };
   generalReserve?: boolean;
-  [key: string]: any;
+
+  // Extended Real Rights & Registry Details (الفصل 889-1 ق.ل.ع ومرسوم 2.23.101)
+  originalPoaSource?: OriginalPoaDetails;
+  isSubjectToRealRightsRegistry?: boolean;
+  realRightsPowers?: {
+    transferOwnership?: boolean;
+    saleProperty?: boolean;
+    buyProperty?: boolean;
+    giftProperty?: boolean;
+    createRealRight?: boolean;
+    transferRealRight?: boolean;
+    amendRealRight?: boolean;
+    cancelRealRight?: boolean;
+    otherRealRightAct?: boolean;
+    manageProperty?: boolean;
+    leaseProperty?: boolean;
+    collectRent?: boolean;
+    adminRepresentation?: boolean;
+    courtRepresentation?: boolean;
+    generalManagement?: boolean;
+    commercialDeals?: boolean;
+    movableDeals?: boolean;
+    otherAct?: boolean;
+    [key: string]: any;
+  };
+  registryInfo?: RealEstateRegistryPoaInfo;
+  subAgentInfo?: {
+    hasSubAgent?: 'yes' | 'no' | 'unknown';
+    subAgentName?: string;
+    subAgentCin?: string;
+    subAgentPhone?: string;
+    subAgentScope?: string;
+    isAuthorizedByPrincipal?: boolean;
+    canDelegateFurther?: boolean;
+  };
+  multiplePrincipalsCheck?: {
+    isJointOperation?: boolean;
+    divisibleTransactionVerified?: boolean;
+  };
+  multipleAgentsCheck?: {
+    scopeOption?: 'all' | 'specific' | 'partial';
+    selectedAgentIds?: string[];
+  };
+  nationalRegistryStatus?: 'unverified' | 'registered' | 'not_registered' | 'update_requested' | 'status_updated';
+  timelineEvents?: Array<{
+    date: string;
+    title: string;
+    description: string;
+    type?: string;
+  }>;
+  agencyStatus?: 'draft' | 'registered' | 'amended' | 'dismissed' | 'pending_cancellation' | 'cancelled_at_court';
+}
+
+// ============================================================================
+// AGENT DISMISSAL DEED (رسم عزل وكيل)
+// ============================================================================
+
+export interface OriginalPoaDetails {
+  sourceType: 'adoul' | 'official_other' | 'fixed_date' | 'foreign' | 'platform_existing';
+  
+  // 1. العدلان
+  book?: string; // دفتر
+  letter?: string; // حرف
+  page?: string; // صحيفة
+  number?: string; // عدد
+  date?: string; // تاريخ
+  court?: string; // توثيق المحكمة
+  
+  // 2. محرر رسمي آخر
+  issuerAuthority?: string;
+  documentNumber?: string;
+  place?: string;
+  docType?: string;
+  
+  // 3. ثابت التاريخ
+  fixedDate?: string;
+  fixedDateAuthority?: string;
+  referenceNumber?: string;
+  
+  // 4. وكالة بالخارج
+  country?: string;
+  city?: string;
+  foreignIssuer?: string;
+  foreignNumber?: string;
+  foreignDate?: string;
+  hasApostilleOrLegalization?: boolean;
+  isTranslated?: boolean;
+  
+  // Summary
+  summaryText?: string;
+}
+
+export interface RealEstateRegistryPoaInfo {
+  isRegistered: 'yes' | 'no' | 'unknown';
+  primaryCourt?: string;
+  registrationDate?: string;
+  registrationNumber?: string; // e.g. REG-TT-2026/00142
+  hasCertificate?: boolean;
+  certificateAttachmentName?: string;
+  isMatchedWithOriginal?: boolean;
+}
+
+export interface AgentDismissalPartyInfo {
+  id: string;
+  partyType: 'natural' | 'legal';
+  fullName: string;
+  birthDate?: string;
+  birthPlace?: string;
+  nationality?: string;
+  idCardNumber: string;
+  address: string;
+  latinName?: string;
+  
+  // Legal entity
+  companyName?: string;
+  companyType?: string;
+  commercialRegisterNumber?: string;
+  headquarters?: string;
+  legalRepresentativeName?: string;
+  representativeCapacity?: string;
+  powerDocumentRef?: string;
+  
+  // Status
+  capacityVerified?: boolean;
+}
+
+export interface AgentDismissalSubAgentInfo {
+  hasSubAgent: boolean;
+  subAgentName?: string;
+  subAgentReference?: string;
+  appointedWithPrincipalConsent?: boolean;
+  canAppointSubstitute?: boolean;
+  subAgentDismissalImpact?: 'dismissed_automatically' | 'remains_authorized' | 'needs_specific_clause';
+}
+
+export interface AgentDismissalDeed {
+  originalPoa: OriginalPoaDetails;
+  registryInfo: RealEstateRegistryPoaInfo;
+  
+  // Principals
+  principals: AgentDismissalPartyInfo[];
+  isMultiplePrincipals: boolean;
+  divisibleTransactionVerified: boolean; // الفصل 933 ق.ل.ع
+  
+  // Agents
+  agents: AgentDismissalPartyInfo[];
+  isMultipleAgents: boolean;
+  dismissalTarget: 'all' | 'one' | 'some';
+  selectedAgentIds: string[];
+  
+  // Scope
+  dismissalScopeType: 'full' | 'partial';
+  revokedPowers: string[]; // بيع، شراء، رهن، قسمة، كراء، تسيير، قبض الثمن، التوقيع، التقاضي، تمثيل، إنشاء/نقل/تعديل/إسقاط حق عيني، أخرى
+  otherRevokedPowerCustom?: string;
+  retainedPowers: string[];
+  
+  // Subject
+  subjectCategory: 'real_estate' | 'real_right' | 'movable' | 'litigation' | 'management' | 'commercial' | 'general' | 'other';
+  propertyType?: 'titled' | 'requisition' | 'unregistered';
+  propertyTitleNumber?: string;
+  propertyRequisitionNumber?: string;
+  propertyUnregisteredDescription?: string;
+  dispositionType?: 'ownership_transfer' | 'creation_right' | 'transfer_right' | 'amendment_right' | 'cancellation_right' | 'other';
+  propertyLocation?: string;
+  
+  // Legal Checks & Exceptions
+  inInterestOfAgentOrThirdParty: 'no' | 'yes' | 'unclear'; // الفصل 931 ق.ل.ع
+  interestVerificationNote?: string;
+  isLitigationPoa: boolean;
+  caseStatus?: 'not_ready' | 'ready_for_judgment' | 'unknown';
+  subAgent: AgentDismissalSubAgentInfo;
+  legalEntityAuthoritySource?: string;
+  formRequirementObserved: boolean; // الفصل 934 ق.ل.ع
+  
+  // Notification & Third Party Protection
+  notificationMethod: 'present_in_majlis' | 'written_notice' | 'telegram' | 'previous_notice' | 'future_notice' | 'unknown';
+  notificationDate?: string;
+  notificationDetails?: string;
+  thirdPartyProtectionAcknowledged: boolean;
+  
+  // Cancellation in Registry
+  requiresRegistryCancellation: boolean;
+  cancellationRequestNumber?: string;
+  cancellationPrimaryCourt?: string;
+  cancellationCertificateModel7Number?: string;
+  cancellationCertificateDate?: string;
+  nationalRegistryStatus: 'pending' | 'synced' | 'failed' | 'needs_processing';
+  
+  // Timeline
+  timelineEvents?: Array<{
+    date: string;
+    title: string;
+    description: string;
+    type: 'original' | 'amendment' | 'dismissal' | 'publicity';
+  }>;
 }
 
 export interface FeesAgentState {
@@ -2789,6 +3073,9 @@ export interface FeesAgentState {
 
   // MarriageContinuityDeed State
   marriageContinuityDeed?: MarriageContinuityDeed;
+
+  // MarriageJudicialRulingDeed State (رسم توثيق حكم بثبوت الزوجية)
+  marriageJudicialRulingDeed?: MarriageJudicialRulingDeed;
 
   // PromiseToSell State (رسم وعد بالبيع)
   promiseToSell?: PromiseToSell;
@@ -3255,8 +3542,8 @@ export interface FeesAgentState {
     acknowledgeHistoricalDocuments?: boolean;
   };
   
-  dowry?: DowryDetails;
   tawkilScope?: TawkilScope;
+  agentDismissal?: AgentDismissalDeed;
 
   // Administrative Certificates
   certificates: AdministrativeCertificate[];

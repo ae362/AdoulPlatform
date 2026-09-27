@@ -6,6 +6,7 @@ import type { DocumentWizardProps } from './types';
 import { MarriageWizard } from './documents/marriage/MarriageWizard';
 import { MixedMarriageWizard } from './documents/marriage/MixedMarriageWizard';
 import { MarriageContinuityWizard } from './documents/marriage/MarriageContinuityWizard';
+import { MarriageJudicialRulingWizard } from './documents/marriage/MarriageJudicialRulingWizard';
 
 // Divorce
 import { DivorceWizard } from './documents/divorce/DivorceWizard';
@@ -52,12 +53,14 @@ import { PossessoryMortgageWizard } from './documents/other/PossessoryMortgageWi
 import { DebtDischargeWizard } from './documents/other/DebtDischargeWizard';
 import { DebtAcknowledgmentWizard } from './documents/other/DebtAcknowledgmentWizard';
 import { OtherDocumentWizard } from './documents/other/OtherDocumentWizard';
+import { AgentDismissalWorkflow } from './documents/other/AgentDismissalWorkflow';
 
 export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
   'زواج': MarriageWizard,
   'زواج_مختلط': MixedMarriageWizard,
   'رسم_استمرار_زواج': MarriageContinuityWizard,
+  'توثيق_حكم_ثبوت_الزوجية': MarriageJudicialRulingWizard,
 
   // Divorce
   'الاشهاد_على_الطلاق_الاتفاقي': DivorceWizard,
@@ -103,6 +106,7 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'رهن_حيازي': PossessoryMortgageWizard,
   'رسم_إبراء_من_دين': DebtDischargeWizard,
   'رسم_اقرار_بدين': DebtAcknowledgmentWizard,
+  'عزل_وكيل': AgentDismissalWorkflow,
   'أخرى': OtherDocumentWizard,
 };
 

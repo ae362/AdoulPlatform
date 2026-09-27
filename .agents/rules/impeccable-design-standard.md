@@ -23,5 +23,5 @@ Whenever the user asks to **redesign**, **polish**, **style**, **critique**, or 
 
 4. **Deterministic Verification (التحقق الآلي من جودة التصميم)**:
    - Run the detector `.agents/skills/impeccable/scripts/impeccable.cmd detect <file>` after significant redesigns to verify absence of detected anti-patterns.
-   - Ensure zero regressions on component functionality, state, and TypeScript compilation (`tsc --noEmit`).
+   - Ensure zero regressions on component functionality, state, and verification (`npx oxlint <file>`).
 

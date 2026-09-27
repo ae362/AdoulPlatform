@@ -131,7 +131,254 @@ export const stripHtmlToPlainText = (html: string): string => {
     .trim();
 };
 
+export function generateRevocableReconciliationRasmHtml(state: FeesAgentState): string {
+  const { sellers, buyers, meta, marriageClassification, marriageDetails } = state;
+  const husband = sellers?.[0] || ({} as any);
+  const wife = buyers?.[0] || ({} as any);
+  const recon = marriageClassification?.reconciliationDetails || {};
+  const md = marriageDetails || {};
+
+  const courtName = formatCourtName(recon.divorceCourt || md.courtName || meta?.court) || 'المحكمة الابتدائية بشفشاون';
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt) || 'تطوان';
+  const notary1 = meta?.notaryPrimary || 'ذ. عبد الرحيم الإدريسي';
+  const notary2 = meta?.notarySecondary || 'ذ. محمد الخياط';
+
+  const dateGreg = meta?.dateGregorian || new Date().toISOString().split('T')[0];
+  const dateHijri = meta?.dateHijri || convertGregorianToHijri(dateGreg);
+  const sessionDay = getArabicWeekdayName(dateGreg) || 'اليوم';
+
+  const divorceRef = recon.divorceDeedNumber || '1234 / حرف ب / صفحة 56 / عدد 3';
+  const divorceDate = recon.divorceDate || '12/04/2026';
+  const divorceCourt = recon.divorceCourt || courtName;
+
+  const husbandName = husband.name || 'محمد العلمي بن إبراهيم';
+  const husbandCin = husband.idNumber || 'L459821';
+  const husbandAddress = husband.address || 'حي العيون، زقاق الأندلس، رقم 14، شفشاون';
+
+  const wifeName = wife.name || 'فاطمة الزهراء بنجلون بنت أحمد';
+  const wifeCin = wife.idNumber || 'LF892341';
+  const wifeAddress = wife.address || husbandAddress;
+
+  const formulaText =
+    md.specialConditionsText ||
+    `تراجع المتفارقان، الزوج المذكور (${husbandName}) والزوجة المذكورة (${wifeName})، عن الطلاق الرجعي المضمن بموجب رسم الطلاق المسجل تحت مراجع (${divorceRef})، الصادر عن ${divorceCourt} بتاريخ ${divorceDate}، وذلك أثناء سريان العدة الشرعية والقانونية، رجعة تامة بما جاز له ذلك شرعاً وقانوناً وفقاً للمادتين 123 و124 من مدونة الأسرة.`;
+
+  return `
+    <div style="font-family: 'Traditional Arabic', 'Amiri', 'Segoe UI', Tahoma, serif; direction: rtl; text-align: justify; line-height: 2.2; font-size: 17px; color: #1a202c; padding: 25px; background: #ffffff; border: 1px solid #0d9488; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <!-- Header -->
+      <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #0d9488; padding-bottom: 15px;">
+        <div style="font-size: 22px; font-weight: bold; color: #0f766e; margin-bottom: 4px;">المملكة المغربية — وزارة العدل</div>
+        <div style="font-size: 17px; font-weight: bold; color: #1e293b;">دائرة محكمة الاستئناف بـ ${appellateCourt} - المحكمة الابتدائية بـ ${courtName} (قسم قضاء الأسرة)</div>
+        <div style="margin-top: 10px; font-size: 14px; color: #0f766e; background: #ccfbf1; padding: 6px 14px; border-radius: 8px; display: inline-block; border: 1px solid #99f6e4; font-weight: bold;">
+          🔄 رسم الرجعة (إرجاع بعد طلاق رجعي) — المادتان 123 و124 من مدونة الأسرة
+        </div>
+      </div>
+
+      <!-- Ayah -->
+      <div style="text-align: center; margin: 18px 0; padding: 12px 20px; background: #f0fdfa; border: 1px solid #5eead4; border-radius: 8px;">
+        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #0f766e;">
+          ﴿وَإِذَا طَلَّقْتُمُ النِّسَاءَ فَبَلَغْنَ أَجَلَهُنَّ فَأَمْسِكُوهُنَّ بِمَعْرُوفٍ أَوْ سَرِّحُوهُنَّ بِمَعْرُوفٍ﴾
+        </p>
+        <span style="font-size: 13px; color: #115e59;">[سورة البقرة: 231]</span>
+      </div>
+
+      <!-- Body -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #0f766e; font-size: 18px;">الحمدلة ومجلس الإشهاد:</strong>
+          <span style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #86efac;">🟢 واقعة الرجعة مثبتة بحضور الطرفين</span>
+        </div>
+        <p>
+          الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وعلى آله وصحبه.
+          في يوم ${sessionDay}، الموافق لـ <strong>${dateHijri}</strong> هجرية و <strong>${dateGreg}</strong> ميلادية،
+          أمامنا نحن العدلين المنتصبين للإشهاد بدائرة ${courtName}،
+          حضر الزوجان المذكوران أدناه بكامل أهليتهما الشرعية والقانونية للإشهاد على واقعة الرجعة.
+        </p>
+      </div>
+
+      <div style="margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #0f766e; font-size: 18px;">هوية المتفارقين (المراجعين):</strong>
+          <span style="background: #ccfbf1; color: #115e59; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #99f6e4;">🟢 بيانات مسترجعة من رسم الطلاق</span>
+        </div>
+        <p>
+          <strong>الطرف الأول (الزوج):</strong> السيد <strong>${husbandName}</strong>، الحامل لبطاقة التعريف الوطنية رقم <strong>${husbandCin}</strong>، الساكن بـ ${husbandAddress}.<br/>
+          <strong>الطرف الثاني (الزوجة):</strong> السيدة <strong>${wifeName}</strong>، الحاملة لبطاقة التعريف الوطنية رقم <strong>${wifeCin}</strong>، الساكنة بـ ${wifeAddress}.
+        </p>
+      </div>
+
+      <div style="margin-bottom: 20px; background: #f0fdfa; padding: 15px; border-radius: 10px; border: 1px solid #99f6e4;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: #0f766e; font-size: 18px;">واقعة الرجعة («تراجع المتفارقان»):</strong>
+          <span style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; border: 1px solid #86efac;">🟢 بيانات متحقق منها</span>
+        </div>
+        <p style="font-weight: 500; color: #134e4a;">
+          ${formulaText}
+        </p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <strong style="color: #0f766e; font-size: 18px;">الإحالة على السجلات وإشعار المحكمة:</strong>
+        <p>
+          وقد ثبت سريان العدة الشرعية وقت الإشهاد على الرجعة، وتطابقت كافة الشروط القانونية المنصوص عليها في مدونة الأسرة.
+          ويحال هذا الرسم إلى كتابة الضبط بالمحكمة الابتدائية المختصة لتضمين بيانه بهامش رسم الطلاق الرجعي الأصلي طبقاً للمادة 124 من مدونة الأسرة.
+        </p>
+      </div>
+
+      <!-- Signatures -->
+      <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; text-align: center;">
+        <div>
+          <strong>توقيع الزوج المراجع</strong><br/><br/>
+          <span>....................................</span>
+        </div>
+        <div>
+          <strong>توقيع الزوجة المرجوعة</strong><br/><br/>
+          <span>....................................</span>
+        </div>
+        <div>
+          <strong>العدلان الشاهدان</strong><br/>
+          <span>${notary1} &nbsp;&nbsp;&nbsp;&nbsp; ${notary2}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function generateRenewMarriageAfterDivorceRasmHtml(state: FeesAgentState): string {
+  const { sellers, buyers, meta, marriageClassification, marriageDetails } = state;
+  const husband = sellers?.[0] || ({} as any);
+  const wife = buyers?.[0] || ({} as any);
+  const md = marriageDetails || ({} as any);
+  const prevContract = marriageClassification?.previousContract || ({} as any);
+
+  const courtName = formatCourtName(md.courtName || meta?.court || prevContract.courtName) || 'تطوان';
+  const courtSection = md.courtSection || 'قسم التوثيق وقضاء الأسرة';
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt) || 'تطوان';
+
+  const notary1 = (meta as any)?.notary1Name || meta?.notaryPrimary || 'الأستاذ العدل الأول';
+  const notary2 = (meta as any)?.notary2Name || meta?.notarySecondary || 'الأستاذ العدل الثاني';
+  const _todayFormatted = new Date().toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const dowryAmount = md.dowryAmount || 50000;
+  const dowryWords = md.dowryAmountInWords || convertNumberToArabicWords(dowryAmount);
+  const dowryAdvance = md.dowryAdvance || 20000;
+  const dowryAdvanceWords = md.dowryAdvanceInWords || convertNumberToArabicWords(dowryAdvance);
+  const dowryDeferred = md.dowryDeferred || 30000;
+  const dowryDeferredWords = md.dowryDeferredInWords || convertNumberToArabicWords(dowryDeferred);
+  const dowryReceipt = md.isDowryReceived || 'كاملا';
+
+  return `
+    <div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: right; line-height: 1.9; color: #0f172a; padding: 24px; max-width: 820px; margin: auto;">
+      <!-- Judicial Official Header -->
+      <div style="text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 14px; margin-bottom: 20px;">
+        <div style="font-size: 17px; font-weight: bold; color: #1e3a8a;">المملكة المغربية</div>
+        <div style="font-size: 15px; font-weight: bold; color: #334155;">وزارة العدل</div>
+        <div style="font-size: 14px; color: #475569;">محكمة الاستئناف بـ ${appellateCourt} • المحكمة الابتدائية بـ ${courtName}</div>
+        <div style="font-size: 13px; color: #64748b;">${courtSection}</div>
+        <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 10px; background-color: #f1f5f9; padding: 6px 16px; border-radius: 8px; display: inline-block; border: 1px solid #cbd5e1;">
+          عقد زواج جديد بين مطلقين بعد زوال الزوجية السابقة (تجديد عقد الزواج)
+        </div>
+        <div style="font-size: 12px; color: #475569; margin-top: 4px;">
+          إبرام عقد زواج جديد تام الأركان والشروط بمقتضى المادة 126 من القانون رقم 70.03 بمثابة مدونة الأسرة
+        </div>
+      </div>
+
+      <!-- Basmalah -->
+      <div style="text-align: center; margin: 16px 0; font-size: 17px; font-weight: bold; color: #1e3a8a;">
+        بِسمِ اللَّهِ الرَّحمٰنِ الرَّحِيمِ والصَّلاةُ والسَّلامُ على رَسُولِ اللَّهِ وآلِهِ وَصَحبِهِ
+      </div>
+
+      <!-- Opening Clause -->
+      <div style="background-color: #f8fafc; border-right: 4px solid #1e3a8a; padding: 12px 16px; margin-bottom: 18px; border-radius: 4px; font-size: 14px; border: 1px solid #e2e8f0; border-right: 4px solid #1e3a8a;">
+        <strong>الحمد لله وحده:</strong> حضر بمجلس الإشهاد المعقود لدى العدلين المنتصبين للإشهاد بدائرة محكمة قضاء الأسرة بـ <strong>${courtName}</strong>، والموقعين أسفله، الطرفان المسميان بعده، وهما في كامل أهليتهما المعتبرة شرعاً وقانوناً، وتعاقدا على النكاح الشرعي الصحيح الجديد بينهما بعد انحلال العلاقة الزوجية السابقة بينهما بمقتضى رسم الطلاق المشار إلى مراجعه أدناه، وزوال الزوجية السابقة حالاً عملاً بالمادتين 125 و126 من مدونة الأسرة دون أن يكون مكملاً للثلاث.
+      </div>
+
+      <!-- Historical Deed Reference -->
+      <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 16px; margin-bottom: 18px; border-radius: 8px; font-size: 13.5px;">
+        <strong style="color: #1e3a8a;">مراجع رسم الطلاق السابق والسجل التاريخي:</strong><br/>
+        رسم الطلاق المضمن بسجل الطلاق تحت: <strong>${prevContract.inclusionRef || 'عدد 3، صحيفة 56، حرف ب'}</strong>،
+        بتاريخ: <strong>${prevContract.deedDate || '15/10/2025'}</strong>، الصادر عن: <strong>${prevContract.courtName || courtName}</strong>،
+        وانقضت به العدة الشرعية وزالت الزوجية السابقة حالاً دون أي مانع شرعي من تجديد العقد بعقد وصداق جديدين طبقاً للمادة 126.
+      </div>
+
+      <!-- Husband Details -->
+      <div style="margin-bottom: 16px; font-size: 14px;">
+        <strong style="color: #1e3a8a; font-size: 15px;">الزوج في العقد الجديد:</strong>
+        السيد <strong>${husband.name || 'محمد بن التهامي العلمي'}</strong>،
+        مغربي الجنسية، المزداد بتاريخ <strong>${husband.birthDate || '12/04/1988'}</strong> بـ <strong>${husband.birthPlace || 'شفشاون'}</strong>،
+        والده <strong>${husband.fatherName || 'التهامي'}</strong>، ووالدته <strong>${husband.motherName || 'فاطمة الزهراء'}</strong>،
+        مهنته: <strong>${husband.profession || 'أستاذ التعليم الثانوي'}</strong>،
+        الساكن بـ <strong>${husband.address || 'حي العيون، شفشاون'}</strong>،
+        الحامل لبطاقة التعريف الوطنية رقم: <strong>${husband.idNumber || 'L458921'}</strong>،
+        وحالته السابقة: مطلق من نفس الزوجة المذكورة بعده بموجب رسم الطلاق المسجل أعلاه وهو في حل من أي قيد نكاح يمنع هذا العقد.
+      </div>
+
+      <!-- Wife Details -->
+      <div style="margin-bottom: 16px; font-size: 14px;">
+        <strong style="color: #1e3a8a; font-size: 15px;">الزوجة في العقد الجديد:</strong>
+        السيدة <strong>${wife.name || 'أمينة بنت عبد السلام العمراني'}</strong>،
+        مغربية الجنسية، المزادة بتاريخ <strong>${wife.birthDate || '24/09/1992'}</strong> بـ <strong>${wife.birthPlace || 'تطوان'}</strong>،
+        والدها <strong>${wife.fatherName || 'عبد السلام'}</strong>، ووالدتها <strong>${wife.motherName || 'زبيدة'}</strong>،
+        مهنتها: <strong>${wife.profession || 'مهندسة معمارية'}</strong>،
+        الساكنة بـ <strong>${wife.address || 'شارع الحسن الثاني، تطوان'}</strong>،
+        الحاملة لبطاقة التعريف الوطنية رقم: <strong>${wife.idNumber || 'LC192837'}</strong>،
+        وحالتها السابقة: مطلقة من نفس الزوج المذكور أعلاه بموجب رسم الطلاق أعلاه، وانقضت عدتها منه وزالت به الزوجية السابقة، وقد باشرت عقد زواجها بنفسها ومارست ولايتها على نفسها استناداً لأحكام المادتين 24 و 25 من مدونة الأسرة بصفتها راشدة كاملة الأهلية.
+      </div>
+
+      <!-- Dowry Details -->
+      <div style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 12px 16px; margin-bottom: 18px; border-radius: 8px; font-size: 13.5px;">
+        <strong style="color: #92400e; font-size: 14px;">الصداق والمقتضى المالي (المواد 13 و 27 و 67):</strong><br/>
+        اتفق الطرفان على تسمية صداق شرعي قدره: <strong>${dowryAmount.toLocaleString('ar-MA')} درهم</strong> (<strong>${dowryWords}</strong>)،
+        منه معجل قدره: <strong>${dowryAdvance.toLocaleString('ar-MA')} درهم</strong> (${dowryAdvanceWords})
+        ${dowryReceipt === 'كاملا' ? 'قُبض عياناً بمجلس العقد واكتملت حيازته،' : dowryReceipt === 'اعترافا' ? 'اعترفت الزوجة بقبضه وحيازته التامة،' : 'بقي بذمة الزوج،'}
+        وباقيه مؤجل قدره: <strong>${dowryDeferred.toLocaleString('ar-MA')} درهم</strong> (${dowryDeferredWords}) يستحق عند حلول أجله أو أقرب الأجلين (الوفاة أو الفراق).
+      </div>
+
+      <!-- Conditions and Article 49 -->
+      <div style="margin-bottom: 16px; font-size: 13.5px;">
+        <strong style="color: #1e3a8a;">الشروط الاتفاقية ونظام الأموال (المادتان 47 و 49):</strong><br/>
+        ${md.specialConditionsText ? `اشترط الطرفان شروطاً اتفاقية ملزمة عملاً بالمادة 47 من مدونة الأسرة، وهي: <strong>${md.specialConditionsText}</strong>.` : 'لم يشترط أي من الطرفين على الآخر شرطاً خاصاً سوى ما يقتضيه عقد الزواج شرعاً وقانوناً.'}<br/>
+        وقد أشعر العدلان الشاهدان الطرفين المتعاقدين بمقتضيات المادة 49 من مدونة الأسرة المتعلقة باستقلال الذمة المالية وجواز الاتفاق على تدبير واستثمار الأموال المكتسبة أثناء الزوجية في محرّر مستقل.
+      </div>
+
+      <!-- Offer and Acceptance -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; margin-bottom: 18px; border-radius: 8px; font-size: 13.5px;">
+        <strong style="color: #1e3a8a;">الإيجاب والقبول (المادتان 10 و 11):</strong><br/>
+        صدر الإيجاب من الزوج والقبول من الزوجة بصريح اللفظ في مجلس واحد، متطابقين، باتين غير معلقين على أجل أو شرط واقف أو فاسخ، وتراضيا على المعاشرة بالمعروف وإحصان كل منهما للآخر طبقاً لأحكام الشريعة الإسلامية ومدونة الأسرة.
+      </div>
+
+      <!-- Legal Conclusion & Date -->
+      <div style="font-size: 13px; color: #334155; margin-bottom: 24px;">
+        وقد تم إيداع ملف مستندات الزواج كاملاً بكتابة ضبط قسم قضاء الأسرة طبقاً للمادة 65، وبما ذُكر كُتب هذا الرسم وتُلي على الطرفين فصادقا عليه وأُشهد عليهما به في التاريخ المبين أدناه.
+      </div>
+
+      <!-- Signature Section -->
+      <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px dashed #cbd5e1; font-size: 13px;">
+        <div>
+          <strong>توقيع الزوج</strong><br/><br/>
+          <span>....................................</span>
+        </div>
+        <div>
+          <strong>توقيع الزوجة</strong><br/><br/>
+          <span>....................................</span>
+        </div>
+        <div>
+          <strong>العدلان الشاهدان</strong><br/>
+          <span>${notary1} &nbsp;&nbsp;&nbsp;&nbsp; ${notary2}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function generateMarriageRasmHtml(state: FeesAgentState): string {
+  if (state.marriageClassification?.primaryType === 'revocable_reconciliation') {
+    return generateRevocableReconciliationRasmHtml(state);
+  }
+  if (state.marriageClassification?.primaryType === 'contract_renewal') {
+    return generateRenewMarriageAfterDivorceRasmHtml(state);
+  }
+
   const { sellers, buyers, witnesses, meta, marriageDetails, finance, dowry } = state;
   const husband = sellers?.[0] || ({} as any);
   const wife = buyers?.[0] || ({} as any);
@@ -669,7 +916,7 @@ export function generateSaleRasmHtml(state: FeesAgentState): string {
 }
 
 export function generateMalakiyaRasmHtml(state: FeesAgentState): string {
-  const { sellers = [], buyers = [], applicants = [], properties = [], finance, meta } = state;
+  const { sellers = [], buyers = [], applicants = [], properties = [], meta } = state;
   const prop = properties[0] || ({} as any);
 
   const courtName = formatCourtName(meta?.court || state.preReceptionVerification?.primaryCourt) || 'شفشاون';
@@ -714,7 +961,7 @@ export function generateMalakiyaRasmHtml(state: FeesAgentState): string {
     (firstOwner as any).gender === 'female'
   );
 
-  const pronPrefix = isSingle ? (isFemale ? 'السيدة' : 'السيد') : 'السادة';
+  const _pronPrefix = isSingle ? (isFemale ? 'السيدة' : 'السيد') : 'السادة';
   const pronPoss = isSingle ? (isFemale ? 'لها' : 'له') : 'لهم';
   const pronHand = isSingle ? (isFemale ? 'بيدها' : 'بيده') : 'بيدهم';
   const pronHuz = isSingle ? (isFemale ? 'في حوزها واعتمارها وتصرفها وتحت ملكها' : 'في حوزه واعتماره وتصرفه وتحت ملكه') : 'في حوزهم واعتمارهم وتصرفهم وتحت ملكهم';
@@ -882,6 +1129,12 @@ export function generateRasmHtml(state: FeesAgentState): string {
     return generateMarriageRasmHtml(state);
   }
 
+  // Agent dismissal deed (رسم عزل وكيل)
+  if (documentType === 'عزل_وكيل') {
+    const draftText = state.draft || generateAgentDismissalDraft(state);
+    return `<div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: justify; line-height: 2.2; padding: 25px; font-size: 17px; color: #0f172a;">${draftText.replace(/\n/g, '<br/>')}</div>`;
+  }
+
   // Ownership deeds (ملكية / رسم استمرار / حيازة)
   if (documentType === 'ملكية' || documentType === 'حيازة' || documentType.includes('ملكية') || documentType.includes('حيازة')) {
     return generateMalakiyaRasmHtml(state);
@@ -987,6 +1240,72 @@ export function generateRasmHtml(state: FeesAgentState): string {
   `;
 }
 
+export function generateAgentDismissalDraft(state: FeesAgentState): string {
+  const d = state.agentDismissal;
+  if (!d) return 'الحمد لله وحده، رسم عزل وكيل وفقاً لمقتضيات خطة العدالة وظهير الالتزامات والعقود.';
+
+  const principalsText = (d.principals && d.principals.length > 0)
+    ? d.principals.map(p => {
+        if (p.partyType === 'legal') {
+          return `شركة (${p.companyName || '...'}) في شخص ممثلها القانوني السيد (${p.legalRepresentativeName || '...'}) بصفته (${p.representativeCapacity || 'مسير'})`;
+        }
+        return `السيد (${p.fullName || 'طالب العزل'}) الحامل لبطاقة التعريف الوطنية رقم (${p.idCardNumber || '...'}) الساكن بـ (${p.address || '...'})`;
+      }).join('، و')
+    : 'طالب العزل';
+
+  const agentsText = (d.agents && d.agents.length > 0)
+    ? d.agents
+        .filter(a => d.dismissalTarget === 'all' || (d.selectedAgentIds || []).includes(a.id))
+        .map(a => {
+          if (a.partyType === 'legal') {
+            return `شركة (${a.companyName || '...'}) في شخص ممثلها`;
+          }
+          return `السيد (${a.fullName || 'الوكيل المعزول'}) الحامل لبطاقة التعريف الوطنية رقم (${a.idCardNumber || '...'}) الساكن بـ (${a.address || '...'})`;
+        }).join('، و')
+    : 'الوكيل المعزول';
+
+  const isPartial = d.dismissalScopeType === 'partial';
+  const scopeDesc = isPartial
+    ? `عزلاً جزئياً يقتصر حصراً على الصلاحيات التالية: (${(d.revokedPowers || []).join('، ')}${d.otherRevokedPowerCustom ? '، ' + d.otherRevokedPowerCustom : ''})، مع بقاء ما عدا ذلك من الصلاحيات الواردة بأصل الوكالة المذكورة سارياً ومنتجاً لآثاره القانونية.`
+    : `عزلاً كلياً وتاماً يشمل سائر وأوفى الصلاحيات والتفويضات المخولة له بمقتضى الوكالة المحددة أدناه.`;
+
+  const poa = d.originalPoa || ({} as any);
+  let poaRef = poa.summaryText;
+  if (!poaRef) {
+    if (poa.sourceType === 'adoul') {
+      poaRef = `دفتر (${poa.book || '...'}) حرف (${poa.letter || '...'}) صحيفة (${poa.page || '...'}) عدد (${poa.number || '...'}) بتاريخ (${poa.date || '...'}) توثيق محكمة (${poa.court || '...'})`;
+    } else if (poa.sourceType === 'official_other') {
+      poaRef = `محرر رسمي صادر عن (${poa.issuerAuthority || '...'}) رقم (${poa.documentNumber || '...'}) بتاريخ (${poa.date || '...'}) بـ (${poa.place || '...'})`;
+    } else if (poa.sourceType === 'fixed_date') {
+      poaRef = `محرر ثابت التاريخ لدى (${poa.fixedDateAuthority || '...'}) بتاريخ (${poa.fixedDate || '...'}) تحت مرجع (${poa.referenceNumber || '...'})`;
+    } else if (poa.sourceType === 'foreign') {
+      poaRef = `وكالة أجنبية صادرة بـ (${poa.city || '...'} - ${poa.country || '...'}) عن (${poa.foreignIssuer || '...'}) رقم (${poa.foreignNumber || '...'}) بتاريخ (${poa.foreignDate || '...'})`;
+    } else {
+      poaRef = 'الوكالة المعتمدة بالمنصة';
+    }
+  }
+
+  const registryText = d.registryInfo?.isRegistered === 'yes'
+    ? `، والمقيدة بالسجل المحلي للوكالات المتعلقة بالحقوق العينية الممسوك لدى كتابة الضبط بالمحكمة الابتدائية بـ (${d.registryInfo.primaryCourt || '...'}) بتاريخ (${d.registryInfo.registrationDate || '...'}) تحت رقم التقييد المركب (${d.registryInfo.registrationNumber || '...'})`
+    : '';
+
+  const propertyText = (d.subjectCategory === 'real_estate' && d.propertyTitleNumber)
+    ? `، والمتعلقة بالعقار ذي الرسم العقاري أو المطلب عدد (${d.propertyTitleNumber})${d.propertyLocation ? ' الكائن بـ ' + d.propertyLocation : ''}`
+    : '';
+
+  const subAgentText = (d.subAgent && d.subAgent.hasSubAgent)
+    ? ` وإعمالاً للقواعد القانونية المقررة بالفصل 937 من ق.ل.ع، فإن عزل الوكيل الأصلي يسري حكماً على نائبه السيد (${d.subAgent.fullName || 'النائب'})، وتسقط تتبعاً كافة صلاحياته المستمدة من الوكالة موضوع العزل.`
+    : '';
+
+  return `الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
+
+حضر لدى عدلي التوثيق الموقعين أسفله، المنتصبين للإشهاد بدائرة المحكمة الابتدائية المعنية، ${principalsText}، وبعد تعريفهما لهما قدره التام والهوية الكاملة، صرح بأنه يعزل وكيله ${agentsText}، ${scopeDesc} من أصل الوكالة الصادرة عنه بموجب ${poaRef}${propertyText}${registryText}.${subAgentText}
+
+وقد قرر الموكل تجريد وكيله المعزول من ممارسة أي تصرف من التصرفات المذكورة، مع إلزامه بإرجاع نظير الوكالة وكافة الوثائق والمستندات المسلمة إليه. وقد تم إشعار الوكيل بمقتضى هذا العزل عبر (${d.notificationMethod === 'present_in_majlis' ? 'حضوره بمجلس الإشهاد العدلي' : d.notificationMethod === 'written_notice' ? 'إشعار كتابي رسمي مؤرخ في ' + (d.notificationDate || 'تاريخه') : 'المساطر المنصوص عليها بالفصل 932 من ق.ل.ع'}). 
+
+وبما ذكر صرح الموكل والتزم، وشهد عليه به في صحة وعقل وجواز أمر في تاريخه المبارك.`;
+}
+
 export function generateDocumentDraft(state: FeesAgentState): string {
   if (!state) return '';
   const sellers = state.sellers || [];
@@ -996,6 +1315,14 @@ export function generateDocumentDraft(state: FeesAgentState): string {
   const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
   const documentType = state.documentType || '';
 
+  // Agent dismissal deed (رسم عزل وكيل)
+  if (documentType === 'عزل_وكيل') {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    return generateAgentDismissalDraft(state);
+  }
+
   // Marriage and family deeds draft generator
   if ((MARRIAGE_DOCUMENT_TYPES as readonly string[]).includes(documentType)) {
     const husband = sellers[0] || ({} as any);
@@ -1004,7 +1331,7 @@ export function generateDocumentDraft(state: FeesAgentState): string {
     const d = state.dowry || ({} as any);
 
     const courtName = formatCourtName(md.courtName || meta.court || state.preReceptionVerification?.primaryCourt) || 'تطوان';
-    const courtSec = md.courtSection || 'قسم التوثيق وقضاء الأسرة';
+    const _courtSec = md.courtSection || 'قسم التوثيق وقضاء الأسرة';
     const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || 'تطوان';
     const notary1 = meta.notaryPrimary || state.preReceptionVerification?.notary1Name || 'العدل الأول';
     const notary2 = meta.notarySecondary || state.preReceptionVerification?.notary2Name || 'العدل الثاني';
@@ -1368,6 +1695,55 @@ export function generateDocumentDraft(state: FeesAgentState): string {
 
     if (scope.generalReserve) {
       scopeText += `\n\nو. بند عام احتياطي:\n  "والقيام بجميع ما تقتضيه هذه الوكالة عرفًا وقانونًا في حدود ما ذُكر أعلاه"`;
+    }
+
+    // Extended Real Rights Registry (الفصل 889-1 ق.ل.ع)
+    if (scope.isSubjectToRealRightsRegistry) {
+      const reg = scope.registryInfo;
+      scopeText += `\n\nز. مقتضيات سجل الوكالات المتعلقة بالحقوق العينية (الفصل 889-1 من ق.ل.ع ومرسوم 2.23.101):`;
+      scopeText += `\n  - خضوع الوكالة: مشمولة بنظام السجل المحلي للوكالات المتعلقة بالحقوق العينية`;
+      if (reg?.isRegistered === 'yes') {
+        scopeText += `\n  - وضعية التقييد بالسجل: مقيدة`;
+        scopeText += `\n  - المحكمة الابتدائية المختصة: ${reg.primaryCourt || '---'}`;
+        scopeText += `\n  - رقم تقييد الوكالة بالسجل المحلي: ${reg.registrationNumber || '---'}`;
+        scopeText += `\n  - تاريخ التقييد: ${reg.registrationDate || '---'}`;
+        if (reg.hasCertificate) {
+          scopeText += `\n  - شهادة التقييد: متوفرة ومطابقة للأصل`;
+        }
+      } else if (reg?.isRegistered === 'no') {
+        scopeText += `\n  - وضعية التقييد بالسجل: غير مقيدة بعد (يجب تقييدها بالسجل المحلي لإنتاج آثارها القانونية تجاه الكافة)`;
+      } else {
+        scopeText += `\n  - وضعية التقييد بالسجل: قيد الإيداع / التحقق`;
+      }
+    }
+
+    // Original POA Source Reference (if referenced)
+    if (scope.originalPoaSource?.book || scope.originalPoaSource?.number || scope.originalPoaSource?.documentNumber) {
+      const src = scope.originalPoaSource;
+      scopeText += `\n\nح. مراجع الوكالة الأصلية / المستند إليها:`;
+      if (src.sourceType === 'adoul') {
+        scopeText += `\n  - تلقي العدلين: كناش/دفتر ${src.book || '---'}، حرف ${src.letter || '---'}، صحيفة ${src.page || '---'}، عدد ${src.number || '---'}، بتاريخ ${src.date || '---'}، توثيق محكمة ${src.court || '---'}`;
+      } else if (src.sourceType === 'official_other') {
+        scopeText += `\n  - محرر رسمي: صادر عن ${src.issuerAuthority || '---'}، رقم ${src.documentNumber || '---'}، بتاريخ ${src.date || '---'}`;
+      } else if (src.sourceType === 'fixed_date') {
+        scopeText += `\n  - محرر ثابت التاريخ: رقم ${src.referenceNumber || '---'}، بتاريخ ${src.fixedDate || '---'}`;
+      } else if (src.sourceType === 'foreign') {
+        scopeText += `\n  - وكالة محررة بالخارج: دولة ${src.country || '---'}، رقم ${src.foreignNumber || '---'}، بتاريخ ${src.foreignDate || '---'}`;
+      }
+    }
+
+    // Sub-agent / Deputy
+    if (scope.subAgentInfo?.hasSubAgent === 'yes') {
+      scopeText += `\n\nط. النيابة والوكيل الفرعي (الفصول 931-934 ق.ل.ع):`;
+      scopeText += `\n  - النائب / الوكيل الفرعي المعين: ${scope.subAgentInfo.subAgentName || '---'} (رقم البطاقة: ${scope.subAgentInfo.subAgentCin || '---'})`;
+      if (scope.subAgentInfo.subAgentScope) {
+        scopeText += `\n  - نطاق الإنابة: ${scope.subAgentInfo.subAgentScope}`;
+      }
+    }
+
+    // Multiple Principals
+    if (scope.multiplePrincipalsCheck?.isJointOperation) {
+      scopeText += `\n\nي. تعدد الموكلين (الفصل 933 ق.ل.ع): صدرت هذه الوكالة عن موكلين متعددين لعملية مشتركة غير قابلة للتجزئة.`;
     }
 
     return `

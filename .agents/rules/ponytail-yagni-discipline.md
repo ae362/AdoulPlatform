@@ -13,5 +13,5 @@ When writing, refactoring, or modifying code in this project:
 2. **Strict Invariants**:
    - Zero regression to existing business logic or Moroccan notary workflows.
    - Strict preservation of RTL layout and Arabic legal phrasing.
-   - 100% type-clean (`tsc --noEmit` must pass with 0 errors).
+   - 100% clean (`oxlint` must pass with 0 errors).
 

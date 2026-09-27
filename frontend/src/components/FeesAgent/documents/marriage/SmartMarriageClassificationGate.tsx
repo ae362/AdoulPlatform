@@ -105,23 +105,6 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
     'direct'
   );
 
-  // Revocable Reconciliation Details
-  const [divorceDeedNumber, setDivorceDeedNumber] = useState<string>(
-    currentClassification?.reconciliationDetails?.divorceDeedNumber || ''
-  );
-  const [divorceDate, setDivorceDate] = useState<string>(
-    currentClassification?.reconciliationDetails?.divorceDate || ''
-  );
-  const [revocationDate, setRevocationDate] = useState<string>(
-    currentClassification?.reconciliationDetails?.revocationDate || new Date().toISOString().split('T')[0]
-  );
-  const [divorceCourt, setDivorceCourt] = useState<string>(
-    currentClassification?.reconciliationDetails?.divorceCourt || state.meta?.court || 'المحكمة الابتدائية بطنجة'
-  );
-  const [isIddahValid, setIsIddahValid] = useState<boolean>(
-    currentClassification?.reconciliationDetails?.isIddahValid ?? true
-  );
-
   // Stipulated conditions
   const [conditions, setConditions] = useState<string[]>(
     currentClassification?.stipulatedConditions && currentClassification.stipulatedConditions.length > 0
@@ -261,19 +244,19 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
     },
     {
       id: 'contract_renewal' as MarriageClassificationType,
-      title: 'تجديد أو تصحيح عقد زواج',
-      badge: 'مسار الإلحاق والتعديل',
-      badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+      title: 'تجديد عقد الزواج بعد الطلاق البائن',
+      badge: 'المادة 126 — عقد جديد',
+      badgeColor: 'bg-blue-100 text-blue-900 border-blue-400',
       icon: History,
-      iconColor: 'text-slate-600',
-      activeBorder: 'border-slate-500 ring-4 ring-slate-100 bg-slate-50/40',
-      desc: 'تصحيح خطأ مادي أو تجديد رسم تالف أو إضافة بيان لاحق على رسم أصلي.',
-      legalBasis: 'مقتضيات خطة العدالة وقانون الحالة المدنية',
+      iconColor: 'text-blue-700',
+      activeBorder: 'border-blue-600 ring-4 ring-blue-100 bg-blue-50/40',
+      desc: 'إبرام عقد زواج جديد بين مطلقين بعد زوال الزوجية السابقة بالطلاق البائن دون الثلاث، أو تصحيح وتجديد رسم تالف.',
+      legalBasis: 'المادة 126 من مدونة الأسرة وقانون خطة العدالة',
       requiredDocs: [
-        'نسخة من رسم الزواج الأصلي أو رقم تضمينه',
-        'شهادة ضياع أو تلف الرسم إن وجد',
-        'إذن المحكمة بالتصحيح أو التجديد',
-        'بطاقات التعريف الوطنية'
+        'رسم الطلاق السابق المضمن بالسجل',
+        'شهادة انقضاء العدة الشرعية وزوال الزوجية',
+        'ملف مستندات الزواج المودع لدى كتابة الضبط (المادة 65)',
+        'بطاقات التعريف الوطنية للزوجين'
       ]
     }
   ];
@@ -324,10 +307,10 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
       );
     }
     if (selectedType === 'revocable_reconciliation') {
-      return divorceDeedNumber.trim().length > 0 && isIddahValid;
+      return true;
     }
     if (selectedType === 'contract_renewal') {
-      return prevDeedNumber.trim().length > 0;
+      return true;
     }
     return true;
   }, [
@@ -336,8 +319,6 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
     permVerificationStatus,
     medicalReportNumber,
     otherPartyConsent,
-    divorceDeedNumber,
-    isIddahValid,
     prevDeedNumber
   ]);
 
@@ -371,11 +352,7 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
       reconciliationDetails:
         selectedType === 'revocable_reconciliation'
           ? {
-              divorceDeedNumber,
-              divorceDate,
-              revocationDate,
-              divorceCourt,
-              isIddahValid
+              isIddahValid: true
             }
           : undefined,
       stipulatedConditions:
@@ -974,92 +951,57 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
 
         {/* 5. الزواج الرجعي (إرجاع بعد طلاق رجعي) */}
         {selectedType === 'revocable_reconciliation' && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-3">
-              <RotateCcw className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-900 leading-relaxed">
-                <span className="font-bold">أحكام الإرجاع (المادة 124 وما بعدها):</span>
-                <p className="text-xs text-blue-800 mt-1">
-                  للزوج أن يرجع زوجته المطلقة طلاقاً رجعياً ما دامت في العدة. ويشترط لتوثيق الإرجاع ثبوت
-                  وقوع الطلاق الرجعي وتاريخه وسريان العدة شرعاً وقانوناً.
-                </p>
+          <div className="space-y-4 animate-fadeIn">
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-2 border-teal-300 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-teal-600/20">
+                  <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-black text-teal-950">
+                      🔄 رسم الرجعة — إثبات رجوع الزوج إلى زوجته أثناء العدة
+                    </h4>
+                    <span className="px-2.5 py-0.5 rounded-full bg-teal-200 text-teal-900 text-[10px] font-black border border-teal-300">
+                      مسار قانوني متخصص
+                    </span>
+                  </div>
+                  <p className="text-xs text-teal-900 leading-relaxed mt-1">
+                    الرجعة لا تكون إلا في الطلاق الرجعي وأثناء العدة. يتحقق النظام أولاً من طبيعة الطلاق وتاريخ وقوعه
+                    ومدة العدة قبل السماح بتحرير الرسم، انسجاماً مع المادتين 123 و124 من مدونة الأسرة.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end md:self-auto flex-shrink-0">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>جاهز للانطلاق (15 مرحلة)</span>
+                </span>
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-700">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                <span className="text-base">📂</span>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    رقم رسم الطلاق المرجوع منه *
-                  </label>
-                  <input
-                    type="text"
-                    value={divorceDeedNumber}
-                    onChange={(e) => setDivorceDeedNumber(e.target.value)}
-                    placeholder="مثال: 584 / 2025"
-                    className="w-full p-2.5 text-sm bg-white border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    تاريخ وقوع الطلاق
-                  </label>
-                  <input
-                    type="date"
-                    value={divorceDate}
-                    onChange={(e) => setDivorceDate(e.target.value)}
-                    className="w-full p-2.5 text-sm bg-white border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    تاريخ الإرجاع الفعلي
-                  </label>
-                  <input
-                    type="date"
-                    value={revocationDate}
-                    onChange={(e) => setRevocationDate(e.target.value)}
-                    className="w-full p-2.5 text-sm bg-white border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    المحكمة المصدرة لرسم الطلاق
-                  </label>
-                  <input
-                    type="text"
-                    value={divorceCourt}
-                    onChange={(e) => setDivorceCourt(e.target.value)}
-                    className="w-full p-2.5 text-sm bg-white border border-gray-300 rounded-lg"
-                  />
+                  <span className="font-bold text-slate-900 block">استرجاع هويات الزوجين</span>
+                  <span className="text-slate-500 text-[11px]">مستخرجة آلياً من رسم الطلاق</span>
                 </div>
               </div>
-
-              <div className="pt-2 border-t border-gray-200 flex items-center gap-4">
-                <span className="text-xs font-bold text-gray-700">حالة العدة الشرعية:</span>
-                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-emerald-800">
-                  <input
-                    type="radio"
-                    name="iddahStatus"
-                    checked={isIddahValid === true}
-                    onChange={() => setIsIddahValid(true)}
-                    className="text-blue-600"
-                  />
-                  <span>العدة لا زالت سارية (الإرجاع صحيح شرعاً وقانوناً) 🟢</span>
-                </label>
-                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-rose-800">
-                  <input
-                    type="radio"
-                    name="iddahStatus"
-                    checked={isIddahValid === false}
-                    onChange={() => setIsIddahValid(false)}
-                    className="text-rose-600"
-                  />
-                  <span>انقضت العدة (بانت بينونة صغرى - يلزم عقد جديد بمهر جديد) ⚠️</span>
-                </label>
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                <span className="text-base">⚖️</span>
+                <div>
+                  <span className="font-bold text-slate-900 block">التحقق الآلي من العدة</span>
+                  <span className="text-slate-500 text-[11px]">فحص سريان العدة وقابلية الرجعة</span>
+                </div>
+              </div>
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                <span className="text-base">🤝</span>
+                <div>
+                  <span className="font-bold text-slate-900 block">تراجع المتفارقان</span>
+                  <span className="text-slate-500 text-[11px]">توثيق حضور الطرفين وتوليد الديباجة</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1162,17 +1104,21 @@ export const SmartMarriageClassificationGate: React.FC<SmartMarriageClassificati
           </div>
         )}
 
-        {/* 7. تجديد أو مراجعة عقد زواج */}
+        {/* 7. تجديد عقد الزواج بعد الطلاق البائن */}
         {selectedType === 'contract_renewal' && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 flex items-start gap-3">
-              <History className="w-5 h-5 text-slate-700 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-slate-900 leading-relaxed">
-                <span className="font-bold">مسار الإلحاق والتعديل:</span>
-                <p className="text-xs text-slate-700 mt-1">
-                  يستخدم هذا المسار لإبرام ملحق تعديلي أو تصحيحي لرسم زواج سابق، أو تجديد رسم تالف أو مفقود،
-                  ويتم ربط الرسم الجديد بالرقم التضميني المعتمد للرسم السابق.
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-300 flex items-start gap-3">
+              <History className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-950 leading-relaxed">
+                <span className="font-bold">المادة 126 من مدونة الأسرة — عقد زواج جديد بعد طلاق بائن:</span>
+                <p className="text-xs text-blue-800 mt-1">
+                  «الطلاق البائن دون الثلاث يزيل الزوجية حالاً، ولا يمنع من تجديد عقد الزواج». يتم التعامل مع العملية
+                  باعتبارها زواجاً جديداً بكل مقومات عقد الزواج (أركان، ولاية، صداق جديد، شروط اتفاقية)، مع ربط
+                  العقد الجديد بالسجل التاريخي لرسم الطلاق السابق.
                 </p>
+                <div className="mt-2 text-xs font-bold text-blue-900 bg-white/80 p-2 rounded-lg border border-blue-200">
+                  ⚡ اضغط زر «متابعة بهذا المسار» بالأسفل للانتقال مباشرة إلى المسار التوثيقي الذكي (10 مراحل).
+                </div>
               </div>
             </div>
 

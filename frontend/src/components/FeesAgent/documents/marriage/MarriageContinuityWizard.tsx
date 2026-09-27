@@ -4,6 +4,7 @@ import { Step1_PartiesDefinition } from '../../steps/Step1_PartiesDefinition';
 import { Step4_Finance } from '../../steps/Step4_Finance';
 import { Step5_Witnesses } from '../../steps/Step5_Witnesses';
 import { Step6_Dates } from '../../steps/Step6_Dates';
+import { MarriageContinuityWorkflow } from './MarriageContinuityWorkflow';
 import type {
   PaymentMethod, PropertyType, ValidationSeverity, Party, Applicant,
   TitleDocumentDetails, OwnershipCertificateDetails, PropertyDetails,
@@ -966,14 +967,13 @@ import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
   };
 
 
-export const MarriageContinuityWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext, onBack }) => {
+export const MarriageContinuityWizard: React.FC<DocumentWizardProps> = ({ state, setState, onNext: _onNext, onBack }) => {
   return (
-    <>
-      {state.step === 1 && <Step1_PartiesDefinition state={state} setState={setState} />}
-      {state.step === 3 && <Step3_MarriageContinuityDeed state={state} setState={setState} />}
-      {state.step === 4 && <Step4_Finance state={state} setState={setState} />}
-      {state.step === 5 && <Step5_Witnesses state={state} setState={setState} />}
-      {state.step === 6 && <Step6_Dates state={state} setState={setState} />}
-    </>
+    <MarriageContinuityWorkflow
+      state={state}
+      setState={setState}
+      onComplete={() => setState(prev => ({ ...prev, step: 7 }))}
+      onBack={onBack}
+    />
   );
 };

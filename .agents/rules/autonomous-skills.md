@@ -10,7 +10,7 @@ The agent must ALWAYS autonomously apply all specialized skills across all workf
 2. **TypeScript Mastery (	ypescript-pro)**:
    - Enforce strict typing, zero unwanted ny, comprehensive generics, and immediate 	sc --noEmit verification.
 2. **TypeScript Mastery (`typescript-pro`)**:
-   - Enforce strict typing, zero unwanted `any`, comprehensive generics, and immediate `tsc --noEmit` verification.
+   - Enforce strict typing, zero unwanted `any`, comprehensive generics, and immediate `oxlint` verification (`npx oxlint <file>`).
 
 3. **Clean Code & SOLID Refactoring (code-refactoring-refactor-clean)**:
 3. **Clean Code & SOLID Refactoring (`code-refactoring-refactor-clean`)**:

@@ -211,6 +211,51 @@ export const EVIDENCE_RULES_DICTIONARY: Record<string, DocumentEvidenceRule> = {
     },
   },
 
+  // توثيق حكم ثبوت الزوجية
+  توثيق_حكم_ثبوت_الزوجية: {
+    documentType: 'توثيق_حكم_ثبوت_الزوجية',
+    arabicName: 'رسم توثيق حكم بثبوت الزوجية',
+    defaultMethod: 'none',
+    allowedMethods: ['none'],
+    minimumWitnesses: 0,
+    maximumWitnesses: 0,
+    bearingAgeMin: 18,
+    performanceAgeMin: 18,
+    requiresInquest: false,
+    forbiddenKinshipDegrees: [],
+    legalReference: 'المادة 16 من مدونة الأسرة والقانون رقم 51.26 - السند المباشر هو الحكم القضائي القطعي دون حاجة لإعادة الإثبات',
+    effectiveDate: '2026-11-09',
+    ruleVersion: '1.0',
+    recommendationReason: 'توثيق حكم ثبوت الزوجية يعتمد الحكم القضائي كسند مباشر وقطعي طبقا للمادة 16 من مدونة الأسرة، ولا يتطلب شهوداً أو لفيفاً لإعادة الإثبات.',
+    whyExplainer: {
+      dualAge: 'لا تنطبق شروط الشهود لتحمل الشهادة لكون السند حكماً قضائياً نهائياً.',
+      minimumWitnesses: 'صفر شهود؛ الحكم القضائي يغني عن البينات والشهود.',
+      inquestAndKinship: 'المحكمة استنفدت التحقق والبحث في إثبات الزوجية.',
+    },
+  },
+
+  // رسم عزل وكيل
+  عزل_وكيل: {
+    documentType: 'عزل_وكيل',
+    arabicName: 'رسم عزل وكيل',
+    defaultMethod: 'none',
+    allowedMethods: ['none'],
+    minimumWitnesses: 0,
+    maximumWitnesses: 0,
+    bearingAgeMin: 18,
+    performanceAgeMin: 18,
+    requiresInquest: false,
+    forbiddenKinshipDegrees: [],
+    legalReference: 'قانون الالتزامات والعقود (الفصول 927 إلى 938) وقرار وزير العدل رقم 381.25 والمرسوم 2.23.101',
+    effectiveDate: '2026-06-01',
+    ruleVersion: '1.0',
+    recommendationReason: 'رسم عزل الوكيل إشهاد إرادي مباشر صادر عن الموكل أمام عدلي التوثيق، ولا يتطلب شهود لفيف أو بينة سماع.',
+    whyExplainer: {
+      dualAge: 'يشترط كمال أهلية الموكل وقت الإشهاد بالعزل.',
+      minimumWitnesses: 'صفر شهود؛ التلقي الثنائي المباشر من طرف العدلين كافٍ قانوناً.',
+      inquestAndKinship: 'التحقق القضائي من انتفاء موانع العزل (الفصل 931) وشكل الوكالة (الفصل 934).',
+    },
+  },
   // 5. إحصاء متروك
   احصاء_متروك: {
     documentType: 'احصاء_متروك',

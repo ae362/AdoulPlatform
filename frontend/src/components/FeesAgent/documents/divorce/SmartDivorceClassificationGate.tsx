@@ -75,19 +75,19 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
 
   // Spouses names
   const [husbandName, setHusbandName] = useState<string>(
-    state.sellers?.[0]?.name || state.divorceCertification?.husband?.name || 'عبد الله بن محمد المنصوري'
+    state.sellers?.[0]?.name || state.divorceCertification?.husband?.name || ''
   );
   const [wifeName, setWifeName] = useState<string>(
-    state.buyers?.[0]?.name || state.divorceCertification?.wife?.name || 'فاطمة بنت الحسن المرابط'
+    state.buyers?.[0]?.name || state.divorceCertification?.wife?.name || ''
   );
   const [wifeFatherName, setWifeFatherName] = useState<string>(
-    state.buyers?.[0]?.fatherName || 'الحسن المرابط'
+    state.buyers?.[0]?.fatherName || ''
   );
   const [wifeCin, setWifeCin] = useState<string>(
-    state.buyers?.[0]?.idNumber || state.divorceCertification?.wife?.idNumber || 'KB894512'
+    state.buyers?.[0]?.idNumber || state.divorceCertification?.wife?.idNumber || ''
   );
   const [husbandCin, setHusbandCin] = useState<string>(
-    state.sellers?.[0]?.idNumber || state.divorceCertification?.husband?.idNumber || 'K741258'
+    state.sellers?.[0]?.idNumber || state.divorceCertification?.husband?.idNumber || ''
   );
 
   // 👩 Tamlik State
@@ -95,22 +95,22 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
     initialData?.tamlikBasis?.sourceType || 'marriage_deed'
   );
   const [tamlikDeedNum, setTamlikDeedNum] = useState<string>(
-    initialData?.tamlikBasis?.deedNumber || '4587'
+    initialData?.tamlikBasis?.deedNumber || ''
   );
   const [tamlikLetter, setTamlikLetter] = useState<string>(
-    initialData?.tamlikBasis?.letter || 'أ'
+    initialData?.tamlikBasis?.letter || ''
   );
   const [tamlikPage, setTamlikPage] = useState<string>(
-    initialData?.tamlikBasis?.page || '12'
+    initialData?.tamlikBasis?.page || ''
   );
   const [tamlikCount, setTamlikCount] = useState<string>(
-    initialData?.tamlikBasis?.count || '89'
+    initialData?.tamlikBasis?.count || ''
   );
   const [tamlikDate, setTamlikDate] = useState<string>(
-    initialData?.tamlikBasis?.deedDate || '2021-04-15'
+    initialData?.tamlikBasis?.deedDate || ''
   );
   const [tamlikCourt, setTamlikCourt] = useState<string>(
-    initialData?.tamlikBasis?.courtName || state.meta?.court || 'المحكمة الابتدائية بطنجة - قسم قضاء الأسرة'
+    initialData?.tamlikBasis?.courtName || state.meta?.court || ''
   );
   const [tamlikSearchStatus, setTamlikSearchStatus] = useState<'idle' | 'searching' | 'found' | 'not_found'>('idle');
   const [isTamlikLinked, setIsTamlikLinked] = useState<boolean>(
@@ -119,16 +119,16 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
 
   // 💰 Khul State
   const [khulAmount, setKhulAmount] = useState<number>(
-    initialData?.khulDetails?.compensationAmount || 15000
+    initialData?.khulDetails?.compensationAmount || 0
   );
   const [khulAmountInWords, setKhulAmountInWords] = useState<string>(
-    initialData?.khulDetails?.compensationInWords || 'خمسة عشر ألف درهم مغربي'
+    initialData?.khulDetails?.compensationInWords || ''
   );
   const [khulNature, setKhulNature] = useState<string>(
-    initialData?.khulDetails?.compensationNature || 'مبلغ مالي مقبوض نقداً بمجلس العقد'
+    initialData?.khulDetails?.compensationNature || ''
   );
   const [khulWaiver, setKhulWaiver] = useState<string>(
-    initialData?.khulDetails?.waiverDetails || 'إبراء وإسقاط حقها في نفقة العدة ومؤخر الصداق'
+    initialData?.khulDetails?.waiverDetails || ''
   );
 
   // 🔁 Return & Revocation State
@@ -136,7 +136,7 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
     initialData?.returnRevocation?.scenario || 'husband_return'
   );
   const [prevDeedNumber, setPrevDeedNumber] = useState<string>(
-    initialData?.returnRevocation?.previousDeedNumber || '1420/2026'
+    initialData?.returnRevocation?.previousDeedNumber || ''
   );
   const [prevDivorceTypeDetected, setPrevDivorceTypeDetected] = useState<DivorceClassificationType>(
     initialData?.returnRevocation?.previousDivorceType || 'revocable'
@@ -148,28 +148,24 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
 
   // 🤝 Consensual Agreement State
   const [agreementTerms, setAgreementTerms] = useState<string[]>(
-    initialData?.consensualAgreement?.terms || [
-      'التراضي التام على إيقاع الطلاق دون قيد أو شرط',
-      'تحديد نفقة الأبناء في مبلغ 1,500 درهم شهرياً',
-      'سكن الحضانة في الشقة الكائنة بمدينة طنجة'
-    ]
+    initialData?.consensualAgreement?.terms || []
   );
   const [courtPermissionNum, setCourtPermissionNum] = useState<string>(
-    initialData?.consensualAgreement?.courtPermissionNumber || '342/2026'
+    initialData?.consensualAgreement?.courtPermissionNumber || ''
   );
   const [courtPermissionDate, setCourtPermissionDate] = useState<string>(
-    initialData?.consensualAgreement?.courtPermissionDate || '2026-05-10'
+    initialData?.consensualAgreement?.courtPermissionDate || ''
   );
 
   // ⚖️ Discord (Shiqaq) State
   const [judgmentNumber, setJudgmentNumber] = useState<string>(
-    initialData?.discordDetails?.judgmentNumber || '892/2026'
+    initialData?.discordDetails?.judgmentNumber || ''
   );
   const [judgmentDate, setJudgmentDate] = useState<string>(
-    initialData?.discordDetails?.judgmentDate || '2026-06-12'
+    initialData?.discordDetails?.judgmentDate || ''
   );
   const [isLinkedToCourtFile, setIsLinkedToCourtFile] = useState<boolean>(
-    initialData?.discordDetails?.isLinkedToCourtFile ?? true
+    initialData?.discordDetails?.isLinkedToCourtFile ?? false
   );
 
   // Custom text override mode
@@ -863,7 +859,7 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
               ? 'bg-gray-100 text-gray-600 border-gray-300'
               : 'bg-blue-50 border-blue-400 text-blue-900 ring-2 ring-blue-100'
           }`}>
-            <span>💔 إيقاع الطلاق ({currentStatisticalCode})</span>
+            <span>💔 إيقاع الطلاق</span>
             {selectedType !== 'revocation_return' && <span className="text-[10px] text-blue-700">(الرسم الحالي)</span>}
           </div>
 
@@ -874,7 +870,7 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
               ? 'bg-emerald-50 border-emerald-400 text-emerald-900 ring-2 ring-emerald-100'
               : 'bg-gray-50 text-gray-500 border-dashed border-gray-300'
           }`}>
-            <span>🔁 إشهاد الرجعة / المراجعة (D-06)</span>
+            <span>🔁 إشهاد الرجعة / المراجعة</span>
             {selectedType === 'revocation_return' && <span className="text-[10px] text-emerald-700">(الرسم الحالي)</span>}
           </div>
         </div>
@@ -894,9 +890,6 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
                     <span>بيانات مسار:</span>
                     <span className="text-blue-700">
                       {selectedType === 'revocation_return' ? returnCard.title : divorceCards.find(c => c.id === selectedType)?.title}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-md font-mono bg-gray-100 text-gray-700 border">
-                      {currentStatisticalCode}
                     </span>
                   </h3>
                   <span className="text-xs text-gray-500">أدخل البيانات الأساسية لبناء صيغة الشهادة تلقائياً</span>
@@ -1570,9 +1563,6 @@ export const SmartDivorceClassificationGate: React.FC<SmartDivorceClassification
               <span className="text-xs text-slate-400 font-semibold">المسار المعتمد:</span>
               <span className="text-sm font-bold text-white">
                 {selectedType === 'revocation_return' ? returnCard.title : divorceCards.find(c => c.id === selectedType)?.title}
-              </span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                {currentStatisticalCode}
               </span>
             </div>
             <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-300">

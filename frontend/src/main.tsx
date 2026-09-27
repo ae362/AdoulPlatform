@@ -122,6 +122,11 @@ const IndividualReceptionPermissionPortal = lazy(() => import('./pages/Permissio
 const NotaryNotificationsPage = lazy(() => import('./pages/Notary/NotaryNotificationsPage'));
 const WorkCertificatePortal = lazy(() => import('./pages/Notary/WorkCertificatePortal'));
 const OfficeMovementPortal = lazy(() => import('./pages/Notary/OfficeMovementPortal'));
+const RealEstatePowerOfAttorneyRegistrationPortal = lazy(() =>
+  import('./pages/Notary/RealEstatePowerOfAttorneyRegistrationPortal').then((m: any) => ({
+    default: m.RealEstatePowerOfAttorneyRegistrationPortal || m.default,
+  })),
+);
 const PresidentOfficePortal = lazy(() =>
   import('./modules/PresidentOfficePortal').then((m) => ({ default: m.PresidentOfficePortal })),
 );
@@ -196,6 +201,7 @@ type ModuleKey =
   | 'notaryNotifications'
   | 'workCertificatePortal'
   | 'officeMovementPortal'
+  | 'realEstatePowerOfAttorneyRegistration'
   | 'remoteSigning';
 
 const DASHBOARD_LABEL = 'لوحة التحكم';
@@ -225,6 +231,7 @@ const NAV_ITEMS: { key: ModuleKey | 'permissions' | 'administrative' | 'visitors
     children: [
       { key: 'dashboard', label: 'الطلبات المهنية الوطنية', icon: '⚖️' },
       { key: 'workCertificatePortal', label: 'طلبات شهادة العمل', icon: '💼' },
+      { key: 'realEstatePowerOfAttorneyRegistration', label: 'طلب تقييد الوكالة في سجل الحقوق العينية', icon: '📑' },
     ]
   },
   {
@@ -400,6 +407,8 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
       setActive('workCertificatePortal');
     } else if (path === '/office-movement-portal') {
       setActive('officeMovementPortal');
+    } else if (path === '/real-estate-poa-registration') {
+      setActive('realEstatePowerOfAttorneyRegistration');
     } else if (path === '/dashboard') {
       setActive('dashboard');
     } else if (path === '/signed-rasms' || path.startsWith('/signed-rasms/')) {
@@ -500,6 +509,8 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
         return <RemoteNotarialHearingModule />;
       case 'workCertificatePortal':
         return <WorkCertificatePortal />;
+      case 'realEstatePowerOfAttorneyRegistration':
+        return <RealEstatePowerOfAttorneyRegistrationPortal />;
       case 'officeMovementPortal':
         return <OfficeMovementPortal />;
       case 'scientificPermission':
@@ -1186,6 +1197,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['notary']}>
                     <Layout initialModule="officeMovementPortal" />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/real-estate-poa-registration" 
+                element={
+                  <ProtectedRoute allowedRoles={['notary']}>
+                    <Layout initialModule="realEstatePowerOfAttorneyRegistration" />
                   </ProtectedRoute>
                 } 
               />

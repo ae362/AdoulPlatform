@@ -112,22 +112,22 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.hasJudicialPermission ?? true
   );
   const [court, setCourt] = useState<string>(
-    existingWf?.court || state.meta?.court || 'المحكمة الابتدائية بطنجة'
+    existingWf?.court || state.meta?.court || ''
   );
   const [section, setSection] = useState<string>(
     existingWf?.section || state.meta?.courtSection || 'قسم قضاء الأسرة'
   );
   const [fileNumber, setFileNumber] = useState<string>(
-    existingWf?.fileNumber || state.meta?.fileNumber || '2026/1602/412'
+    existingWf?.fileNumber || state.meta?.fileNumber || ''
   );
   const [permissionNumber, setPermissionNumber] = useState<string>(
-    existingWf?.permissionNumber || state.meta?.authorizationNumber || '1428'
+    existingWf?.permissionNumber || state.meta?.authorizationNumber || ''
   );
   const [permissionDate, setPermissionDate] = useState<string>(
-    existingWf?.permissionDate || state.meta?.authorizationDate || '2026-03-12'
+    existingWf?.permissionDate || state.meta?.authorizationDate || ''
   );
   const [receptionDate, setReceptionDate] = useState<string>(
-    existingWf?.receptionDate || state.meta?.dateGregorian || '2026-03-15'
+    existingWf?.receptionDate || state.meta?.dateGregorian || ''
   );
   const [adoulNotes, setAdoulNotes] = useState<string>(
     existingWf?.adoulNotes || ''
@@ -144,10 +144,10 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   // Stage 03: بيانات الزوج
   // -------------------------------------------------------------
   const [husbandFirstNameAr, setHusbandFirstNameAr] = useState<string>(
-    existingWf?.husband?.firstNameAr || husbandExisting?.name?.split(' ')[0] || 'عمر'
+    existingWf?.husband?.firstNameAr || husbandExisting?.name?.split(' ')[0] || ''
   );
   const [husbandLastNameAr, setHusbandLastNameAr] = useState<string>(
-    existingWf?.husband?.lastNameAr || husbandExisting?.name?.split(' ').slice(1).join(' ') || 'المنصوري'
+    existingWf?.husband?.lastNameAr || husbandExisting?.name?.split(' ').slice(1).join(' ') || ''
   );
   const [husbandFirstNameFr, setHusbandFirstNameFr] = useState<string>(
     existingWf?.husband?.firstNameFr || ''
@@ -159,34 +159,34 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.husband?.nationality || husbandExisting?.nationality || 'مغربية'
   );
   const [husbandBirthDate, setHusbandBirthDate] = useState<string>(
-    existingWf?.husband?.birthDate || husbandExisting?.dateOfBirth || '1988-04-14'
+    existingWf?.husband?.birthDate || husbandExisting?.dateOfBirth || ''
   );
   const [husbandBirthPlace, setHusbandBirthPlace] = useState<string>(
-    existingWf?.husband?.birthPlace || husbandExisting?.placeOfBirth || 'طنجة'
+    existingWf?.husband?.birthPlace || husbandExisting?.placeOfBirth || ''
   );
   const [husbandFatherName, setHusbandFatherName] = useState<string>(
-    existingWf?.husband?.fatherName || husbandExisting?.fatherName || 'محمد'
+    existingWf?.husband?.fatherName || husbandExisting?.fatherName || ''
   );
   const [husbandMotherName, setHusbandMotherName] = useState<string>(
-    existingWf?.husband?.motherName || husbandExisting?.motherName || 'فاطمة الزهراء'
+    existingWf?.husband?.motherName || husbandExisting?.motherName || ''
   );
   const [husbandIdType, setHusbandIdType] = useState<'cin' | 'passport' | 'other'>(
     existingWf?.husband?.idType || 'cin'
   );
   const [husbandIdNumber, setHusbandIdNumber] = useState<string>(
-    existingWf?.husband?.idNumber || husbandExisting?.idNumber || 'K489123'
+    existingWf?.husband?.idNumber || husbandExisting?.idNumber || ''
   );
   const [husbandIdExpiryDate, setHusbandIdExpiryDate] = useState<string>(
-    existingWf?.husband?.idExpiryDate || husbandExisting?.idExpiryDate || '2031-06-20'
+    existingWf?.husband?.idExpiryDate || husbandExisting?.idExpiryDate || ''
   );
   const [husbandProfession, setHusbandProfession] = useState<string>(
-    existingWf?.husband?.profession || husbandExisting?.profession || 'مهندس برمجيات'
+    existingWf?.husband?.profession || husbandExisting?.profession || ''
   );
   const [husbandAddress, setHusbandAddress] = useState<string>(
-    existingWf?.husband?.address || husbandExisting?.address || 'حي مالاباطا، شارع محمد السادس'
+    existingWf?.husband?.address || husbandExisting?.address || ''
   );
   const [husbandCity, setHusbandCity] = useState<string>(
-    existingWf?.husband?.city || 'طنجة'
+    existingWf?.husband?.city || ''
   );
   const [husbandCountry, setHusbandCountry] = useState<string>(
     existingWf?.husband?.country || 'المملكة المغربية'
@@ -196,10 +196,10 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   // Stage 04: بيانات الزوجة
   // -------------------------------------------------------------
   const [wifeFirstNameAr, setWifeFirstNameAr] = useState<string>(
-    existingWf?.wife?.firstNameAr || wifeExisting?.name?.split(' ')[0] || 'مريم'
+    existingWf?.wife?.firstNameAr || wifeExisting?.name?.split(' ')[0] || ''
   );
   const [wifeLastNameAr, setWifeLastNameAr] = useState<string>(
-    existingWf?.wife?.lastNameAr || wifeExisting?.name?.split(' ').slice(1).join(' ') || 'العلوي'
+    existingWf?.wife?.lastNameAr || wifeExisting?.name?.split(' ').slice(1).join(' ') || ''
   );
   const [wifeFirstNameFr, setWifeFirstNameFr] = useState<string>(
     existingWf?.wife?.firstNameFr || ''
@@ -211,34 +211,34 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.wife?.nationality || wifeExisting?.nationality || 'مغربية'
   );
   const [wifeBirthDate, setWifeBirthDate] = useState<string>(
-    existingWf?.wife?.birthDate || wifeExisting?.dateOfBirth || '1992-09-22'
+    existingWf?.wife?.birthDate || wifeExisting?.dateOfBirth || ''
   );
   const [wifeBirthPlace, setWifeBirthPlace] = useState<string>(
-    existingWf?.wife?.birthPlace || wifeExisting?.placeOfBirth || 'تطوان'
+    existingWf?.wife?.birthPlace || wifeExisting?.placeOfBirth || ''
   );
   const [wifeFatherName, setWifeFatherName] = useState<string>(
-    existingWf?.wife?.fatherName || wifeExisting?.fatherName || 'عبد الكريم'
+    existingWf?.wife?.fatherName || wifeExisting?.fatherName || ''
   );
   const [wifeMotherName, setWifeMotherName] = useState<string>(
-    existingWf?.wife?.motherName || wifeExisting?.motherName || 'خديجة'
+    existingWf?.wife?.motherName || wifeExisting?.motherName || ''
   );
   const [wifeIdType, setWifeIdType] = useState<'cin' | 'passport' | 'other'>(
     existingWf?.wife?.idType || 'cin'
   );
   const [wifeIdNumber, setWifeIdNumber] = useState<string>(
-    existingWf?.wife?.idNumber || wifeExisting?.idNumber || 'L591823'
+    existingWf?.wife?.idNumber || wifeExisting?.idNumber || ''
   );
   const [wifeIdExpiryDate, setWifeIdExpiryDate] = useState<string>(
-    existingWf?.wife?.idExpiryDate || wifeExisting?.idExpiryDate || '2032-11-15'
+    existingWf?.wife?.idExpiryDate || wifeExisting?.idExpiryDate || ''
   );
   const [wifeProfession, setWifeProfession] = useState<string>(
-    existingWf?.wife?.profession || wifeExisting?.profession || 'أستاذة التعليم الثانوي'
+    existingWf?.wife?.profession || wifeExisting?.profession || ''
   );
   const [wifeAddress, setWifeAddress] = useState<string>(
-    existingWf?.wife?.address || wifeExisting?.address || 'شارع مولاي إسماعيل، إقامة الزهور'
+    existingWf?.wife?.address || wifeExisting?.address || ''
   );
   const [wifeCity, setWifeCity] = useState<string>(
-    existingWf?.wife?.city || 'طنجة'
+    existingWf?.wife?.city || ''
   );
   const [wifeCountry, setWifeCountry] = useState<string>(
     existingWf?.wife?.country || 'المملكة المغربية'
@@ -254,19 +254,19 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.marriageRef?.registryBook || 'كناش الأنكحة'
   );
   const [marriageBookNumber, setMarriageBookNumber] = useState<string>(
-    existingWf?.marriageRef?.bookNumber || '18'
+    existingWf?.marriageRef?.bookNumber || ''
   );
   const [marriagePageNumber, setMarriagePageNumber] = useState<string>(
-    existingWf?.marriageRef?.pageNumber || '142'
+    existingWf?.marriageRef?.pageNumber || ''
   );
   const [marriageDeedNumber, setMarriageDeedNumber] = useState<string>(
-    existingWf?.marriageRef?.deedNumber || '854'
+    existingWf?.marriageRef?.deedNumber || ''
   );
   const [marriageDeedDate, setMarriageDeedDate] = useState<string>(
-    existingWf?.marriageRef?.deedDate || '2019-10-05'
+    existingWf?.marriageRef?.deedDate || ''
   );
   const [marriageIssuingAuthority, setMarriageIssuingAuthority] = useState<string>(
-    existingWf?.marriageRef?.issuingAuthority || 'قسم قضاء الأسرة بالمحكمة الابتدائية بطنجة'
+    existingWf?.marriageRef?.issuingAuthority || state.meta?.court || ''
   );
 
   // -------------------------------------------------------------
@@ -295,7 +295,7 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     (existingWf as any)?.dowryStatus || 'half_prescribed'
   );
   const [mutaaOrCompensation, setMutaaOrCompensation] = useState<number>(
-    (existingWf as any)?.mutaaOrCompensation ?? (existingWf?.dues?.wifeAgreedDues || 10000)
+    (existingWf as any)?.mutaaOrCompensation ?? (existingWf?.dues?.wifeAgreedDues || 0)
   );
 
   // -------------------------------------------------------------
@@ -318,16 +318,16 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.hasAgreementAttached ?? true
   );
   const [wifeAgreedDues, setWifeAgreedDues] = useState<number>(
-    existingWf?.dues?.wifeAgreedDues || 30000
+    existingWf?.dues?.wifeAgreedDues || 0
   );
   const [housingOrCompDues, setHousingOrCompDues] = useState<number>(
-    existingWf?.dues?.housingOrCompDues || 15000
+    existingWf?.dues?.housingOrCompDues || 0
   );
   const [childrenMonthlySupport, setChildrenMonthlySupport] = useState<number>(
-    existingWf?.dues?.childrenMonthlySupport || 2000
+    existingWf?.dues?.childrenMonthlySupport || 0
   );
   const [otherConditions, setOtherConditions] = useState<string>(
-    existingWf?.dues?.otherConditions || 'تنازل متبادل عن أثاث بيت الزوجية واستقلال كل طرف بمتعلقاته الشخصية'
+    existingWf?.dues?.otherConditions || ''
   );
 
   const duesTotal = useMemo(() => {
@@ -348,13 +348,13 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
     existingWf?.executionDetails?.executedAmount || duesTotal
   );
   const [receiptOrDeliveryRef, setReceiptOrDeliveryRef] = useState<string>(
-    existingWf?.executionDetails?.receiptOrDeliveryRef || 'REC-8841/2026'
+    existingWf?.executionDetails?.receiptOrDeliveryRef || ''
   );
   const [executionDate, setExecutionDate] = useState<string>(
-    existingWf?.executionDetails?.executionDate || '2026-03-14'
+    existingWf?.executionDetails?.executionDate || ''
   );
   const [authorityOrCourt, setAuthorityOrCourt] = useState<string>(
-    existingWf?.executionDetails?.authorityOrCourt || 'صندوق المحكمة الابتدائية بطنجة'
+    existingWf?.executionDetails?.authorityOrCourt || ''
   );
 
   const executedAmountInWords = useMemo(() => {
@@ -365,31 +365,20 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
   // Stage 11 & 12: الأبناء وبطاقة كل ابن وحضانته الاتفاقية
   // -------------------------------------------------------------
   const [hasChildren, setHasChildren] = useState<boolean>(
-    existingWf?.hasChildren ?? true
+    existingWf?.hasChildren ?? false
   );
   const [totalChildrenCount, setTotalChildrenCount] = useState<number>(
-    existingWf?.totalChildrenCount || 1
+    existingWf?.totalChildrenCount || 0
   );
   const [boysCount, setBoysCount] = useState<number>(
-    existingWf?.boysCount || 1
+    existingWf?.boysCount || 0
   );
   const [girlsCount, setGirlsCount] = useState<number>(
     existingWf?.girlsCount || 0
   );
 
-  const defaultChild: ConsensualChildData = {
-    id: 'child-1',
-    fullName: 'يوسف المنصوري',
-    firstName: 'يوسف',
-    lastName: 'المنصوري',
-    gender: 'ذكر',
-    birthDate: '2021-05-18',
-    custodyAssignment: 'mother',
-    visitationRights: 'عطل نهاية الأسبوع من صباح السبت إلى مساء الأحد مع النصف الأول من العطل المدرسية'
-  };
-
   const [childrenList, setChildrenList] = useState<ConsensualChildData[]>(
-    existingWf?.childrenList || [defaultChild]
+    existingWf?.childrenList || []
   );
 
   // -------------------------------------------------------------
@@ -695,9 +684,6 @@ export const ConsensualDivorceWorkflow: React.FC<ConsensualDivorceWorkflowProps>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-slate-900">🏛️ مسار الطلاق الاتفاقي (المادة 114)</h2>
-              <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
-                رمز الإحصاء: D-01
-              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               توثيق الطلاق الاتفاقي بالتراضي الحر بين الزوجين بناءً على الإذن القضائي الصادر عن قضاء الأسرة

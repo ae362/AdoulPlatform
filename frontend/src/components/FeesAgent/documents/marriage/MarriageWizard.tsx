@@ -3,6 +3,8 @@ import type { DocumentWizardProps } from '../../types';
 import { Step1_PartiesDefinition } from '../../steps/Step1_PartiesDefinition';
 import { Step6_Dates } from '../../steps/Step6_Dates';
 import { SmartMarriageClassificationGate } from './SmartMarriageClassificationGate';
+import { RevocableReconciliationWorkflow } from './RevocableReconciliationWorkflow';
+import { RenewMarriageAfterDivorceWorkflow } from './RenewMarriageAfterDivorceWorkflow';
 import { NationalMarriageStatsModal } from './NationalMarriageStatsModal';
 import { MarriagePermissionPickerModal } from './MarriagePermissionPickerModal';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -28,7 +30,7 @@ import {
   executeLegalFiltersForPossession, validatePossessionConditions,
   validateWitnessRequirements, generateOutcomeRouting
 } from '../../../../utils/feesAgentUtils';
-import { formatCourtName, generateRasmHtml, generateDocumentDraft } from '../../../../templates/feesAgentTemplates';
+import { formatCourtName, generateRasmHtml, generateMarriageRasmHtml, generateDocumentDraft } from '../../../../templates/feesAgentTemplates';
 import {
   type DocumentType, type PartyLabels, DEFAULT_PARTY_LABELS,
   DOCUMENT_PARTY_LABELS, getPartyLabels, DOCUMENT_CATEGORIES,
@@ -569,6 +571,51 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
 
   // Active classification summary for persistent header
   const classification = state.marriageClassification;
+
+  // 🏛️ Dedicated 15-Stage Complete Legal Workflow for رسم الرجعة (إرجاع بعد طلاق رجعي)
+  if (classification?.primaryType === 'revocable_reconciliation' && state.step < 7) {
+    return (
+      <div className="w-full min-w-0 max-w-full">
+        <RevocableReconciliationWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            setState((prev) => {
+              const updatedState = { ...prev, step: 7 };
+              return {
+                ...updatedState,
+                rasmHtml: generateMarriageRasmHtml(updatedState)
+              };
+            });
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
+  // 🏛️ Dedicated Complete Legal Workflow for تجديد عقد الزواج بعد الطلاق البائن (عقد زواج جديد)
+  if (classification?.primaryType === 'contract_renewal' && state.step < 7) {
+    return (
+      <div className="w-full min-w-0 max-w-full">
+        <RenewMarriageAfterDivorceWorkflow
+          state={state}
+          setState={setState}
+          onComplete={() => {
+            setState((prev) => {
+              const updatedState = { ...prev, step: 7 };
+              return {
+                ...updatedState,
+                rasmHtml: generateMarriageRasmHtml(updatedState)
+              };
+            });
+          }}
+          onBackToClassification={() => setShowGateOverride(true)}
+        />
+      </div>
+    );
+  }
+
   const classificationLabels: Record<string, { title: string; badge: string; color: string }> = {
     adult_marriage: {
       title: 'زواج الراشد',
@@ -596,9 +643,9 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
       color: 'bg-rose-100 text-rose-800 border-rose-300'
     },
     revocable_reconciliation: {
-      title: 'الزواج الرجعي',
-      badge: 'إرجاع مطلقة',
-      color: 'bg-blue-100 text-blue-800 border-blue-300'
+      title: 'رسم الرجعة (إرجاع بعد طلاق رجعي)',
+      badge: 'المادتان 123 و124',
+      color: 'bg-teal-100 text-teal-800 border-teal-300'
     },
     stipulated_conditions: {
       title: 'زواج بشروط اتفاقية',
@@ -606,9 +653,9 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
       color: 'bg-amber-100 text-amber-900 border-amber-300'
     },
     contract_renewal: {
-      title: 'تجديد أو تصحيح عقد زواج',
-      badge: 'مسار الإلحاق',
-      color: 'bg-slate-100 text-slate-800 border-slate-300'
+      title: 'عقد زواج جديد (تجديد بعد طلاق بائن)',
+      badge: 'المادة 126',
+      color: 'bg-blue-100 text-blue-900 border-blue-400'
     }
   };
 
@@ -642,6 +689,24 @@ export const MarriageWizard: React.FC<DocumentWizardProps> = ({ state, setState,
         </div>
 
         <div className="flex items-center gap-2">
+          {classification?.primaryType === 'revocable_reconciliation' && (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
+              className="px-3.5 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>↩ مراحل رسم الرجعة (15 مرحلة)</span>
+            </button>
+          )}
+          {classification?.primaryType === 'contract_renewal' && (
+            <button
+              type="button"
+              onClick={() => setState((prev) => ({ ...prev, step: 1 }))}
+              className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>↩ مراحل تجديد الزواج (10 مراحل)</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowPickerModal(true)}

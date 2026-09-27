@@ -1,10 +1,9 @@
-import React from 'react';
 import {
   ShieldCheck, Users, Building2, FileCheck, Scale, Clock,
-  FileText, Lock, CheckCircle2, Heart, Award, KeyRound
+  FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -25,7 +24,7 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   const dt = String(docType || '');
 
   // 1. Marriage
-  if (dt === 'زواج' || dt === 'زواج_مختلط' || dt === 'رسم_استمرار_زواج' || dt.includes('زواج')) {
+  if (dt === 'زواج' || dt === 'زواج_مختلط' || dt === 'رسم_استمرار_زواج' || dt === 'توثيق_حكم_ثبوت_الزوجية' || dt.includes('زواج') || dt.includes('الزوجية')) {
     return 'marriage';
   }
 
@@ -76,7 +75,17 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
     return 'property_general';
   }
 
-  // 6. Other Documents (Tawkil, Paternity, Mortgages, Debts, etc.)
+  // 6. Agent Dismissal (عزل وكيل)
+  if (dt === 'عزل_وكيل' || dt.includes('عزل')) {
+    return 'agent_dismissal';
+  }
+
+  // 7. Tawkil / Agency (رسم وكالة / توكيل رسمي)
+  if (dt === 'توكيل_رسمي' || dt === 'رسم_وكالة' || dt.includes('توكيل') || (dt.includes('وكالة') && !dt.includes('عزل'))) {
+    return 'tawkil';
+  }
+
+  // 8. Other Documents (Paternity, Mortgages, Debts, etc.)
   return 'other';
 }
 
@@ -214,7 +223,52 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
           ]
         };
 
-      case 'other':
+      case 'agent_dismissal':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم عزل وكيل (6 مراحل متسلسلة)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4 || step === 5 || step === 6) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والأهلية', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'الوكالة الأصلية', desc: 'مراجع الوكالة وسجل الحقوق العينية', icon: FileText },
+            { index: 3, targetStep: 2, num: '③', title: 'الأطراف والإنابة', desc: 'الموكل والوكيل والنائب', icon: Users },
+            { index: 4, targetStep: 3, num: '④', title: 'نطاق العزل والعقار', desc: 'كلي أو جزئي ومحل الوكالة', icon: Building2 },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الفحص والإشعار', desc: 'الاستثناءات وحماية الغير', icon: Scale },
+            { index: 6, targetStep: 7, num: '⑥', title: 'الرسم وإلغاء التقييد', desc: 'الصياغة والنموذج 7', icon: FileCheck },
+          ]
+        };
+
+      case 'tawkil':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم الوكالة وسجل الحقوق العينية (6 مراحل متسلسلة)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step >= 4 && step < 7) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والأهلية', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'الموكل والمصدر', desc: 'هوية الموكل ومراجع الإنشاء', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'الوكيل والنيابة', desc: 'الوكلاء وممارسة التوكيل والإنابة', icon: Building2 },
+            { index: 4, targetStep: 3, num: '④', title: 'الصلاحيات ومحدد السجل', desc: 'التصرفات وفحص الفصل 889-1', icon: Scale },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الفحص والتقييد', desc: 'السجل المحلي والسجل الوطني', icon: Clock },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'المراجعة الذكية للرسم وتوثيقه', icon: FileCheck },
+          ]
+        };
+
       default:
         return {
           title: 'خريطة المسار الإجرائي للوثيقة العدلية (6 مراحل متسلسلة)',
@@ -267,7 +321,6 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
           const Icon = st.icon;
           const isCurrent = st.index === activeStageIndex;
           const isPassed = st.index < activeStageIndex;
-          const isFuture = st.index > activeStageIndex;
 
           return (
             <div

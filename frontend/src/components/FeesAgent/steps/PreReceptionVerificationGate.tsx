@@ -100,7 +100,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
   // Document Type Classification for contextual stepper & instructions
   const isMarriage = useMemo(() => {
     const docType = String(state.documentType || '');
-    return docType === 'زواج' || docType === 'زواج_مختلط' || docType === 'رسم_استمرار_زواج';
+    return docType === 'زواج' || docType === 'زواج_مختلط' || docType === 'رسم_استمرار_زواج' || docType === 'توثيق_حكم_ثبوت_الزوجية';
   }, [state.documentType]);
 
   const isSale = useMemo(() => {

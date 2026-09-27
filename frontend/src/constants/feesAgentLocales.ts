@@ -51,7 +51,9 @@ export type DocumentType =
   | 'رسم_اقرار_واعتراف'
   | 'رسم_إبراء_من_دين'
   | 'رسم_اقرار_بدين'
-  | 'رسم_استمرار_زواج';
+  | 'رسم_استمرار_زواج'
+  | 'توثيق_حكم_ثبوت_الزوجية'
+  | 'عزل_وكيل';
 
 // ============================================================================
 // 2. DOCUMENT CLASSIFICATION GROUPS
@@ -85,6 +87,7 @@ export const MARRIAGE_DOCUMENT_TYPES = [
   'زواج_مختلط',
   'استمرار_الزوجية',
   'رسم_استمرار_زواج',
+  'توثيق_حكم_ثبوت_الزوجية',
 ] as const;
 
 export const INHERITANCE_DOCUMENT_TYPES = [
@@ -150,6 +153,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerGroup: 'الزوج',
     sellerSingle: 'الزوج',
     buyerGroup: 'الزوجة',
+    buyerSingle: 'الزوجة',
+    sellerAdd: '',
+    buyerAdd: '',
+    sellerShareTitle: '',
+    buyerShareTitle: '',
+  },
+    'توثيق_حكم_ثبوت_الزوجية': {
+    sellerGroup: 'الزوج (المحكوم له)',
+    sellerSingle: 'الزوج',
+    buyerGroup: 'الزوجة (المحكوم لها)',
     buyerSingle: 'الزوجة',
     sellerAdd: '',
     buyerAdd: '',
@@ -366,6 +379,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: 'توزيع حصص المؤجِّرين',
     buyerShareTitle: 'توزيع حصص المكاتري المتملكين',
   },
+  'عزل_وكيل': {
+    sellerGroup: 'الموكلون (طالبو العزل)',
+    sellerSingle: 'الموكل (طالب العزل)',
+    buyerGroup: 'الوكلاء (المعزولون)',
+    buyerSingle: 'الوكيل (المعزول)',
+    sellerAdd: 'إضافة موكل آخر',
+    buyerAdd: 'إضافة وكيل آخر',
+    sellerShareTitle: '',
+    buyerShareTitle: '',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -403,6 +426,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رسم زواج', value: 'زواج' },
       { label: 'رسم زواج مختلط', value: 'زواج_مختلط' },
       { label: 'رسم استمرار زواج', value: 'رسم_استمرار_زواج' },
+      { label: 'توثيق حكم ثبوت الزوجية', value: 'توثيق_حكم_ثبوت_الزوجية' },
     ],
     alert: 'قد تستوجب بعض الرسوم إذنًا قضائيًا أو وثائق إدارية بحسب الحالة.',
     ref: 'مدونة الأسرة، المواد 10، 14، 16، 21، 124',
@@ -481,6 +505,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
     desc: 'تشمل الرسوم ذات الطابع التمثيلي أو الإجرائي.',
     items: [
       { label: 'رسم وكالة', value: 'توكيل_رسمي' },
+      { label: 'عزل وكيل', value: 'عزل_وكيل' },
       { label: 'رسم الاقرار ببنوة/عقد الاستلحاق', value: 'رسم_الاقرار_ببنوة' },
       { label: 'ثبوت نسب ببينة السماع', value: 'ثبوت_نسب_ببينة_السماع' },
       { label: 'اتفاق على تدبير اموال الزوجية/نظام المشاركة', value: 'اتفاق_تدبير_اموال_زوجية' },

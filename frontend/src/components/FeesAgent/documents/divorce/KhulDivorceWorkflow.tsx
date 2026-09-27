@@ -141,19 +141,19 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
     existingKhul?.section || 'قسم قضاء الأسرة'
   );
   const [fileNumber, setFileNumber] = useState<string>(
-    existingKhul?.fileNumber || '2026/1602/741'
+    existingKhul?.fileNumber || ''
   );
   const [permissionNumber, setPermissionNumber] = useState<string>(
-    existingKhul?.permissionNumber || '912/2026'
+    existingKhul?.permissionNumber || ''
   );
   const [permissionDate, setPermissionDate] = useState<string>(
-    existingKhul?.permissionDate || '2026-05-20'
+    existingKhul?.permissionDate || ''
   );
   const [receptionDate, setReceptionDate] = useState<string>(
-    existingKhul?.receptionDate || '2026-05-24'
+    existingKhul?.receptionDate || ''
   );
   const [adoulNotes, setAdoulNotes] = useState<string>(
-    existingKhul?.adoulNotes || 'توصل العدلان بالإذن القضائي بالخلع مستوفياً للشروط القانونية ومحضر الصلح.'
+    existingKhul?.adoulNotes || ''
   );
 
   // Stage 2: أطراف الخلع وطبيعة الحضور
@@ -163,110 +163,110 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
 
   // Stage 3: بيانات الزوجة المختلعة
   const [wifeFirstNameAr, setWifeFirstNameAr] = useState<string>(
-    existingKhul?.wife?.firstNameAr || defaultWife?.name?.split(' ')[0] || 'فاطمة الزهراء'
+    existingKhul?.wife?.firstNameAr || defaultWife?.name?.split(' ')[0] || ''
   );
   const [wifeLastNameAr, setWifeLastNameAr] = useState<string>(
-    existingKhul?.wife?.lastNameAr || defaultWife?.name?.split(' ').slice(1).join(' ') || 'المرابط'
+    existingKhul?.wife?.lastNameAr || defaultWife?.name?.split(' ').slice(1).join(' ') || ''
   );
   const [wifeFirstNameFr, setWifeFirstNameFr] = useState<string>(
-    existingKhul?.wife?.firstNameFr || 'FATIMA ZAHRA'
+    existingKhul?.wife?.firstNameFr || ''
   );
   const [wifeLastNameFr, setWifeLastNameFr] = useState<string>(
-    existingKhul?.wife?.lastNameFr || 'EL MOURABIT'
+    existingKhul?.wife?.lastNameFr || ''
   );
   const [wifeNationality, setWifeNationality] = useState<string>(
     existingKhul?.wife?.nationality || 'مغربية'
   );
   const [wifeBirthDate, setWifeBirthDate] = useState<string>(
-    existingKhul?.wife?.birthDate || '1992-08-16'
+    existingKhul?.wife?.birthDate || ''
   );
   const [wifeBirthPlace, setWifeBirthPlace] = useState<string>(
-    existingKhul?.wife?.birthPlace || 'طنجة'
+    existingKhul?.wife?.birthPlace || ''
   );
   const [wifeFatherName, setWifeFatherName] = useState<string>(
-    existingKhul?.wife?.fatherName || defaultWife?.fatherName || 'الحسن المرابط'
+    existingKhul?.wife?.fatherName || defaultWife?.fatherName || ''
   );
   const [wifeMotherName, setWifeMotherName] = useState<string>(
-    existingKhul?.wife?.motherName || 'خديجة العمراني'
+    existingKhul?.wife?.motherName || ''
   );
   const [wifeIdType, setWifeIdType] = useState<'cin' | 'passport' | 'other'>(
     existingKhul?.wife?.idType || 'cin'
   );
   const [wifeIdNumber, setWifeIdNumber] = useState<string>(
-    existingKhul?.wife?.idNumber || defaultWife?.idNumber || 'KB894512'
+    existingKhul?.wife?.idNumber || defaultWife?.idNumber || ''
   );
   const [wifeIdExpiryDate, setWifeIdExpiryDate] = useState<string>(
-    existingKhul?.wife?.idExpiryDate || '2030-08-16'
+    existingKhul?.wife?.idExpiryDate || ''
   );
   const [wifeProfession, setWifeProfession] = useState<string>(
-    existingKhul?.wife?.profession || defaultWife?.profession || 'أستاذة بالتعليم الثانوي'
+    existingKhul?.wife?.profession || defaultWife?.profession || ''
   );
   const [wifeIncomeResource, setWifeIncomeResource] = useState<string>(
-    existingKhul?.wife?.incomeResource || 'راتب شهري نظامي'
+    existingKhul?.wife?.incomeResource || ''
   );
   const [wifeAddress, setWifeAddress] = useState<string>(
-    existingKhul?.wife?.address || defaultWife?.address || 'حي مالاباطا، شارع محمد السادس، إقامة البحر الأزرق رقم 14'
+    existingKhul?.wife?.address || defaultWife?.address || ''
   );
-  const [wifeCity, setWifeCity] = useState<string>(existingKhul?.wife?.city || 'طنجة');
+  const [wifeCity, setWifeCity] = useState<string>(existingKhul?.wife?.city || '');
   const [wifeCountry, setWifeCountry] = useState<string>(existingKhul?.wife?.country || 'المملكة المغربية');
   const [isWifeAdult, setIsWifeAdult] = useState<boolean>(existingKhul?.wife?.isAdult ?? true);
   const [wifeGuardianName, setWifeGuardianName] = useState<string>(existingKhul?.wife?.legalGuardianName || '');
 
   // Stage 4: بيانات الزوج (الطرف الموافق على الخلع)
   const [husbandFirstNameAr, setHusbandFirstNameAr] = useState<string>(
-    existingKhul?.husband?.firstNameAr || defaultHusband?.name?.split(' ')[0] || 'عبد السلام'
+    existingKhul?.husband?.firstNameAr || defaultHusband?.name?.split(' ')[0] || ''
   );
   const [husbandLastNameAr, setHusbandLastNameAr] = useState<string>(
-    existingKhul?.husband?.lastNameAr || defaultHusband?.name?.split(' ').slice(1).join(' ') || 'المنصوري'
+    existingKhul?.husband?.lastNameAr || defaultHusband?.name?.split(' ').slice(1).join(' ') || ''
   );
   const [husbandFirstNameFr, setHusbandFirstNameFr] = useState<string>(
-    existingKhul?.husband?.firstNameFr || 'ABDESLAM'
+    existingKhul?.husband?.firstNameFr || ''
   );
   const [husbandLastNameFr, setHusbandLastNameFr] = useState<string>(
-    existingKhul?.husband?.lastNameFr || 'EL MANSOURI'
+    existingKhul?.husband?.lastNameFr || ''
   );
   const [husbandNationality, setHusbandNationality] = useState<string>(
     existingKhul?.husband?.nationality || 'مغربية'
   );
   const [husbandBirthDate, setHusbandBirthDate] = useState<string>(
-    existingKhul?.husband?.birthDate || '1987-03-12'
+    existingKhul?.husband?.birthDate || ''
   );
   const [husbandBirthPlace, setHusbandBirthPlace] = useState<string>(
-    existingKhul?.husband?.birthPlace || 'تطوان'
+    existingKhul?.husband?.birthPlace || ''
   );
   const [husbandFatherName, setHusbandFatherName] = useState<string>(
-    existingKhul?.husband?.fatherName || defaultHusband?.fatherName || 'محمد المنصوري'
+    existingKhul?.husband?.fatherName || defaultHusband?.fatherName || ''
   );
   const [husbandMotherName, setHusbandMotherName] = useState<string>(
-    existingKhul?.husband?.motherName || 'زينب الفاسي'
+    existingKhul?.husband?.motherName || ''
   );
   const [husbandIdType, setHusbandIdType] = useState<'cin' | 'passport' | 'other'>(
     existingKhul?.husband?.idType || 'cin'
   );
   const [husbandIdNumber, setHusbandIdNumber] = useState<string>(
-    existingKhul?.husband?.idNumber || defaultHusband?.idNumber || 'L458921'
+    existingKhul?.husband?.idNumber || defaultHusband?.idNumber || ''
   );
   const [husbandIdExpiryDate, setHusbandIdExpiryDate] = useState<string>(
-    existingKhul?.husband?.idExpiryDate || '2031-03-12'
+    existingKhul?.husband?.idExpiryDate || ''
   );
   const [husbandProfession, setHusbandProfession] = useState<string>(
-    existingKhul?.husband?.profession || defaultHusband?.profession || 'مهندس معماري'
+    existingKhul?.husband?.profession || defaultHusband?.profession || ''
   );
   const [husbandAddress, setHusbandAddress] = useState<string>(
-    existingKhul?.husband?.address || defaultHusband?.address || 'طنجة البالية، مجمع النصر عمارة د، شقة 5'
+    existingKhul?.husband?.address || defaultHusband?.address || ''
   );
-  const [husbandCity, setHusbandCity] = useState<string>(existingKhul?.husband?.city || 'طنجة');
+  const [husbandCity, setHusbandCity] = useState<string>(existingKhul?.husband?.city || '');
   const [husbandCountry, setHusbandCountry] = useState<string>(existingKhul?.husband?.country || 'المملكة المغربية');
 
   // Stage 5: مرجع الزواج
   const [deedType, setDeedType] = useState<string>(existingKhul?.marriageDeed?.deedType || 'رسم زواج شرعي');
-  const [registryBook, setRegistryBook] = useState<string>(existingKhul?.marriageDeed?.registryBook || 'دفتر أنكحة رقم 12');
-  const [registryBookNumber, setRegistryBookNumber] = useState<string>(existingKhul?.marriageDeed?.registryBookNumber || '12/2019');
-  const [pageNumber, setPageNumber] = useState<string>(existingKhul?.marriageDeed?.page || '184');
-  const [deedNumber, setDeedNumber] = useState<string>(existingKhul?.marriageDeed?.count || '359');
-  const [marriageDeedDate, setMarriageDeedDate] = useState<string>(existingKhul?.marriageDeed?.deedDate || '2019-09-14');
+  const [registryBook, setRegistryBook] = useState<string>(existingKhul?.marriageDeed?.registryBook || 'دفتر أنكحة');
+  const [registryBookNumber, setRegistryBookNumber] = useState<string>(existingKhul?.marriageDeed?.registryBookNumber || '');
+  const [pageNumber, setPageNumber] = useState<string>(existingKhul?.marriageDeed?.page || '');
+  const [deedNumber, setDeedNumber] = useState<string>(existingKhul?.marriageDeed?.count || '');
+  const [marriageDeedDate, setMarriageDeedDate] = useState<string>(existingKhul?.marriageDeed?.deedDate || '');
   const [marriageCourt, setMarriageCourt] = useState<string>(
-    existingKhul?.marriageDeed?.courtName || 'المحكمة الابتدائية بطنجة - قسم قضاء الأسرة'
+    existingKhul?.marriageDeed?.courtName || state.meta?.court || ''
   );
 
   // Stage 6: تاريخ الطلاق وعدده
@@ -286,10 +286,10 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
 
   // Stage 9 & 10: مقابل الخلع ومجموعه
   const [deferredDowryIncluded, setDeferredDowryIncluded] = useState<boolean>(
-    existingKhul?.compensation?.deferredDowryIncluded ?? true
+    existingKhul?.compensation?.deferredDowryIncluded ?? false
   );
   const [deferredDowryAmount, setDeferredDowryAmount] = useState<number>(
-    existingKhul?.compensation?.deferredDowryAmount ?? 10000
+    existingKhul?.compensation?.deferredDowryAmount ?? 0
   );
 
   const [iddahMaintenanceWaived, setIddahMaintenanceWaived] = useState<boolean>(
@@ -297,10 +297,10 @@ export const KhulDivorceWorkflow: React.FC<KhulDivorceWorkflowProps> = ({
   );
 
   const [mutahIncluded, setMutahIncluded] = useState<boolean>(
-    existingKhul?.compensation?.mutahIncluded ?? true
+    existingKhul?.compensation?.mutahIncluded ?? false
   );
   const [mutahAmount, setMutahAmount] = useState<number>(
-    existingKhul?.compensation?.mutahAmount ?? 5000
+    existingKhul?.compensation?.mutahAmount ?? 0
   );
 
   const [otherCompensationIncluded, setOtherCompensationIncluded] = useState<boolean>(

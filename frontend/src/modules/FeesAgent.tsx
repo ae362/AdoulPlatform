@@ -230,8 +230,8 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
   return (
     <div ref={containerRef} className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
-          <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),280px]">
+          <div className="bg-white rounded-lg shadow-lg p-6 min-w-0 max-w-full">
             {/* Step 0 & Intake Gateways (Excluding 0.25 which is rendered directly) */}
             {(state.step === 0 || state.step === undefined || state.step === null || (state.step > 0 && state.step < 0.5 && state.step !== 0.25)) && (
               state.step === 0.35 ? (
@@ -273,7 +273,7 @@ export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 
             )}
 
             {/* Universal Stages Stepper Roadmap for each document type (Steps 0.5 to 8) */}
-            {state.step >= 0.5 && state.step <= 8 && state.documentType && (
+            {state.step >= 0.5 && state.step <= 8 && state.documentType && (state.documentType !== 'توثيق_حكم_ثبوت_الزوجية' || state.step >= 7) && (
               <DocumentWorkflowStepper
                 documentType={state.documentType}
                 currentStep={state.step}
