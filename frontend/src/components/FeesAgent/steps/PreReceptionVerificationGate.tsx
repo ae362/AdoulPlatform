@@ -1222,7 +1222,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
           <div>
             <div className="text-xs font-black text-indigo-600">② السؤال الثاني — الاختصاص المكاني</div>
             <h2 className="text-lg font-black text-slate-900">
-              📍 هل يتم التلقي داخل دائرة محكمة الاستئناف التي تتبع لها المحكمة الابتدائية الموجود بها مقر مكتبك؟
+              📍 هل تم تلقي الشهادة بمكتبكم المهني بمكان تعيينكم التابع للمحكمة الابتدائية؟
             </h2>
           </div>
         </div>
