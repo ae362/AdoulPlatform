@@ -22,14 +22,13 @@ import {
 import type {
   FeesAgentState,
   Party,
-  Witness,
   MarriageContinuityDeed
 } from '../../../../types/feesAgentTypes';
 import {
   convertGregorianToHijri,
-  createEmptyParty,
-  createEmptyWitness
+  createEmptyParty
 } from '../../../../utils/feesAgentUtils';
+import { Step5_Witnesses } from '../../steps/Step5_Witnesses';
 
 interface MarriageContinuityWorkflowProps {
   state: FeesAgentState;
@@ -349,107 +348,39 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
   const [interruptionDetails, setInterruptionDetails] = useState<string>('');
 
   // --------------------------------------------------------------------------
-  // المرحلة 6: ⑱ و ⑲ شهادة اللفيف (12 شاهداً)
+  // المرحلة 6: ⑥ طريقة الإثبات والشهادة والتحري (ربط آلي مع منظومة الإثبات والشهود)
   // --------------------------------------------------------------------------
-  // دالة مساعدة لإنشاء شاهد واحد فارغ تماماً
-  const createSingleBlankWitness = (index: number): Witness => ({
-    ...createEmptyWitness(),
-    id: `lafif-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`,
-    name: '',
-    idNumber: '',
-    idType: 'بطاقة التعريف الوطنية',
-    address: '',
-    profession: '',
-    age: undefined,
-    kinship: ''
-  });
-
-  // البدء دائماً بشاهد واحد فارغ، ثم يمكن للعدل الإضافة حتى 12 شاهداً
-  const [lafifWitnesses, setLafifWitnesses] = useState<Witness[]>(() => {
-    if (state.witnesses && state.witnesses.length > 0) {
-      // تفريغ أي أسماء تجريبية قديمة متبقية في الذاكرة
-      const hasMockData = state.witnesses.some(w =>
-        w.name?.includes('العلوي') ||
-        w.name?.includes('المرابط') ||
-        w.name?.includes('التازي') ||
-        w.name?.startsWith('الشاهد ') ||
-        w.idNumber?.startsWith('K71020')
-      );
-      if (!hasMockData) {
-        return state.witnesses;
-      }
-    }
-    // البداية الافتراضية: شاهد واحد فارغ تماماً
-    return [createSingleBlankWitness(1)];
-  });
-
-  // حالة الربط مشتقة تلقائياً من اكتمال 12 شاهداً بالاسم ورقم البطاقة
-  const isLafifLinked = useMemo(() => {
-    return lafifWitnesses.length >= 12 && lafifWitnesses.every(w => Boolean(w.name?.trim() && w.idNumber?.trim()));
-  }, [lafifWitnesses]);
-
-  // تنظيف أي بيانات تجريبية سابقة متبقية في الذاكرة والبدء بشاهد واحد فارغ
   useEffect(() => {
-    if (state.witnesses && state.witnesses.some(w =>
-      w.name?.includes('العلوي') ||
-      w.name?.includes('المرابط') ||
-      w.name?.includes('التازي') ||
-      w.name?.startsWith('الشاهد ') ||
-      w.idNumber?.startsWith('K71020')
-    )) {
-      const singleBlank = [createSingleBlankWitness(1)];
-      setLafifWitnesses(singleBlank);
-      setState(prev => ({ ...prev, witnesses: singleBlank }));
-    }
-  }, [state.witnesses, setState]);
+    setState(prev => {
+      const isDocTypeSet = prev.documentType === 'رسم_استمرار_زواج';
+      const existing = prev.evidenceSubjectMatter;
+      const isSubjectSynced =
+        existing &&
+        existing.category === 'continuous_enjoyment' &&
+        existing.exactStartDate === marriageDate &&
+        existing.depositionDate === ishhadDate;
 
-  // إضافة شاهد واحد جديد فارغ (حتى 12 شاهداً)
-  const handleAddSingleWitness = () => {
-    if (lafifWitnesses.length >= 12) return;
-    const newWitness = createSingleBlankWitness(lafifWitnesses.length + 1);
-    const updated = [...lafifWitnesses, newWitness];
-    setLafifWitnesses(updated);
-    setState(prev => ({ ...prev, witnesses: updated }));
-  };
+      if (isDocTypeSet && isSubjectSynced && prev.evidenceMethod) {
+        return prev;
+      }
 
-  // إكمال القائمة لتصبح 12 خانة فارغة دفعة واحدة (اختياري)
-  const handleExpandTo12Witnesses = () => {
-    const currentCount = lafifWitnesses.length;
-    const needed = Math.max(0, 12 - currentCount);
-    if (needed === 0) return;
-    const addition = Array.from({ length: needed }, (_, i) => createSingleBlankWitness(currentCount + i + 1));
-    const updated = [...lafifWitnesses, ...addition];
-    setLafifWitnesses(updated);
-    setState(prev => ({ ...prev, witnesses: updated }));
-  };
-
-  // تفريغ القائمة والعودة إلى شاهد واحد فارغ تماماً
-  const handleClearWitnesses = () => {
-    const singleBlank = [createSingleBlankWitness(1)];
-    setLafifWitnesses(singleBlank);
-    setState(prev => ({ ...prev, witnesses: singleBlank }));
-  };
-
-  // تحديث حقل في شاهد معين
-  const handleUpdateWitnessField = (index: number, field: keyof Witness, value: any) => {
-    const updated = [...lafifWitnesses];
-    updated[index] = { ...updated[index], [field]: value };
-    setLafifWitnesses(updated);
-    setState(prev => ({ ...prev, witnesses: updated }));
-  };
-
-  // حذف شاهد (مع إبقاء شاهد واحد فارغ إذا تم حذف الشاهد الوحيد)
-  const handleRemoveWitness = (index: number) => {
-    if (lafifWitnesses.length <= 1) {
-      const resetSingle = [createSingleBlankWitness(1)];
-      setLafifWitnesses(resetSingle);
-      setState(prev => ({ ...prev, witnesses: resetSingle }));
-      return;
-    }
-    const updated = lafifWitnesses.filter((_, i) => i !== index);
-    setLafifWitnesses(updated);
-    setState(prev => ({ ...prev, witnesses: updated }));
-  };
+      return {
+        ...prev,
+        documentType: 'رسم_استمرار_زواج',
+        evidenceMethod: prev.evidenceMethod || 'lafif',
+        evidenceSubjectMatter: {
+          category: 'continuous_enjoyment',
+          title: 'استمرار الزوجية الشرعية',
+          depositionDate: ishhadDate,
+          periodType: marriageDate ? 'exact_start_date' : 'duration_years',
+          exactStartDate: marriageDate || undefined,
+          calculatedStartDate: marriageDate || ishhadDate,
+          claimedDurationYears: calculatedDuration.years || 1,
+          notes: `استمرار الزوجية بين ${husbandOriginal.fullName || 'الزوج'} و${wifeOriginal.fullName || 'الزوجة'}`
+        }
+      };
+    });
+  }, [marriageDate, ishhadDate, calculatedDuration.years, husbandOriginal.fullName, wifeOriginal.fullName, setState]);
 
   // --------------------------------------------------------------------------
   // الاسترجاع التلقائي عند اعتماد رسم من النظام
@@ -574,7 +505,24 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
 
     const isDurationCalculated = Boolean(marriageDate && calculatedDuration.years >= 0);
 
-    const isLafifReady = lafifWitnesses.length >= 12 && lafifWitnesses.every(w => Boolean(w.name?.trim() && w.idNumber?.trim()));
+    const witnessesList = state.witnesses || [];
+    const evidenceMethod = state.evidenceMethod || 'lafif';
+    let isLafifReady = true;
+
+    if (evidenceMethod === 'none') {
+      isLafifReady = true;
+    } else if (evidenceMethod === 'scientific') {
+      const sci = state.scientificTestimony;
+      isLafifReady = Boolean(sci?.permissionNumber?.trim() && sci?.permissionDate?.trim());
+    } else if (evidenceMethod === 'mithliya') {
+      const mith = state.mithliyaTestimony;
+      isLafifReady = witnessesList.length >= 6 && Boolean(mith?.permissionNumber?.trim());
+    } else {
+      // lafif
+      isLafifReady =
+        witnessesList.length >= 12 &&
+        witnessesList.every(w => Boolean(w.name?.trim() && w.idNumber?.trim()));
+    }
 
     const noInterruption = !hasInterruptionOrObstacle;
 
@@ -614,7 +562,10 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
     wifeOriginal,
     wifeCurrent,
     calculatedDuration,
-    lafifWitnesses,
+    state.witnesses,
+    state.evidenceMethod,
+    state.scientificTestimony,
+    state.mithliyaTestimony,
     hasInterruptionOrObstacle
   ]);
 
@@ -642,6 +593,26 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
       ? `المقيمة حالياً بدولة ${wifeCurrent.residenceCountry || 'المهجر'}، بمدينة ${wifeCurrent.city || ''} (${wifeCurrent.addressLat || wifeCurrent.addressAr})`
       : `المقيمة بالمغرب بـ ${wifeCurrent.addressAr || 'محل سكناها'}`;
 
+    const witnessesList = state.witnesses || [];
+    const currentMethod = state.evidenceMethod || 'lafif';
+    let evidenceTextClause = '';
+
+    if (currentMethod === 'none') {
+      evidenceTextClause = `وحيث تم تلقي إقرار وتصريح المعنيين بالأمر بمجلس الإشهاد باستمرار قيام العلاقة الزوجية الشرعية بينهما طوال مدة ${durationText} المستمرة منذ تاريخ إبرام عقد زواجهما المومأ إليه أعلاه دون انقطاع أو انفصال.`;
+    } else if (currentMethod === 'scientific') {
+      evidenceTextClause = `وحيث تم الإدلاء بشهادة علمية قضائية صادرة ومأذون بها بمقتضى الأمر رقم ${state.scientificTestimony?.permissionNumber || '...'} الصادر عن ${state.scientificTestimony?.courtName || marriageCourt || 'المحكمة المختصة'} بتاريخ ${state.scientificTestimony?.permissionDate || '...'}، تثبت وتؤكد استمرار الزوجية الشرعية بين الطرفين طوال مدة ${durationText} دون انفصال.`;
+    } else if (currentMethod === 'mithliya') {
+      evidenceTextClause = `وحيث تم الاستناد إلى شهادة بالمثلية بمقتضى إذن السيد قاضي التوثيق رقم ${state.mithliyaTestimony?.permissionNumber || '...'} بتاريخ ${state.mithliyaTestimony?.permissionDate || '...'}، وحضر الشهود الستة المعتمدون:
+${witnessesList.map((w, idx) => `${idx + 1}. ${w.name || 'شاهد'} (ب.ت.و: ${w.idNumber || '...'})`).join('\n')}
+فشهدوا باستمرار العصمة الزوجية قائمة بين الزوجين طوال مدة ${durationText} دون انبتات.`;
+    } else {
+      // lafif (default)
+      evidenceTextClause = `وحيث حضر بمجلس هذا الإشهاد شهود اللفيف الشرعي وعددهم اثنا عشر (12) شاهداً الآتية أسماؤهم وتوقيعاتهم بسجل التضمين:
+${witnessesList.map((w, idx) => `${idx + 1}. ${w.name || 'شاهد'} (ب.ت.و: ${w.idNumber || '...'})`).join('\n') || 'شهود اللفيف الشرعي (12 شاهداً)'}
+
+فشهدوا جميعاً بعد التحلي بما يجب شرعاً وقانوناً، وبمعرفتهم التامة والمخالطة المستمرة والمجاورة للطرفين، بأن الزوجين المذكورين أعلاه لا زالت العصمة الزوجية قائمة ومستمرة بينهما إلى غاية تاريخ هذا الإشهاد، دون انقطاع أو انفصال أو طلاق أو انبتات، وذلك طوال مدة ${durationText} المستمرة منذ تاريخ إبرام عقد زواجهما المومأ إليه أعلاه. شهادة عيان ومعرفة تامة لا يشوبها شك.`;
+    }
+
     return `الحمد لله وحده، والصلاة والسلام على رسول الله وآله وصحبه.
 
 بناءً على طلب ${applicantLabel}، قصد إثبات قيام واستمرار العلاقة الزوجية الشرعية؛
@@ -649,10 +620,7 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
 القائم بين الزوج: السيد ${hName}، ${husbandCurrent.latinName ? `(${husbandCurrent.latinName})` : ''}، الحامل لـ (${husbandCurrent.idType}: ${husbandCurrent.idNumber || '...'}), ${abroadHusbandClause}.
 وبين الزوجة: السيدة ${wName}، ${wifeCurrent.latinName ? `(${wifeCurrent.latinName})` : ''}، الحاملة لـ (${wifeCurrent.idType}: ${wifeCurrent.idNumber || '...'}), ${abroadWifeClause}.
 
-وحيث حضر بمجلس هذا الإشهاد شهود اللفيف الشرعي وعددهم اثنا عشر (12) شاهداً الآتية أسماؤهم وتوقيعاتهم بسجل التضمين:
-${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber})`).join('\n') || 'شهود اللفيف الشرعي (12 شاهداً)'}
-
-فشهدوا جميعاً بعد التحلي بما يجب شرعاً وقانوناً، وبمعرفتهم التامة والمخالطة المستمرة والمجاورة للطرفين، بأن الزوجين المذكورين أعلاه لا زالت العصمة الزوجية قائمة ومستمرة بينهما إلى غاية تاريخ هذا الإشهاد، دون انقطاع أو انفصال أو طلاق أو انبتات، وذلك طوال مدة ${durationText} المستمرة منذ تاريخ إبرام عقد زواجهما المومأ إليه أعلاه. شهادة عيان ومعرفة تامة لا يشوبها شك.
+${evidenceTextClause}
 
 وعليه تم تلقي هذا الإشهاد على الوجه الشرعي والقانوني لاستعماله لدى الإدارات والجهات المعنية، وبمقتضاه حُرر هذا الرسم في ${ishhadDate} موافق ${convertGregorianToHijri(ishhadDate)} هـ.`;
   }, [
@@ -670,7 +638,10 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
     applicantType,
     poaDetails,
     calculatedDuration,
-    lafifWitnesses,
+    state.witnesses,
+    state.evidenceMethod,
+    state.scientificTestimony,
+    state.mithliyaTestimony,
     ishhadDate
   ]);
 
@@ -744,7 +715,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
       marriageContinuityDeed: updatedContinuity,
       sellers: [husbandParty],
       buyers: [wifeParty],
-      witnesses: lafifWitnesses,
+      witnesses: prev.witnesses || [],
       step: 7 // الانتقال للمراجعة القضائية النهائية والصياغة
     }));
 
@@ -759,7 +730,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
     { id: 3, title: 'الإقامة والجنسية', icon: Globe, desc: 'ملفات الخارج والهوية' },
     { id: 4, title: 'طالب الإشهاد', icon: UserCheck, desc: 'الصفة والوكالة' },
     { id: 5, title: 'مدة الزواج', icon: Clock, desc: 'حساب المدة وعدم الانقطاع' },
-    { id: 6, title: 'شهادة اللفيف', icon: Scale, desc: 'شهود اللفيف (12 شاهداً)' },
+    { id: 6, title: 'طريقة الإثبات والشهود', icon: Scale, desc: 'اللفيف / العلمية / المثلية' },
     { id: 7, title: 'المراجعة والتحرير', icon: FileText, desc: 'الفحص والصياغة الرسمية' }
   ];
 
@@ -1990,7 +1961,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <span>المتابعة إلى شهادة اللفيف</span>
+              <span>المتابعة إلى طريقة الإثبات والشهود</span>
               <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
@@ -1998,228 +1969,20 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
       )}
 
       {/* ========================================================================= */}
-      {/* المرحلة 6: ⑱ و ⑲ شهادة اللفيف المتعلقة باستمرار الزوجية */}
+      {/* المرحلة 6: ⑥ طريقة الإثبات والشهادة والتحري (اللفيف / العلمية / المثلية) */}
       {/* ========================================================================= */}
       {activeStage === 6 && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6 animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700">
-                <Scale className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">
-                  ⑱ و ⑲ شهادة اللفيف المتعلقة باستمرار الزوجية
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  استعمال نفس النموذج لشهادة اللفيف المعتمد بالنظام (12 شاهداً مكتملاً)
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {lafifWitnesses.length < 12 && (
-                <button
-                  type="button"
-                  onClick={handleAddSingleWitness}
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  <span>+ إضافة شاهد ({lafifWitnesses.length} من 12)</span>
-                </button>
-              )}
-
-              {lafifWitnesses.length < 12 && (
-                <button
-                  type="button"
-                  onClick={handleExpandTo12Witnesses}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                >
-                  <span>⚡ إكمال إلى 12 خانة فارغة</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleClearWitnesses}
-                className="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-bold transition cursor-pointer"
-              >
-                <span>🗑️ إعادة ضبط لشاهد 1 فارغ</span>
-              </button>
-            </div>
-          </div>
-
-          {/* بطاقة ملخص اللفيف ⑲ */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-4 shadow-md">
-            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
-              <span className="text-xs font-black text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>⑲ 🔐 ربط شهادة اللفيف بموضوع استمرار الزوجية:</span>
-                {isLafifLinked && (
-                  <span className="text-[10px] bg-emerald-700/80 text-emerald-100 px-2 py-0.5 rounded-full">
-                    ✓ مكتمل ومربوط بالموضوع
-                  </span>
-                )}
-              </span>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                lafifWitnesses.length >= 12
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-              }`}>
-                {lafifWitnesses.length} من 12 شاهد
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <span className="text-slate-400 block text-[10px]">موضوع اللفيف</span>
-                <span className="font-bold text-white">استمرار الزوجية الشرعية</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">الطرفان</span>
-                <span className="font-bold text-white truncate block">
-                  {husbandOriginal.fullName || 'الزوج'} و {wifeOriginal.fullName || 'الزوجة'}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">رسم الزواج الأصلي</span>
-                <span className="font-bold text-white">
-                  عدد {marriageCount || '-'} كناش {marriageBookNumber || '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">المدة المشهود بها</span>
-                <span className="font-bold text-amber-300">{calculatedDuration.formattedText}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* قائمة شهود اللفيف مع إمكانية التحرير اليدوي المباشر */}
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-xs font-black text-slate-800">
-                قائمة شهود اللفيف (العدد الحالي: {lafifWitnesses.length} من 12 شاهد):
-              </span>
-              {!validationChecklist.isLafifReady && (
-                <span className="text-xs text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                  ⚠️ يلزم إتمام أسماء وأرقام بطاقات 12 شاهداً مكتملاً وفقاً لقواعد شهادة اللفيف الشرعية
-                </span>
-              )}
-            </div>
-
-            {lafifWitnesses.length === 0 ? (
-              <div className="p-8 text-center rounded-2xl border-2 border-dashed border-slate-200 space-y-3 bg-slate-50/50">
-                <Scale className="w-10 h-10 text-slate-400 mx-auto" />
-                <p className="text-xs text-slate-700 font-bold">
-                  لم يتم إدراج أي شاهد بعد. يمكنك البدء بإضافة الشاهد الأول:
-                </p>
-                <div className="flex flex-wrap justify-center gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleAddSingleWitness}
-                    className="px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-black hover:bg-emerald-800 transition cursor-pointer shadow-sm"
-                  >
-                    + إضافة الشاهد الأول
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExpandTo12Witnesses}
-                    className="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
-                  >
-                    ⚡ تهيئة 12 خانة فارغة
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-                {lafifWitnesses.map((w, idx) => (
-                  <div key={w.id || idx} className="p-3.5 rounded-2xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs hover:border-slate-300 transition">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                      <span className="font-black text-slate-900 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-bold">
-                          {idx + 1}
-                        </span>
-                        <span>الشاهد {idx + 1}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveWitness(idx)}
-                        className="text-slate-400 hover:text-rose-600 font-bold text-sm px-1.5 transition cursor-pointer"
-                        title="حذف هذا الشاهد"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5">الاسم الكامل *</label>
-                        <input
-                          type="text"
-                          value={w.name || ''}
-                          onChange={(e) => handleUpdateWitnessField(idx, 'name', e.target.value)}
-                          placeholder="الاسم الشخصي والعائلي"
-                          className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-emerald-600"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5">رقم البطاقة الوطنية (CIN) *</label>
-                        <input
-                          type="text"
-                          value={w.idNumber || ''}
-                          onChange={(e) => handleUpdateWitnessField(idx, 'idNumber', e.target.value.toUpperCase())}
-                          placeholder="مثال: AB123456"
-                          className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-emerald-600 uppercase font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5">المهنة</label>
-                        <input
-                          type="text"
-                          value={w.profession || ''}
-                          onChange={(e) => handleUpdateWitnessField(idx, 'profession', e.target.value)}
-                          placeholder="المهنة (مثلاً: تاجر، موظف)"
-                          className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-emerald-600"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-600 mb-0.5">صلة المخالطة / الجوار</label>
-                        <input
-                          type="text"
-                          value={w.kinship || ''}
-                          onChange={(e) => handleUpdateWitnessField(idx, 'kinship', e.target.value)}
-                          placeholder="مثال: جار ملاصق ومخالط"
-                          className="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-emerald-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setActiveStage(5)}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-            >
-              السابق: مدة الزواج
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveStage(7)}
-              disabled={lafifWitnesses.length < 12}
-              className={`px-6 py-2.5 rounded-xl font-black text-xs transition flex items-center gap-2 cursor-pointer shadow-md ${
-                lafifWitnesses.length >= 12
-                  ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <span>المتابعة إلى المراجعة الذكية والتحرير</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          </div>
+          <Step5_Witnesses
+            state={{
+              ...state,
+              documentType: 'رسم_استمرار_زواج',
+              evidenceMethod: state.evidenceMethod || 'lafif',
+            }}
+            setState={setState}
+            onNext={() => setActiveStage(7)}
+            onBack={() => setActiveStage(5)}
+          />
         </div>
       )}
 
@@ -2289,9 +2052,9 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
-                <span className="font-bold text-slate-700">👥 اللفيف:</span>
+                <span className="font-bold text-slate-700">👥 طريقة الإثبات والشهود:</span>
                 <span className={validationChecklist.isLafifReady ? 'text-emerald-700 font-bold' : 'text-amber-600 font-bold'}>
-                  {validationChecklist.isLafifReady ? '🟢 12 شاهداً مكتمل' : '🟠 غير مكتمل'}
+                  {validationChecklist.isLafifReady ? '🟢 مستوفٍ' : '🟠 غير مكتمل'}
                 </span>
               </div>
 
@@ -2321,7 +2084,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
                   <li>🔴 لا يمكن إنشاء رسم استمرار الزوجية قبل تحديد أصل العلاقة الزوجية ومراجعها كاملة.</li>
                 )}
                 {!validationChecklist.isLafifReady && (
-                  <li>🟠 لم تكتمل شهادة اللفيف بعد؛ يرجى ربط 12 شاهداً من وحدة شهادة اللفيف قبل تحرير الرسم.</li>
+                  <li>🟠 لم تستوفَ طريقة الإثبات أو نصاب الشهود بعد؛ يرجى مراجعة واستكمال متطلبات الإثبات والشهود قبل تحرير الرسم.</li>
                 )}
                 {!validationChecklist.noInterruption && (
                   <li>🔴 تم التصريح بوجود واقعة تمنع من صياغة استمرار الزوجية؛ يمنع النظام التحرير حتى زوال المانع.</li>
@@ -2362,7 +2125,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
               onClick={() => setActiveStage(6)}
               className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
             >
-              السابق: شهادة اللفيف
+              السابق: طريقة الإثبات والشهود
             </button>
 
             <div className="flex items-center gap-2">
