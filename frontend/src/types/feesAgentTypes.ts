@@ -1270,6 +1270,189 @@ export interface PromiseToSell {
 }
 
 // ============================================================================
+// PROMISE TO LEASE DEED (رسم وعد بالكراء) - Law 67.12, Law 49.16, DOC Art. 14
+// ============================================================================
+
+export interface PromiseToLeasePartyInfo {
+  id: string;
+  isLegalEntity: boolean;
+  partyType?: 'طبيعي' | 'معنوي_مغربي' | 'معنوي_أجنبي';
+  // Natural Person
+  fullName?: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  nationality?: string;
+  idType?: 'بطاقة_تعريف_وطنية' | 'جواز_سفر' | 'بطاقة_إقامة' | 'أخرى';
+  idNumber?: string;
+  idIssueDate?: string;
+  address?: string;
+  profession?: string;
+  maritalStatus?: string;
+  capacity?: 'مالك' | 'صاحب_حق_انتفاع' | 'مالك_على_الشياع' | 'وكيل_خاص' | 'ممثل_قانوني' | 'طرف_مباشر';
+  shareFraction?: string;
+  shareNumeric?: number;
+  // Legal Entity
+  companyName?: string;
+  companyForm?: string; // SARL, SA, SAS, SNC, إلخ
+  rcNumber?: string;
+  rcCity?: string;
+  ice?: string;
+  taxId?: string;
+  headquarters?: string;
+  capital?: number;
+  legalRepresentativeName?: string;
+  legalRepresentativeCapacity?: string;
+  legalRepresentativeCin?: string;
+  representationDocumentType?: string;
+  representationDocumentRef?: string;
+  representationDocumentDate?: string;
+}
+
+export interface PromiseToLeaseSuspensiveCondition {
+  id: string;
+  type: 'رخصة_إدارية' | 'أشغال_تهيئة' | 'إفراغ_مكتري_سابق' | 'موافقة_شريك_أو_بنك' | 'تمويل_بنكي' | 'أخرى';
+  conditionText: string;
+  status: 'معلق' | 'تحقق' | 'لم_يتحقق';
+  fulfillmentDeadline?: string;
+  consequenceOfBreach?: string;
+}
+
+export interface PromiseToLeaseDeed {
+  // 1. Initial Qualification (نقطة البداية والتكييف)
+  intendedOperation: 'وعد_بالكراء' | 'عقد_كراء' | 'تجديد_كراء' | 'وعد_متبادل' | 'أخرى';
+  promiseNature: 'وعد_من_جانب_واحد' | 'وعد_متبادل' | 'اتفاق_تمهيدي_مشروط' | 'وعد_مع_خيار_الموعود_له';
+
+  // 2. Parties
+  promisors: PromiseToLeasePartyInfo[]; // الواعدون بالكراء
+  promisees: PromiseToLeasePartyInfo[]; // الموعود لهم بالكراء
+  promisorsJointOwnership?: {
+    isJoint: boolean;
+    distributionType?: 'بالتساوي' | 'حسب_الأنصبة' | 'على_الشياع';
+  };
+  promiseesJoint?: {
+    isJoint: boolean;
+    futureDistribution?: 'بالتساوي' | 'حسب_الأنصبة' | 'تضامني';
+  };
+
+  // 3. Subject Property / Premises (المحل الموعود بكرائه)
+  propertyDetails: {
+    premisesType: 'شقة' | 'فيلا' | 'محل_تجاري' | 'مكتب_مهني' | 'مستودع_هنجار' | 'أرض_عارية' | 'جزء_مفرز' | 'عقار_كامل' | 'أخرى';
+    propertyStatus: 'محفظ' | 'طور_التحفيظ' | 'غير_محفظ' | 'ملكية_مشتركة';
+    titleNumber?: string;
+    titleIndex?: string;
+    requisitionNumber?: string;
+    propertyName?: string;
+    exactAddress: string;
+    city?: string;
+    district?: string;
+    areaSquareMeters?: number;
+    componentsAndDesignation: string; // مشتملات المحل ومواصفاته
+    isEntireProperty: boolean; // هل المحل هو كامل العقار أم جزء منه
+    partSpecification?: {
+      partNumber?: string;
+      floorNumber?: string;
+      boundariesDescription?: string;
+      sharesInCommonParts?: string;
+    };
+  };
+
+  // 4. Lease Purpose & Legal Regime (الغرض والنظام القانوني)
+  leasePurpose: 'سكنى' | 'مهني' | 'تجاري' | 'صناعي' | 'حرفي' | 'تعليمي' | 'صحي' | 'فندقي' | 'آخر';
+  leasePurposeDetails?: string;
+  legalRegime: 'قانون_67.12' | 'قانون_49.16' | 'قواعد_عامة_ق_ل_ع' | 'نظام_خاص_أملاك_الدولة_أو_الأحباس';
+  isCommercialGoodwillIncluded?: boolean; // هل الكراء يشمل أصلاً تجارياً أم الجدران فقط
+  commercialActivityType?: string; // نوع النشاط التجاري / المهني
+
+  // 5. Future Lease Terms (شروط عقد الكراء المزمع إبرامه)
+  futureLeaseTerms: {
+    rentAmount: number; // السومة الكرائية المتفق عليها
+    rentAmountInWords: string;
+    periodicity: 'شهري' | 'ربع_سنوي' | 'نصف_سنوي' | 'سنوي';
+    paymentMethod: 'تحويل_بنكي' | 'شيك_بنكي' | 'نقد' | 'خصم_أوتوماتيكي' | 'أخرى';
+    paymentDayInPeriod?: string; // يوم الأداء
+    leaseDuration: string; // مدة الكراء المزمع
+    isRenewable: boolean;
+    renewalTerms?: string;
+    potentialStartDate?: string; // تاريخ السريان المحتمل للكراء
+    // Charges and Utilities
+    chargesDistribution: {
+      waterElectricity: 'المكتري' | 'المكري' | 'مناصفة' | 'حسب_العداد';
+      syndicFees: 'المكتري' | 'المكري' | 'مناصفة' | 'غير_مشمول';
+      cleaningAndGuarding: 'المكتري' | 'المكري' | 'مناصفة';
+      communalServicesTax: 'المكتري' | 'المكري' | 'حسب_القانون'; // رسم الخدمات الجماعية
+    };
+    chargesNotes?: string;
+    // Rent Review (مراجعة السومة الكرائية - قانون 07.03)
+    rentReview: {
+      hasReview: boolean;
+      reviewBasis: 'قانون_07.03' | 'نسبة_اتفاقية' | 'بدون_مراجعة';
+      reviewPercentage?: number; // 8% للسكنى، 10% للتجاري، أو اتفاقي
+      reviewIntervalYears?: number; // كل 3 سنوات
+    };
+    // Subletting and Assignment
+    sublettingAllowed: 'ممنوع_مطلقاً' | 'مشروط_بموافقة_كتابية' | 'مسموح_به';
+  };
+
+  // 6. Promise Deadlines & Execution Options (أجل الوعد وشروط التفعيل)
+  promiseDeadlines: {
+    deadlineType: 'تاريخ_محدد' | 'أجل_بالأيام_أو_الأشهر' | 'مرتبط_بشرط';
+    specificDeadlineDate?: string;
+    periodNumber?: number;
+    periodUnit?: 'أيام' | 'أشهر' | 'سنوات';
+    expiryConsequence: 'سقوط_الوعد_تلقائياً' | 'تجديد_باتفاق_كتابي' | 'إعمال_الشرط_الجزائي' | 'فقدان_العربون_أو_استرداده';
+    optionExerciseMethod?: 'إشعار_كتابي' | 'إنذار_مفوض_قضائي' | 'حضور_مجلس_العقد_مباشرة' | 'مراسلة_مضمونة';
+  };
+
+  // 7. Financial Guarantees, Advance & Penalty Clause (الجانب المالي والضمانات)
+  financialGuarantees: {
+    hasFinancialDeposit: 'لا' | 'عربون' | 'تسبيق_من_الوجيبة' | 'وديعة_ضمان_مسبقة';
+    amount?: number;
+    amountInWords?: string;
+    paymentDate?: string;
+    paymentMethod?: string;
+    paymentReference?: string;
+    bankName?: string;
+    breachRule: 'تطبيق_الفصل_288_290_قلع' | 'استرداد_كامل_دون_تعويض' | 'فقدان_المبلغ_لصالح_الواعد' | 'مضاعفة_المبلغ_إذا_نكل_الواعد';
+    hasPenaltyClause: boolean;
+    penaltyClauseAmount?: number;
+    penaltyClauseText?: string;
+  };
+
+  // 8. Suspensive Conditions (الشروط الواقفة والالتزامات السابقة)
+  suspensiveConditions?: PromiseToLeaseSuspensiveCondition[];
+
+  // 9. Current Occupancy and Delivery (حالة المحل والتسليم)
+  occupancyAndDelivery: {
+    currentStatus: 'فارغ' | 'شاغل_من_المالك' | 'مكتري_حالي_يلتزم_بالإفراغ' | 'أشغال_جارية';
+    expectedHandoverDate?: string;
+    conditionAtHandover: 'جاهز_للاستعمال' | 'يحتاج_إصلاحات_على_عاتق_المكري' | 'تهيئة_على_عاتق_المكتري';
+    handoverInventoryAgreed: boolean;
+  };
+
+  // 10. Legal Authority and Decree 2.23.101 (الصفة والتمثيل)
+  authorityAndRepresentation: {
+    promisorCapacityBasis: 'سند_الملكية' | 'وكالة_رسمية' | 'قرار_مجلس_إداري' | 'إذن_قضائي_للنائب_الشرعي' | 'أخرى';
+    poaReference?: string;
+    poaDate?: string;
+    poaNotaryOrAuthority?: string;
+    isVerifiedUnderDecree2_23_101: boolean;
+  };
+
+  // 11. Critical Existence Test (الاختبار الحاسم: هل هو وعد أم كراء قائم؟)
+  criticalExecutionTest: {
+    hasKeysBeenHandedOver: 'نعم' | 'لا';
+    hasTenantOccupiedPremises: 'نعم' | 'لا';
+    hasRentBeenPaidForActivePeriod: 'نعم' | 'لا';
+  };
+
+  // 12. Pre-Reception Verification Gate Linkage
+  isPreReceptionVerified?: boolean;
+  preReceptionNotes?: string;
+}
+
+// ============================================================================
 // SALE PERSON DEED (رسم البيع والشراء – الشخص الطبيعي/العادي)
 // ============================================================================
 
@@ -3809,6 +3992,9 @@ export interface FeesAgentState {
 
   // PromiseToSell State (رسم وعد بالبيع)
   promiseToSell?: PromiseToSell;
+
+  // PromiseToLease State (رسم وعد بالكراء)
+  promiseToLease?: PromiseToLeaseDeed;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;

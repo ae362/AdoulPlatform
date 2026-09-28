@@ -33,6 +33,7 @@ import { GiftWizard } from './documents/property/GiftWizard';
 import { SadaqaWizard } from './documents/property/SadaqaWizard';
 import { MortgageWizard } from './documents/other/MortgageWizard';
 import { PromiseToSellWizard } from './documents/property/PromiseToSellWizard';
+import { PromiseToLeaseWizard } from './documents/property/PromiseToLeaseWizard';
 import { DeliveryWithCompensationWizard } from './documents/property/DeliveryWithCompensationWizard';
 import { AcknowledgmentWizard } from './documents/property/AcknowledgmentWizard';
 
@@ -87,6 +88,7 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'صدقة': SadaqaWizard,
   'رهن': MortgageWizard,
   'وعد_بالبيع': PromiseToSellWizard,
+  'وعد_بالكراء': PromiseToLeaseWizard,
   'رسم_تسليم_بعوض': DeliveryWithCompensationWizard,
   'رسم_اقرار_واعتراف': AcknowledgmentWizard,
 

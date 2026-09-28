@@ -1562,6 +1562,278 @@ ${finance.penaltyClauseText ? `الشرط الجزائي الإضافي: ${finan
 `.trim();
 }
 
+
+// ============================================================================
+// PROMISE TO LEASE DRAFT GENERATOR (رسم وعد بالكراء)
+// وفق القانون 67.12 والقانون 49.16 والفصل 14 من ظهير الالتزامات والعقود
+// ============================================================================
+
+export function generatePromiseToLeaseDraft(state: FeesAgentState): string {
+  if (!state) return '';
+  const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
+  const promise = state.promiseToLease || ({} as any);
+  const propDetails = promise.propertyDetails || ({} as any);
+  const futureTerms = promise.futureLeaseTerms || ({} as any);
+  const deadlines = promise.promiseDeadlines || ({} as any);
+  const guarantees = promise.financialGuarantees || ({} as any);
+  const suspensive = promise.suspensiveConditions || [];
+  const _occupancy = promise.occupancyAndDelivery || ({} as any);
+  const _authority = promise.authorityAndRepresentation || ({} as any);
+
+  // Court and Notary Metadata
+  const courtName = formatCourtName(meta.court || state.preReceptionVerification?.primaryCourt) || 'طنجة';
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || courtName;
+  const courtSection = meta.courtSection || 'قسم قضاء الأسرة والتوثيق';
+  const regBook = (meta as any).registryBookType || 'كناش المعاملات العقارية والمدنية';
+  const regNum = meta.registryNumber || state.preReceptionVerification?.registryRecord?.number || '---';
+  const regPage = meta.registryPage || state.preReceptionVerification?.registryRecord?.page || '---';
+  const regCount = meta.registryCount || state.preReceptionVerification?.registryRecord?.count || '---';
+  const regDate = meta.dateGregorian || state.preReceptionVerification?.receptionDate || new Date().toISOString().split('T')[0];
+  const dateHijri = meta.dateHijri || convertGregorianToHijri(regDate);
+  const notary1 = meta.notaryPrimary || state.preReceptionVerification?.notary1Name || 'العدل الأول';
+  const notary2 = meta.notarySecondary || state.preReceptionVerification?.notary2Name || 'العدل الثاني';
+
+  // Promisors List (الواعدون بالكراء)
+  let promisorsList = promise.promisors && promise.promisors.length > 0 ? promise.promisors : [];
+  if (promisorsList.length === 0 && state.sellers && state.sellers.length > 0) {
+    promisorsList = state.sellers.map((s: any) => ({
+      id: s.id,
+      isLegalEntity: s.actingCapacity === 'legal_representative',
+      fullName: s.name,
+      idNumber: s.idNumber,
+      address: s.address,
+      profession: s.profession,
+      fatherName: s.fatherName,
+      motherName: s.motherName,
+      companyName: s.legalEntityName,
+      companyForm: s.legalForm,
+      rcNumber: s.commercialRegister,
+      ice: s.ice,
+      headquarters: s.headquartersAddress,
+      legalRepresentativeName: s.legalRepresentativeName,
+      legalRepresentativeCapacity: s.legalRepresentativeCapacity,
+    }));
+  }
+
+  // Promisees List (الموعود لهم بالكراء)
+  let promiseesList = promise.promisees && promise.promisees.length > 0 ? promise.promisees : [];
+  if (promiseesList.length === 0 && state.buyers && state.buyers.length > 0) {
+    promiseesList = state.buyers.map((b: any) => ({
+      id: b.id,
+      isLegalEntity: b.actingCapacity === 'legal_representative',
+      fullName: b.name,
+      idNumber: b.idNumber,
+      address: b.address,
+      profession: b.profession,
+      fatherName: b.fatherName,
+      motherName: b.motherName,
+      companyName: b.legalEntityName,
+      companyForm: b.legalForm,
+      rcNumber: b.commercialRegister,
+      ice: b.ice,
+      headquarters: b.headquartersAddress,
+      legalRepresentativeName: b.legalRepresentativeName,
+      legalRepresentativeCapacity: b.legalRepresentativeCapacity,
+    }));
+  }
+
+  // Promisors Representation
+  const promisorsText = promisorsList.length > 0 ? promisorsList.map((p: any, idx: number) => {
+    if (p.isLegalEntity) {
+      return `الطرف الواعد بالكراء (${idx + 1}): شركة/مؤسسة «${p.companyName || p.fullName || '---'}»، ذات الشكل القانوني: ${p.companyForm || '---'}، المقيدة بالسجل التجاري تحت رقم ${p.rcNumber || '---'}${p.rcCity ? ' بـ ' + p.rcCity : ''}، ومعرفها الموحد للمقاولة (ICE): ${p.ice || '---'}، الكائن مقرها الاجتماعي بـ: ${p.headquarters || p.address || '---'}، ويمثلها قانوناً السيد(ة): ${p.legalRepresentativeName || '---'} بصفته: ${p.legalRepresentativeCapacity || 'الممثل القانوني'} بموجب ${p.representationDocumentType || 'السند التأسيسي/محضر الجمع العام المعتمد'}.`;
+    }
+    const details = [
+      p.fullName ? `السيد(ة) ${p.fullName}` : '',
+      p.fatherName ? `بن ${p.fatherName}` : '',
+      p.motherName ? `وأمه ${p.motherName}` : '',
+      p.dateOfBirth ? `المزداد(ة) بتاريخ ${p.dateOfBirth}` : '',
+      p.placeOfBirth ? `بـ ${p.placeOfBirth}` : '',
+      p.nationality ? `الجنسية: ${p.nationality}` : 'المغربي(ة) الجنسية',
+      p.profession ? `مهنته(ا): ${p.profession}` : '',
+      p.maritalStatus ? `حالته(ا) العائلية: ${p.maritalStatus}` : '',
+      p.idNumber ? `الحامل(ة) للبطاقة التعريفية رقم: ${p.idNumber}` : '',
+      p.address ? `الساكن(ة) بـ: ${p.address}` : '',
+      p.capacity ? `صفته(ا) في التصرف: ${p.capacity}` : '',
+      p.shareFraction ? `بنسبة حصة: ${p.shareFraction}` : '',
+    ].filter(Boolean).join(' ');
+    return `الطرف الواعد بالكراء (${idx + 1}): ${details}، بعد ثبوت أهليته(ا) الكاملة للتصرف والالتزام.`;
+  }).join('\n') : 'الطرف الواعد بالكراء: لم يحدد بعد.';
+
+  // Promisees Representation
+  const promiseesText = promiseesList.length > 0 ? promiseesList.map((p: any, idx: number) => {
+    if (p.isLegalEntity) {
+      return `الطرف الموعود له بالكراء (${idx + 1}): شركة/مؤسسة «${p.companyName || p.fullName || '---'}»، ذات الشكل القانوني: ${p.companyForm || '---'}، المقيدة بالسجل التجاري تحت رقم ${p.rcNumber || '---'}${p.rcCity ? ' بـ ' + p.rcCity : ''}، ومعرفها الموحد للمقاولة (ICE): ${p.ice || '---'}، الكائن مقرها الاجتماعي بـ: ${p.headquarters || p.address || '---'}، ويمثلها قانوناً السيد(ة): ${p.legalRepresentativeName || '---'} بصفته: ${p.legalRepresentativeCapacity || 'الممثل القانوني'}.`;
+    }
+    const details = [
+      p.fullName ? `السيد(ة) ${p.fullName}` : '',
+      p.fatherName ? `بن ${p.fatherName}` : '',
+      p.motherName ? `وأمه ${p.motherName}` : '',
+      p.dateOfBirth ? `المزداد(ة) بتاريخ ${p.dateOfBirth}` : '',
+      p.placeOfBirth ? `بـ ${p.placeOfBirth}` : '',
+      p.nationality ? `الجنسية: ${p.nationality}` : 'المغربي(ة) الجنسية',
+      p.profession ? `مهنته(ا): ${p.profession}` : '',
+      p.maritalStatus ? `حالته(ا) العائلية: ${p.maritalStatus}` : '',
+      p.idNumber ? `الحامل(ة) للبطاقة التعريفية رقم: ${p.idNumber}` : '',
+      p.address ? `الساكن(ة) بـ: ${p.address}` : '',
+    ].filter(Boolean).join(' ');
+    return `الطرف الموعود له بالكراء (${idx + 1}): ${details}، بعد ثبوت أهليته(ا) الكاملة للتعاقد.`;
+  }).join('\n') : 'الطرف الموعود له بالكراء: لم يحدد بعد.';
+
+  // Property Details Section
+  let propertySectionText = '';
+  const pStatus = propDetails.propertyStatus || 'محفظ';
+  if (pStatus === 'محفظ') {
+    propertySectionText = `العقار موضوع الوعد بالكراء محفظ بالرسم العقاري عدد: ${propDetails.titleNumber || '---'}${propDetails.titleIndex ? '/' + propDetails.titleIndex : ''} المسمى: «${propDetails.propertyName || '---'}» الكائن بـ: ${propDetails.exactAddress || '---'}${propDetails.city ? '، مدينة ' + propDetails.city : ''}.`;
+  } else if (pStatus === 'طور_التحفيظ') {
+    propertySectionText = `العقار موضوع الوعد بالكراء في طور التحفيظ بموجب مطلب التحفيظ عدد: ${propDetails.requisitionNumber || '---'} المسمى: «${propDetails.propertyName || '---'}» الكائن بـ: ${propDetails.exactAddress || '---'}.`;
+  } else if (pStatus === 'ملكية_مشتركة') {
+    propertySectionText = `العقار موضوع الوعد بالكراء خاضع لنظام الملكية المشتركة، بالرسم العقاري عدد: ${propDetails.titleNumber || '---'}، الكائن بـ: ${propDetails.exactAddress || '---'}.`;
+  } else {
+    propertySectionText = `العقار موضوع الوعد بالكراء غير محفظ (ملك عادي)، الكائن بـ: ${propDetails.exactAddress || '---'}.`;
+  }
+
+  // Premises Scope (Entire or Part)
+  const isEntire = propDetails.isEntireProperty ?? true;
+  let premisesScopeText = '';
+  if (isEntire) {
+    premisesScopeText = `يشمل الكراء المزمع كامل العقار ومرافقه، ومساحته الإجمالية التقريبية: ${propDetails.areaSquareMeters ? propDetails.areaSquareMeters + ' متراً مربعاً' : 'المساحة المحددة بالرسم العقاري'}، ومشتملاته: ${propDetails.componentsAndDesignation || 'محل تام المرافق'}.`;
+  } else {
+    const part = propDetails.partSpecification || {};
+    premisesScopeText = `يشمل الكراء المزمع جزءاً مفرزاً من العقار، والمتمثل في: ${part.partNumber ? 'المحل/الشقة رقم ' + part.partNumber : 'المحل المفرز'}${part.floorNumber ? ' بالطابق ' + part.floorNumber : ''}، بحدوده ومعالمه: ${part.boundariesDescription || 'المعروفة لدى الطرفين وبالمعاينة النافية للجهالة'}، والمشتمل على: ${propDetails.componentsAndDesignation || 'المرافق المحددة'}.`;
+  }
+
+  // Lease Purpose and Legal Regime
+  const purpose = promise.leasePurpose || 'سكنى';
+  const regime = promise.legalRegime || (purpose === 'تجاري' || purpose === 'صناعي' || purpose === 'حرفي' ? 'قانون_49.16' : 'قانون_67.12');
+  let legalRegimeText = '';
+  if (regime === 'قانون_49.16') {
+    legalRegimeText = `يخضع عقد الكراء المزمع إبرامه لأحكام القانون رقم 49.16 المتعلق بكراء العقارات أو المحلات المخصصة للاستعمال التجاري أو الصناعي أو الحرفي، وقد صرح الطرفان بأن الغرض من الكراء هو: «${purpose}»${promise.commercialActivityType ? ' (النشاط المرخص: ' + promise.commercialActivityType + ')' : ''}، ${promise.isCommercialGoodwillIncluded ? 'مع شمول الكراء للأصل التجاري ومقوماته' : 'وأن الكراء ينصب على الجدران فقط دون أي أصل تجاري أو حق كراء سابق'}.`;
+  } else if (regime === 'قانون_67.12') {
+    legalRegimeText = `يخضع عقد الكراء المزمع إبرامه لأحكام القانون رقم 67.12 المتعلق بتنظيم العلاقات التعاقدية بين المكري والمكتري للمحلات المعدة للسكنى أو للاستعمال المهني، وقد اتفق الطرفان على تخصيص المحل لغرض: «${purpose}»${promise.leasePurposeDetails ? ' (' + promise.leasePurposeDetails + ')' : ''}، ولا يجوز للمكتري تغيير هذا التخصيص دون موافقة كتابية صريحة من المكري.`;
+  } else {
+    legalRegimeText = `يخضع عقد الكراء المزمع إبرامه للقواعد العامة لعقد الكراء المنصوص عليها في ظهير الالتزامات والعقود المغربي (الفصول 627 وما يليها).`;
+  }
+
+  // Future Lease Terms
+  const rent = futureTerms.rentAmount || 0;
+  const rentWords = futureTerms.rentAmountInWords || (rent > 0 ? convertNumberToArabicWords(rent) : '');
+  const periodicity = futureTerms.periodicity || 'شهري';
+  const payMethod = futureTerms.paymentMethod || 'تحويل_بنكي';
+  const leaseDuration = futureTerms.leaseDuration || 'سنة واحدة';
+  const charges = futureTerms.chargesDistribution || {};
+
+  // Deadlines
+  const deadlineType = deadlines.deadlineType || 'تاريخ_محدد';
+  let deadlineClause = '';
+  if (deadlineType === 'تاريخ_محدد' && deadlines.specificDeadlineDate) {
+    deadlineClause = `في أجل أقصاه تاريخ: ${deadlines.specificDeadlineDate}`;
+  } else if (deadlineType === 'أجل_بالأيام_أو_الأشهر') {
+    deadlineClause = `خلال أجل قدره: ${deadlines.periodNumber || 30} ${deadlines.periodUnit || 'يوماً'} تبتدئ من تاريخ توقيع هذا الوعد`;
+  } else {
+    deadlineClause = `فور تحقق الشروط الواقفة المحددة أدناه`;
+  }
+
+  // Guarantees and Earnest
+  const hasDeposit = guarantees.hasFinancialDeposit || 'لا';
+  let guaranteeClause = '';
+  if (hasDeposit !== 'لا') {
+    const depAmount = guarantees.amount || 0;
+    const depWords = guarantees.amountInWords || (depAmount > 0 ? convertNumberToArabicWords(depAmount) : '');
+    guaranteeClause = `أدى الطرف الموعود له بمجلس هذا الوعد مبلغاً قدره: ${depAmount.toLocaleString()} درهم (فقط ${depWords} درهماً مغربياً) بصفته: [${hasDeposit === 'عربون' ? 'عربوناً مؤكداً للوعد' : hasDeposit === 'تسبيق_من_الوجيبة' ? 'تسبيقاً مخصوماً من الوجيبة الكرائية الأولى' : 'وديعة ضمان مسبقة'}] بواسطة ${guarantees.paymentMethod || 'أداء مباشر'}${guarantees.paymentReference ? ' (مرجع: ' + guarantees.paymentReference + ')' : ''}، اعترف الواعد بحيازته.
+وفي حالة تراجع الموعود له عن إبرام عقد الكراء بعد حلول الأجل دون عذر مشروع: ${guarantees.breachRule === 'فقدان_المبلغ_لصالح_الواعد' ? 'يفقد الموعود له المبلغ المؤدى لفائدة الواعد كتعويض اتفاقي نهائي' : guarantees.breachRule === 'تطبيق_الفصل_288_290_قلع' ? 'تطبق أحكام الفصلين 288 و289 من ق.ل.ع المنظمة للعربون' : 'يسترد الموعود له مبلغه كاملاً'}. وفي حالة نكول الواعد: ${guarantees.breachRule === 'مضاعفة_المبلغ_إذا_نكل_الواعد' ? 'يلتزم برد ضعف المبلغ للموعود له' : 'يلتزم برد المبلغ فوراً مع جبر الضرر إن ثبت'}.`;
+  } else {
+    guaranteeClause = 'صرح الطرفان بأنه لم يؤد أي عربون أو تسبيق مالي بمناسبة هذا الوعد، وأن الالتزام متبادل قائم على حسن النية.';
+  }
+
+  // Suspensive Conditions
+  let suspensiveText = '';
+  if (suspensive && suspensive.length > 0) {
+    suspensiveText = suspensive.map((s: any, i: number) => `   ${i + 1}. شرط: ${s.conditionText || s.type} (أجل التحقق: ${s.fulfillmentDeadline || 'عند حلول أجل الوعد'} - مآله عند التخلف: ${s.consequenceOfBreach || 'انفساخ الوعد دون تعويض'}).`).join('\n');
+  } else {
+    suspensiveText = '   - صرح الطرفان بخلو هذا الوعد من أي شرط واقف، وأنه بات ونافذ المفعول بينهما.';
+  }
+
+  return `الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
+
+المملكة المغربية
+وزارة العدل
+محكمة الاستئناف بـ: ${appellateCourt}
+المحكمة الابتدائية بـ: ${courtName}
+${courtSection}
+مكتب عدلي التوثيق: ${notary1} و${notary2}
+كناش المعاملات: ${regBook}
+العدد: ${regNum} | الصحيفة: ${regPage} | المجلد: ${regCount}
+تاريخ التلقي الرسمي: ${regDate} موافق ${dateHijri}
+
+📜 «رسم وعد بإبرام عقد كراء»
+(وفق أحكام القانون 67.12 / القانون 49.16 والفصل 14 من ظهير الالتزامات والعقود)
+
+حضر لدى شاهدي عدل الموقعين أسفله، بالدائرة القضائية للمحكمة الابتدائية المذكورة أعلاه:
+
+أولاً: أطراف الوعد:
+-----------------
+${promisorsText}
+                                                   (طـرف أول: واعد بالكراء)
+
+${promiseesText}
+                                                   (طـرف ثانٍ: موعود له بالكراء)
+
+ثانياً: التمهيد والتكييف القانوني (الفصل 14 من ق.ل.ع):
+----------------------------------------------------
+حيث إن الطرف الواعد يملك ويتصرف في المحل الموصوف أدناه، وحيث أبدى الطرف الموعود له رغبته في استئجاره لغرض ${purpose}، فقد تلاقت إرادتا الطرفين بكامل الأهلية والتمييز وأبرما هذا «الوعد بإبرام عقد كراء»، مصرحين ومقرين بأن هذا المحرر يُعد وعداً ملزماً وفق أحكام الفصل 14 وما يليه والفصول 627 وما بعدها من ظهير الالتزامات والعقود، وأنه لا ينشئ علاقة كرائية فورية ولا حقاً في وضع اليد أو التمتع بالعين في الحاضر، وإنما ينشئ التزاماً مستقبلياً بإبرام عقد الكراء النهائي وفق الشروط والأركان المقررة في هذا الرسم.
+
+ثالثاً: تعيين المحل الموعود بكرائه:
+----------------------------------
+${propertySectionText}
+${premisesScopeText}
+
+رابعاً: الغرض من الكراء والنظام القانوني المؤطر:
+----------------------------------------------
+${legalRegimeText}
+
+خامساً: شروط وأركان عقد الكراء المزمع إبرامه:
+-------------------------------------------
+1. الوجيبة الكرائية المتفق عليها: حددت الأجرة الكرائية الإجمالية الجزافية للمحل في مبلغ قدره:
+   ${rent.toLocaleString()} درهم مغربي (${rentWords} درهماً لا غير) تؤدى بصفة دورية [${periodicity}]، بواسطة [${payMethod}]، في ${futureTerms.paymentDayInPeriod || 'اليوم الأول من كل فترة كرائية'}.
+2. مدة الكراء النهائي: حددت مدة العقد المزمع إبرامه في [${leaseDuration}] تبتدئ من تاريخ سريان العقد النهائي، ${futureTerms.isRenewable ? 'قابلة للتجديد باتفاق الطرفين' : 'غير قابلة للتجديد الضمني إلا باتفاق مكتوب جديد'}.
+3. التحملات ومصاريف الاستهلاك:
+   - استهلاك الماء والكهرباء: يتحمله [${charges.waterElectricity || 'المكتري حسب العداد الخاص'}] بالكامل.
+   - واجبات السنديك وخدمات الحراسة والنظافة المشتركة: يتحملها [${charges.syndicFees || 'المكتري'}].
+   - رسم الخدمات الجماعية والضرائب المترتبة عن الاستغلال: يتحملها الطرفان طبقاً للنصوص الجبائية والقانونية المعمول بها.
+4. مراجعة السومة الكرائية: اتفق الطرفان على خضوع السومة لمراجعة دورية طبقاً لمقتضيات القانون رقم 07.03 المتعلق بكيفية مراجعة أثمان كراء المحلات، وذلك كل ثلاث سنوات وبنسبة الزيادة القانونية (8% للسكنى و10% للتجاري والمهني) ما لم يتفق الطرفان كتابة على خلاف ذلك.
+5. منع التولية والكراء من الباطن: يُحظر على المكتري التنازل عن الكراء أو إكراء المحل كلاً أو بعضاً من الباطن لأي كان إلا بموافقة كتابية صريحة ومسبقة من المكري.
+
+سادساً: أجل الوعد وممارسة الخيار:
+--------------------------------
+1. أجل الوعد: اتفق الطرفان على وجوب إبرام عقد الكراء النهائي ${deadlineClause}.
+2. إعمال الخيار: يمارس الموعود له خياره بطلب تحرير العقد النهائي ${deadlines.optionExerciseMethod ? 'بواسطة ' + deadlines.optionExerciseMethod : 'بالحضور لمكتب العدلين للإشهاد على العقد النهائي'}.
+3. مآل انصرام الأجل: إذا انصرم الأجل المحدد أعلاه دون أن يمارس الموعود له خياره أو إذا نكل عن إبرام عقد الكراء النهائي دون سبب مشروع أو عذر قاهر، فإن هذا الوعد يسقط بقوة القانون وتبرأ منه ذمة الواعد تلقائياً، ${deadlines.expiryConsequence === 'سقوط_الوعد_تلقائياً' ? 'دون حاجة إلى أي إنذار أو إعذار قضائي مسبق' : 'مع إعمال الآثار المقررة بهذا الرسم'}.
+
+سابعاً: الضمانات المالية والعربون والشرط الجزائي:
+-----------------------------------------------
+${guaranteeClause}
+${guarantees.hasPenaltyClause && guarantees.penaltyClauseAmount ? `بند جزائي: اتفق الطرفان على أنه في حال إخلال أي من الطرفين بالتزامه بالتعاقد النهائي دون عذر مشروع مثبت قانوناً، يلزم الطرف المخل بأداء تعويض جزائي اتفاقي للطرف الآخر قدره: (${guarantees.penaltyClauseAmount.toLocaleString()} درهم مغربي) كتعويض بات ونهائي.` : ''}
+
+ثامناً: الشروط الواقفة والالتزامات السابقة (إن وجدت):
+---------------------------------------------------
+${suspensiveText}
+
+تاسعاً: التصريح القاطع بعدم تسليم المفاتيح أو وضع اليد:
+------------------------------------------------------
+صرح الطرفان صراحة وجزماً بأنه لم يتم تسليم مفاتيح المحل ولا شغل العين الموعود بكرائها من طرف الموعود له ولا وضع اليد عليها بأي وجه، وأنه لم يقبض أي كراء عن مدة جارية، منعاً لأي التباس أو إعادة تكييف للعقد، وأن حق الانتفاع الفعلي لا يثبت للمكتري إلا بعد تحرير عقد الكراء النهائي واستيفاء شروطه القانونية وتحرير محضر تسليم المحل المشترك.
+
+عاشراً: الإشهاد والتوقيع:
+------------------------
+وبما ذكر تراضى الطرفان وتشارطا والتازما، بعد أن تليت عليهما كافة بنوده وفهما معناه ومرماه، وشهد عليهما به شاهدا عدل الموقعان أسفله في صحة وعقل وجواز أمر وتاريخه المذكور أعلاه.
+
+توقيع الواعد بالكراء: ________________________
+توقيع الموعود له: ___________________________
+توقيع العدل الأول: ___________________________
+توقيع العدل الثاني: __________________________
+`.trim();
+}
+
+
 // ============================================================================
 // SALE PERSON DRAFT GENERATOR (رسم البيع والشراء – الشخص الطبيعي/العادي)
 // وفق المادة 4 من القانون 39.08 وظهير الالتزامات والعقود
@@ -2101,6 +2373,15 @@ export function generateDocumentDraft(state: FeesAgentState): string {
     }
     return generatePromiseToSellDraft(state);
   }
+
+  // Promise to Lease deed (رسم وعد بالكراء - قانون 67.12 / قانون 49.16 / ف 14 ق.ل.ع)
+  if (documentType === 'وعد_بالكراء' || documentType.includes('وعد_بالكراء') || documentType.includes('وعد بالكراء') || state.promiseToLease) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    return generatePromiseToLeaseDraft(state);
+  }
+
 
   // Real estate sale for natural person (رسم البيع والشراء – الشخص العادي / الذاتي)
   if (documentType === 'بيع_وشراء' || state.salePersonDeed) {

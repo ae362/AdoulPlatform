@@ -40,6 +40,7 @@ export type DocumentType =
   | 'ثبوت_مخلف'
   | 'وصية'
   | 'وعد_بالبيع'
+  | 'وعد_بالكراء'
   | 'زواج'
   | 'زواج_مختلط'
   | 'ملكية'
@@ -389,6 +390,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: '',
     buyerShareTitle: '',
   },
+  'وعد_بالكراء': {
+    sellerGroup: 'الواعدون بالكراء',
+    sellerSingle: 'الواعد بالكراء',
+    buyerGroup: 'الموعود لهم بالكراء',
+    buyerSingle: 'الموعود له بالكراء',
+    sellerAdd: 'إضافة واعد بالكراء',
+    buyerAdd: 'إضافة موعود له',
+    sellerShareTitle: 'توزيع حصص الواعدين بالكراء',
+    buyerShareTitle: 'توزيع حصص الموعود لهم بالكراء',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -473,6 +484,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رسم صدقة', value: 'صدقة' },
       { label: 'رسم رهن', value: 'رهن' },
       { label: 'وعد بالبيع', value: 'وعد_بالبيع' },
+      { label: 'وعد بالكراء', value: 'وعد_بالكراء' },
       { label: 'رسم تسليم بعوض', value: 'رسم_تسليم_بعوض' },
       { label: 'رسم اقرار واعتراف', value: 'رسم_اقرار_واعتراف' },
     ],

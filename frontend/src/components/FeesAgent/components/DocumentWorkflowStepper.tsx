@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -36,6 +36,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.5. Dedicated Promise to Sell (رسم وعد بالبيع العقاري - المادة 4 ق.ح.ع)
   if (dt === 'وعد_بالبيع' || dt.includes('وعد_بالبيع') || dt.includes('وعد بالبيع')) {
     return 'promise_to_sell';
+  }
+
+  // 2.6. Dedicated Promise to Lease (رسم وعد بالكراء - قانون 67.12 / 49.16 / ف 14 ق.ل.ع)
+  if (dt === 'وعد_بالكراء' || dt.includes('وعد_بالكراء') || dt.includes('وعد بالكراء')) {
+    return 'promise_to_lease';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -154,6 +159,29 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 3, targetStep: 2, num: '③', title: 'العقار وأصل الملك', desc: 'التحفيظ والحدود والمشخصات', icon: Building2 },
             { index: 4, targetStep: 3, num: '④', title: 'الثمن والأداء والأجل', desc: 'العربون والباقي وأجل البيع', icon: Scale },
             { index: 5, targetStep: 4, num: '⑤', title: 'الشروط والتدقيق', desc: 'الشروط الواقفة والتحملات', icon: FileCheck },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة والتوثيق النهائي', icon: FileText },
+          ]
+        };
+
+      case 'promise_to_lease':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم الوعد بالكراء (قانون 67.12 / قانون 49.16 / الفصل 14 ق.ل.ع)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4 || step === 5 || step === 6) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والأهلية', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'أطراف الوعد', desc: 'الواعد والموعود له والصفة', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'المحل المكترى', desc: 'البيانات والغرض والتحفيظ', icon: Building2 },
+            { index: 4, targetStep: 3, num: '④', title: 'الوجيبة والأجل', desc: 'السومة والمدة والتحملات', icon: Scale },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الشروط والضمانات', desc: 'العربون والشروط الواقفة', icon: FileCheck },
             { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة والتوثيق النهائي', icon: FileText },
           ]
         };

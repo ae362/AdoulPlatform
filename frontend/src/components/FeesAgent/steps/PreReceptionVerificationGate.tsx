@@ -115,6 +115,8 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
       docType === 'عقد_تفويت_حق_السطحية' ||
       docType === 'عقد_ايجار_المفضي_الى_تملك' ||
       docType === 'وعد_بالبيع' ||
+      docType === 'وعد_بالكراء' ||
+      docType.includes('كراء') ||
       docType.includes('بيع') ||
       docType.includes('شراء')
     );
