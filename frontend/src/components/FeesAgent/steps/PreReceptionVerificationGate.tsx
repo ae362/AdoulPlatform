@@ -1260,7 +1260,7 @@ export const PreReceptionVerificationGate: React.FC<PreReceptionVerificationGate
             <div className="space-y-1">
               <div className="flex items-center gap-2 font-black text-slate-900">
                 <span className="text-emerald-600 text-lg">🟢</span>
-                <span className="text-base">نعم، داخل دائرة الاختصاص</span>
+                <span className="text-base">نعم، بمكتبي المهني بمكان تعييني.</span>
               </div>
               <p className="text-xs text-slate-600 font-bold">
                 مكان التلقي كائن بالنفوذ الترابي العادي المحدد قانوناً للمكتب العدلي.
