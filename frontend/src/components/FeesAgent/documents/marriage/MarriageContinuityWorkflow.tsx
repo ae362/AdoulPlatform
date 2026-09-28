@@ -726,7 +726,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
       id: 'party-husband-continuity',
       name: husbandOriginal.fullName,
       idNumber: husbandCurrent.idNumber,
-      nationality: husbandCurrent.currentNationality,
+      nationality: (husbandCurrent.currentNationality === 'أجنبي' || husbandCurrent.currentNationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as 'مغربي' | 'اجنبي' | '',
       address: husbandCurrent.addressAr
     };
 
@@ -735,7 +735,7 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
       id: 'party-wife-continuity',
       name: wifeOriginal.fullName,
       idNumber: wifeCurrent.idNumber,
-      nationality: wifeCurrent.currentNationality,
+      nationality: (wifeCurrent.currentNationality === 'أجنبي' || wifeCurrent.currentNationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as 'مغربي' | 'اجنبي' | '',
       address: wifeCurrent.addressAr
     };
 

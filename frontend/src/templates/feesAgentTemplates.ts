@@ -10,7 +10,9 @@ import {
   convertHijriDateToWords,
   convertNumberToArabicWords,
   convertTimeToWords,
+  formatCourtName,
 } from '../utils/feesAgentUtils';
+export { formatCourtName } from '../utils/feesAgentUtils';
 
 // ============================================================================
 // XML / WORD PARAGRAPH HELPERS
@@ -94,13 +96,6 @@ export function injectDraftIntoDocxZip(zip: any, draftText: string): void {
 // ============================================================================
 // LEGAL STRING & TEMPLATE GENERATORS
 // ============================================================================
-
-export const formatCourtName = (name?: string | null): string => {
-  if (!name) return '';
-  return name
-    .replace(/^(بالمحكمة الابتدائية بـ|بالمحكمة الابتدائية ب|بالمحكمة الابتدائية في|بالمحكمة الابتدائية|المحكمة الابتدائية بـ|المحكمة الابتدائية ب|المحكمة الابتدائية في|المحكمة الابتدائية|بمحكمة الاستئناف بـ|بمحكمة الاستئناف ب|بمحكمة الاستئناف|محكمة الاستئناف بـ|محكمة الاستئناف ب|محكمة الاستئناف في|محكمة الاستئناف)\s*/u, '')
-    .trim();
-};
 
 export const stripHtmlToPlainText = (html: string): string => {
   if (!html) return '';
@@ -1294,7 +1289,7 @@ export function generateAgentDismissalDraft(state: FeesAgentState): string {
     : '';
 
   const subAgentText = (d.subAgent && d.subAgent.hasSubAgent)
-    ? ` وإعمالاً للقواعد القانونية المقررة بالفصل 937 من ق.ل.ع، فإن عزل الوكيل الأصلي يسري حكماً على نائبه السيد (${d.subAgent.fullName || 'النائب'})، وتسقط تتبعاً كافة صلاحياته المستمدة من الوكالة موضوع العزل.`
+    ? ` وإعمالاً للقواعد القانونية المقررة بالفصل 937 من ق.ل.ع، فإن عزل الوكيل الأصلي يسري حكماً على نائبه السيد (${d.subAgent.subAgentName || (d.subAgent as any).fullName || 'النائب'})، وتسقط تتبعاً كافة صلاحياته المستمدة من الوكالة موضوع العزل.`
     : '';
 
   return `الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
@@ -1304,6 +1299,262 @@ export function generateAgentDismissalDraft(state: FeesAgentState): string {
 وقد قرر الموكل تجريد وكيله المعزول من ممارسة أي تصرف من التصرفات المذكورة، مع إلزامه بإرجاع نظير الوكالة وكافة الوثائق والمستندات المسلمة إليه. وقد تم إشعار الوكيل بمقتضى هذا العزل عبر (${d.notificationMethod === 'present_in_majlis' ? 'حضوره بمجلس الإشهاد العدلي' : d.notificationMethod === 'written_notice' ? 'إشعار كتابي رسمي مؤرخ في ' + (d.notificationDate || 'تاريخه') : 'المساطر المنصوص عليها بالفصل 932 من ق.ل.ع'}). 
 
 وبما ذكر صرح الموكل والتزم، وشهد عليه به في صحة وعقل وجواز أمر في تاريخه المبارك.`;
+}
+
+// ============================================================================
+// PROMISE TO SELL DRAFT GENERATOR (رسم وعد بالبيع العقاري)
+// وفق المادة 4 من القانون 39.08 المعدلة بالقانون 41.24 وفصول ق.ل.ع 574-586
+// ============================================================================
+
+export function generatePromiseToSellDraft(state: FeesAgentState): string {
+  if (!state) return '';
+  const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
+  const promise = state.promiseToSell || {};
+  const propDetails = promise.propertyDetails || {};
+  const finance = promise.financeDetails || {};
+  const deadline = promise.finalSaleDeadline || {};
+  const suspensive = promise.suspensiveConditions || [];
+  const encumbrances = promise.encumbrances || {};
+  const legacyProperty = promise.property || {};
+  const legacyTerms = promise.promiseTerms || {};
+
+  // Court and Notary Metadata
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || 'طنجة';
+  const courtName = formatCourtName(meta.court || state.preReceptionVerification?.primaryCourt) || 'طنجة';
+  const courtSection = meta.courtSection || 'قسم قضاء الأسرة والتوثيق';
+  const regBook = (meta as any).registryBookType || 'كناش المعاملات العقارية';
+  const regNum = meta.registryNumber || state.preReceptionVerification?.registryRecord?.number || '---';
+  const regPage = meta.registryPage || state.preReceptionVerification?.registryRecord?.page || '---';
+  const regCount = meta.registryCount || state.preReceptionVerification?.registryRecord?.count || '---';
+  const regDate = meta.dateGregorian || state.preReceptionVerification?.receptionDate || new Date().toISOString().split('T')[0];
+  const dateHijri = meta.dateHijri || convertGregorianToHijri(regDate);
+  const notary1 = meta.notaryPrimary || state.preReceptionVerification?.notary1Name || 'العدل الأول';
+  const notary2 = meta.notarySecondary || state.preReceptionVerification?.notary2Name || 'العدل الثاني';
+
+  // Promisors (الواعدون بالبيع)
+  let promisorsList = promise.promisors && promise.promisors.length > 0 ? promise.promisors : [];
+  if (promisorsList.length === 0 && promise.seller?.fullName) {
+    promisorsList = [{
+      fullName: promise.seller.fullName,
+      idNumber: promise.seller.idNumber,
+      dateOfBirth: promise.seller.dateOfBirth,
+      placeOfBirth: promise.seller.placeOfBirth,
+      nationality: promise.seller.nationality,
+      address: promise.seller.address,
+      relationToProperty: promise.seller.relationToProperty,
+      isCapable: promise.seller.isCapable
+    }];
+  }
+  if (promisorsList.length === 0 && state.sellers && state.sellers.length > 0) {
+    promisorsList = state.sellers.map(s => ({
+      fullName: s.name,
+      idNumber: s.idNumber,
+      address: s.address,
+      profession: s.profession,
+      fatherName: s.fatherName,
+      motherName: s.motherName
+    }));
+  }
+
+  // Promisees (الموعود لهم بالشراء)
+  let promiseesList = promise.promisees && promise.promisees.length > 0 ? promise.promisees : [];
+  if (promiseesList.length === 0 && promise.buyer?.fullName) {
+    promiseesList = [{
+      fullName: promise.buyer.fullName,
+      idNumber: promise.buyer.idNumber,
+      dateOfBirth: promise.buyer.dateOfBirth,
+      placeOfBirth: promise.buyer.placeOfBirth,
+      nationality: promise.buyer.nationality,
+      address: promise.buyer.address,
+      relationToProperty: promise.buyer.relationToProperty,
+      isCapable: promise.buyer.isCapable
+    }];
+  }
+  if (promiseesList.length === 0 && state.buyers && state.buyers.length > 0) {
+    promiseesList = state.buyers.map(b => ({
+      fullName: b.name,
+      idNumber: b.idNumber,
+      address: b.address,
+      profession: b.profession,
+      fatherName: b.fatherName,
+      motherName: b.motherName
+    }));
+  }
+
+  // Format Promisors Text
+  const promisorsText = promisorsList.length > 0 ? promisorsList.map((p, idx) => {
+    if (p.isLegalEntity) {
+      return `الطرف الواعد بالبيع رقم (${idx + 1}): شركة/هيئة «${p.companyName || p.fullName || '---'}»، ذات الشكل القانوني ${p.companyForm || '---'}، المقيدة بالسجل التجاري بـ ${p.rcNumber || '---'}، والمعرف الموحد للمقاولة (ICE): ${p.ice || '---'}، ومقرها الاجتماعي بـ ${p.headquarters || p.address || '---'}، ويمثلها قانوناً السيد(ة): ${p.legalRepresentativeName || '---'} بصفته ${p.legalRepresentativeCapacity || 'الممثل القانوني'} بموجب ${p.legalRepresentativeDocRef || 'السند القانوني المعتمد'}.`;
+    }
+    const details = [
+      p.fullName ? `السيد(ة) ${p.fullName}` : '',
+      p.fatherName ? `بن ${p.fatherName}` : '',
+      p.motherName ? `وأمه ${p.motherName}` : '',
+      p.dateOfBirth ? `المزداد(ة) بتاريخ ${p.dateOfBirth}` : '',
+      p.placeOfBirth ? `بـ ${p.placeOfBirth}` : '',
+      p.nationality ? `جنسيته(ا) ${p.nationality}` : 'المغربي(ة) الجنسية',
+      p.profession ? `مهنته(ا) ${p.profession}` : '',
+      p.maritalStatus ? `حالته(ا) العائلية: ${p.maritalStatus}` : '',
+      p.idNumber ? `الحامل(ة) للبطاقة الوطنية للتعريف رقم ${p.idNumber}` : '',
+      p.address ? `الساكن(ة) بـ ${p.address}` : '',
+      p.shareFraction ? `بصفته مالكاً لحصة قدرها ${p.shareFraction}` : '',
+      p.ownershipDeedRef ? `بمقتضى رسم الملكية: ${p.ownershipDeedRef}` : ''
+    ].filter(Boolean).join(' ');
+    return `الطرف الواعد بالبيع رقم (${idx + 1}): ${details}، بعد ثبوت أهليته(ا) الكاملة للتصرف.`;
+  }).join('\n') : 'الطرف الواعد بالبيع: لم يحدد بعد.';
+
+  // Format Promisees Text
+  const promiseesText = promiseesList.length > 0 ? promiseesList.map((p, idx) => {
+    if (p.isLegalEntity) {
+      return `الطرف الموعود له بالشراء رقم (${idx + 1}): شركة/هيئة «${p.companyName || p.fullName || '---'}»، ذات الشكل القانوني ${p.companyForm || '---'}، المقيدة بالسجل التجاري رقم ${p.rcNumber || '---'}، والمعرف الموحد (ICE): ${p.ice || '---'}، ومقرها الاجتماعي بـ ${p.headquarters || p.address || '---'}، ويمثلها قانوناً السيد(ة): ${p.legalRepresentativeName || '---'} بصفته ${p.legalRepresentativeCapacity || 'الممثل القانوني'}.`;
+    }
+    const details = [
+      p.fullName ? `السيد(ة) ${p.fullName}` : '',
+      p.fatherName ? `بن ${p.fatherName}` : '',
+      p.motherName ? `وأمه ${p.motherName}` : '',
+      p.dateOfBirth ? `المزداد(ة) بتاريخ ${p.dateOfBirth}` : '',
+      p.placeOfBirth ? `بـ ${p.placeOfBirth}` : '',
+      p.nationality ? `جنسيته(ا) ${p.nationality}` : 'المغربي(ة) الجنسية',
+      p.profession ? `مهنته(ا) ${p.profession}` : '',
+      p.idNumber ? `الحامل(ة) للبطاقة الوطنية للتعريف رقم ${p.idNumber}` : '',
+      p.address ? `الساكن(ة) بـ ${p.address}` : '',
+      p.shareFraction ? `بحصة موعود بشرائها قدرها ${p.shareFraction}` : ''
+    ].filter(Boolean).join(' ');
+    return `الطرف الموعود له بالشراء رقم (${idx + 1}): ${details}، بعد ثبوت أهليته(ا) للتعاقد والالتزام.`;
+  }).join('\n') : 'الطرف الموعود له بالشراء: لم يحدد بعد.';
+
+  // Property Qualification Text
+  const status = propDetails.propertyStatus || (legacyProperty.registryOrDeed?.includes('رسم') ? 'محفظ' : 'غير_محفظ');
+  let propertySectionText = '';
+  if (status === 'محفظ') {
+    propertySectionText = `[ العقار محل الوعد - عقار محفظ ]
+الرسم العقاري: عدد ${propDetails.titleNumber || legacyProperty.registryOrDeed || '---'} ${propDetails.titleSuffix ? `(${propDetails.titleSuffix})` : ''}
+المحافظة العقارية المختصة: ${propDetails.landRegistryOffice || '---'}
+اسم الملك: ${propDetails.propertyName || '---'}
+الموقع: جماعة ${propDetails.commune || '---'}، إقليم ${propDetails.province || '---'}، ${propDetails.exactAddress || legacyProperty.address || '---'}
+المساحة الإجمالية: ${propDetails.areaTotal || legacyProperty.area || '---'} ${propDetails.areaUnit || 'متر مربع'} ${propDetails.areaInWords ? `(${propDetails.areaInWords})` : ''}
+الحصة موضوع الوعد: ${propDetails.isFullProperty ? 'كامل الملك ومجموعه دون استثناء' : (propDetails.subjectShareFraction || 'حصة شائعة')}
+الحدود: شمالاً: ${propDetails.boundaryNorth || '---'} | جنوباً: ${propDetails.boundarySouth || '---'} | شرقاً: ${propDetails.boundaryEast || '---'} | غرباً: ${propDetails.boundaryWest || '---'}
+شهادة الملكية العقارية: مستخرجة من المحافظة العقارية تحت عدد ${propDetails.landCertificateNumber || '---'} بتاريخ ${propDetails.landCertificateDate || propDetails.landCertificateIssuedDate || '---'}.
+التحملات والرهون: ${encumbrances.hasEncumbrances === 'نعم' ? (encumbrances.items?.map(it => `${it.type} لفائدة ${it.beneficiary} بمبلغ ${it.amount || 0} درهم (مرجع: ${it.reference}) - وضعيته: ${it.liftingStatus}`).join('، ') || 'مسجلة بالرسم العقاري') : 'صرح الواعد بسلامة العقار من أي رهن أو حجز أو تحمل عيني يمنع نفاذ هذا الوعد'}.`;
+  } else if (status === 'طور_التحفيظ' || status === 'مطلب_تحفيظ') {
+    propertySectionText = `[ العقار محل الوعد - في طور التحفيظ ]
+مطلب التحفيظ عدد: ${propDetails.requisitionNumber || '---'} المودع بالمحافظة العقارية بـ ${propDetails.landRegistryOffice || '---'} بتاريخ ${propDetails.requisitionDate || '---'}
+اسم طالب التحفيظ: ${propDetails.requisitionApplicantName || '---'}
+حالة مسطرة التحفيظ: ${propDetails.requisitionStatus || 'جارية'}
+الموقع والمساحة: جماعة ${propDetails.commune || '---'}، إقليم ${propDetails.province || '---'}، المساحة: ${propDetails.areaTotal || '---'} ${propDetails.areaUnit || 'متر مربع'}
+الحدود: شمالاً: ${propDetails.boundaryNorth || '---'} | جنوباً: ${propDetails.boundarySouth || '---'} | شرقاً: ${propDetails.boundaryEast || '---'} | غرباً: ${propDetails.boundaryWest || '---'}
+التعرضات: ${propDetails.hasRequisitionOppositions ? `توجد تعرضات جاري تسويتها (${propDetails.requisitionOppositionsDetails || '---'})` : 'لا توجد أي تعرضات مسجلة بمطلب التحفيظ حسب الشهادة المستخرجة'}.`;
+  } else {
+    propertySectionText = `[ العقار محل الوعد - عقار غير محفظ ]
+أصل الملك ومستند التملك: تملك الواعد للملك بموجب ${propDetails.originDeedType || 'سند تملك شرعي'} عدد ${propDetails.originDeedNumber || '---'} كناش ${propDetails.originDeedBook || '---'} صحيفة ${propDetails.originDeedPage || '---'} بتاريخ ${propDetails.originDeedDate || '---'} توثيق ${propDetails.originCourtNotary || '---'} عن سلفه ${propDetails.originalOwnerName || '---'}
+الموقع: جماعة ${propDetails.commune || '---'}، إقليم ${propDetails.province || '---'}، ${propDetails.exactAddress || legacyProperty.address || '---'}
+المساحة والحدود: المساحة التقديرية ${propDetails.areaTotal || legacyProperty.area || '---'} ${propDetails.areaUnit || 'متر مربع'}.
+الحدود الأربعة: شمالاً: ${propDetails.boundaryNorth || '---'} | جنوباً: ${propDetails.boundarySouth || '---'} | شرقاً: ${propDetails.boundaryEast || '---'} | غرباً: ${propDetails.boundaryWest || '---'}
+الحصة الموعود ببيعها: ${propDetails.isFullProperty ? 'كامل الملك ومجموعه' : (propDetails.subjectShareFraction || 'حصة محددة')}.`;
+  }
+
+  // Price & Finance Details
+  const totalPrice = finance.totalPrice || legacyTerms.totalPrice || 0;
+  const totalPriceWords = finance.totalPriceInWords || (totalPrice ? convertNumberToArabicWords(totalPrice) : '---');
+  const earnest = finance.earnestAmount || legacyTerms.earnestMoney || 0;
+  const earnestWords = finance.earnestAmountInWords || (earnest ? convertNumberToArabicWords(earnest) : '---');
+  const remaining = finance.remainingAmount !== undefined ? finance.remainingAmount : Math.max(0, totalPrice - earnest);
+  const remainingWords = finance.remainingAmountInWords || (remaining ? convertNumberToArabicWords(remaining) : '---');
+  const earnestMethod = finance.earnestPaymentMethod || legacyTerms.paymentMethod || 'نقد';
+
+  // Deadline Text
+  let deadlineText = 'في أجل يحدده الطرفان باتفاق لاحق';
+  if (deadline.type === 'تاريخ_محدد' && deadline.specificDate) {
+    deadlineText = `في أجل أقصاه يوم ${deadline.specificDate}`;
+  } else if (deadline.type === 'أجل_بالأيام_أو_الأشهر' && deadline.periodNumber) {
+    deadlineText = `داخل أجل ${deadline.periodNumber} ${deadline.periodUnit || 'يوماً'} يبتدئ من تاريخ تحرير هذا الرسم وينتهي بحلول ${deadline.endDate || 'انصرام المدة'}`;
+  } else if (deadline.type === 'مرتبط_بشرط' || deadline.conditionText) {
+    deadlineText = `معلق على تحقق الشرط الآتي: «${deadline.conditionText || 'تحقق الشرط المتفق عليه'}»`;
+  } else if (legacyTerms.finalDeadline) {
+    deadlineText = `بحلول تاريخ: ${legacyTerms.finalDeadline}`;
+  }
+
+  // Suspensive conditions list
+  const suspensiveConditionsText = suspensive.length > 0 ? suspensive.map((s, idx) => {
+    return `الشرط (${idx + 1}) [${s.type}]: «${s.conditionText}» - الأجل المحدد لتحققه: ${s.fulfillmentDeadline || 'عند إبرام البيع النهائي'} - الأثر في حال عدم التحقق: ${s.consequenceOfBreach || 'انفساخ الوعد واسترداد المبالغ المؤداة دون تعويض'}.`;
+  }).join('\n') : 'لم يشترط الطرفان أي شرط واقف إضافي سوى التزامات الوفاء والتسليم.';
+
+  // Earnest rule clause (DOC 584-586)
+  const earnestRuleClause = finance.earnestRule === 'خصم_عند_البيع_أو_فقده_عند_النكول'
+    ? 'اتفق الطرفان طبقاً للفصلين 584 و586 من قانون الالتزامات والعقود على أن مبلغ العربون المؤدى يخصم من ثمن المبيع الإجمالي إذا نفذ البيع، وإذا نكل الموعود له بالشراء وعدل عن إتمام الصفقة فإنه يفقد مبلغ العربون كاملاً لفائدة الواعد كتعويض جزائي نهائي، وإذا نكل الواعد بالبيع وامتنع عن إتمام البيع النهائي فإنه يلتزم برد مبلغ العربون كاملاً.'
+    : finance.earnestRule === 'مزدوج_المادة_586_ق_ل_ع'
+    ? 'اتفق الطرفان على تطبيق أحكام الفصل 586 من قانون الالتزامات والعقود بحيث إذا نكل المشتري فقد العربون، وإذا نكل البائع أرجع العربون ومثله (ضعفه) للمشتري كتعويض اتفاقي غير قابل للمنازعة.'
+    : 'يخصم مبلغ العربون/التسبيق من الثمن الإجمالي عند إبرام عقد البيع النهائي واستيفاء كامل الشروط.';
+
+  return `================================================================================
+                         المملكة المغربية - وزارة العدل
+دائرة محكمة الاستئناف بـ ${appellateCourt} - المحكمة الابتدائية بـ ${courtName} (${courtSection})
+سجل البيانات: كناش ${regBook} | رقم: ${regNum} | صحيفة: ${regPage} | عدد: ${regCount}
+بتاريخ: ${regDate} موافق ${dateHijri} هـ
+العدلان المنتصبان للإشهاد: ${notary1} و ${notary2}
+================================================================================
+
+                           رسم وعد بالبيع عقاري
+         (محرر رسمي وفق المادة 4 من القانون رقم 39.08 المتعلق بمدونة الحقوق العينية
+             كما تم تعديلها وتتميمها بالقانون رقم 41.24، وأحكام قانون الالتزامات والعقود)
+
+الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
+على الساعة ${meta.hourInWords || 'المباركة القانونية'} من يوم ${getArabicWeekdayName(regDate) || 'اليوم'} ${meta.dateGregorianInWords ? `الموافق لـ ${meta.dateGregorianInWords}` : regDate} ميلادية،
+تلقى العدلان الموقعان أسفله بدائرة المحكمة الابتدائية بـ ${courtName} الإشهاد بالوعد بالبيع العقاري الآتي نصه:
+
+أولاً: أطراف الوعد بالبيع:
+---------------------------
+[ الطرف الواعد بالبيع (الملتزم بالتفويت) ]:
+${promisorsText}
+
+[ الطرف الموعود له بالشراء (المستفيد من الوعد) ]:
+${promiseesText}
+(مع إثبات عدم انتقال الملكية العقارية حالياً بموجب هذا الوعد، وأن صفة المشتري هي "موعود له بالشراء" حتى إبرام البيع النهائي وفق القانون).
+
+ثانياً: تكييف التصرف وطبيعته:
+---------------------------
+صرح الطرفان بكامل أهليتهما الشرعية والقانونية بأنهما أبرما هذا «الوعد بالبيع العقاري» التبادلي التام الرضائي الملزم للجانبين وفق أحكام المادة 4 من مدونة الحقوق العينية وتعديلها بموجب القانون 41.24 ومقتضيات الفصلين 574 وما يليه و584 وما يليه من ظهير الالتزامات والعقود.
+
+ثالثاً: تعيين العقار محل الوعد بالبيع:
+-----------------------------------
+وعد الطرف الواعد بأن يبيع ويتخلى ويفوت للموعود له بالشراء العقار الآتي مشخصاته ومشتملاته:
+${propertySectionText}
+
+رابعاً: الثمن المتفق عليه وكيفية الأداء والوفاء:
+--------------------------------------------
+1. الثمن الإجمالي للبيع النهائي: حدد الثمن الإجمالي الجزافي للبيع النهائي في مبلغ قدره:
+   ${totalPrice.toLocaleString()} درهم (فقط ${totalPriceWords} درهماً لا غير).
+2. العربون والتسبيق المؤدى معجلاً: أدى الطرف الموعود له بالشراء للواعد بمجلس هذا الرسم مبلغا قدره:
+   ${earnest.toLocaleString()} درهم (فقط ${earnestWords} درهماً لا غير) بواسطة ${earnestMethod} ${finance.earnestReference ? `(مرجع: ${finance.earnestReference} لدى بنك ${finance.earnestBankName || '---'})` : ''}، اعترف الواعد بقبضه إبراء تاما مقيدا بشروط هذا الوعد.
+3. باقي الثمن: يتبقى في ذمة الموعود له بالشراء مبلغ قدره:
+   ${remaining.toLocaleString()} درهم (فقط ${remainingWords} درهماً لا غير) يلتزم بأدائه عند إبرام عقد البيع النهائي وحسب الاتفاق المسطور.
+${finance.hasInstallments && finance.installments && finance.installments.length > 0 ? `
+جدول أداء الدفعات المتفق عليها:
+${finance.installments.map(ins => `- الدفعة رقم (${ins.installmentNumber}): بمبلغ ${ins.amount.toLocaleString()} درهم بتاريخ استحقاق ${ins.dueDate} بواسطة ${ins.paymentMethod} (الحالة: ${ins.status})`).join('\n')}
+` : ''}
+
+خامساً: أجل إتمام البيع النهائي والشروط الواقفة:
+---------------------------------------------
+1. أجل البيع النهائي: التزم الطرفان التزاماً قاطعاً بالمثول أمام العدلين لإبرام رسم البيع النهائي ${deadlineText}.
+2. الشروط الواقفة والالتزامات المتبادلة:
+${suspensiveConditionsText}
+3. قاعدة العربون والشرط الجزائي:
+${earnestRuleClause}
+${finance.penaltyClauseText ? `الشرط الجزائي الإضافي: ${finance.penaltyClauseText}` : ''}
+
+سادساً: التحملات والتسجيل والضمانات:
+---------------------------------
+- يلتزم الواعد بالبيع بضمان الاستحقاق والعيوب الخفية وعدم التعرض طبقاً للقانون، وبالمحافظة على العقار وتسليمه بحالته الراهنة فور إبرام البيع النهائي واستيفاء كامل الثمن.
+- تم إشعار الطرفين بوجوب تسجيل هذا الوعد لدى إدارة التسجيل والضرائب واستيفاء رسم التمبر القانوني وفق المقتضيات الجبائية الجاري بها العمل.
+
+وعلى هذا التراضي التام والمشارطة والالتزام حضر الطرفان، وتليت عليهما فصول هذا الرسم وفهما مدلوله وارتضياه بحضور الشاهدين العدلين المنتصبين للإشهاد، وحفظ للعدل الأول وحرر في تاريخه المذكور أعلاه.
+
+توقيع الواعد(ين) بالبيع: ________________________
+توقيع الموعود له(م) بالشراء: ____________________
+توقيع العدل الأول: ____________________________
+توقيع العدل الثاني: ____________________________
+`.trim();
 }
 
 export function generateDocumentDraft(state: FeesAgentState): string {
@@ -1321,6 +1572,14 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       return state.draft;
     }
     return generateAgentDismissalDraft(state);
+  }
+
+  // Promise to Sell deed (رسم وعد بالبيع العقاري - المادة 4 من مدونة الحقوق العينية المعدلة بالقانون 41.24)
+  if (documentType === 'وعد_بالبيع' || documentType.includes('وعد_بالبيع') || documentType.includes('وعد بالبيع')) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    return generatePromiseToSellDraft(state);
   }
 
   // Marriage and family deeds draft generator

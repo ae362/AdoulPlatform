@@ -26,6 +26,7 @@ export * from '../constants/feesAgentLocales';
 export * from '../types/feesAgentTypes';
 export * from '../utils/feesAgentUtils';
 export * from '../templates/feesAgentTemplates';
+export { formatCourtName } from '../utils/feesAgentUtils';
 
 export function FeesAgent({ initialState, initialJudgeSubmissionId, startMode = 'intake' }: FeesAgentProps) {
   const navigate = useNavigate();

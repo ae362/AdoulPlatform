@@ -513,7 +513,7 @@ export const RenewMarriageAfterDivorceWorkflow: React.FC<RenewMarriageAfterDivor
       motherName: husbandData.motherName,
       birthDate: husbandData.birthDate,
       birthPlace: husbandData.birthPlace,
-      nationality: husbandData.nationality,
+      nationality: (husbandData.nationality === 'أجنبي' || husbandData.nationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as 'مغربي' | 'اجنبي' | '',
       profession: husbandData.profession,
       type: 'individual',
       role: 'seller', // husband in marriage schema
@@ -531,7 +531,7 @@ export const RenewMarriageAfterDivorceWorkflow: React.FC<RenewMarriageAfterDivor
       motherName: wifeData.motherName,
       birthDate: wifeData.birthDate,
       birthPlace: wifeData.birthPlace,
-      nationality: wifeData.nationality,
+      nationality: (wifeData.nationality === 'أجنبي' || wifeData.nationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as 'مغربي' | 'اجنبي' | '',
       profession: wifeData.profession,
       type: 'individual',
       role: 'buyer', // wife in marriage schema

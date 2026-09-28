@@ -928,8 +928,275 @@ export interface PossessionProof {
   [key: string]: any;
 }
 
+// Extended Types for PromiseToSell (رسم وعد بالبيع العقاري)
+export interface PromiseToSellPartyInfo {
+  id?: string;
+  isLegalEntity?: boolean;
+  fullName?: string;
+  nameLatin?: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  nationality?: 'مغربي' | 'أجنبي' | string;
+  idNumber?: string;
+  idIssueDate?: string;
+  idExpiryDate?: string;
+  profession?: string;
+  address?: string;
+  maritalStatus?: string;
+  matrimonialRegime?: string;
+  relationToProperty?: 'مالك' | 'وصي' | 'ممثل_قانوني' | 'قريب' | 'محايد' | string;
+  isCapable?: boolean;
+  shareFraction?: string; // e.g. "1/1", "1/2", "3/8", "25%"
+  shareNumeric?: number; // percentage e.g. 50
+  ownershipDeedRef?: string;
+  // Legal entity specifics
+  companyName?: string;
+  companyForm?: string; // SARL, SA, etc.
+  rcNumber?: string;
+  ice?: string;
+  headquarters?: string;
+  legalRepresentativeName?: string;
+  legalRepresentativeCapacity?: string;
+  legalRepresentativeDocRef?: string;
+}
+
+export interface PromiseToSellPropertyDetails {
+  propertyStatus?: 'محفظ' | 'غير_محفظ' | 'طور_التحفيظ' | 'مطلب_تحفيظ' | '';
+  // Registered Property (عقار محفظ)
+  titleNumber?: string;
+  titleSuffix?: string; // نظير / مكرر
+  landRegistryOffice?: string; // المحافظة العقارية
+  propertyName?: string; // اسم الملك
+  landCertificateNumber?: string;
+  landCertificateDate?: string;
+  landCertificateIssuedDate?: string;
+  hasLandCertificateAttached?: boolean;
+  // Unregistered Property (عقار غير محفظ)
+  originDeedType?: 'إرث' | 'شراء_سابق' | 'هبة' | 'صدقة' | 'قسمة' | 'حيازة' | 'ملكية_قديمة' | 'أخرى' | '';
+  originDeedNumber?: string;
+  originDeedDate?: string;
+  originDeedAuthority?: string;
+  originDeedBook?: string;
+  originDeedLetter?: string;
+  originDeedPage?: string;
+  originDeedCount?: string;
+  originCourtNotary?: string;
+  originalOwnerName?: string;
+  acquisitionMode?: string;
+  acquisitionDate?: string;
+  // Under Inscription / Requisition (طور التحفيظ)
+  requisitionNumber?: string;
+  requisitionDate?: string;
+  requisitionApplicantName?: string;
+  requisitionStatus?: string;
+  hasRequisitionOppositions?: boolean;
+  requisitionOppositionsDetails?: string;
+  // Location & Spatial
+  region?: string;
+  province?: string;
+  commune?: string;
+  caidat?: string;
+  circle?: string;
+  neighborhoodOrDouar?: string;
+  exactAddress?: string;
+  // Area & Measurements
+  areaTotal?: number;
+  areaUnit?: 'متر_مربع' | 'هكتار' | 'آر' | 'سنتيار' | string;
+  areaInWords?: string;
+  // Boundaries
+  boundaryNorth?: string;
+  boundarySouth?: string;
+  boundaryEast?: string;
+  boundaryWest?: string;
+  additionalBoundaries?: Array<{ id: string; direction: string; neighborDescription: string }>;
+  // Components (مكونات العقار)
+  components?: Array<{
+    id: string;
+    nature: string; // أرض، منزل، شقة، محل، مرآب...
+    area?: string;
+    description?: string;
+    boundaries?: string;
+    references?: string;
+  }>;
+  // Subject Share
+  isFullProperty?: boolean;
+  subjectShareFraction?: string; // e.g. "1/2" or "كامل الملك"
+  subjectShareFractionInWords?: string;
+  subjectSharePercentage?: number;
+}
+
+export interface PromiseToSellPaymentInstallment {
+  id: string;
+  installmentNumber: number;
+  amount: number;
+  amountInWords?: string;
+  paymentMethod: 'نقد' | 'تحويل_بنكي' | 'شيك_بنكي' | 'شيك_مضمون' | 'وديعة_لدى_العدل' | 'أخرى';
+  dueDate: string;
+  paidDate?: string;
+  reference?: string; // رقم الشيك، رقم التحويل
+  bankName?: string;
+  recipientEntity?: string;
+  status: 'مؤدى' | 'مستحق' | 'معلق';
+  notes?: string;
+}
+
+export interface PromiseToSellSuspensiveCondition {
+  id: string;
+  type: 'قرض_بنكي' | 'رفع_رهن' | 'تسوية_وضعية' | 'وثيقة_إدارية' | 'ترخيص_تجزئة' | 'أداء_باقي_الثمن' | 'أخرى';
+  conditionText: string;
+  status: 'معلق' | 'متحقق' | 'غير_متحقق';
+  fulfillmentDeadline?: string;
+  consequenceOfBreach?: string;
+}
+
+export interface PromiseToSellEncumbranceItem {
+  id: string;
+  type: string; // رهن رسمي، حجز تحفظي، حق ارتفاق...
+  beneficiary: string;
+  date: string;
+  amount?: number;
+  reference: string;
+  liftingStatus: 'مرفوع' | 'قيد_الرفع' | 'شرط_للبيع_النهائي' | 'متحمل_من_المشتري';
+}
+
+export interface PromiseToSellAuditEntry {
+  timestamp: string;
+  notaryOrUser: string;
+  action: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
 // PromiseToSell Type (رسم وعد بالبيع)
 export interface PromiseToSell {
+  // 1. Preliminary Qualification (التكييف القانوني الأولي)
+  preliminaryQualification?: {
+    promiseNature?: 'وعد_بالبيع_العقاري' | 'وعد_مشروط' | 'وعد_ملزم_لجانب_واحد' | 'وعد_متبادل' | 'وعد_معلق_على_شرط_واقف' | 'وعد_آخر' | '';
+    isRealEstateSubject?: boolean;
+    deedFormat?: 'محرر_رسمي' | 'محرر_ثابت_التاريخ' | 'محرر_سابق' | '';
+    isLaw41_24Compliant?: boolean;
+  };
+
+  // 2. Multi-Parties Extensions
+  promisors?: PromiseToSellPartyInfo[]; // الواعدون بالبيع
+  promisees?: PromiseToSellPartyInfo[]; // الموعود لهم بالشراء
+  multiplePromisorsStructure?: {
+    isJointOwnership?: boolean;
+    distributionType?: 'بالتساوي' | 'حسب_حصص_محددة' | 'على_الشياع' | '';
+  };
+  multiplePromiseesStructure?: {
+    isMultipleBuyers?: boolean;
+    devolutionUponFinalSale?: 'بالتساوي' | 'حسب_حصص_محددة' | 'على_الشياع' | 'حسب_بيان_خاص' | '';
+  };
+
+  // 3. Extended Property Details
+  propertyDetails?: PromiseToSellPropertyDetails;
+
+  // 4. Detailed Pricing & Payment
+  financeDetails?: {
+    totalPrice?: number;
+    totalPriceInWords?: string;
+    earnestAmount?: number; // العربون / المؤدى
+    earnestAmountInWords?: string;
+    earnestDate?: string;
+    earnestPaymentMethod?: 'نقد' | 'تحويل_بنكي' | 'شيك_بنكي' | 'شيك_مضمون' | 'وديعة_لدى_العدل' | 'أخرى' | '';
+    earnestReference?: string;
+    earnestBankName?: string;
+    remainingAmount?: number; // الباقي
+    remainingAmountInWords?: string;
+    remainingDueDate?: string;
+    manualRemainingReason?: string;
+    selectedPaymentMethods?: string[]; // Multiple selection checkboxes
+    hasInstallments?: boolean;
+    installments?: PromiseToSellPaymentInstallment[];
+    earnestRule?: 'خصم_عند_البيع_أو_فقده_عند_النكول' | 'مسترد_في_حال_عدم_تحقق_الشرط' | 'مزدوج_المادة_586_ق_ل_ع' | '';
+    penaltyClauseText?: string;
+  };
+
+  // 5. Final Sale Deadline & Conditions
+  finalSaleDeadline?: {
+    type?: 'تاريخ_محدد' | 'أجل_بالأيام_أو_الأشهر' | 'مرتبط_بشرط' | 'إجراء_إداري' | 'رفع_مانع_عقاري' | 'تمويل_بنكي' | 'غير_محدد' | '';
+    specificDate?: string;
+    periodNumber?: number;
+    periodUnit?: 'أيام' | 'أشهر' | 'سنوات';
+    startDate?: string;
+    endDate?: string;
+    conditionText?: string;
+  };
+
+  suspensiveConditions?: PromiseToSellSuspensiveCondition[];
+  encumbrances?: {
+    hasEncumbrances?: 'نعم' | 'لا' | 'غير_معلوم' | '';
+    isLiftingConditionForSale?: boolean;
+    items?: PromiseToSellEncumbranceItem[];
+  };
+
+  // 6. Chain of Title, Registration & Stamps
+  chainOfDeeds?: Array<{
+    id: string;
+    type: string;
+    number?: string;
+    date?: string;
+    authority?: string;
+    book?: string;
+    letter?: string;
+    page?: string;
+    count?: string;
+    courtNotary?: string;
+  }>;
+
+  registrationInfo?: {
+    status?: 'لم_يسجل_بعد' | 'سيتم_تسجيله' | 'تم_التسجيل' | 'يحتاج_تحققا' | '';
+    taxOffice?: string;
+    receiptNumber?: string;
+    registrationDate?: string;
+    paymentRef?: string;
+    amount?: number;
+    notes?: string;
+  };
+
+  stampDutyInfo?: {
+    dutyType?: string;
+    reference?: string;
+    paymentNumber?: string;
+    paymentDate?: string;
+    amount?: number;
+    proofDocument?: string;
+    status?: 'مكتمل' | 'مستورد' | 'يحتاج_تحققا' | '';
+  };
+
+  documentsPortfolio?: Array<{
+    id: string;
+    type: string;
+    number?: string;
+    date?: string;
+    issuer?: string;
+    complianceStatus: 'مكتمل' | 'يحتاج_مراجعة' | 'غير_متوفر';
+  }>;
+
+  // 7. Legal Check & Intelligent Verification
+  legalCheckData?: {
+    isIdentityComplete?: boolean;
+    isPropertyComplete?: boolean;
+    isPriceMatchComplete?: boolean;
+    isSharesValid?: boolean;
+    isLaw41FormatValid?: boolean;
+    hasPendingSuspensiveConditions?: boolean;
+    hasEncumbrancesWarning?: boolean;
+    hasUnregisteredWarning?: boolean;
+    hasRequisitionWarning?: boolean;
+    fatalErrors?: string[];
+    reviewNotes?: string[];
+  };
+
+  intelligentQuestionAnswer?: 'نعم' | 'يحتاج_استكمال' | 'يحتاج_مراجعة_قانونية' | '';
+  dataFrozenForDrafting?: boolean;
+  auditTrail?: PromiseToSellAuditEntry[];
+
+  // Legacy fields preserved for backward compatibility
   seller?: {
     fullName?: string;
     dateOfBirth?: string;
@@ -1482,13 +1749,16 @@ export interface DebtAcknowledgmentDeed {
 }
 
 export interface PersonIdentityFields {
+  fullName?: string;
   familyName?: string;
+  lastName?: string;
   firstName?: string;
   fatherName?: string;
   motherName?: string;
   birthplace?: string;
   birthdate?: string;
   cin?: string;
+  idNumber?: string;
   nationality?: string;
   occupation?: string;
   address?: string;

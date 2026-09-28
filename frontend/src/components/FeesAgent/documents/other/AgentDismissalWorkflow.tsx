@@ -30,7 +30,7 @@ const DISMISSAL_POWERS_CATALOG = [
   { id: 'other', label: 'صلاحيات وتصرفات أخرى' }
 ];
 
-export const AgentDismissalWorkflow: React.FC<DocumentWizardProps> = ({ state, setState }) => {
+export const AgentDismissalWorkflow: React.FC<DocumentWizardProps> = ({ state, setState, onBack }) => {
   // Active inner stage (1 to 5)
   const [activeStage, setActiveStage] = useState<number>(() => {
     if (state.step && state.step >= 1 && state.step <= 5) return state.step;

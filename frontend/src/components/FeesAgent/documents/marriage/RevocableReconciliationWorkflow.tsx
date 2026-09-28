@@ -225,6 +225,8 @@ export const RevocableReconciliationWorkflow: React.FC<RevocableReconciliationWo
   ]);
 
   const [declarationFormula, setDeclarationFormula] = useState<string>(defaultFormula);
+  const [isFormulaCustomized, setIsFormulaCustomized] = useState<boolean>(false);
+  const [isDraftGenerated, setIsDraftGenerated] = useState<boolean>(false);
 
   // Stage 14: Review confirmation
   const [isDataReviewed, setIsDataReviewed] = useState<boolean>(false);

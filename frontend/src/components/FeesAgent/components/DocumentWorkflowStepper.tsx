@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -33,6 +33,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
     return 'divorce';
   }
 
+  // 2.5. Dedicated Promise to Sell (رسم وعد بالبيع العقاري - المادة 4 ق.ح.ع)
+  if (dt === 'وعد_بالبيع' || dt.includes('وعد_بالبيع') || dt.includes('وعد بالبيع')) {
+    return 'promise_to_sell';
+  }
+
   // 3. Specific Real Estate Sales & Disposal
   const saleTypes = [
     'بيع_وشراء',
@@ -42,8 +47,7 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
     'بيع_وشراء_طور_انجاز_نهائي',
     'عقد_بيع_حق_الهواء_والتعلية',
     'عقد_تفويت_حق_السطحية',
-    'عقد_ايجار_المفضي_الى_تملك',
-    'وعد_بالبيع'
+    'عقد_ايجار_المفضي_الى_تملك'
   ];
   if (saleTypes.includes(dt) || (dt.includes('بيع') && !dt.includes('حيازة') && !dt.includes('ملكية')) || dt.includes('شراء')) {
     return 'sale';
@@ -128,6 +132,29 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 6, targetStep: 5, num: '⑥', title: 'مجلس الإشهاد', desc: 'التلقي الثنائي والشهود', icon: Clock },
             { index: 7, targetStep: 7, num: '⑦', title: 'التحرير والتدقيق', desc: 'الصياغة العدلية النموذجية', icon: FileText },
             { index: 8, targetStep: 8, num: '⑧', title: 'التسجيل والإيداع', desc: 'الضرائب والتأشير القضائي', icon: Lock },
+          ]
+        };
+
+      case 'promise_to_sell':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم الوعد بالبيع العقاري (المادة 4 من مدونة الحقوق العينية - القانون 41.24)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4 || step === 5 || step === 6) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والأهلية', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'أطراف الوعد', desc: 'الواعد والموعود له والتكييف', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'العقار وأصل الملك', desc: 'التحفيظ والحدود والمشخصات', icon: Building2 },
+            { index: 4, targetStep: 3, num: '④', title: 'الثمن والأداء والأجل', desc: 'العربون والباقي وأجل البيع', icon: Scale },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الشروط والتدقيق', desc: 'الشروط الواقفة والتحملات', icon: FileCheck },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة والتوثيق النهائي', icon: FileText },
           ]
         };
 
