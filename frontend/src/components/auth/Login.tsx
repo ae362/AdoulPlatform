@@ -132,8 +132,8 @@ export const Login: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col items-center text-center">
-                    <p className="text-base font-bold text-rose-950">الهيئة الوطنية للعدول</p>
-                    <p className="text-xs text-amber-800 mt-0.5 font-medium">المملكة المغربية</p>
+                    <p className="text-xs text-amber-800 font-medium">المملكة المغربية</p>
+                    <p className="text-base font-bold text-rose-950 mt-0.5">الهيئة الوطنية للعدول</p>
                   </div>
                 </div>
 
