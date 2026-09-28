@@ -15,7 +15,7 @@ import {
   CheckCircle2, AlertTriangle, AlertCircle, Plus, Trash2,
   Send, ShieldCheck, Info, Check, User,
   Lock, FileCheck, Layers, Link2, Calendar,
-  CreditCard, ArrowLeft, ArrowRight, FileSignature
+  CreditCard, ArrowLeft, ArrowRight, FileSignature, X
 } from 'lucide-react';
 
 export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setState }) => {
@@ -69,6 +69,7 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
 
   // Notice for legal entity attempt
   const [legalEntityNotice, setLegalEntityNotice] = useState<boolean>(false);
+  const [showLegalEntityOption, setShowLegalEntityOption] = useState<boolean>(true);
 
   // ---------------------------------------------------------------------------
   // 2. Property Legal Nature (طبيعة ووضعية العقار)
@@ -830,35 +831,130 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
   // ---------------------------------------------------------------------------
   // Helper Handlers for Sellers and Buyers
   // ---------------------------------------------------------------------------
-  const addSeller = () => {
-    setSellers(prev => [
-      ...prev,
-      {
-        id: `seller-${Date.now()}`,
-        fullName: '',
-        fatherName: '',
-        motherName: '',
-        dateOfBirth: '',
-        placeOfBirth: '',
-        nationality: 'مغربي',
-        profession: '',
-        address: '',
-        idType: 'CIN',
-        idNumber: '',
-        idIssueDate: '',
-        idIssuedBy: '',
-        maritalStatus: 'متزوج',
-        share: '',
-        sharePercentage: 0,
-        capacity: 'شريك_على_الشياع',
-        representationMode: 'شخصي',
+  // --- Smart Sellers Management ---
+  const handleSellerShareChange = (id: string, rawVal: number) => {
+    const val = Math.max(0, Math.min(100, rawVal));
+    setSellers(prev => {
+      if (prev.length === 2) {
+        const otherShare = Math.max(0, 100 - val);
+        return prev.map(s => {
+          if (s.id === id) {
+            return {
+              ...s,
+              sharePercentage: val,
+              share: val === 100 ? 'كامل العقار (100%)' : val === 50 ? 'النصف (50%)' : `${val}%`,
+            };
+          } else {
+            return {
+              ...s,
+              sharePercentage: otherShare,
+              share: otherShare === 100 ? 'كامل العقار (100%)' : otherShare === 50 ? 'النصف (50%)' : `${otherShare}%`,
+            };
+          }
+        });
+      } else if (prev.length > 2) {
+        const otherSum = prev.filter(s => s.id !== id).reduce((acc, s) => acc + (s.sharePercentage || 0), 0);
+        if (otherSum + val > 100) {
+          let excess = (otherSum + val) - 100;
+          return prev.map(s => {
+            if (s.id === id) {
+              return { ...s, sharePercentage: val, share: `${val}%` };
+            }
+            if (excess > 0 && (s.sharePercentage || 0) > 0) {
+              const deduct = Math.min(s.sharePercentage || 0, excess);
+              excess -= deduct;
+              const newS = (s.sharePercentage || 0) - deduct;
+              return { ...s, sharePercentage: newS, share: `${newS}%` };
+            }
+            return s;
+          });
+        }
+        return prev.map(s => s.id === id ? { ...s, sharePercentage: val, share: `${val}%` } : s);
       }
-    ]);
+      return prev.map(s => s.id === id ? { ...s, sharePercentage: val, share: val === 100 ? 'كامل العقار (100%)' : `${val}%` } : s);
+    });
+  };
+
+  const distributeSellerSharesEqually = () => {
+    if (sellers.length === 0) return;
+    const count = sellers.length;
+    const equal = Math.floor((100 / count) * 100) / 100;
+    let allocated = 0;
+    setSellers(prev => prev.map((s, idx) => {
+      const share = idx === count - 1 ? Math.round((100 - allocated) * 100) / 100 : equal;
+      allocated += share;
+      const desc = count === 2 ? 'النصف (50%)' : count === 3 ? 'الثلث (33.33%)' : count === 4 ? 'الربع (25%)' : `${share}%`;
+      return { ...s, sharePercentage: share, share: desc };
+    }));
+  };
+
+  const addSeller = () => {
+    setSellers(prev => {
+      const count = prev.length + 1;
+      let updatedPrev = [...prev];
+      let newShare = 0;
+
+      if (prev.length === 1 && (prev[0].sharePercentage || 0) === 100) {
+        updatedPrev = [{
+          ...prev[0],
+          sharePercentage: 50,
+          share: 'النصف (50%)',
+        }];
+        newShare = 50;
+      } else {
+        const currentSum = prev.reduce((acc, s) => acc + (s.sharePercentage || 0), 0);
+        if (currentSum < 100) {
+          newShare = 100 - currentSum;
+        } else {
+          const equal = Math.floor((100 / count) * 100) / 100;
+          let allocated = 0;
+          updatedPrev = prev.map(s => {
+            allocated += equal;
+            return { ...s, sharePercentage: equal, share: `${equal}%` };
+          });
+          newShare = Math.round((100 - allocated) * 100) / 100;
+        }
+      }
+
+      return [
+        ...updatedPrev,
+        {
+          id: `seller-${Date.now()}`,
+          fullName: '',
+          fatherName: '',
+          motherName: '',
+          dateOfBirth: '',
+          placeOfBirth: '',
+          nationality: 'مغربي',
+          profession: '',
+          address: '',
+          idType: 'CIN',
+          idNumber: '',
+          idIssueDate: '',
+          idIssuedBy: '',
+          maritalStatus: 'متزوج',
+          share: newShare === 50 ? 'النصف (50%)' : `${newShare}%`,
+          sharePercentage: newShare,
+          capacity: 'شريك_على_الشياع',
+          representationMode: 'شخصي',
+        }
+      ];
+    });
   };
 
   const removeSeller = (id: string) => {
     if (sellers.length <= 1) return;
-    setSellers(prev => prev.filter(s => s.id !== id));
+    setSellers(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      if (filtered.length === 1) {
+        return [{
+          ...filtered[0],
+          sharePercentage: 100,
+          share: 'كامل العقار (100%)',
+        }];
+      }
+      return filtered;
+    });
   };
 
   const updateSeller = (id: string, field: keyof SalePersonPartyInfo, val: any) => {
@@ -897,35 +993,130 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
     }));
   };
 
-  const addBuyer = () => {
-    setBuyers(prev => [
-      ...prev,
-      {
-        id: `buyer-${Date.now()}`,
-        fullName: '',
-        fatherName: '',
-        motherName: '',
-        dateOfBirth: '',
-        placeOfBirth: '',
-        nationality: 'مغربي',
-        profession: '',
-        address: '',
-        idType: 'CIN',
-        idNumber: '',
-        idIssueDate: '',
-        idIssuedBy: '',
-        maritalStatus: 'متزوج',
-        share: '',
-        sharePercentage: 0,
-        capacity: 'مشتري',
-        representationMode: 'شخصي',
+  // --- Smart Buyers Management ---
+  const handleBuyerShareChange = (id: string, rawVal: number) => {
+    const val = Math.max(0, Math.min(100, rawVal));
+    setBuyers(prev => {
+      if (prev.length === 2) {
+        const otherShare = Math.max(0, 100 - val);
+        return prev.map(b => {
+          if (b.id === id) {
+            return {
+              ...b,
+              sharePercentage: val,
+              share: val === 100 ? 'كامل العقار (100%)' : val === 50 ? 'النصف (50%)' : `${val}%`,
+            };
+          } else {
+            return {
+              ...b,
+              sharePercentage: otherShare,
+              share: otherShare === 100 ? 'كامل العقار (100%)' : otherShare === 50 ? 'النصف (50%)' : `${otherShare}%`,
+            };
+          }
+        });
+      } else if (prev.length > 2) {
+        const otherSum = prev.filter(b => b.id !== id).reduce((acc, b) => acc + (b.sharePercentage || 0), 0);
+        if (otherSum + val > 100) {
+          let excess = (otherSum + val) - 100;
+          return prev.map(b => {
+            if (b.id === id) {
+              return { ...b, sharePercentage: val, share: `${val}%` };
+            }
+            if (excess > 0 && (b.sharePercentage || 0) > 0) {
+              const deduct = Math.min(b.sharePercentage || 0, excess);
+              excess -= deduct;
+              const newS = (b.sharePercentage || 0) - deduct;
+              return { ...b, sharePercentage: newS, share: `${newS}%` };
+            }
+            return b;
+          });
+        }
+        return prev.map(b => b.id === id ? { ...b, sharePercentage: val, share: `${val}%` } : b);
       }
-    ]);
+      return prev.map(b => b.id === id ? { ...b, sharePercentage: val, share: val === 100 ? 'كامل العقار (100%)' : `${val}%` } : b);
+    });
+  };
+
+  const distributeBuyerSharesEqually = () => {
+    if (buyers.length === 0) return;
+    const count = buyers.length;
+    const equal = Math.floor((100 / count) * 100) / 100;
+    let allocated = 0;
+    setBuyers(prev => prev.map((b, idx) => {
+      const share = idx === count - 1 ? Math.round((100 - allocated) * 100) / 100 : equal;
+      allocated += share;
+      const desc = count === 2 ? 'النصف (50%)' : count === 3 ? 'الثلث (33.33%)' : count === 4 ? 'الربع (25%)' : `${share}%`;
+      return { ...b, sharePercentage: share, share: desc };
+    }));
+  };
+
+  const addBuyer = () => {
+    setBuyers(prev => {
+      const count = prev.length + 1;
+      let updatedPrev = [...prev];
+      let newShare = 0;
+
+      if (prev.length === 1 && (prev[0].sharePercentage || 0) === 100) {
+        updatedPrev = [{
+          ...prev[0],
+          sharePercentage: 50,
+          share: 'النصف (50%)',
+        }];
+        newShare = 50;
+      } else {
+        const currentSum = prev.reduce((acc, b) => acc + (b.sharePercentage || 0), 0);
+        if (currentSum < 100) {
+          newShare = 100 - currentSum;
+        } else {
+          const equal = Math.floor((100 / count) * 100) / 100;
+          let allocated = 0;
+          updatedPrev = prev.map(b => {
+            allocated += equal;
+            return { ...b, sharePercentage: equal, share: `${equal}%` };
+          });
+          newShare = Math.round((100 - allocated) * 100) / 100;
+        }
+      }
+
+      return [
+        ...updatedPrev,
+        {
+          id: `buyer-${Date.now()}`,
+          fullName: '',
+          fatherName: '',
+          motherName: '',
+          dateOfBirth: '',
+          placeOfBirth: '',
+          nationality: 'مغربي',
+          profession: '',
+          address: '',
+          idType: 'CIN',
+          idNumber: '',
+          idIssueDate: '',
+          idIssuedBy: '',
+          maritalStatus: 'متزوج',
+          share: newShare === 50 ? 'النصف (50%)' : `${newShare}%`,
+          sharePercentage: newShare,
+          capacity: 'مشتري',
+          representationMode: 'شخصي',
+        }
+      ];
+    });
   };
 
   const removeBuyer = (id: string) => {
     if (buyers.length <= 1) return;
-    setBuyers(prev => prev.filter(b => b.id !== id));
+    setBuyers(prev => {
+      const filtered = prev.filter(b => b.id !== id);
+      if (filtered.length === 1) {
+        return [{
+          ...filtered[0],
+          sharePercentage: 100,
+          share: 'كامل العقار (100%)',
+        }];
+      }
+      return filtered;
+    });
   };
 
   const updateBuyer = (id: string, field: keyof SalePersonPartyInfo, val: any) => {
@@ -1028,24 +1219,38 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
       {/* LEGAL ENTITY NOTICE DIALOG (عند محاولة إدخال شخص معنوي)                    */}
       {/* ========================================================================= */}
       {legalEntityNotice && (
-        <div className="bg-amber-950/80 border-2 border-amber-500/80 rounded-2xl p-4 text-amber-200 flex items-start justify-between gap-3 shadow-xl animate-fade-in">
+        <div className="bg-amber-950/90 border-2 border-amber-500 rounded-2xl p-4 text-amber-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl animate-fade-in">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="font-bold text-sm text-white mb-1">تنبيه قانوني: حصر الصفة في الأشخاص الطبيعيين</h4>
               <p className="text-xs leading-relaxed text-amber-200">
                 هذا البيت مخصص حصرياً للبيع والشراء من طرف <strong>الأشخاص الطبيعيين (العاديين)</strong>. 
-                سيتم توجيهك إلى بيت البيع والشراء الخاص بالشخص المعنوي (الشركات والمؤسسات والجمعيات) عند اختياره في قائمة الرسوم.
-                لم يتم حذف أي من بياناتك المدخلة.
+                إذا كنت لا ترغب في إدخال شخص معنوي، يمكنك إلغاء هذا التنبيه وسيبقى التحرير مقتصراً بالكامل على الأشخاص الذاتيين دون أي تأثير على بياناتك.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setLegalEntityNotice(false)}
-            className="text-xs px-3 py-1 bg-amber-800/60 hover:bg-amber-700 text-white rounded-lg border border-amber-600/50"
-          >
-            إغلاق
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                setLegalEntityNotice(false);
+                setShowLegalEntityOption(false);
+              }}
+              className="text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl border border-red-400 flex items-center gap-1.5 transition shadow-xs"
+              title="إلغاء خيار الشخص المعنوي والاعتماد كشخص ذاتي فقط"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>إلغاء (التعامل مع شخص ذاتي فقط)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLegalEntityNotice(false)}
+              className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-600"
+            >
+              إغلاق
+            </button>
+          </div>
         </div>
       )}
 
@@ -1280,17 +1485,33 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLegalEntityNotice(true)}
-                  className="px-3 py-1.5 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold"
-                >
-                  🏢 إدخال شخص معنوي؟
-                </button>
+                {showLegalEntityOption && (
+                  <div className="inline-flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white text-xs shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setLegalEntityNotice(true)}
+                      className="px-2.5 py-1.5 text-slate-700 hover:bg-slate-50 font-bold flex items-center gap-1"
+                      title="الاستفسار حول بيع الشخص المعنوي (شركة / مؤسسة)"
+                    >
+                      <span>🏢 إدخال شخص معنوي؟</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLegalEntityOption(false);
+                        setLegalEntityNotice(false);
+                      }}
+                      className="px-2 py-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 border-r border-slate-200 transition"
+                      title="إلغاء وإخفاء خيار الشخص المعنوي (التعامل مع شخص ذاتي فقط)"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={addSeller}
-                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1"
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>إضافة بائع</span>
@@ -1299,7 +1520,7 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
             </div>
 
             {/* Sum of Shares Validation Banner */}
-            <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+            <div className={`p-3 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-2 ${
               sellersShareTotal === 100
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
                 : 'bg-red-50 border-red-300 text-red-900'
@@ -1312,10 +1533,21 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
                 )}
                 <span>
                   <strong>مجموع حصص البائعين:</strong> {sellersShareTotal}% 
-                  {sellersShareTotal === 100 ? ' — تم استكمال مجموع الحصص بنجاح (100%).' : ' — مجموع الحصص المدخلة لا يساوي كامل الحق المبيع. راجع الحصص قبل المتابعة.'}
+                  {sellersShareTotal === 100 ? ' — تم استكمال مجموع الحصص بنجاح (100%).' : ' — مجموع الحصص المدخلة لا يساوي كامل الحق المبيع (100%).'}
                 </span>
               </div>
-              <span className="font-mono font-bold text-sm">{sellersShareTotal}%</span>
+              <div className="flex items-center gap-2">
+                {sellers.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={distributeSellerSharesEqually}
+                    className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded text-[11px] font-bold text-slate-700 flex items-center gap-1 shadow-2xs transition"
+                  >
+                    ⚖️ توزيع الحصص بالتساوي
+                  </button>
+                )}
+                <span className="font-mono font-bold text-sm bg-white px-2 py-0.5 rounded border border-slate-200">{sellersShareTotal}%</span>
+              </div>
             </div>
 
             {/* Sellers List */}
@@ -1452,8 +1684,7 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
                         value={s.sharePercentage || 0}
                         onChange={e => {
                           const val = Number(e.target.value) || 0;
-                          updateSeller(s.id, 'sharePercentage', val);
-                          updateSeller(s.id, 'share', `${val}%`);
+                          handleSellerShareChange(s.id, val);
                         }}
                         className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold"
                       />
@@ -1744,7 +1975,7 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
 
             {/* Sum of Buyers Shares Validation Banner */}
             {buyers.length > 1 && (
-              <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+              <div className={`p-3 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-2 ${
                 buyersShareTotal === 100
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
                   : 'bg-red-50 border-red-300 text-red-900'
@@ -1757,10 +1988,19 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
                   )}
                   <span>
                     <strong>مجموع حصص المشترين:</strong> {buyersShareTotal}% 
-                    {buyersShareTotal === 100 ? ' — تم استكمال مجموع الحصص بنجاح (100%).' : ' — مجموع الحصص المدخلة للمشترين لا يساوي 100%. راجع الحصص المقتناة.'}
+                    {buyersShareTotal === 100 ? ' — تم استكمال مجموع الحصص بنجاح (100%).' : ' — مجموع الحصص المدخلة للمشترين لا يساوي 100% (راجع الحصص).'}
                   </span>
                 </div>
-                <span className="font-mono font-bold text-sm">{buyersShareTotal}%</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={distributeBuyerSharesEqually}
+                    className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 rounded text-[11px] font-bold text-slate-700 flex items-center gap-1 shadow-2xs transition"
+                  >
+                    ⚖️ توزيع الحصص بالتساوي
+                  </button>
+                  <span className="font-mono font-bold text-sm bg-white px-2 py-0.5 rounded border border-slate-200">{buyersShareTotal}%</span>
+                </div>
               </div>
             )}
 
@@ -1897,8 +2137,7 @@ export const SalePersonWizard: React.FC<DocumentWizardProps> = ({ state, setStat
                         value={b.sharePercentage || 0}
                         onChange={e => {
                           const val = Number(e.target.value) || 0;
-                          updateBuyer(b.id, 'sharePercentage', val);
-                          updateBuyer(b.id, 'share', `${val}%`);
+                          handleBuyerShareChange(b.id, val);
                         }}
                         className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold"
                       />
