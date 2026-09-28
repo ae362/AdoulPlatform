@@ -54,7 +54,8 @@ export type DocumentType =
   | 'رسم_اقرار_بدين'
   | 'رسم_استمرار_زواج'
   | 'توثيق_حكم_ثبوت_الزوجية'
-  | 'عزل_وكيل';
+  | 'عزل_وكيل'
+  | 'كفالة';
 
 // ============================================================================
 // 2. DOCUMENT CLASSIFICATION GROUPS
@@ -400,6 +401,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: 'توزيع حصص الواعدين بالكراء',
     buyerShareTitle: 'توزيع حصص الموعود لهم بالكراء',
   },
+  'كفالة': {
+    sellerGroup: 'المتكفلون / الكافلون',
+    sellerSingle: 'المتكفل / الكافل',
+    buyerGroup: 'المستفيدون / المكفولون',
+    buyerSingle: 'المستفيد / المكفول',
+    sellerAdd: 'إضافة متكفل',
+    buyerAdd: 'إضافة مستفيد',
+    sellerShareTitle: 'بيانات المتكفل',
+    buyerShareTitle: 'بيانات المستفيد',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -526,6 +537,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رهن حيازي', value: 'رهن_حيازي' },
       { label: 'رسم إبراء من دين', value: 'رسم_إبراء_من_دين' },
       { label: 'رسم اقرار بدين (الاعتراف)', value: 'رسم_اقرار_بدين' },
+      { label: 'رسم كفالة وتكفل', value: 'كفالة' },
       { label: 'رسم آخر', value: 'أخرى' },
     ],
     alert: 'يُراعى التحقق من الأهلية وحدود الوكالة دون التوسع في التأويل.',

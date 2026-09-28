@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -41,6 +41,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.6. Dedicated Promise to Lease (رسم وعد بالكراء - قانون 67.12 / 49.16 / ف 14 ق.ل.ع)
   if (dt === 'وعد_بالكراء' || dt.includes('وعد_بالكراء') || dt.includes('وعد بالكراء')) {
     return 'promise_to_lease';
+  }
+
+  // 2.7. Dedicated Kafala & Sponsorship (رسم الكفالة والتكفل العائلي - قانون 15.01 / التكفل العائلي)
+  if (dt === 'كفالة' || dt.includes('كفالة') || dt.includes('تكفل')) {
+    return 'kafala';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -320,6 +325,29 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 3, targetStep: 2, num: '③', title: 'الوكيل والنيابة', desc: 'الوكلاء وممارسة التوكيل والإنابة', icon: Building2 },
             { index: 4, targetStep: 3, num: '④', title: 'الصلاحيات ومحدد السجل', desc: 'التصرفات وفحص الفصل 889-1', icon: Scale },
             { index: 5, targetStep: 4, num: '⑤', title: 'الفحص والتقييد', desc: 'السجل المحلي والسجل الوطني', icon: Clock },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'المراجعة الذكية للرسم وتوثيقه', icon: FileCheck },
+          ]
+        };
+
+      case 'kafala':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم الكفالة والتكفل (6 مراحل متسلسلة وفق الضوابط الشرعية والقانونية)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step >= 4 && step < 7) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي ومجلس العقد', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'نوع الكفالة والمسار', desc: 'تحديد المسار والضوابط القانونية', icon: Scale },
+            { index: 3, targetStep: 2, num: '③', title: 'الأطراف والمستفيد', desc: 'المتكفل والمستفيد والقرابة', icon: Users },
+            { index: 4, targetStep: 3, num: '④', title: 'نطاق التكفل والمصاريف', desc: 'المعيشة والتمدرس والرعاية الصحية', icon: Heart },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الشهود والالتزام', desc: 'شهود المعرفة ومدة الالتزام', icon: Clock },
             { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'المراجعة الذكية للرسم وتوثيقه', icon: FileCheck },
           ]
         };

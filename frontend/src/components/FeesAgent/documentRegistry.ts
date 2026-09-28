@@ -55,6 +55,7 @@ import { DebtDischargeWizard } from './documents/other/DebtDischargeWizard';
 import { DebtAcknowledgmentWizard } from './documents/other/DebtAcknowledgmentWizard';
 import { OtherDocumentWizard } from './documents/other/OtherDocumentWizard';
 import { AgentDismissalWorkflow } from './documents/other/AgentDismissalWorkflow';
+import { KafalaWizard } from './documents/other/KafalaWizard';
 
 export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
@@ -109,6 +110,7 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'رسم_إبراء_من_دين': DebtDischargeWizard,
   'رسم_اقرار_بدين': DebtAcknowledgmentWizard,
   'عزل_وكيل': AgentDismissalWorkflow,
+  'كفالة': KafalaWizard,
   'أخرى': OtherDocumentWizard,
 };
 

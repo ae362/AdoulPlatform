@@ -1834,6 +1834,318 @@ ${suspensiveText}
 }
 
 
+
+// ============================================================================
+// KAFALA & TAKAFFUL DRAFT GENERATOR (رسم الكفالة والتكفل العائلي)
+// طبقاً لمقتضيات القانون رقم 15.01، ومدونة الأسرة، وقواعد الفقه المالكي المعمول بها
+// ============================================================================
+
+export function generateKafalaDraft(state: FeesAgentState): string {
+  if (!state) return '';
+  const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
+  const kafala = state.kafalaDeed;
+
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || 'تطوان';
+  const courtName = formatCourtName(meta.court || state.preReceptionVerification?.primaryCourt) || 'تطوان';
+  const courtSection = (meta as any).courtSection || 'قسم قضاء الأسرة والتوثيق';
+  const regBook = (meta as any).registryBookType || 'كناش الرسوم المختلفة';
+  const regNum = meta.registryNumber || state.preReceptionVerification?.registryRecord?.number || '---';
+  const regPage = meta.registryPage || state.preReceptionVerification?.registryRecord?.page || '---';
+  const regCount = meta.registryCount || state.preReceptionVerification?.registryRecord?.count || '---';
+  const regDate = meta.dateGregorian || state.preReceptionVerification?.receptionDate || new Date().toISOString().split('T')[0];
+  const dateHijri = meta.dateHijri || convertGregorianToHijri(regDate);
+  const notary1 = meta.notaryPrimary || state.preReceptionVerification?.notary1Name || 'العدل الأول';
+  const notary2 = meta.notarySecondary || state.preReceptionVerification?.notary2Name || 'العدل الثاني';
+
+  const isAbandonedChild = kafala?.legalRegime === 'قانون_15.01_طفل_مهمل' || kafala?.kafalaCategory === 'كفالة_طفل_مهمل';
+
+  // Title
+  let deedTitle = 'رسم إشهاد بالتكفل والإنفاق العائلي';
+  let deedSubTitle = '(تصريح رضائي بالالتزام بالنفقة والمعيشة والرعاية طبقاً لمدونة الأسرة وقواعد الفقه المالكي)';
+
+  if (isAbandonedChild) {
+    deedTitle = 'رسم إشهاد بكفالة طفل مهمل';
+    deedSubTitle = '(محرر رسمي مشهود به طبقاً لمقتضيات القانون رقم 15.01 المتعلق بكفالة الأطفال المهملين)';
+  } else if (kafala?.kafalaCategory === 'تكفل_بالوالدين') {
+    deedTitle = 'رسم إشهاد ببر الوالدين والإنفاق عليهما';
+    deedSubTitle = '(إشهاد رسمي بالنفقة والرعاية التامة للوالدين أو أحدهما)';
+  } else if (kafala?.kafalaCategory === 'تكفل_بالتربية_والتمدرس') {
+    deedTitle = 'رسم إشهاد بالتكفل بالتمدرس والرعاية التعليمية';
+    deedSubTitle = '(إشهاد رسمي بتحمل كافة مصاريف الدراسة والتعليم والتكوين)';
+  } else if (kafala?.kafalaCategory === 'تكفل_بين_الإخوة') {
+    deedTitle = 'رسم إشهاد بالتكفل العائلي بين الإخوة';
+    deedSubTitle = '(إشهاد رسمي بالتعاون الأسري والإنفاق على الإخوة)';
+  } else if (kafala?.kafalaCategory === 'تكفل_بشخص_عاجز_أو_ذي_إعاقة') {
+    deedTitle = 'رسم إشهاد بالتكفل بشخص في وضعية إعاقة أو عجز';
+    deedSubTitle = '(إشهاد رسمي بتحمل نفقات العلاج والرعاية الصحية واليومية)';
+  }
+
+  // Parties
+  const sponsorRoleTitle = isAbandonedChild ? 'الكافل' : 'المتكفل / الملتزم بالنفقة';
+  const beneficiaryRoleTitle = isAbandonedChild ? 'المكفول (الطفل المهمل)' : 'المستفيد / المكفول برعايته';
+
+  const sponsorsList = (kafala?.sponsors && kafala.sponsors.length > 0)
+    ? kafala.sponsors
+    : (state.sellers && state.sellers.length > 0)
+    ? state.sellers.map(s => ({
+        id: s.id || '',
+        isLegalEntity: false,
+        role: s.partyRole || 'متكفل',
+        fullName: s.name || '',
+        fatherName: s.fatherName || '',
+        motherName: s.motherName || '',
+        dateOfBirth: s.dateOfBirth || '',
+        placeOfBirth: s.placeOfBirth || '',
+        nationality: (s.nationality as any) || 'مغربي',
+        profession: s.profession || '',
+        address: s.address || '',
+        idNumber: s.idNumber || '',
+      }))
+    : [];
+
+  const beneficiariesList = (kafala?.beneficiaries && kafala.beneficiaries.length > 0)
+    ? kafala.beneficiaries
+    : (state.buyers && state.buyers.length > 0)
+    ? state.buyers.map(b => ({
+        id: b.id || '',
+        isLegalEntity: false,
+        role: b.partyRole || 'مستفيد',
+        fullName: b.name || '',
+        fatherName: b.fatherName || '',
+        motherName: b.motherName || '',
+        dateOfBirth: b.dateOfBirth || '',
+        placeOfBirth: b.placeOfBirth || '',
+        nationality: (b.nationality as any) || 'مغربي',
+        profession: b.profession || '',
+        address: b.address || '',
+        idNumber: b.idNumber || '',
+      }))
+    : [];
+
+  const sponsorsText = sponsorsList.length > 0
+    ? sponsorsList.map((s, idx) => {
+        return `${idx + 1}. السيد(ة) ${s.fullName || '---'}${s.fatherName ? ` بن ${s.fatherName}` : ''}${s.motherName ? ` وأمه ${s.motherName}` : ''}، المزداد(ة) في ${s.dateOfBirth || '---'} بـ ${s.placeOfBirth || '---'}، جنسيته(ا) ${s.nationality || 'مغربية'}، مهنته(ا) ${s.profession || '---'}، الساكن(ة) بـ ${s.address || '---'}، الحامل(ة) للبطاقة الوطنية للتعريف رقم ${s.idNumber || '---'}.`;
+      }).join('\n')
+    : `الطرف ${sponsorRoleTitle}: [لم يتم إدخال بيانات الطرف]`;
+
+  const beneficiariesText = beneficiariesList.length > 0
+    ? beneficiariesList.map((b, idx) => {
+        const idClause = b.idNumber ? `الحامل(ة) للبطاقة الوطنية للتعريف رقم ${b.idNumber}` : (b.dateOfBirth ? `(قاصر تاريخ ازدياده: ${b.dateOfBirth})` : 'بيانات الهوية قيد الإدخال');
+        const schoolClause = b.schoolOrUniName ? `، يتابع دراسته بمؤسسة (${b.schoolOrUniName}) - المستوى: (${b.gradeLevel || '---'})` : '';
+        return `${idx + 1}. السيد(ة)/الطفل(ة) ${b.fullName || '---'}${b.fatherName ? ` بن ${b.fatherName}` : ''}${b.motherName ? ` وأمه ${b.motherName}` : ''}، المزداد(ة) في ${b.dateOfBirth || '---'} بـ ${b.placeOfBirth || '---'}، ${idClause}${schoolClause}، الساكن(ة) بـ ${b.address || 'مع المتكفل'}.`;
+      }).join('\n')
+    : `الطرف ${beneficiaryRoleTitle}: [لم يتم إدخال بيانات الطرف]`;
+
+  // Support Scope
+  const scope = kafala?.supportScope;
+  const scopeItems: string[] = [];
+  if (scope?.allBasicExpenses) scopeItems.push('جميع المصاريف الأساسية والضرورية للحياة الكريمة');
+  if (scope?.foodAndDrink) scopeItems.push('المأكل والمشرب');
+  if (scope?.clothing) scopeItems.push('الملبس وكسوة الصيف والشتاء');
+  if (scope?.housing) scopeItems.push('توفير السكن اللائق والمستقر');
+  if (scope?.medicalAndDrugs) scopeItems.push('العلاج والرعاية الصحية والأدوية والاستشفاء');
+  if (scope?.schooling) scopeItems.push('التمدرس والتسجيل بالمدارس والمعاهد');
+  if (scope?.studyExpenses) scopeItems.push('مصاريف الدراسة والكتب واللوازم والأنشطة الموازية');
+  if (scope?.vocationalTraining) scopeItems.push('التكوين المهني والتأهيل الحرفي');
+  if (scope?.dailyCare) scopeItems.push('الرعاية اليومية والمتابعة المعيشية التامة');
+  if (scope?.transport) scopeItems.push('مصاريف التنقل والمواصلات');
+  if (scope?.otherExpenses && scope.otherExpensesText) scopeItems.push(`مصاريف إضافية: ${scope.otherExpensesText}`);
+
+  const scopeText = scopeItems.length > 0
+    ? scopeItems.map(item => `  - ${item}`).join('\n')
+    : '  - تحمل سائر نفقات المعيشة الضرورية من مأكل وملبس ومسكن وعلاج.';
+
+  // Financial Commitment
+  const fin = kafala?.financialCommitment;
+  let finText = '';
+  if (fin?.commitmentType === 'مبلغ_شهري_محدد' && fin.amount) {
+    const amtWords = fin.amountInWords || convertNumberToArabicWords(fin.amount);
+    finText = `التزم المتكفل بأداء وجيبة نفقة دورية شهرية محددة قدرها: [ ${fin.amount.toLocaleString()} درهم ] (${amtWords} درهماً مغربياً)، تؤدى شهرياً بانتظام دون تماطل أو تأخير.`;
+  } else if (fin?.commitmentType === 'مبلغ_سنوي' && fin.amount) {
+    const amtWords = fin.amountInWords || convertNumberToArabicWords(fin.amount);
+    finText = `التزم المتكفل بأداء مخصص مالي سنوي قدره: [ ${fin.amount.toLocaleString()} درهم ] (${amtWords} درهماً مغربياً).`;
+  } else {
+    finText = `التزم المتكفل بتحمل كافة المصاريف الفعلية والضرورية اللازمة للمستفيد بحسب الحاجة والقدرة ووفق متطلبات المعيشة الكريمة، دون تحديد سقف مالي مسبق.`;
+  }
+
+  // Sponsorship Reason & Special Details
+  const reason = kafala?.sponsorshipReason;
+  let reasonText = '';
+  if (reason?.primaryReason === 'صلة_الرحم_وبر_الوالدين') {
+    reasonText = 'بدافع بر الوالدين وصلة الرحم والواجب الشرعي والأخلاقي في رعاية الأبوين وتوفير العيش الكريم لهما.';
+    if (reason.parentsCondition) {
+      const p = reason.parentsCondition;
+      reasonText += ` وثبت أن الوالدين ${p.hasIncome ? 'لهما دخل محدود لا يفي بحاجاتهما' : 'لا دخل قار لهما'}، ${p.hasMedicalExpenses ? 'ويعانيان من أمراض مزمنة تتطلب متابعة طبية مستمرة' : ''}، وأنهما تحت رعاية ونفقة ابنهما المتكفل.`;
+    }
+  } else if (reason?.primaryReason === 'صغر_سن_المستفيد') {
+    reasonText = 'نظراً لصغر سن المكفول وحاجته الماسة إلى التربية والرعاية والتنشئة السليمة.';
+  } else if (reason?.primaryReason === 'متابعة_الدراسة') {
+    reasonText = 'لتمكين المستفيد من متابعة مساره الدراسي والجامعي وتوفير البيئة والظروف الملائمة للتحصيل العلمي.';
+  } else if (reason?.primaryReason === 'المرض_أو_العجز') {
+    reasonText = 'نظراً للحالة الصحية للمستفيد وثبوت عجزه عن التكسب والإنفاق على نفسه واحتياجه إلى الرعاية المستمرة.';
+  } else if (reason?.primaryReason === 'وفاة_الوالدين_أو_أحدهما') {
+    reasonText = 'نظراً لوفاة الوالدين (أو أحدهما) وقيام المتكفل مقامهما في الرعاية والنفقة والتعهد.';
+  } else {
+    reasonText = reason?.reasonDetails || 'بدافع التضامن الأسري والتكافل الإنساني المشروع.';
+  }
+
+  // Duration & Commitment Nature
+  const duration = kafala?.commitmentNature;
+  let durationText = '';
+  if (duration?.natureType === 'تصريح_بواقعة_قائمة') {
+    durationText = 'يعد هذا الإشهاد إقراراً وتصريحاً رسمياً بواقعة التكفل الفعلي القائم منذ مدة سابقة والمستمر إلى الآن.';
+  } else if (duration?.natureType === 'التزام_لمدة_محددة') {
+    durationText = `التزام مستقبلي محدد المدة، يسري من تاريخ ${duration.startDate || 'هذا الرسم'} إلى غاية ${duration.endDate || '---'}.`;
+  } else if (duration?.natureType === 'مستمر_لحين_تحقق_سبب') {
+    const termMap: Record<string, string> = {
+      'بلوغ_سن_الرشد': 'بلوغ المستفيد سن الرشد القانوني (18 سنة شمسية كاملة) واستقلاله بالمعيشة',
+      'انتهاء_الدراسة': 'انتهاء المستفيد من متابعة دراسته وتخرجه وحصوله على عمل قار',
+      'الشفاء_وزوال_المرض': 'شفاء المستفيد وزوال حالة العجز واستطاعته التكسب',
+      'تحسن_الوضعية': 'تحسن وضعية المستفيد المالية واستغنائه عن الدعم',
+      'اتفاق_الأطراف': 'اتفاق الطرفين كتابة على إنهاء التكفل',
+      'أخرى': 'تحقق السبب المتفق عليه',
+    };
+    durationText = `التزام مستمر يسري ابتداءً من تاريخه وإلى غاية [ ${termMap[duration.terminationEvent || ''] || duration.terminationEvent || 'تحقق الغاية المرجوة'} ].`;
+  } else {
+    durationText = 'التزام مستمر دائم تبرأ منه ذمة المتكفل شرعاً وقانوناً وفق الضوابط المعمول بها.';
+  }
+
+  // Purpose / Destination
+  const purpose = kafala?.purposeOfDeed;
+  const destMap: Record<string, string> = {
+    'إثبات_التكفل_أمام_إدارة': 'الإدلاء به لدى المصالح الإدارية المختصة لإثبات واقعة التكفل والإنفاق',
+    'ملف_مدرسي_أو_منحة': 'الإدلاء به في الملف المدرسي ونيل المنح التعليمية والخدمات المدرسية',
+    'ملف_جامعي': 'التسجيل بالمؤسسات الجامعية وملف السكن والمنحة الجامعية',
+    'ملف_طبي_وتغطية_صحية': 'تسجيل المستفيد ضمن نظام التغطية الصحية والتأمين الإجباري الأساسي عن المرض (AMO / CNSS / CNOPS)',
+    'ملف_اجتماعي': 'الاستفادة من برامج الدعم الاجتماعي وصناديق التكافل',
+    'ملف_إقامة_أو_تجمع_عائلي': 'الإدلاء به في ملف الإقامة أو التجمع العائلي',
+    'ملف_تأشيرة_سفر': 'تقديمه إلى المصالح القنصلية وسفارات الدول المعنية لطلب التأشيرة',
+    'ملف_إداري_أجنبي': 'الإدلاء به أمام السلطات والمؤسسات الإدارية الأجنبية المختصة',
+    'ملف_قضائي': 'الإدلاء به أمام القضاء ومحاكم المملكة',
+    'إثبات_النفقة': 'إثبات أداء الواجب الشرعي في النفقة',
+    'غرض_شخصي': 'الاستعمال الشخصي المشروع عند الحاجة',
+    'غرض_آخر': purpose?.destinationDetails || 'استعماله فيما يسمح به القانون',
+  };
+  let purposeText = destMap[purpose?.destination || ''] || 'الإدلاء به لدى الجهات الإدارية والمؤسساتية المعنية للمطالبة بكافة الحقوق والمزايا المترتبة عن التكفل قانوناً.';
+  if (purpose?.foreignEntityInfo?.country) {
+    purposeText += `\n  - الوجهة الدولية المعتمدة: دولة (${purpose.foreignEntityInfo.country})${purpose.foreignEntityInfo.entityName ? ` - الجهة: (${purpose.foreignEntityInfo.entityName})` : ''}.`;
+    if (purpose.foreignEntityInfo.needsApostille) {
+      purposeText += `\n  - يخضع هذا الرسم لإجراءات التأشير بالأبوستيل (Apostille) طبقاً لاتفاقية لاهاي لسنة 1961.`;
+    }
+  }
+
+  // Abandoned Child Section (Law 15.01)
+  let abandonedChildSection = '';
+  if (isAbandonedChild && kafala?.abandonedChildDetails) {
+    const ac = kafala.abandonedChildDetails;
+    abandonedChildSection = `
+ثالثاً: المراجع والقرارات القضائية المؤطرة للكفالة (القانون 15.01):
+------------------------------------------------------------------
+1. حكم التصريح بالإهمال: صادر عن المحكمة الابتدائية بـ (${ac.courtName || courtName}) تحت رقم (${ac.rulingNumber || '---'}) بتاريخ (${ac.rulingDate || '---'}) القاضي بالتصريح بأن الطفل مكفول مهمل طبقاً للمادتين 1 و 2 من القانون 15.01.
+2. أمر إسناد الكفالة: صادر عن السيد قاضي شؤون القاصرين (${ac.juvenileJudgeName ? 'الأستاذ: ' + ac.juvenileJudgeName : 'بالمحكمة الابتدائية بـ ' + courtName}) ملف عدد (${ac.assignmentOrderNumber || '---'}) بتاريخ (${ac.assignmentOrderDate || '---'}) المسند بموجبه كفالة الطفل المذكور للكافل أعلاه.
+3. البحث الاجتماعي: استناداً إلى تقرير البحث الاجتماعي المنجز تحت عدد (${ac.socialReportReference || '---'}) المثبت لأهلية الكافل واستيفائه لكافة الشروط المنصوص عليها في المادة 9 من القانون 15.01.
+${ac.childConsentObtainedIfOver12 ? '4. موافقة المكفول: تم الإشهاد على موافقة المكفول الشخصية الصريحة بعد أن بلغ أكثر من 12 سنة شمسية طبقاً للمادة 16 من القانون 15.01.' : ''}
+`;
+  }
+
+  // Witnesses Section
+  const witnessesList = (kafala?.witnesses && kafala.witnesses.length > 0)
+    ? kafala.witnesses
+    : (state.witnesses && state.witnesses.length > 0)
+    ? state.witnesses.map(w => ({
+        id: w.id || '',
+        fullName: w.name || '',
+        idNumber: w.idNumber || '',
+        profession: w.profession || '',
+        address: w.address || '',
+        testimonyPoints: ['صلة_القرابة', 'واقعة_التكفل', 'نوع_المصاريف', 'استمرار_التكفل'] as any,
+      }))
+    : [];
+
+  const witnessesBlock = witnessesList.length > 0
+    ? witnessesList.map((w, idx) => {
+        const pointsLabels: Record<string, string> = {
+          'صلة_القرابة': 'معرفة صلة القرابة المذكورة',
+          'واقعة_التكفل': 'معاينة واقعة الإنفاق والتكفل الفعلي',
+          'نوع_المصاريف': 'شمول التكفل للغذاء والكسوة والمسكن والعلاج',
+          'استمرار_التكفل': 'استمرار الإنفاق دون انقطاع',
+          'محل_إقامة_المستفيد': 'مساكنة المستفيد للمتكفل أو إيوائه له',
+          'قدرة_الكافل': 'ملاءة المتكفل وقدرته المالية على الإنفاق',
+          'أخرى': 'شهادة المعرفة التامة بحالة الطرفين',
+        };
+        const points = (w.testimonyPoints && w.testimonyPoints.length > 0)
+          ? w.testimonyPoints.map(p => pointsLabels[p] || p).join('، ')
+          : 'المعرفة التامة بالطرفين وواقعة الإنفاق الفعلي';
+        return `الشاهد (${idx + 1}): السيد(ة) ${w.fullName || '---'}${w.fatherName ? ` بن ${w.fatherName}` : ''}، مهنته(ا) ${w.profession || '---'}، الساكن(ة) بـ ${w.address || '---'}، الحامل(ة) للبطاقة الوطنية للتعريف رقم ${w.idNumber || '---'}.\n   مضمون الشهادة: أدى شهادته تحت مسؤوليته الكاملة مشهداً بـ [ ${points} ].`;
+      }).join('\n\n')
+    : 'لم يتم تعيين شاهدي المعرفة في هذا الرسم بعد.';
+
+  return `================================================================================
+                         المملكة المغربية - وزارة العدل
+دائرة محكمة الاستئناف بـ ${appellateCourt} - المحكمة الابتدائية بـ ${courtName} (${courtSection})
+سجل البيانات: كناش ${regBook} | رقم: ${regNum} | صحيفة: ${regPage} | عدد: ${regCount}
+بتاريخ: ${regDate} موافق ${dateHijri} هـ
+العدلان المنتصبان للإشهاد: ${notary1} و ${notary2}
+================================================================================
+
+                               ${deedTitle}
+                 ${deedSubTitle}
+
+الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
+في يوم ${getArabicWeekdayName(regDate) || 'اليوم'} الموافق لـ ${dateHijri} هجرية و ${meta.dateGregorianInWords ? meta.dateGregorianInWords : regDate} ميلادية،
+أمامنا نحن العدلين الموقعين أسفله، المنتصبين للإشهاد بدائرة المحكمة الابتدائية بـ ${courtName}:
+
+حضر الطرفان الآتية هويتهما وبياناتهما:
+
+أولاً: [ ${sponsorRoleTitle} ]:
+------------------------------------
+${sponsorsText}
+
+ثانياً: [ ${beneficiaryRoleTitle} ]:
+------------------------------------
+${beneficiariesText}
+${abandonedChildSection}
+ثالثاً: التصريح بالالتزام وموجب التكفل:
+--------------------------------------
+صرح المتكفل وأشهد على نفسه بطوعه ورضاه وكامل أهليته المعتبرة شرعاً وقانوناً، بأنه يتكفل بالرعاية الكاملة والإنفاق التام على المستفيد المذكور، ${reasonText}
+
+رابعاً: نطاق التكفل والمصاريف المشمولة:
+-------------------------------------
+يشمل هذا التكفل والالتزام ما يلي:
+${scopeText}
+
+خامساً: الالتزام المالي وكيفية التحمل:
+-------------------------------------
+${finText}
+
+سادساً: مدة التكفل وسريانه القانوني:
+-----------------------------------
+${durationText}
+
+سابعاً: الغرض المخصص له هذا الرسم:
+----------------------------------
+حرر هذا الإشهاد للإدلاء به وتقديمه لـ:
+  - ${purposeText}
+
+ثامناً: بينة المعرفة والشهود:
+----------------------------
+بمحضر الشاهدين الحاضرين بمجلس العقد بعد التعريف بهما:
+${witnessesBlock}
+وقد شهد الشاهدان المذكوران بعد استفسارهما وتحذيرهما طبقاً للقانون، بمعرفتهما التامة للطرفين ومعاينتهما لقيام واقعة التكفل والإنفاق المذكورين دون معارضة ولا منازع.
+
+تاسعاً: الإشهاد وتلاوة الرسم:
+----------------------------
+وبما ذكر كله صرح الأطراف والشهود، وتليت عليهم فصول هذا الرسم حرفياً ففهموا مضمونه ومرماه وارتضوه، وبمقتضاه وقع الإشهاد عليهم من لدن العدلين المنتصبين، وحفظ للعدل الأول وحرر في التاريخ والساعة المباركة المذكورة أعلاه.
+
+توقيع المتكفل / الكافل: ________________________
+توقيع المستفيد / المكفول (عند الاقتضاء): _________
+توقيع الشاهد الأول: ____________________________
+توقيع الشاهد الثاني: ___________________________
+توقيع العدل الأول: _____________________________
+توقيع العدل الثاني: ____________________________
+`.trim();
+}
+
 // ============================================================================
 // SALE PERSON DRAFT GENERATOR (رسم البيع والشراء – الشخص الطبيعي/العادي)
 // وفق المادة 4 من القانون 39.08 وظهير الالتزامات والعقود
@@ -2372,6 +2684,14 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       return state.draft;
     }
     return generatePromiseToSellDraft(state);
+  }
+
+  // Kafala & Takafful deed (رسم الكفالة والتكفل العائلي - قانون 15.01 ومدونة الأسرة)
+  if (documentType === 'كفالة' || documentType.includes('كفالة') || documentType.includes('تكفل') || state.kafalaDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    return generateKafalaDraft(state);
   }
 
   // Promise to Lease deed (رسم وعد بالكراء - قانون 67.12 / قانون 49.16 / ف 14 ق.ل.ع)

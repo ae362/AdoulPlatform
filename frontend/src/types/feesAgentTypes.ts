@@ -1453,6 +1453,228 @@ export interface PromiseToLeaseDeed {
 }
 
 // ============================================================================
+// KAFALA & SPONSORSHIP DEED (رسم الكفالة والتكفل العائلي)
+// Law 15.01, Family Code (Moudawana), & Notarial Practice
+// ============================================================================
+
+export type KafalaCategory =
+  | 'كفالة_طفل_مهمل'
+  | 'كفالة_طفل_غير_مهمل'
+  | 'تكفل_بالنفقة_والمعيشة'
+  | 'تكفل_بالتربية_والتمدرس'
+  | 'تكفل_بالوالدين'
+  | 'تكفل_بين_الإخوة'
+  | 'تكفل_بالزوج_أو_الزوجة'
+  | 'تكفل_بشخص_عاجز_أو_ذي_إعاقة'
+  | 'تكفل_بأحد_الأقارب'
+  | 'أخرى';
+
+export type SponsorRole =
+  | 'ابن'
+  | 'بنت'
+  | 'أبوان'
+  | 'أم'
+  | 'أب'
+  | 'أخ'
+  | 'أخت'
+  | 'أحد_الأقارب'
+  | 'زوجان'
+  | 'شخص_معنوي'
+  | 'شخص_آخر';
+
+export type BeneficiaryRole =
+  | 'أب'
+  | 'أم'
+  | 'كلا_الوالدين'
+  | 'ابن'
+  | 'ابنة'
+  | 'إخوة'
+  | 'زوجة'
+  | 'زوج'
+  | 'طفل_أطفال'
+  | 'شخص_عاجز'
+  | 'شخص_آخر';
+
+export type KinshipRelation =
+  | 'أب'
+  | 'أم'
+  | 'ابن'
+  | 'بنت'
+  | 'أخ'
+  | 'أخت'
+  | 'جد'
+  | 'جدة'
+  | 'حفيد'
+  | 'عم'
+  | 'عمة'
+  | 'خال'
+  | 'خالة'
+  | 'ابن_أخ'
+  | 'ابن_أخت'
+  | 'قريب_آخر'
+  | 'لا_توجد_قرابة';
+
+export interface KafalaPartyInfo {
+  id: string;
+  isLegalEntity: boolean;
+  role: string;
+  fullName: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  nationality?: string;
+  idNumber?: string;
+  idType?: 'بطاقة_تعريف_وطنية' | 'جواز_سفر' | 'بطاقة_إقامة' | 'عقد_ازدياد' | 'أخرى';
+  address?: string;
+  profession?: string;
+  maritalStatus?: string;
+  relationshipToOther?: KinshipRelation;
+  // Specific for beneficiaries
+  age?: number;
+  isAdult?: boolean;
+  statusDetails?: string;
+  schoolOrUniName?: string;
+  gradeLevel?: string;
+  hasIncomeOrPension?: boolean;
+}
+
+export interface KafalaWitnessInfo {
+  id: string;
+  fullName: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  profession?: string;
+  address?: string;
+  idNumber: string;
+  relationshipToParties?: string;
+  knowledgeMethod?: string;
+  testimonyPoints: Array<
+    | 'صلة_القرابة'
+    | 'واقعة_التكفل'
+    | 'نوع_المصاريف'
+    | 'استمرار_التكفل'
+    | 'محل_إقامة_المستفيد'
+    | 'قدرة_الكافل'
+    | 'أخرى'
+  >;
+}
+
+export interface KafalaDeed {
+  // 1. Process Classification
+  kafalaCategory: KafalaCategory;
+  legalRegime: 'قانون_15.01_طفل_مهمل' | 'مسار_خاص_طفل_غير_مهمل' | 'تكفل_عائلي_تصريح_بشهود' | 'التزام_بالنفقة';
+
+  // 2. Sponsor & Beneficiary Selection
+  sponsorRole: SponsorRole;
+  beneficiaryRole: BeneficiaryRole;
+  kinshipRelation: KinshipRelation;
+
+  // 3. Parties Data
+  sponsors: KafalaPartyInfo[];
+  beneficiaries: KafalaPartyInfo[];
+
+  // 4. Scope of Support / Expenses
+  supportScope: {
+    allBasicExpenses: boolean;
+    foodAndDrink: boolean;
+    clothing: boolean;
+    housing: boolean;
+    medicalAndDrugs: boolean;
+    schooling: boolean;
+    studyExpenses: boolean;
+    vocationalTraining: boolean;
+    dailyCare: boolean;
+    transport: boolean;
+    otherExpenses: boolean;
+    otherExpensesText?: string;
+  };
+
+  // 5. Financial Commitment
+  financialCommitment: {
+    commitmentType: 'تحمل_المصاريف_الفعلية' | 'مبلغ_شهري_محدد' | 'مبلغ_سنوي' | 'مبلغ_غير_دوري';
+    amount?: number;
+    amountInWords?: string;
+  };
+
+  // 6. Reasons & Special Context
+  sponsorshipReason: {
+    primaryReason:
+      | 'صلة_الرحم_وبر_الوالدين'
+      | 'صغر_سن_المستفيد'
+      | 'متابعة_الدراسة'
+      | 'المرض_أو_العجز'
+      | 'وفاة_الوالدين_أو_أحدهما'
+      | 'عجز_الوالدين_عن_الإنفاق'
+      | 'ظروف_اجتماعية_خاصة'
+      | 'أخرى';
+    reasonDetails?: string;
+    isBeneficiaryAdult: boolean;
+    adultSupportReason?: 'الدراسة' | 'المرض' | 'الإعاقة' | 'البطالة_أو_ظرف_اجتماعي' | 'أخرى';
+    parentsCondition?: {
+      hasIncome: boolean;
+      hasPension: boolean;
+      hasMedicalExpenses: boolean;
+      isFullSupport: boolean;
+    };
+  };
+
+  // 7. Purpose / Destination of Deed
+  purposeOfDeed: {
+    destination:
+      | 'إثبات_التكفل_أمام_إدارة'
+      | 'ملف_مدرسي_أو_منحة'
+      | 'ملف_جامعي'
+      | 'ملف_طبي_وتغطية_صحية'
+      | 'ملف_اجتماعي'
+      | 'ملف_إقامة_أو_تجمع_عائلي'
+      | 'ملف_تأشيرة_سفر'
+      | 'ملف_إداري_أجنبي'
+      | 'ملف_قضائي'
+      | 'إثبات_النفقة'
+      | 'غرض_شخصي'
+      | 'غرض_آخر';
+    destinationDetails?: string;
+    foreignEntityInfo?: {
+      country?: string;
+      language?: string;
+      needsApostille?: boolean;
+      entityName?: string;
+    };
+  };
+
+  // 8. Duration & Commitment Nature
+  commitmentNature: {
+    natureType: 'تصريح_بواقعة_قائمة' | 'التزام_مستقبلي' | 'إقرار_بتكفل_قائم_ومستمر' | 'التزام_لمدة_محددة' | 'مستمر_لحين_تحقق_سبب';
+    startDate?: string;
+    endDate?: string;
+    terminationEvent?: 'بلوغ_سن_الرشد' | 'انتهاء_الدراسة' | 'الشفاء_وزوال_المرض' | 'تحسن_الوضعية' | 'اتفاق_الأطراف' | 'أخرى';
+  };
+
+  // 9. Abandoned Child Specifics (قانون 15.01)
+  abandonedChildDetails?: {
+    isAbandonmentJudiciallyDeclared: boolean;
+    courtName?: string;
+    rulingNumber?: string;
+    rulingDate?: string;
+    juvenileJudgeName?: string;
+    socialReportReference?: string;
+    childConsentObtainedIfOver12?: boolean;
+    assignmentOrderNumber?: string;
+    assignmentOrderDate?: string;
+  };
+
+  // 10. Witnesses Engine
+  witnesses: KafalaWitnessInfo[];
+
+  // 11. Pre-Reception Verification Gate Linkage
+  isPreReceptionVerified?: boolean;
+  preReceptionNotes?: string;
+}
+
+// ============================================================================
 // SALE PERSON DEED (رسم البيع والشراء – الشخص الطبيعي/العادي)
 // ============================================================================
 
@@ -3995,6 +4217,9 @@ export interface FeesAgentState {
 
   // PromiseToLease State (رسم وعد بالكراء)
   promiseToLease?: PromiseToLeaseDeed;
+
+  // KafalaDeed State (رسم الكفالة والتكفل العائلي)
+  kafalaDeed?: KafalaDeed;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;
