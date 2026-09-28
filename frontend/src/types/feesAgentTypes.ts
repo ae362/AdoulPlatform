@@ -1332,6 +1332,9 @@ export interface SaleEncumbranceItem {
   reference?: string;
   impactOnSale?: string;
   resolutionChoice: 'رفع_قبل_البيع' | 'رفع_بالتزامن' | 'بقاء_التحمل' | 'موافقة_صاحب_الحق' | 'تحقق_قانوني' | 'إيقاف_مؤقت';
+  type?: string;
+  description?: string;
+  status?: string;
 }
 
 export interface SaleTitleChainItem {
@@ -1411,6 +1414,11 @@ export interface SalePersonPropertyDetails {
   buildingsAndInstallations?: string;
   waterAndPassageRights?: string;
   easementsOrDisclosedRights?: string;
+  titleName?: string;
+  conservationOffice?: string;
+  location?: string;
+  titleOriginDeed?: string;
+  titleOriginReferences?: string;
 }
 
 export interface SalePaymentInstallment {
@@ -1521,6 +1529,199 @@ export interface SalePersonDeed {
   reviewDecision?: 'جاهز_للتحرير' | 'يحتاج_مراجعة' | 'متوقف' | '';
   auditTrail?: SalePersonAuditEntry[];
 }
+
+// ============================================================================
+// Legal Entity Real Estate Purchase (رسم شراء عقار لفائدة شخص معنوي)
+// ============================================================================
+
+export type LegalEntityNature =
+  | 'شركة_تجارية'
+  | 'تعاونية'
+  | 'جمعية'
+  | 'مؤسسة_أو_هيئة_عامة'
+  | 'شخص_معنوي_آخر'
+  | 'شخص_معنوي_أجنبي';
+
+export type CommercialCompanySubtype =
+  | 'SARL'
+  | 'SA'
+  | 'SAS'
+  | 'SNC'
+  | 'شركة_توصية_بسيطة'
+  | 'شركة_توصية_بالأسهم'
+  | 'أخرى';
+
+export type LegalEntityStatus =
+  | 'نشط'
+  | 'في_طور_التصفية'
+  | 'تحت_مسطرة_قضائية'
+  | 'مشطوب'
+  | 'أخرى';
+
+export interface LegalEntityRepresentationHistoryItem {
+  id: string;
+  period: string;
+  representativeName: string;
+  capacity: string;
+  source: string;
+}
+
+export interface LegalEntityBuyerInfo {
+  entityNature: LegalEntityNature;
+  companySubtype?: CommercialCompanySubtype;
+  legalName: string;
+  commercialName?: string;
+  legalForm: string;
+  headquarters: string;
+  city: string;
+  country: string;
+  rcNumber: string;
+  rcCourt: string;
+  ice: string;
+  ifNumber?: string;
+  creationDate?: string;
+  corporatePurpose: string;
+  purposeCompliance: 'نعم' | 'تحتاج_مراجعة' | 'يوجد_تعارض_ظاهر';
+  legalStatus: LegalEntityStatus;
+  statusNotes?: string;
+  foreignDetails?: {
+    countryOfOrigin?: string;
+    originalLegalName?: string;
+    foreignRegistrationNumber?: string;
+    foreignHeadquarters?: string;
+    hasApostilleOrLegalization?: boolean;
+    hasSwornTranslation?: boolean;
+    foreignDocumentsNotes?: string;
+  };
+  liquidationDetails?: {
+    liquidatorAppointmentDoc?: string;
+    appointmentDate?: string;
+    authorityLimits?: string;
+    liquidationStatus?: string;
+    hasPurchaseAuthorization?: boolean;
+  };
+  judicialProceedingsDetails?: {
+    proceedingType?: string;
+    court?: string;
+    caseNumber?: string;
+    judgmentDate?: string;
+    judicialReceiverName?: string;
+    authorityLimits?: string;
+    requiresSpecialCourtOrder?: boolean;
+  };
+  specialApproval?: {
+    requiresSpecialApproval?: 'نعم' | 'لا' | 'يحتاج_مراجعة';
+    authorityType?: string;
+    meetingDate?: string;
+    minutesNumber?: string;
+    approvalSubject?: string;
+    authorizedRepresentative?: string;
+    authorizationLimits?: string;
+    isMatchingOperation?: boolean;
+  };
+  documentsChecklist?: {
+    hasRecentRCModel7?: boolean;
+    hasUpdatedBylaws?: boolean;
+    hasRepresentativeProof?: boolean;
+    hasGAMinutes?: boolean;
+    hasJudicialRecordCert?: boolean;
+    hasNonBankruptcyCert?: boolean;
+    hasCoopApproval?: boolean;
+    hasAssociationReceipt?: boolean;
+    hasForeignApostille?: boolean;
+    [docKey: string]: boolean | undefined;
+  };
+  representationHistory?: LegalEntityRepresentationHistoryItem[];
+}
+
+export interface LegalEntityRepresentativeInfo {
+  id: string;
+  fullName: string;
+  cin: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  address?: string;
+  capacity: 'مسير' | 'رئيس' | 'مدير_عام' | 'عضو_مجلس_إدارة' | 'مصف' | 'وكيل_بتوكيل_خاص' | 'وكيل_بتوكيل_عام' | 'مفوض_بالتوقيع' | 'آخر';
+  capacityStartDate?: string;
+  capacityDuration?: string;
+  authoritySource: 'القانون' | 'النظام_الأساسي' | 'التعيين' | 'قرار_الهيئة_المختصة' | 'وكالة' | 'تفويض' | 'حكم_أو_قرار_قضائي' | 'مصدر_آخر';
+  authorityDocNumber?: string;
+  authorityDocDate?: string;
+  isCapacityValid: 'نعم' | 'تحتاج_تحقق' | 'غير_ثابتة';
+  representationMode: 'منفرد' | 'مجتمع' | 'توقيع_مشترك' | 'تفويض_خاص' | 'حسب_النظام_الأساسي' | 'حسب_قرار_الهيئة';
+  secondRepresentative?: {
+    fullName?: string;
+    cin?: string;
+    capacity?: string;
+    dateOfBirth?: string;
+    address?: string;
+  };
+  poaChain?: {
+    hasSubAgent?: boolean;
+    agentFullName?: string;
+    agentCin?: string;
+    agentAddress?: string;
+    poaDeedBook?: string;
+    poaDeedNumber?: string;
+    poaDeedPage?: string;
+    poaDeedDate?: string;
+    poaCourt?: string;
+    isRealEstatePoa?: boolean;
+    localRegistryNumber?: string;
+    localRegistryCourt?: string;
+    localRegistryDate?: string;
+    scopeCompliant?: boolean;
+  };
+}
+
+export interface SaleEntityDeed {
+  disposalType: 'شراء' | 'بيع';
+  buyerNature: 'شخص_معنوي' | 'شخص_طبيعي';
+  intakeDate?: string;
+  intakePlace?: string;
+  court?: string;
+  section?: string;
+  notaryPrimary?: string;
+  notarySecondary?: string;
+  internalFileNumber?: string;
+  deedStatus: 'قيد_الإدخال' | 'يحتاج_مراجعة' | 'مستوف' | 'جاهز_للتحرير' | 'متوقف_قانونيا_أو_تقنيا';
+  buyerEntity: LegalEntityBuyerInfo;
+  buyerRepresentative: LegalEntityRepresentativeInfo;
+  sellers: SalePersonPartyInfo[];
+  property: SalePersonPropertyDetails;
+  titleChain: SaleTitleChainItem[];
+  hasEncumbrances?: 'نعم' | 'لا' | '';
+  encumbrances: SaleEncumbranceItem[];
+  finance: SaleFinanceDetails & {
+    sourceOfFunds?: 'أموال_الشركة' | 'تمويل_بنكي' | 'قرض' | 'مساهمة_شركاء' | 'آخر';
+    sourceOfFundsNotes?: string;
+    isPriceInclusiveOfTaxes?: boolean;
+  };
+  terms: SaleDeadlinesAndSpecialTerms;
+  certificates: SaleAdminCertificateItem[];
+  taxAndDuty: SaleTaxAndDutiesInfo;
+  adoptionQuestion?: {
+    confirmVerifiedIdentity?: 'نعم' | 'تعديل' | 'إيقاف_للمراجعة';
+    confirmRepresentativeAtSigning?: 'نعم' | 'يحتاج_مراجعة';
+  };
+  legalCheckData?: {
+    isEntityActive?: boolean;
+    isNameConsistent?: boolean;
+    isRepresentativeValid?: boolean;
+    isCapacityContinuous?: boolean;
+    isSpecialApprovalCompliant?: boolean;
+    isCorporatePurposeAligned?: boolean;
+    isPropertyValid?: boolean;
+    isPriceBalanced?: boolean;
+    isPoaCompliant?: boolean;
+    allChecksPassed?: boolean;
+    fatalErrors?: string[];
+    reviewNotes?: string[];
+  };
+  reviewDecision?: 'جاهز_للتحرير' | 'يحتاج_مراجعة' | 'متوقف' | '';
+  auditTrail?: SalePersonAuditEntry[];
+}
+
 
 // ProofOfEstate Type (رسم ثبوت مخلف)
 export interface ProofOfEstate {
@@ -3602,6 +3803,9 @@ export interface FeesAgentState {
 
   // SalePersonDeed State (رسم البيع والشراء – الشخص الطبيعي/العادي)
   salePersonDeed?: SalePersonDeed;
+
+  // SaleEntityDeed State (رسم شراء عقار لفائدة شخص معنوي)
+  saleEntityDeed?: SaleEntityDeed;
 
   // PromiseToSell State (رسم وعد بالبيع)
   promiseToSell?: PromiseToSell;
