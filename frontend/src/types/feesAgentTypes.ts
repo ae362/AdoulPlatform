@@ -1269,6 +1269,259 @@ export interface PromiseToSell {
   };
 }
 
+// ============================================================================
+// SALE PERSON DEED (رسم البيع والشراء – الشخص الطبيعي/العادي)
+// ============================================================================
+
+export interface SalePartyPOAInfo {
+  court?: string;
+  registryBook?: string;
+  letter?: string;
+  page?: string;
+  count?: string;
+  date?: string;
+  notary?: string;
+  poaNature?: 'خاصة' | 'عامة' | 'حقوق_عينية' | 'أخرى';
+  isRealEstatePoa?: boolean;
+  localRegistryInfo?: {
+    court?: string;
+    registrationDate?: string;
+    localRegistryNumber?: string;
+    chronologicalNumber?: string;
+    analyticalNumber?: string;
+    certificateDate?: string;
+    status?: 'مقيدة' | 'معدلة' | 'ملغاة' | 'تحتاج_تحقق' | '';
+  };
+  agentFullName?: string;
+  agentCin?: string;
+  agentAddress?: string;
+  agentPhone?: string;
+}
+
+export interface SalePersonPartyInfo {
+  id: string;
+  fullName: string;
+  firstName?: string;
+  lastName?: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  placeOfBirth?: string;
+  nationality?: 'مغربي' | 'اجنبي' | '';
+  profession?: string;
+  address?: string;
+  idType?: string;
+  idNumber?: string;
+  idIssueDate?: string;
+  idIssuedBy?: string;
+  maritalStatus?: string;
+  share?: string;
+  shareFraction?: string;
+  sharePercentage?: number;
+  capacity?: 'مالك' | 'شريك_على_الشياع' | 'وارث' | 'مشتري';
+  representationMode: 'شخصي' | 'وكيل' | 'ممثل_قانوني';
+  poaInfo?: SalePartyPOAInfo;
+  isLegalEntityAttempt?: boolean;
+}
+
+export interface SaleEncumbranceItem {
+  id: string;
+  encumbranceType: 'رهن_رسمي' | 'حجز_تحفظي' | 'حجز_تنفيذي' | 'حق_ارتفاق' | 'حق_انتفاع' | 'حق_سكنى' | 'تقييد_احتياطي' | 'تعرض' | 'شرط_خاص' | 'منع_من_التصرف' | 'حق_عيني_آخر';
+  beneficiary: string;
+  date?: string;
+  reference?: string;
+  impactOnSale?: string;
+  resolutionChoice: 'رفع_قبل_البيع' | 'رفع_بالتزامن' | 'بقاء_التحمل' | 'موافقة_صاحب_الحق' | 'تحقق_قانوني' | 'إيقاف_مؤقت';
+}
+
+export interface SaleTitleChainItem {
+  id: string;
+  deedType: string;
+  deedDate?: string;
+  previousOwner?: string;
+  reference?: string;
+  court?: string;
+  notary?: string;
+  book?: string;
+  letter?: string;
+  page?: string;
+  count?: string;
+  transferNature?: string;
+}
+
+export interface SaleAdminCertificateItem {
+  id: string;
+  type: string;
+  number?: string;
+  date?: string;
+  issuedBy?: string;
+}
+
+export interface SalePersonPropertyDetails {
+  propertyStatus: 'محفظ' | 'في_طور_التحفيظ' | 'غير_محفظ' | 'حالة_خاصة' | '';
+  propertyType?: 'أرض' | 'دار' | 'شقة' | 'محل_تجاري' | 'فيلا' | 'أرض_فلاحية' | 'عقار_مبني' | 'ملكية_مشتركة' | 'عقار_آخر' | '';
+  titleNumber?: string;
+  landRegistryOffice?: string;
+  registeredOwners?: string;
+  registeredShares?: string;
+  lastOwnershipCertDate?: string;
+  ownershipCertRef?: string;
+  isCoOwnership?: boolean;
+  coOwnershipUnitNumber?: string;
+  coOwnershipFloor?: string;
+  coOwnershipApartmentNumber?: string;
+  coOwnershipUnitArea?: number;
+  coOwnershipCommonPartsShare?: string;
+  coOwnershipBylawRef?: string;
+  requisitionNumber?: string;
+  requisitionDate?: string;
+  requisitionApplicant?: string;
+  requisitionStatus?: string;
+  hasOppositions?: 'نعم' | 'لا' | '';
+  oppositionsDetails?: string;
+  originDeedType?: string;
+  originDeedDate?: string;
+  originDeedSource?: string;
+  originDeedCourt?: string;
+  originDeedBook?: string;
+  originDeedLetter?: string;
+  originDeedPage?: string;
+  originDeedCount?: string;
+  originDeedNotary?: string;
+  originDeedNature?: 'أصلي' | 'ناقل_للحق' | '';
+  acquisitionMethod?: string;
+  commune?: string;
+  district?: string;
+  neighborhood?: string;
+  douar?: string;
+  street?: string;
+  buildingNumber?: string;
+  exactAddress?: string;
+  areaNumber?: number;
+  areaUnit?: 'متر_مربع' | 'هكتار' | 'آر' | 'سنتيار' | 'ذراع' | 'قدم';
+  areaInWords?: string;
+  boundaries?: {
+    north: string;
+    south: string;
+    east: string;
+    west: string;
+  };
+  components?: string;
+  treesAndPlantations?: string;
+  buildingsAndInstallations?: string;
+  waterAndPassageRights?: string;
+  easementsOrDisclosedRights?: string;
+}
+
+export interface SalePaymentInstallment {
+  id: string;
+  number: number;
+  amount: number;
+  dueDate: string;
+  paymentMethod: string;
+  reference?: string;
+  recipient?: string;
+  notes?: string;
+}
+
+export interface SaleFinanceDetails {
+  totalPrice?: number;
+  totalPriceInWords?: string;
+  paymentMethods?: string[];
+  hasEarnest?: boolean;
+  earnestAmount?: number;
+  earnestAmountInWords?: string;
+  earnestDate?: string;
+  earnestPaymentMethod?: string;
+  earnestReference?: string;
+  earnestBank?: string;
+  remainingAmount?: number;
+  remainingAmountInWords?: string;
+  remainingDueDate?: string;
+  hasInstallments?: boolean;
+  installments?: SalePaymentInstallment[];
+  hasInKindExchange?: boolean;
+  inKindNature?: string;
+  inKindValue?: number;
+  inKindTitleOrigin?: string;
+  inKindLegalStatus?: string;
+  inKindNeedsIndependentDeed?: boolean;
+  hasDeferredPayment?: boolean;
+  deferredDueDate?: string;
+  deferredConditions?: string;
+}
+
+export interface SaleDeadlinesAndSpecialTerms {
+  hasAgreedDeadline?: boolean;
+  dueDate?: string;
+  deadlineNature?: string;
+  failureConsequences?: string;
+  specialConditions?: Array<{
+    id: string;
+    type: 'أداء' | 'تسليم' | 'رفع_تحمل' | 'وثيقة' | 'إجراء_إداري' | 'إجراء_عقاري' | 'آخر';
+    description: string;
+    isBindingLegal: boolean;
+  }>;
+}
+
+export interface SaleTaxAndDutiesInfo {
+  registrationStatus?: 'معفى' | 'خاضع' | 'مؤدى' | 'قيد_الأداء' | '';
+  registrationOffice?: string;
+  receiptNumber?: string;
+  paymentDate?: string;
+  amount?: number;
+  stampDutyAmount?: number;
+  stampDutyRef?: string;
+  notes?: string;
+}
+
+export interface SalePersonAuditEntry {
+  timestamp: string;
+  user: string;
+  action: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface SalePersonDeed {
+  disposalType: 'بيع' | 'شراء';
+  intakeDate?: string;
+  intakePlace?: string;
+  court?: string;
+  section?: string;
+  notaryPrimary?: string;
+  notarySecondary?: string;
+  internalFileNumber?: string;
+  deedStatus: 'قيد_الإدخال' | 'يحتاج_مراجعة' | 'مستوف' | 'جاهز_للتحرير' | 'متوقف_قانونيا_أو_تقنيا';
+  sellers: SalePersonPartyInfo[];
+  buyers: SalePersonPartyInfo[];
+  isJointSellers?: boolean;
+  buyersDevolutionType?: 'سويا' | 'أنصبة_مفرزة' | 'على_الشياع' | '';
+  property: SalePersonPropertyDetails;
+  titleChain: SaleTitleChainItem[];
+  hasEncumbrances?: 'نعم' | 'لا' | '';
+  encumbrances: SaleEncumbranceItem[];
+  finance: SaleFinanceDetails;
+  terms: SaleDeadlinesAndSpecialTerms;
+  certificates: SaleAdminCertificateItem[];
+  taxAndDuty: SaleTaxAndDutiesInfo;
+  legalCheckData?: {
+    isPartiesValid?: boolean;
+    isSharesBalanced?: boolean;
+    isPropertyValid?: boolean;
+    isEncumbrancesResolved?: boolean;
+    isPriceWordsMatching?: boolean;
+    isPaymentBalanced?: boolean;
+    isPoaCompliant?: boolean;
+    allChecksPassed?: boolean;
+    fatalErrors?: string[];
+    reviewNotes?: string[];
+  };
+  reviewDecision?: 'جاهز_للتحرير' | 'يحتاج_مراجعة' | 'متوقف' | '';
+  auditTrail?: SalePersonAuditEntry[];
+}
+
 // ProofOfEstate Type (رسم ثبوت مخلف)
 export interface ProofOfEstate {
   applicant?: {
@@ -3346,6 +3599,9 @@ export interface FeesAgentState {
 
   // MarriageJudicialRulingDeed State (رسم توثيق حكم بثبوت الزوجية)
   marriageJudicialRulingDeed?: MarriageJudicialRulingDeed;
+
+  // SalePersonDeed State (رسم البيع والشراء – الشخص الطبيعي/العادي)
+  salePersonDeed?: SalePersonDeed;
 
   // PromiseToSell State (رسم وعد بالبيع)
   promiseToSell?: PromiseToSell;

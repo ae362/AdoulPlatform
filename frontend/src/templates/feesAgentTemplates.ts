@@ -2,7 +2,12 @@ import {
   MARRIAGE_DOCUMENT_TYPES,
   SALE_DOCUMENT_TYPES,
 } from '../constants/feesAgentLocales';
-import type { FeesAgentState, DocumentMeta } from '../types/feesAgentTypes';
+import type {
+  FeesAgentState,
+  DocumentMeta,
+  SalePersonPropertyDetails,
+  SaleFinanceDetails,
+} from '../types/feesAgentTypes';
 import {
   convertGregorianToHijri,
   getArabicWeekdayName,
@@ -1557,6 +1562,260 @@ ${finance.penaltyClauseText ? `الشرط الجزائي الإضافي: ${finan
 `.trim();
 }
 
+// ============================================================================
+// SALE PERSON DRAFT GENERATOR (رسم البيع والشراء – الشخص الطبيعي/العادي)
+// وفق المادة 4 من القانون 39.08 وظهير الالتزامات والعقود
+// ============================================================================
+
+export function generateSalePersonDraft(state: FeesAgentState): string {
+  if (!state) return '';
+  const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
+  const sale = state.salePersonDeed;
+  
+  // Court and Notary Metadata
+  const appellateCourt = formatCourtName((meta as any)?.appellateCourt || (state.preReceptionVerification as any)?.appellateCourt) || 'طنجة';
+  const courtName = formatCourtName(sale?.court || meta.court || state.preReceptionVerification?.primaryCourt) || 'طنجة';
+  const courtSection = sale?.section || meta.courtSection || 'قسم قضاء الأسرة والتوثيق';
+  const regBook = (meta as any).registryBookType || 'كناش المعاملات العقارية';
+  const regNum = meta.registryNumber || state.preReceptionVerification?.registryRecord?.number || '---';
+  const regPage = meta.registryPage || state.preReceptionVerification?.registryRecord?.page || '---';
+  const regCount = meta.registryCount || state.preReceptionVerification?.registryRecord?.count || '---';
+  const regDate = sale?.intakeDate || meta.dateGregorian || state.preReceptionVerification?.receptionDate || new Date().toISOString().split('T')[0];
+  const dateHijri = meta.dateHijri || convertGregorianToHijri(regDate);
+  const notary1 = sale?.notaryPrimary || meta.notaryPrimary || state.preReceptionVerification?.notary1Name || 'العدل الأول';
+  const notary2 = sale?.notarySecondary || meta.notarySecondary || state.preReceptionVerification?.notary2Name || 'العدل الثاني';
+
+  // Sellers (البائعون)
+  let sellersList = (sale?.sellers && sale.sellers.length > 0)
+    ? sale.sellers
+    : (state.sellers && state.sellers.length > 0)
+    ? state.sellers.map(s => ({
+        id: s.id || '',
+        fullName: s.name || '',
+        idNumber: s.idNumber || '',
+        dateOfBirth: s.dateOfBirth || '',
+        placeOfBirth: s.placeOfBirth || '',
+        nationality: (s.nationality as any) || 'مغربي',
+        profession: s.profession || '',
+        address: s.address || '',
+        share: s.share || '',
+        representationMode: (s.hasSpecialProxy === 'نعم' || s.proxyName ? 'وكيل' : 'شخصي') as any,
+        poaInfo: s.proxyName ? {
+          court: s.proxyDeedNotary || '',
+          registryBook: s.proxyDeedBook || '',
+          page: s.proxyDeedPage || '',
+          count: s.proxyDeedNumber || '',
+          date: s.proxyDeedDate || '',
+          agentFullName: s.proxyName || '',
+          agentCin: s.proxyNationalID || '',
+          agentAddress: s.proxyAddress || '',
+          isRealEstatePoa: false,
+        } : undefined,
+      }))
+    : [];
+
+  const sellersText = sellersList.length > 0 ? sellersList.map((s, idx) => {
+    let repClause = '';
+    if (s.representationMode === 'وكيل' && s.poaInfo) {
+      const p = s.poaInfo;
+      const localRegClause = p.isRealEstatePoa && p.localRegistryInfo?.localRegistryNumber
+        ? `، والمقيدة بالسجل المحلي للوكالات المتعلقة بالحقوق العينية بالمحكمة الابتدائية بـ (${p.localRegistryInfo.court || courtName}) تحت رقم (${p.localRegistryInfo.localRegistryNumber}) وتاريخ (${p.localRegistryInfo.registrationDate || '---'}) طبقاً للمرسوم 2.23.101`
+        : '';
+      repClause = `، وينوب عنه بوكالة ${p.poaNature || 'خاصة'} السيد(ة) ${p.agentFullName || 'الوكيل'} (ب.ت.و: ${p.agentCin || '---'}) بموجب الرسم المضمن بكناش (${p.registryBook || '---'}) عدد (${p.count || '---'}) صحيفة (${p.page || '---'}) وتاريخ (${p.date || '---'}) توثيق محكمة (${p.court || courtName})${localRegClause}`;
+    } else if (s.representationMode === 'ممثل_قانوني') {
+      repClause = `، بحضور نائبه القانوني طبقاً لمقتضيات المادتين 209 و210 من مدونة الأسرة`;
+    } else {
+      repClause = `، والمتصرف أصالة عن نفسه وبكامل أهليته المعتبرة قانوناً`;
+    }
+
+    const shareText = s.share ? `، وبحصة قدرها [${s.share}] في العقار المبيع` : '';
+    return `${idx + 1}. السيد(ة) ${s.fullName || '---'}${s.fatherName ? ` بن ${s.fatherName}` : ''}${s.motherName ? ` وأمه ${s.motherName}` : ''}، المزداد(ة) في ${s.dateOfBirth || '---'} بـ ${s.placeOfBirth || '---'}، جنسيته(ا) ${s.nationality || 'مغربية'}، مهنته(ا) ${s.profession || '---'}، الساكن(ة) بـ ${s.address || '---'}، الحامل(ة) للبطاقة الوطنية للتعريف رقم ${s.idNumber || '---'}${shareText}${repClause}.`;
+  }).join('\n') : 'الطرف البائع: [لم يتم إدخال بيانات البائعين]';
+
+  // Buyers (المشترون)
+  let buyersList = (sale?.buyers && sale.buyers.length > 0)
+    ? sale.buyers
+    : (state.buyers && state.buyers.length > 0)
+    ? state.buyers.map(b => ({
+        id: b.id || '',
+        fullName: b.name || '',
+        idNumber: b.idNumber || '',
+        dateOfBirth: b.dateOfBirth || '',
+        placeOfBirth: b.placeOfBirth || '',
+        nationality: (b.nationality as any) || 'مغربي',
+        profession: b.profession || '',
+        address: b.address || '',
+        share: b.share || '',
+        representationMode: (b.hasSpecialProxy === 'نعم' || b.proxyName ? 'وكيل' : 'شخصي') as any,
+        poaInfo: b.proxyName ? {
+          court: b.proxyDeedNotary || '',
+          registryBook: b.proxyDeedBook || '',
+          page: b.proxyDeedPage || '',
+          count: b.proxyDeedNumber || '',
+          date: b.proxyDeedDate || '',
+          agentFullName: b.proxyName || '',
+          agentCin: b.proxyNationalID || '',
+          agentAddress: b.proxyAddress || '',
+          isRealEstatePoa: false,
+        } : undefined,
+      }))
+    : [];
+
+  const buyersText = buyersList.length > 0 ? buyersList.map((b, idx) => {
+    let repClause = '';
+    if (b.representationMode === 'وكيل' && b.poaInfo) {
+      const p = b.poaInfo;
+      const localRegClause = p.isRealEstatePoa && p.localRegistryInfo?.localRegistryNumber
+        ? `، والمقيدة بالسجل المحلي للوكالات المتعلقة بالحقوق العينية بالمحكمة الابتدائية بـ (${p.localRegistryInfo.court || courtName}) تحت رقم (${p.localRegistryInfo.localRegistryNumber}) وتاريخ (${p.localRegistryInfo.registrationDate || '---'}) طبقاً للمرسوم 2.23.101`
+        : '';
+      repClause = `، وينوب عنه بوكالة ${p.poaNature || 'خاصة'} السيد(ة) ${p.agentFullName || 'الوكيل'} (ب.ت.و: ${p.agentCin || '---'}) بموجب الرسم المضمن بكناش (${p.registryBook || '---'}) عدد (${p.count || '---'}) صحيفة (${p.page || '---'}) وتاريخ (${p.date || '---'}) توثيق محكمة (${p.court || courtName})${localRegClause}`;
+    } else {
+      repClause = `، المشتري لنفسه وبماله الخاص بكامل الأهلية الشرعية والقانونية`;
+    }
+
+    const shareText = b.share ? `، ويقتني حصة قدرها [${b.share}]` : (buyersList.length > 1 ? `، على الشياع بالسوية بينهم` : `، لجميع كامل الملك المبيع`);
+    return `${idx + 1}. السيد(ة) ${b.fullName || '---'}${b.fatherName ? ` بن ${b.fatherName}` : ''}${b.motherName ? ` وأمه ${b.motherName}` : ''}، المزداد(ة) في ${b.dateOfBirth || '---'} بـ ${b.placeOfBirth || '---'}، جنسيته(ا) ${b.nationality || 'مغربية'}، مهنته(ا) ${b.profession || '---'}، الساكن(ة) بـ ${b.address || '---'}، الحامل(ة) للبطاقة الوطنية للتعريف رقم ${b.idNumber || '---'}${shareText}${repClause}.`;
+  }).join('\n') : 'الطرف المشتري: [لم يتم إدخال بيانات المشترين]';
+
+  // Property Details (العقار)
+  const prop: Partial<SalePersonPropertyDetails> = sale?.property || {};
+  const legacyProp = state.properties?.[0];
+  const status = prop.propertyStatus || (legacyProp?.type === 'محفظ' ? 'محفظ' : legacyProp?.type === 'غير_محفظ' ? 'غير_محفظ' : 'محفظ');
+  
+  let propertySectionText = '';
+  if (status === 'محفظ') {
+    const titleNum = prop.titleNumber || legacyProp?.titleNumber || '---';
+    const office = prop.landRegistryOffice || 'المحافظة العقارية المختصة';
+    const owners = prop.registeredOwners ? `في اسم المالكين المقيدين: ${prop.registeredOwners} (الحصص: ${prop.registeredShares || 'الكل'})` : '';
+    const certRef = prop.ownershipCertRef ? `، استناداً إلى شهادة الملكية عدد ${prop.ownershipCertRef} الصادرة بتاريخ ${prop.lastOwnershipCertDate || '---'}` : '';
+    const coOwnerText = prop.isCoOwnership ? `\n- الملكية المشتركة: العقار خاضع لنظام الملكية المشتركة (القانون 18.00 المعدل بالقانون 106.12)، الوحدة المبيعة رقم (${prop.coOwnershipUnitNumber || '---'}) بالطابق (${prop.coOwnershipFloor || '---'}) شقة رقم (${prop.coOwnershipApartmentNumber || '---'}) مساحتها المفرزة (${prop.coOwnershipUnitArea || '---'} م²) وبحصة مشاعة في الأجزاء المشتركة قدرها (${prop.coOwnershipCommonPartsShare || '---'}).` : '';
+
+    propertySectionText = `[ العقار المبيع محفظ ]:
+- الرسم العقاري عدد: [ ${titleNum} ] الممسوك لدى المحافظة العقارية بـ [ ${office} ].
+- ${owners}${certRef}
+- النوع والمكونات: ${prop.propertyType || legacyProp?.propertyName || 'عقار مبني'}، المشتمل على ${prop.components || 'كافة المرافق والمنافع'}.
+- الموقع: ${prop.exactAddress || legacyProp?.location || 'العنوان المذكور أعلاه'}، جماعة ${prop.commune || '---'}.
+- المساحة: ${prop.areaNumber || legacyProp?.area_m2 || '---'} ${prop.areaUnit || 'متر مربع'}${prop.areaInWords ? ` (${prop.areaInWords})` : ''}.
+- الحدود: شمالاً: ${prop.boundaries?.north || legacyProp?.boundaries?.north || '---'} | جنوباً: ${prop.boundaries?.south || legacyProp?.boundaries?.south || '---'} | شرقاً: ${prop.boundaries?.east || legacyProp?.boundaries?.east || '---'} | غرباً: ${prop.boundaries?.west || legacyProp?.boundaries?.west || '---'}.${coOwnerText}`;
+  } else if (status === 'في_طور_التحفيظ') {
+    const reqNum = prop.requisitionNumber || '---';
+    const reqDate = prop.requisitionDate || '---';
+    const reqApplicant = prop.requisitionApplicant || 'البائع';
+    const oppText = prop.hasOppositions === 'نعم' ? `توجد تعرضات مقيدة بمطلب التحفيظ: (${prop.oppositionsDetails || 'جارية معالجتها'})` : 'خالٍ من أي تعرض مقيد بمطلب التحفيظ حسب آخر بيان صادر عن المحافظة العقارية';
+
+    propertySectionText = `[ العقار المبيع في طور التحفيظ - لا يحمل رسماً عقارياً نهائياً ]:
+- موضوع مطلب التحفيظ عدد: [ ${reqNum} ] المودع بالمحافظة العقارية بـ [ ${prop.landRegistryOffice || 'المحافظة المختصة'} ] بتاريخ [ ${reqDate} ].
+- طالب التحفيظ: ${reqApplicant}.
+- وضعية التعرضات: ${oppText}.
+- النوع والموقع: ${prop.propertyType || 'عقار'} الواقع بـ ${prop.exactAddress || '---'}، جماعة ${prop.commune || '---'}.
+- المساحة والحدود: بمساحة تقدر بـ ${prop.areaNumber || '---'} ${prop.areaUnit || 'متر مربع'}، حدوده: شمالاً: ${prop.boundaries?.north || '---'} | جنوباً: ${prop.boundaries?.south || '---'} | شرقاً: ${prop.boundaries?.east || '---'} | غرباً: ${prop.boundaries?.west || '---'}.`;
+  } else {
+    // Unregistered (غير محفظ / ملك عادي)
+    const chainText = (sale?.titleChain && sale.titleChain.length > 0)
+      ? `\n- سلسلة أصل الملكية وتداول الحق: ${sale.titleChain.map((c, i) => `(سند ${i+1}: ${c.deedType} الصادر عن ${c.court || '---'} بتاريخ ${c.deedDate || '---'} من سلفه ${c.previousOwner || '---'})`).join(' -> ')}`
+      : '';
+
+    propertySectionText = `[ العقار المبيع غير محفظ (ملك تام) ]:
+- أصل التملك وسنده: تملك البائع(ون) للمبيع بموجب رسم ${prop.originDeedType || 'شراء'} مضمن بكناش ${prop.originDeedBook || '---'} صحيفة ${prop.originDeedPage || '---'} عدد ${prop.originDeedCount || '---'} بتاريخ ${prop.originDeedDate || '---'} توثيق ${prop.originDeedCourt || courtName}، ${prop.acquisitionMethod || 'بالشراء الصحيح والمخالصة التامة'}.${chainText}
+- الموقع والتعيين: ${prop.propertyType || 'عقار'} الكائن بـ ${prop.exactAddress || prop.douar || '---'}، جماعة ${prop.commune || '---'}.
+- المساحة التقديرية: ${prop.areaNumber || '---'} ${prop.areaUnit || 'متر مربع'}${prop.areaInWords ? ` (${prop.areaInWords})` : ''}.
+- الحدود الأربعة المعتبرة:
+  * شمالاً: ${prop.boundaries?.north || '---'}
+  * جنوباً: ${prop.boundaries?.south || '---'}
+  * شرقاً: ${prop.boundaries?.east || '---'}
+  * غرباً: ${prop.boundaries?.west || '---'}
+- ما يشتمل عليه العقار: ${prop.components || 'كافة البنايات والمرافق والمنافع والارتفاقات الداخلة والخارجة التابعة له دون استثناء'}${prop.treesAndPlantations ? `، وما به من أشجار ومغروسات: ${prop.treesAndPlantations}` : ''}${prop.waterAndPassageRights ? `، وحقوق الماء والمرور: ${prop.waterAndPassageRights}` : ''}.`;
+  }
+
+  // Encumbrances (التحملات)
+  let encumbrancesText = 'صرح الطرف البائع وأكد أن العقار المبيع طاهر وخالٍ من أي رهن رسمي أو حيازي أو حجز عقاري أو تقييد احتياطي أو ارتفاق غير ظاهر أو أي تحمل عيني يعرقل نقل الملكية والتصرف التام للمشتري.';
+  if (sale?.hasEncumbrances === 'نعم' && sale.encumbrances && sale.encumbrances.length > 0) {
+    encumbrancesText = `صرح الطرفان بوجود التحملات الآتية على العقار وطريقة معالجتها والاتفاق حولها:
+${sale.encumbrances.map((e, idx) => `- تحمل (${idx + 1}) [${e.encumbranceType}]: لفائدة ${e.beneficiary} (مرجع: ${e.reference || '---'} وتاريخ: ${e.date || '---'}) - طريقة المعالجة المقررة: ${e.resolutionChoice === 'رفع_قبل_البيع' ? 'التزم البائع برفع هذا التحمل وتشطيبه قبل إتمام التسجيل النهائي' : e.resolutionChoice === 'رفع_بالتزامن' ? 'يتم التشطيب بالتزامن عبر خصم مبالغ الدين من ثمن البيع وإيداعها مباشرة' : e.resolutionChoice === 'بقاء_التحمل' ? 'قبل المشتري بالتحمل مع تحمله لكافة آثاره القانونية' : 'توجد موافقة كتابية صريحة من صاحب الحق'}.`).join('\n')}`;
+  }
+
+  // Price & Payment (الثمن والأداء)
+  const fin: Partial<SaleFinanceDetails> = sale?.finance || {};
+  const legacyFin = state.finance || { price: 0, priceInWords: '', paymentMethod: '' };
+  const priceVal = fin.totalPrice || legacyFin.price || 0;
+  const priceWords = fin.totalPriceInWords || legacyFin.priceInWords || (priceVal ? convertNumberToArabicWords(priceVal) : '---');
+  
+  let paymentText = '';
+  if (fin.hasEarnest && fin.earnestAmount) {
+    paymentText = `وقع هذا البيع بثمن إجمالي قدره [ ${priceVal.toLocaleString()} درهم ] (${priceWords})، أدى منه المشتري تسبيقاً معجلاً بمجلس العقد مبلغا قدره [ ${fin.earnestAmount.toLocaleString()} درهم ] (${fin.earnestAmountInWords || convertNumberToArabicWords(fin.earnestAmount)}) بواسطة (${fin.earnestPaymentMethod || 'نقد'}) ${fin.earnestReference ? `(مرجع: ${fin.earnestReference} لدى بنك ${fin.earnestBank || '---'})` : ''}، اعترف البائع بقبضه وبرئ المشتري منه براءة قبض، والباقي وقدره [ ${(fin.remainingAmount || (priceVal - fin.earnestAmount)).toLocaleString()} درهم ] (${fin.remainingAmountInWords || convertNumberToArabicWords(fin.remainingAmount || (priceVal - fin.earnestAmount))}) يلتزم المشتري بوفائه ${fin.remainingDueDate ? `في أجل أقصاه ${fin.remainingDueDate}` : 'طبقاً للجدول والشروط المسطورة أدناه'}.`;
+  } else if (fin.hasInstallments && fin.installments && fin.installments.length > 0) {
+    paymentText = `وقع هذا البيع بثمن إجمالي قدره [ ${priceVal.toLocaleString()} درهم ] (${priceWords})، يؤدى على دفعات مجدولة كالآتي:
+${fin.installments.map(ins => `- الدفعة (${ins.number}): مبلغ ${ins.amount.toLocaleString()} درهم تستحق في ${ins.dueDate} بواسطة ${ins.paymentMethod}`).join('\n')}`;
+  } else if (fin.hasInKindExchange) {
+    paymentText = `وقع هذا البيع بمعاوضة وعوض عيني يتمثل في: (${fin.inKindNature || 'عقار/منقول'}) المقوم باتفاق الطرفين بمبلغ قدره [ ${(fin.inKindValue || priceVal).toLocaleString()} درهم ] (${priceWords}) بموجب سند التملك (${fin.inKindTitleOrigin || '---'}).`;
+  } else {
+    const pMethods = (fin.paymentMethods && fin.paymentMethods.length > 0) ? fin.paymentMethods.join(' و ') : (legacyFin.paymentMethod || 'نقداً بمجلس العقد');
+    paymentText = `وقع هذا البيع وانعقد بثمن إجمالي اتفاقي قطعي لا رجوع فيه قدره ونهايته: [ ${priceVal.toLocaleString()} درهم ] (فقط ${priceWords} درهماً لا غير)، أداه المشتري كاملاً وموفوراً للبائع بواسطة (${pMethods})، اعترف البائع بقبضه وحيازته بمجلس الإشهاد الإبراء التام، ولم يبق له في ذمة المشتري أي حق أو درهم.`;
+  }
+
+  // Delivery & Possession
+  const deliveryText = `تخلى البائع تخلياً تاماً عن حيازته للمبيع وملكيته ورقابته لفائدة المشتري المذكور، وسلمه إياه بالمعاينة والمشاهدة التامة، وصار المشتري مالكاً للمبيع يتصرف فيه تصرف المالك في ملكه وخاص ماله، مع التزام البائع التام بضمان درك الاستحقاق والعيوب الخفية طبقاً لمقتضيات قانون الالتزامات والعقود.`;
+
+  return `================================================================================
+                         المملكة المغربية - وزارة العدل
+دائرة محكمة الاستئناف بـ ${appellateCourt} - المحكمة الابتدائية بـ ${courtName} (${courtSection})
+سجل البيانات: كناش ${regBook} | رقم: ${regNum} | صحيفة: ${regPage} | عدد: ${regCount}
+بتاريخ: ${regDate} موافق ${dateHijri} هـ
+العدلان المنتصبان للإشهاد: ${notary1} و ${notary2}
+================================================================================
+
+                          رسم بيع وشراء عقاري
+           (محرر رسمي تام الركن صادر عن التوثيق العدلي وفق المادة 4 من القانون 39.08
+                 المتعلق بمدونة الحقوق العينية وظهير الالتزامات والعقود)
+
+الحمد لله وحده، وصلى الله وسلم على سيدنا محمد وآله وصحبه.
+على الساعة ${meta.hourInWords || 'المباركة القانونية'} من يوم ${getArabicWeekdayName(regDate) || 'اليوم'} ${meta.dateGregorianInWords ? `الموافق لـ ${meta.dateGregorianInWords}` : regDate} ميلادية،
+حضر لدى عدلي التوثيق الموقعين أسفله، المنتصبين للإشهاد بدائرة المحكمة الابتدائية بـ ${courtName}:
+
+أولاً: أطراف العقد:
+------------------
+[ الطرف البائع ]:
+${sellersText}
+
+[ الطرف المشتري ]:
+${buyersText}
+
+وبعد تعريف العدلين للأطراف المذكورين الهوية التامة والقدر المعتبر شرعاً وقانوناً، شهدوا وتصادقوا بكامل الأهلية والرضا على ما يلي:
+
+ثانياً: البيع وتعيين العقار المبيع:
+----------------------------------
+باع البائعون وأسقطوا وتخلوا بجميع الضمانات القانونية والفعلية للمشترين المذكورين القابلين لذلك منهم العقار الآتي مشخصاته ومشتملاته:
+${propertySectionText}
+
+ثالثاً: سلامة العقار من التحملات:
+---------------------------------
+${encumbrancesText}
+
+رابعاً: الثمن المتفق عليه وكيفية الأداء والوفاء:
+--------------------------------------------
+${paymentText}
+
+خامساً: التسليم والحيازة والضمان:
+---------------------------------
+${deliveryText}
+${sale?.terms?.specialConditions && sale.terms.specialConditions.length > 0 ? `
+الشروط والاتفاقات الخاصة:
+${sale.terms.specialConditions.map((c, i) => `- شرط (${i+1}) [${c.type}]: «${c.description}» (${c.isBindingLegal ? 'شرط ملزم قانوناً' : 'شرط اتفاقي'}).`).join('\n')}
+` : ''}
+
+سادساً: التكاليف والالتزامات الجبائية:
+------------------------------------
+تم إشعار الطرفين بالمقتضيات الجبائية المعمول بها وبوجوب تسجيل هذا الرسم لدى مصلحة التسجيل والتمبر المختصة واستيفاء واجبات التمبر والتسجيل وفق المدونة العامة للضرائب.
+
+وبما ذكر صرح الطرفان والتزما، وبمقتضاه تراضيا، وتليت عليهما فصول هذا الرسم وفهما مضمونه وارتضياه بحضور الشاهدين العدلين المنتصبين للإشهاد، وحفظ للعدل الأول وحرر في تاريخه المبارك أعلاه.
+
+توقيع البائع(ين): ________________________
+توقيع المشتري(ين): ______________________
+توقيع العدل الأول: ______________________
+توقيع العدل الثاني: ______________________
+`.trim();
+}
+
 export function generateDocumentDraft(state: FeesAgentState): string {
   if (!state) return '';
   const sellers = state.sellers || [];
@@ -1580,6 +1839,14 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       return state.draft;
     }
     return generatePromiseToSellDraft(state);
+  }
+
+  // Real estate sale for natural person (رسم البيع والشراء – الشخص العادي / الذاتي)
+  if (documentType === 'بيع_وشراء' || state.salePersonDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    return generateSalePersonDraft(state);
   }
 
   // Marriage and family deeds draft generator

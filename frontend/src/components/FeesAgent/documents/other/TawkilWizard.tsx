@@ -4,7 +4,7 @@ import type {
   Party, TawkilScope, OriginalPoaDetails, RealEstateRegistryPoaInfo
 } from '../../../../types/feesAgentTypes';
 import {
-  createEmptyParty, convertNumberToArabicWords
+  createEmptyParty, convertNumberToArabicWords, formatCourtName
 } from '../../../../utils/feesAgentUtils';
 import { generateDocumentDraft } from '../../../../templates/feesAgentTemplates';
 import {
@@ -1287,7 +1287,7 @@ export const TawkilWizard: React.FC<DocumentWizardProps> = ({ state, setState, o
                     checked={scope.subAgentInfo?.hasSubAgent === 'yes'}
                     onChange={() => {
                       const cur = scope.subAgentInfo || {};
-                      const updated = { ...scope, subAgentInfo: { ...cur, hasSubAgent: 'yes' } };
+                      const updated: TawkilScope = { ...scope, subAgentInfo: { ...cur, hasSubAgent: 'yes' as const } };
                       setScope(updated);
                       syncState({ tawkilScope: updated });
                     }}
@@ -1302,7 +1302,7 @@ export const TawkilWizard: React.FC<DocumentWizardProps> = ({ state, setState, o
                     checked={scope.subAgentInfo?.hasSubAgent === 'no' || !scope.subAgentInfo?.hasSubAgent}
                     onChange={() => {
                       const cur = scope.subAgentInfo || {};
-                      const updated = { ...scope, subAgentInfo: { ...cur, hasSubAgent: 'no' } };
+                      const updated: TawkilScope = { ...scope, subAgentInfo: { ...cur, hasSubAgent: 'no' as const } };
                       setScope(updated);
                       syncState({ tawkilScope: updated });
                     }}
