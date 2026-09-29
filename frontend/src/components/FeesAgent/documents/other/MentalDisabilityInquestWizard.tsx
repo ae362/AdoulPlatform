@@ -28,6 +28,7 @@ import {
   FileCheck,
   Search,
   Sparkles,
+  Send,
 } from 'lucide-react';
 
 export const MentalDisabilityInquestWizard: React.FC<DocumentWizardProps> = ({
@@ -449,6 +450,7 @@ ${medicalClause}
       mentalDisabilityDeed: mentalDisabilityData,
       sellers: [subjectParty],
       witnesses: prev.witnesses || [],
+      draft: generatedRasmText,
       draftText: generatedRasmText,
       step: 7, // الانتقال للمراجعة القضائية النهائية والصياغة
     }));
@@ -457,6 +459,8 @@ ${medicalClause}
       onNext();
     }
   };
+
+  const handleProceedToStep7 = handleFinalizeAndProceed;
 
   const stagesList = [
     { id: 1, title: 'المشهود في حقه', icon: Users, desc: 'الهوية والمعرفة المباشرة' },
@@ -505,11 +509,20 @@ ${medicalClause}
             <button
               type="button"
               onClick={() => setState(prev => ({ ...prev, step: 0.25 }))}
-              className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50/60 text-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50/60 text-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
               title="مراجعة شروط التلقي والاختصاص المكاني (المرحلة 0.25)"
             >
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <span>فحص شروط التلقي (0.25)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleProceedToStep7}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs shadow-md shadow-red-900/30 border border-red-400/40 flex items-center gap-1.5 cursor-pointer transition transform active:scale-95"
+              title="الانتقال المباشر للمراجعة النهائية وتقديم الوثيقة للقاضي المكلف بالتوثيق (المرحلة 7)"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
             </button>
           </div>
         </div>
@@ -1701,14 +1714,14 @@ ${medicalClause}
                 type="button"
                 onClick={handleFinalizeAndProceed}
                 disabled={!checklist.allPassed}
-                className={`px-7 py-3 rounded-xl font-black text-xs transition flex items-center gap-2 cursor-pointer shadow-lg ${
+                className={`px-6 py-2.5 rounded-xl font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
                   checklist.allPassed
-                    ? 'bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 hover:from-indigo-800 hover:to-slate-950 text-white shadow-indigo-900/20'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white shadow-red-900/40 border border-red-400/40'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-300'
                 }`}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>اعتماد الموجب والمتابعة إلى التوثيق النهائي</span>
+                <Send className="w-4 h-4" />
+                <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
               </button>
             </div>
           </div>

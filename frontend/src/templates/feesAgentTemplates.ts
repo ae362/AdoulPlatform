@@ -2660,7 +2660,7 @@ export function generateDocumentDraft(state: FeesAgentState): string {
   const properties = state.properties || [];
   const finance = state.finance || { price: 0, priceInWords: '', paymentMethod: '', transferDetails: '', registeredWithTax: '' };
   const meta: DocumentMeta = state.meta || { fileNumber: '', dateGregorian: '', dateHijri: '', notaryPrimary: '', notarySecondary: '', additionalDocuments: [], court: '', hourInWords: '', dateGregorianInWords: '', dateHijriInWords: '' };
-  const documentType = state.documentType || '';
+  const documentType = (state.documentType || '') as string;
 
   // Legal Entity Real Estate Purchase (رسم شراء عقار لفائدة شخص معنوي)
   if (documentType === 'بيع_وشراء_معنوي' || (state.saleEntityDeed && !state.salePersonDeed)) {
@@ -2709,6 +2709,72 @@ export function generateDocumentDraft(state: FeesAgentState): string {
       return state.draft;
     }
     return generateSalePersonDraft(state);
+  }
+
+  // Real estate Gift deed (رسم الهبة العقاري)
+  if (documentType === 'هبة' || documentType.includes('هبة') || state.giftDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+    const donor = state.giftDeed?.donorIdentity?.name || state.sellers?.[0]?.name || 'الواهب';
+    const donee = state.giftDeed?.doneeIdentity?.name || state.buyers?.[0]?.name || 'الموهوب له';
+    const giftType = state.giftDeed?.giftSubjectType?.replace(/_/g, ' ') || 'هبة الملكية كاملة';
+    return `بسم الله الرحمن الرحيم\nالحمد لله وحده، والصلاة والسلام على رسول الله وآله وصحبه\n\nرسم هبة عقارية رسمي\nحضر الطرف الواهب: ${donor}، والطرف الموهوب له: ${donee}، وأشهدا بتمام التبرع والهبة لمحل الهبة: ${giftType}، وفقاً للضوابط الشرعية والقانونية المنصوص عليها في مدونة الحقوق العينية (المادة 273 وما بعدها).`;
+  }
+
+  // Revocation of Gift deed (رسم اعتصار الهبة - المادة 283 وما بعدها م.ح.ع)
+  if (documentType === 'اعتصار_هبة' || documentType === 'اعتصار هبة' || state.giftRevocationDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+    const donor = state.giftRevocationDeed?.donor?.fullName || state.sellers?.[0]?.name || 'الواهب';
+    const donee = state.giftRevocationDeed?.donee?.fullName || state.buyers?.[0]?.name || 'الموهوب له';
+    return `بسم الله الرحمن الرحيم\nالحمد لله وحده، والصلاة والسلام على رسول الله وآله وصحبه\n\nرسم اعتصار هبة عقارية\nأشهد الواهب: ${donor} والموهوب له: ${donee} برجوع الملك إلى الواهب واعتصار الهبة طبقاً للمادة 283 وما بعدها من مدونة الحقوق العينية وقانون الالتزامات والعقود.`;
+  }
+
+  // Mental Incapacity Inquest (موجب خلل عقلي - شهادة لفيفية)
+  if (documentType === 'موجب_خلل_عقلي' || documentType === 'موجب خلل عقلي' || state.mentalDisabilityDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+    if ((state.mentalDisabilityDeed as any)?.deedText) {
+      return (state.mentalDisabilityDeed as any).deedText;
+    }
+  }
+
+  // Guardianship and Suitability Inquest (موجب التقديم والصلاحية - شهادة لفيفية)
+  if (documentType === 'موجب_التقديم_والصلاحية' || documentType === 'موجب التقديم والصلاحية' || state.guardianshipSuitabilityDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+    if ((state.guardianshipSuitabilityDeed as any)?.deedText) {
+      return (state.guardianshipSuitabilityDeed as any).deedText;
+    }
+  }
+
+  // Absence Inquest (موجب إثبات غيبة - شهادة لفيفية)
+  if (documentType === 'موجب_إثبات_غيبة' || documentType === 'موجب اثبات غيبة' || documentType === 'موجب_اثبات_غيبة' || state.absenceInquestDeed) {
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+    if ((state.absenceInquestDeed as any)?.deedText) {
+      return (state.absenceInquestDeed as any).deedText;
+    }
   }
 
   // Marriage and family deeds draft generator

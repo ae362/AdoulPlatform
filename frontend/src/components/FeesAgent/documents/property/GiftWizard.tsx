@@ -45,6 +45,7 @@ import {
   Shield,
   Activity,
   Edit3,
+  Send,
 } from 'lucide-react';
 
 // تاريخ نفاذ مدونة الحقوق العينية (المادة 334: 6 أشهر بعد النشر بالجريدة الرسمية في 24 نونبر 2011)
@@ -961,6 +962,83 @@ ${
     }
   };
 
+  // --------------------------------------------------------------------------
+  // Direct transit to Step 7 (المراجعة القضائية النهائية والإرسال للقاضي)
+  // --------------------------------------------------------------------------
+  const handleProceedToStep7 = () => {
+    setState((prev) => ({
+      ...prev,
+      step: 7,
+      documentType: 'هبة',
+      draft: generateDraftDocument,
+      draftText: generateDraftDocument,
+      giftDeed: {
+        ...(prev.giftDeed || {}),
+        donorIdentity: {
+          name: donor.fullName,
+          fullName: donor.fullName,
+          fatherName: donor.fatherName,
+          motherName: donor.motherName,
+          birthDate: donor.birthDate,
+          birthPlace: donor.birthPlace,
+          idNumber: donor.cin,
+          profession: donor.profession,
+          address: donor.address,
+          maritalStatus: donor.maritalStatus,
+          nationality: donor.nationality,
+        },
+        doneeIdentity: {
+          name: donee.fullName,
+          fullName: donee.fullName,
+          fatherName: donee.fatherName,
+          motherName: donee.motherName,
+          birthDate: donee.birthDate,
+          birthPlace: donee.birthPlace,
+          idNumber: donee.cin,
+          profession: donee.profession,
+          address: donee.address,
+          maritalStatus: donee.maritalStatus,
+          nationality: donee.nationality,
+        },
+      },
+      sellers: [
+        {
+          id: 'party-donor',
+          name: donor.fullName,
+          idNumber: donor.cin,
+          dateOfBirth: donor.birthDate,
+          placeOfBirth: donor.birthPlace,
+          fatherName: donor.fatherName,
+          motherName: donor.motherName,
+          profession: donor.profession,
+          address: donor.address,
+          nationality: donor.nationality,
+          maritalStatus: donor.maritalStatus,
+          partyRole: 'الواهب',
+        } as any,
+      ],
+      buyers: [
+        {
+          id: 'party-donee',
+          name: donee.fullName,
+          idNumber: donee.cin,
+          dateOfBirth: donee.birthDate,
+          placeOfBirth: donee.birthPlace,
+          fatherName: donee.fatherName,
+          motherName: donee.motherName,
+          profession: donee.profession,
+          address: donee.address,
+          nationality: donee.nationality,
+          maritalStatus: donee.maritalStatus,
+          partyRole: 'الموهوب له',
+        } as any,
+      ],
+    }));
+    if (_onNext) {
+      _onNext();
+    }
+  };
+
   // If user explicitly toggled to classic view
   if (viewMode === 'classic_steps') {
     return (
@@ -1027,6 +1105,16 @@ ${
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Step 7 Transition Button */}
+            <button
+              onClick={handleProceedToStep7}
+              className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white flex items-center gap-1.5 shadow-lg shadow-red-900/40 border border-red-400/40 transition cursor-pointer"
+              title="الانتقال إلى المراجعة القضائية النهائية والإرسال للقاضي المكلف بالتوثيق (المرحلة 7)"
+            >
+              <Send className="w-4 h-4 text-white" />
+              <span>المتابعة للمرحلة 7 (الإرسال للقاضي)</span>
+            </button>
+
             {/* Step 0.25 PreReception Gate Button */}
             <button
               onClick={() => setShowPreReceptionModal(true)}
@@ -3029,6 +3117,13 @@ ${
                 </div>
                 <div className="space-y-2 pt-2">
                   <button
+                    onClick={handleProceedToStep7}
+                    className="w-full py-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 transition cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>المتابعة للمرحلة 7 (المراجعة القضائية والإرسال للقاضي)</span>
+                  </button>
+                  <button
                     onClick={handlePrintDraft}
                     className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow"
                   >
@@ -3067,20 +3162,24 @@ ${
             المرحلة {activeStage} من 12
           </div>
 
-          <button
-            onClick={() => {
-              if (activeStage < 12) setActiveStage((prev) => prev + 1);
-            }}
-            disabled={activeStage === 12}
-            className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
-              activeStage === 12
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20'
-            }`}
-          >
-            <span>{activeStage === 12 ? 'اكتملت المراحل' : 'المرحلة التالية'}</span>
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          {activeStage < 12 ? (
+            <button
+              onClick={() => setActiveStage((prev) => prev + 1)}
+              className="px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-700/20"
+            >
+              <span>المرحلة التالية</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleProceedToStep7}
+              className="px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white shadow-lg shadow-red-900/30 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              <span>المتابعة للمرحلة 7 (الإرسال للقاضي)</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

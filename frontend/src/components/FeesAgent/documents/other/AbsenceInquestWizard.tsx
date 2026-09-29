@@ -36,6 +36,7 @@ import {
   HelpCircle,
   Calendar,
   HeartHandshake,
+  Send,
 } from 'lucide-react';
 
 export const AbsenceInquestWizard: React.FC<DocumentWizardProps> = ({
@@ -620,6 +621,42 @@ ${witnessesText}
     window.print();
   };
 
+  // الانتقال المباشر للمرحلة 7 (المراجعة النهائية والإرسال للقاضي المكلف بالتوثيق)
+  const handleProceedToStep7 = () => {
+    const absenteeParty: Party = {
+      ...createEmptyParty(),
+      id: 'party-absentee',
+      name: absentee.fullName,
+      idNumber: absentee.cin,
+      nationality: (absentee.nationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as "" | "مغربي" | "اجنبي",
+      address: absentee.lastKnownAddress,
+      partyRole: 'شخص غائب',
+    };
+
+    const applicantParty: Party = {
+      ...createEmptyParty(),
+      id: 'party-applicant-absence',
+      name: applicant.fullName,
+      idNumber: applicant.cin,
+      nationality: 'مغربي',
+      partyRole: applicant.relationshipToAbsentee,
+    };
+
+    setState(prev => ({
+      ...prev,
+      step: 7,
+      documentType: 'موجب_إثبات_غيبة',
+      draft: generatedRasmText,
+      draftText: generatedRasmText,
+      sellers: [absenteeParty],
+      buyers: [applicantParty],
+      witnesses: prev.witnesses || [],
+    }));
+    if (_onNext) {
+      _onNext();
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 text-right" dir="rtl">
       {/* ========================================================================= */}
@@ -655,11 +692,20 @@ ${witnessesText}
             <button
               type="button"
               onClick={() => setState(prev => ({ ...prev, step: 0.25 }))}
-              className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50/60 text-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50/60 text-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
               title="مراجعة شروط التلقي والاختصاص المكاني (المرحلة 0.25)"
             >
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <span>فحص شروط التلقي (0.25)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleProceedToStep7}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs shadow-md shadow-red-900/30 border border-red-400/40 flex items-center gap-1.5 cursor-pointer transition transform active:scale-95"
+              title="الانتقال المباشر للمراجعة النهائية وتقديم الوثيقة للقاضي المكلف بالتوثيق (المرحلة 7)"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
             </button>
           </div>
         </div>
@@ -2053,10 +2099,18 @@ ${witnessesText}
               <button
                 type="button"
                 onClick={handlePrint}
-                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <Printer className="w-4 h-4" />
-                <span>اعتماد وطباعة موجب إثبات الغيبة</span>
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>طباعة المعاينة</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleProceedToStep7}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs rounded-xl shadow-lg shadow-red-900/40 border border-red-400/40 flex items-center justify-center gap-2 cursor-pointer transition transform active:scale-95"
+              >
+                <Send className="w-4 h-4 text-white" />
+                <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
               </button>
             </div>
           </div>

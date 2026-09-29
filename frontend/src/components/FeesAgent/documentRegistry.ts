@@ -61,7 +61,7 @@ import { MentalDisabilityInquestWizard } from './documents/other/MentalDisabilit
 import { GuardianshipSuitabilityWizard } from './documents/other/GuardianshipSuitabilityWizard';
 import { AbsenceInquestWizard } from './documents/other/AbsenceInquestWizard';
 
-export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<DocumentWizardProps>> = {
+export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
   'زواج': MarriageWizard,
   'زواج_مختلط': MixedMarriageWizard,
@@ -117,8 +117,14 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'عزل_وكيل': AgentDismissalWorkflow,
   'كفالة': KafalaWizard,
   'موجب_خلل_عقلي': MentalDisabilityInquestWizard,
+  'موجب خلل عقلي': MentalDisabilityInquestWizard,
   'موجب_التقديم_والصلاحية': GuardianshipSuitabilityWizard,
+  'موجب التقديم والصلاحية': GuardianshipSuitabilityWizard,
   'موجب_اثبات_غيبة': AbsenceInquestWizard,
+  'موجب_إثبات_غيبة': AbsenceInquestWizard,
+  'موجب إثبات غيبة': AbsenceInquestWizard,
+  'موجب اثبات غيبة': AbsenceInquestWizard,
+  'اعتصار هبة': GiftRevocationWizard,
   'أخرى': OtherDocumentWizard,
 };
 

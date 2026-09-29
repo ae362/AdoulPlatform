@@ -35,6 +35,7 @@ import {
   Gavel,
   History,
   FileSpreadsheet,
+  Send,
 } from 'lucide-react';
 
 // تاريخ نفاذ مدونة الحقوق العينية (المادة 334: 6 أشهر بعد النشر بالجريدة الرسمية في 24 نونبر 2011)
@@ -575,6 +576,48 @@ ${fruitsClause}
     window.print();
   };
 
+  // الانتقال المباشر للمرحلة 7 (المراجعة النهائية والإرسال للقاضي المكلف بالتوثيق)
+  const handleProceedToStep7 = () => {
+    const donorParty: Party = {
+      ...createEmptyParty(),
+      id: 'party-donor-revocation',
+      name: donor.fullName,
+      idNumber: donor.cin,
+      nationality: (donor.nationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as '' | 'مغربي' | 'اجنبي',
+      address: donor.address,
+      partyRole: 'الواهب (المعتصر)',
+    };
+
+    const doneeParty: Party = {
+      ...createEmptyParty(),
+      id: 'party-donee-revocation',
+      name: donee.fullName,
+      idNumber: donee.cin,
+      nationality: (donee.nationality === 'اجنبي' ? 'اجنبي' : 'مغربي') as '' | 'مغربي' | 'اجنبي',
+      address: donee.address,
+      partyRole: 'الموهوب له (المعتصر ضده)',
+    };
+
+    setState(prev => ({
+      ...prev,
+      step: 7,
+      documentType: 'اعتصار_هبة',
+      draft: generatedRasmText,
+      draftText: generatedRasmText,
+      sellers: [donorParty],
+      buyers: [doneeParty],
+      property: {
+        ...prev.property,
+        titleNumber: propertyDetails.titleNumber,
+        type: propertyDetails.propertyStatus === 'محفظ' ? 'محفظ' : propertyDetails.propertyStatus === 'في_طور_التحفيظ' ? 'في طور التحفيظ' : 'غير محفظ',
+        location: propertyDetails.propertyLocation,
+      },
+    }));
+    if (_onNext) {
+      _onNext();
+    }
+  };
+
   // --------------------------------------------------------------------------
   // واجهة المستخدم الكاملة
   // --------------------------------------------------------------------------
@@ -684,15 +727,26 @@ ${fruitsClause}
               بوابة التحقق القبلي واختصاص التلقي التوثيقي (المرحلة 0.25):
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowPreReceptionModal(true)}
-            className="px-3.5 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-50 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            title="مراجعة شروط التلقي والاختصاص المكاني (المرحلة 0.25)"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>فحص شروط التلقي (المرحلة 0.25)</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPreReceptionModal(true)}
+              className="px-3.5 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-50 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="مراجعة شروط التلقي والاختصاص المكاني (المرحلة 0.25)"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>فحص شروط التلقي (المرحلة 0.25)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleProceedToStep7}
+              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs shadow-md shadow-red-900/30 border border-red-400/40 flex items-center gap-1.5 cursor-pointer transition transform active:scale-95"
+              title="الانتقال المباشر للمراجعة النهائية وتقديم الوثيقة للقاضي المكلف بالتوثيق (المرحلة 7)"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2421,10 +2475,18 @@ ${fruitsClause}
               <button
                 type="button"
                 onClick={handlePrint}
-                className="px-6 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-black text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <Printer className="w-4 h-4" />
-                <span>اعتماد وطباعة رسم اعتصار الهبة</span>
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>طباعة المعاينة</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleProceedToStep7}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs rounded-xl shadow-lg shadow-red-900/40 border border-red-400/40 flex items-center justify-center gap-2 cursor-pointer transition transform active:scale-95"
+              >
+                <Send className="w-4 h-4 text-white" />
+                <span>المتابعة إلى مرحلة المراجعة والإرسال للقاضي (المرحلة 7)</span>
               </button>
             </div>
           </div>
