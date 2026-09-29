@@ -2955,6 +2955,154 @@ export interface GuardianshipSuitabilityDeed {
   deedText?: string;
 }
 
+// ============================================================================
+// ABSENCE INQUEST DEED (موجب إثبات غيبة)
+// ============================================================================
+
+export type AbsenceType =
+  | 'غيبة_الزوج'
+  | 'غيبة_الزوجة'
+  | 'غيبة_شخص_آخر'
+  | 'غيبة_مع_انقطاع_الأخبار_وعدم_معرفة_المكان';
+
+export type ApplicantAbsenceRelationship =
+  | 'زوج'
+  | 'زوجة'
+  | 'أب'
+  | 'أم'
+  | 'ابن'
+  | 'ابنة'
+  | 'أخ'
+  | 'أخت'
+  | 'وارث'
+  | 'قريب'
+  | 'دائن'
+  | 'صاحب_مصلحة'
+  | 'أخرى';
+
+export type AbsencePurpose =
+  | 'طلب_التطليق_للغيبة'
+  | 'إجراء_قضائي_متعلق_بالنفقة'
+  | 'إجراء_متعلق_بالحضانة'
+  | 'إجراء_متعلق_بمال_أو_حق'
+  | 'إجراء_متعلق_بالتركة'
+  | 'إجراء_متعلق_بالنيابة_أو_التمثيل'
+  | 'سبب_قضائي_آخر'
+  | 'قصد_الإدلاء_بالرسم_أمام_القضاء';
+
+export type AbsenceDepartureReason =
+  | 'سفر_عادي'
+  | 'سفر_للعمل'
+  | 'سفر_للدراسة'
+  | 'سفر_للعلاج'
+  | 'سفر_عائلي'
+  | 'هجرة'
+  | 'سبب_آخر';
+
+export type AbsenteeNewsStatus =
+  | 'تصل_أخباره_بانتظام'
+  | 'تصل_أحيانا'
+  | 'انقطعت_أخباره_تماما'
+  | 'تصل_أخبار_غير_مؤكدة'
+  | 'لا_يعلم_الطالب_شيئا_عن_حاله';
+
+export type AbsenteeLifeKnowledge =
+  | 'يعلمون_أنه_حي'
+  | 'لا_يعلمون_هل_هو_حي_أم_ميت'
+  | 'بلغتهم_أخبار_عن_حياته'
+  | 'لا_توجد_لديهم_أخبار_عنه';
+
+export interface AbsenceWitnessDetail {
+  witnessIndex: number;
+  durationOfKnowledgeYears?: number;
+  cohabitationMethod?: string;
+  knewUsualResidence?: boolean;
+  witnessedDeparture?: boolean;
+  knowsLastLocation?: boolean;
+  lastLocationKnown?: string;
+  knowsDateOfCutoff?: boolean;
+  cutoffDate?: string;
+  knowsNewsStatus?: boolean;
+  specificObservationText?: string;
+}
+
+export interface AbsenceInquestDeed {
+  absenceType: AbsenceType;
+  absentee: {
+    fullName: string;
+    fatherName: string;
+    motherName: string;
+    birthDate: string;
+    birthPlace: string;
+    cin: string;
+    nationality: string;
+    profession: string;
+    lastKnownAddress: string;
+    maritalStatus: string;
+    role: string;
+  };
+  applicant: {
+    fullName: string;
+    cin: string;
+    relationshipToAbsentee: ApplicantAbsenceRelationship;
+    customRelationshipText?: string;
+    declaredPurpose: AbsencePurpose;
+    customPurposeText?: string;
+  };
+  departureDetails: {
+    departureDate: string;
+    departurePlace: string;
+    destinationKnown?: string;
+    departureReason: AbsenceDepartureReason;
+    customReasonText?: string;
+    calculatedDurationText?: string;
+  };
+  lastSighting: {
+    sightingDate: string;
+    sightingPlace: string;
+    seenBy: string;
+    lastContactDate?: string;
+    lastContactType: 'اتصال_هاتفي' | 'رسالة' | 'زيارة' | 'تواصل_عبر_شخص_آخر' | 'لا_يوجد_أي_اتصال' | 'غير_معلوم';
+  };
+  locationStatus: {
+    isLocationKnown: 'نعم' | 'لا' | 'كان_معلوما_ثم_انقطعت_الأخبار';
+    lastKnownCountry?: string;
+    lastKnownCity?: string;
+    lastKnownAddress?: string;
+    workplace?: string;
+    isContactPossible?: boolean;
+    contactMethod?: string;
+    searchEffortsConducted?: boolean;
+    searchMethods?: string[];
+    searchResultText?: string;
+  };
+  newsAndLifeStatus: {
+    newsStatus: AbsenteeNewsStatus;
+    lifeKnowledge: AbsenteeLifeKnowledge;
+    potentialMissingPersonAlertAcknowledged?: boolean;
+  };
+  maritalSpecifics?: {
+    spouseName?: string;
+    marriageContractRef?: string;
+    marriageContractDate?: string;
+    hasChildren?: boolean;
+    childrenCount?: number;
+    hasMaintenanceSupport?: boolean;
+    lastMaritalHome?: string;
+  };
+  priorLegalCases?: {
+    hasPriorCase: 'لا' | 'نعم_حكم' | 'نعم_ملف_جار' | 'لا_أعلم';
+    courtName?: string;
+    fileNumber?: string;
+    caseYear?: string;
+    caseType?: string;
+    rulingDate?: string;
+    rulingVerdict?: string;
+  };
+  witnessDetails?: AbsenceWitnessDetail[];
+  deedText?: string;
+}
+
 export type MarriageClassificationType =
   | 'adult_marriage'          // 👤 زواج الراشد
   | 'minor_marriage'          // 👦 زواج القاصر
@@ -4410,6 +4558,9 @@ export interface FeesAgentState {
 
   // GuardianshipSuitabilityDeed State (موجب التقديم والصلاحية)
   guardianshipSuitabilityDeed?: GuardianshipSuitabilityDeed;
+
+  // AbsenceInquestDeed State (موجب إثبات غيبة)
+  absenceInquestDeed?: AbsenceInquestDeed;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;

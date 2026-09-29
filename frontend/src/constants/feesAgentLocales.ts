@@ -57,7 +57,8 @@ export type DocumentType =
   | 'عزل_وكيل'
   | 'كفالة'
   | 'موجب_خلل_عقلي'
-  | 'موجب_التقديم_والصلاحية';
+  | 'موجب_التقديم_والصلاحية'
+  | 'موجب_اثبات_غيبة';
 
 // ============================================================================
 // 2. DOCUMENT CLASSIFICATION GROUPS
@@ -433,6 +434,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: 'بيانات المعني بالأمر',
     buyerShareTitle: 'بيانات المقترح للتقديم',
   },
+  'موجب_اثبات_غيبة': {
+    sellerGroup: 'الشخص الغائب',
+    sellerSingle: 'الغائب',
+    buyerGroup: 'طالب الإشهاد (صاحب المصلحة)',
+    buyerSingle: 'طالب الإشهاد',
+    sellerAdd: '',
+    buyerAdd: 'إضافة طالب إشهاد',
+    sellerShareTitle: 'بيانات الشخص الغائب',
+    buyerShareTitle: 'بيانات طالب الإشهاد',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -562,6 +573,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رسم كفالة وتكفل', value: 'كفالة' },
       { label: 'موجب خلل عقلي', value: 'موجب_خلل_عقلي' },
       { label: 'موجب التقديم والصلاحية', value: 'موجب_التقديم_والصلاحية' },
+      { label: 'موجب إثبات غيبة', value: 'موجب_اثبات_غيبة' },
       { label: 'رسم آخر', value: 'أخرى' },
     ],
     alert: 'يُراعى التحقق من الأهلية وحدود الوكالة دون التوسع في التأويل.',

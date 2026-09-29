@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'absence_inquest' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -56,6 +56,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.9. Dedicated Guardianship & Suitability Inquest (موجب التقديم والصلاحية - شهادة اللفيف)
   if (dt === 'موجب_التقديم_والصلاحية' || dt.includes('تقديم_وصلاحية') || dt.includes('التقديم والصلاحية') || dt.includes('موجب_تقديم')) {
     return 'guardianship_suitability';
+  }
+
+  // 2.10. Dedicated Absence Inquest (موجب إثبات غيبة - شهادة اللفيف)
+  if (dt === 'موجب_اثبات_غيبة' || dt.includes('اثبات_غيبة') || dt.includes('إثبات غيبة') || dt.includes('موجب_غيبة') || dt.includes('موجب غيبة')) {
+    return 'absence_inquest';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -405,6 +410,29 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 4, targetStep: 3, num: '④', title: 'المقترح والصلاحية', desc: 'الشخص المقترح وأسس الصلاحية', icon: Heart },
             { index: 5, targetStep: 5, num: '⑤', title: 'شهود اللفيف', desc: 'نصاب 12 شاهداً ونطاق العلم', icon: Users },
             { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة رباعية الطبقات والمراجعة', icon: FileCheck },
+          ]
+        };
+
+      case 'absence_inquest':
+        return {
+          title: 'خريطة المسار الإجرائي لموجب إثبات غيبة (شهادة اللفيف الشرعية - مدونة الأسرة وقانون 58.25)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step >= 4 && step < 7) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والاختصاص', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'صفة الغيبة والغائب', desc: 'نوع الغيبة وهوية الغائب والطالب', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'وقائع الغيبة والمكان', desc: 'تاريخ المغادرة والمشاهدة والبحث', icon: Clock },
+            { index: 4, targetStep: 3, num: '④', title: 'الأخبار والفقدان', desc: 'حالة الأخبار والضابط القانوني', icon: Scale },
+            { index: 5, targetStep: 5, num: '⑤', title: 'شهود اللفيف', desc: 'نصاب 12 شاهداً وفحص التناقض', icon: Users },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة رباعية الطبقات والتوثيق', icon: FileCheck },
           ]
         };
 

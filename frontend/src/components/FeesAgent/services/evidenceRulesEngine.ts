@@ -257,6 +257,29 @@ export const EVIDENCE_RULES_DICTIONARY: Record<string, DocumentEvidenceRule> = {
     },
   },
 
+  // 7. موجب إثبات غيبة
+  موجب_اثبات_غيبة: {
+    documentType: 'موجب_اثبات_غيبة',
+    arabicName: 'موجب إثبات غيبة',
+    defaultMethod: 'lafif',
+    allowedMethods: ['lafif', 'scientific', 'mithliya', 'none'],
+    minimumWitnesses: 12,
+    maximumWitnesses: null,
+    bearingAgeMin: 12,
+    performanceAgeMin: 18,
+    requiresInquest: true,
+    forbiddenKinshipDegrees: [1],
+    legalReference: 'المواد 99 إلى 105 والمواد 325 إلى 327 من مدونة الأسرة، وقانون المسطرة المدنية 58.25 والقانون 51.26',
+    effectiveDate: '2026-11-09',
+    ruleVersion: '1.0',
+    recommendationReason: 'بناءً على نوع الرسم المحدد: موجب إثبات غيبة، يوصي النظام بنصاب شهادة اللفيف الشرعي (12 شاهداً على الأقل) لإثبات واقعة الغيبة وتاريخها ومكانها وانقطاع الأخبار استناداً للمعاينة والمخالطة، مع التمييز الصارم بين الغيبة والفقدان.',
+    whyExplainer: {
+      dualAge: 'يشترط التمييز (12 سنة) وقت معاينة مغادرة الغائب ومعرفة محل إقامته، وبلوغ سن الرشد (18 سنة) وقت أداء الشهادة العدلية.',
+      minimumWitnesses: 'شهادة اللفيف الشرعي في إثبات وقائع الغيبة وتاريخ مغادرة المحل المعتاد لا تقل عن 12 شاهداً من أهل المعرفة والمخالطة.',
+      inquestAndKinship: 'التحري في معرفة الشهود بالغائب وبأحواله وخلوهم من الخصومة أو جر مصلحة شخصية في موضوع الإشهاد.',
+    },
+  },
+
   // توثيق حكم ثبوت الزوجية
   توثيق_حكم_ثبوت_الزوجية: {
     documentType: 'توثيق_حكم_ثبوت_الزوجية',
