@@ -2771,6 +2771,69 @@ export interface MarriageContinuityDeed {
   };
 }
 
+export interface MentalDisabilityWitnessDetail {
+  witnessIndex: number;
+  durationOfKnowledge?: string;
+  cohabitationTypes?: string[];
+  hasContinuousCohabitation?: boolean;
+  factsObserved?: string[];
+  durationObservedYears?: number;
+  observedIntermittentLucidIntervals?: boolean;
+  agreesTestimonyBasedOnDirectObservation?: boolean;
+}
+
+export interface MentalDisabilityMedicalReport {
+  hasMedicalCertificate: boolean;
+  doctorName?: string;
+  doctorSpecialty?: string;
+  reportDate?: string;
+  reportReference?: string;
+  attachmentName?: string;
+  summary?: string;
+}
+
+export interface MentalDisabilityDeed {
+  subject: {
+    fullName: string;
+    fatherName: string;
+    motherName: string;
+    birthDate: string;
+    birthPlace: string;
+    cin: string;
+    profession: string;
+    address: string;
+    maritalStatus: 'عازب' | 'متزوج' | 'مطلق' | 'أرمل' | '';
+    isKnownDirectlyByLafif: boolean;
+  };
+  knowledgeBasis: {
+    durationOfKnowledge: 'منذ_الطفولة' | 'منذ_سنوات_طويلة' | 'منذ_مدة_متوسطة' | 'منذ_مدة_قريبة' | '';
+    cohabitationTypes: string[];
+    isContinuousCohabitation: boolean;
+    scientificBasisNotes?: string;
+  };
+  lafifScienceBasis: string[];
+  observedDisabilityManifestations: string[];
+  customManifestationsText?: string;
+  financialImpact: {
+    hasFinancialImpact: boolean;
+    manifestations: string[];
+    customFinancialNotes?: string;
+  };
+  continuityStatus: 'مستمرة' | 'متقطعة' | 'غير_محددة' | '';
+  observedDurationDescription?: string;
+  observedLucidIntervals?: boolean;
+  lucidIntervalsNotes?: string;
+  medicalReport?: MentalDisabilityMedicalReport;
+  futureLinkages?: {
+    familyCourtCaseNumber?: string;
+    linkedCourtName?: string;
+    hasAttachedMedicalDoc?: boolean;
+    futureInterdictionRulingNumber?: string;
+  };
+  witnessDetails?: MentalDisabilityWitnessDetail[];
+  deedText?: string;
+}
+
 export type MarriageClassificationType =
   | 'adult_marriage'          // 👤 زواج الراشد
   | 'minor_marriage'          // 👦 زواج القاصر
@@ -4220,6 +4283,9 @@ export interface FeesAgentState {
 
   // KafalaDeed State (رسم الكفالة والتكفل العائلي)
   kafalaDeed?: KafalaDeed;
+
+  // MentalDisabilityDeed State (موجب خلل عقلي)
+  mentalDisabilityDeed?: MentalDisabilityDeed;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;

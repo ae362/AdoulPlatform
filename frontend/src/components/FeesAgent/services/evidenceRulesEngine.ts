@@ -211,6 +211,29 @@ export const EVIDENCE_RULES_DICTIONARY: Record<string, DocumentEvidenceRule> = {
     },
   },
 
+  // 5. موجب خلل عقلي
+  موجب_خلل_عقلي: {
+    documentType: 'موجب_خلل_عقلي',
+    arabicName: 'موجب خلل عقلي',
+    defaultMethod: 'lafif',
+    allowedMethods: ['lafif', 'scientific', 'mithliya', 'none'],
+    minimumWitnesses: 12,
+    maximumWitnesses: null,
+    bearingAgeMin: 12,
+    performanceAgeMin: 18,
+    requiresInquest: true,
+    forbiddenKinshipDegrees: [1],
+    legalReference: 'المادتان 217 و222 من مدونة الأسرة والقانون رقم 51.26 - شهادة اللفيف لإثبات واقعة الخلل العقلي',
+    effectiveDate: '2026-11-09',
+    ruleVersion: '1.0',
+    recommendationReason: 'بناءً على نوع الرسم المحدد: موجب خلل عقلي، يوصي النظام باعتماد شهادة اللفيف الشرعي (12 شاهداً على الأقل) لإثبات واقعة الخلل العقلي وأثرها على حسن التصرف استناداً للمخالطة المستمرة والمعاينة المباشرة.',
+    whyExplainer: {
+      dualAge: 'يشترط التمييز وقت معاينة أفعال وتصرفات المشهود في حقه، وبلوغ سن الرشد (18 سنة) وقت أداء الشهادة العدلية.',
+      minimumWitnesses: 'شهادة اللفيف في إثبات الوقائع المشهودة لا تقل عن 12 شاهداً من أهل المخالطة والاطلاع المستمر.',
+      inquestAndKinship: 'التحري في معرفة الشهود بحال المشهود في حقه وخلوهم من الخصومة أو جر المصلحة الشخصية.',
+    },
+  },
+
   // توثيق حكم ثبوت الزوجية
   توثيق_حكم_ثبوت_الزوجية: {
     documentType: 'توثيق_حكم_ثبوت_الزوجية',

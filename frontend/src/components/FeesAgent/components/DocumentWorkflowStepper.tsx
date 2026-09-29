@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'other';
+export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -46,6 +46,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.7. Dedicated Kafala & Sponsorship (رسم الكفالة والتكفل العائلي - قانون 15.01 / التكفل العائلي)
   if (dt === 'كفالة' || dt.includes('كفالة') || dt.includes('تكفل')) {
     return 'kafala';
+  }
+
+  // 2.8. Dedicated Mental Disability Inquest (موجب خلل عقلي - شهادة اللفيف)
+  if (dt === 'موجب_خلل_عقلي' || dt.includes('خلل_عقلي') || dt.includes('خلل عقلي')) {
+    return 'mental_disability';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -349,6 +354,29 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 4, targetStep: 3, num: '④', title: 'نطاق التكفل والمصاريف', desc: 'المعيشة والتمدرس والرعاية الصحية', icon: Heart },
             { index: 5, targetStep: 4, num: '⑤', title: 'الشهود والالتزام', desc: 'شهود المعرفة ومدة الالتزام', icon: Clock },
             { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'المراجعة الذكية للرسم وتوثيقه', icon: FileCheck },
+          ]
+        };
+
+      case 'mental_disability':
+        return {
+          title: 'خريطة المسار الإجرائي لموجب خلل عقلي (شهادة اللفيف الشرعية - المادتان 217 و222 من مدونة الأسرة)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step >= 4 && step < 7) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والاختصاص', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'المشهود في حقه', desc: 'الهوية والمعرفة المباشرة', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'أساس علم اللفيف', desc: 'المخالطة والاطلاع المستمر', icon: Clock },
+            { index: 4, targetStep: 3, num: '④', title: 'وقائع الخلل والأموال', desc: 'المعاينة وتدبير الأموال', icon: Scale },
+            { index: 5, targetStep: 5, num: '⑤', title: 'شهود اللفيف', desc: 'نصاب الـ 12 شاهداً والتحري', icon: Users },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة ثلاثية الطبقات والتوثيق', icon: FileCheck },
           ]
         };
 
