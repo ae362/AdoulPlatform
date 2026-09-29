@@ -280,6 +280,29 @@ export const EVIDENCE_RULES_DICTIONARY: Record<string, DocumentEvidenceRule> = {
     },
   },
 
+  // 8. رسم اعتصار هبة
+  اعتصار_هبة: {
+    documentType: 'اعتصار_هبة',
+    arabicName: 'رسم اعتصار هبة',
+    defaultMethod: 'none',
+    allowedMethods: ['none'],
+    minimumWitnesses: 0,
+    maximumWitnesses: 0,
+    bearingAgeMin: 18,
+    performanceAgeMin: 18,
+    requiresInquest: false,
+    forbiddenKinshipDegrees: [],
+    legalReference: 'المواد 283 إلى 289 من مدونة الحقوق العينية 39.08 والفصلان 1-889 و2-889 من ق.ل.ع والقانون 51.26',
+    effectiveDate: '2026-11-09',
+    ruleVersion: '1.0',
+    recommendationReason: 'رسم اعتصار الهبة يتم إما اتفاقياً بحضور الواهب والموهوب له وموافقتهما، أو استناداً إلى حكم قضائي حائز لقوة الشيء المقضي به يقضي بفسخ عقد الهبة لفائدة الواهب طبقاً للمادة 286 من مدونة الحقوق العينية.',
+    whyExplainer: {
+      dualAge: 'لا يستلزم شهادة خاصة؛ فالرسم يقوم على إقرار وتوافق إرادتي الواهب والموهوب له، أو على تنفيذ الحكم القضائي القطعي.',
+      minimumWitnesses: 'صفر شهود؛ يكتفى بحضور ومصادقة الواهب والموهوب له أو من ينوب عنهما قانوناً.',
+      inquestAndKinship: 'يتم فحص موانع المادة 285 من مدونة الحقوق العينية وشروط المادتين 283 و284 إلكترونياً وبطريقة قطعية.',
+    },
+  },
+
   // توثيق حكم ثبوت الزوجية
   توثيق_حكم_ثبوت_الزوجية: {
     documentType: 'توثيق_حكم_ثبوت_الزوجية',

@@ -3103,6 +3103,201 @@ export interface AbsenceInquestDeed {
   deedText?: string;
 }
 
+// ============================================================================
+// GIFT REVOCATION DEED (رسم اعتصار الهبة - اتفاقي / قضائي)
+// Articles 283 to 289 of Law 39.08 (Real Rights Code) & Articles 1-889 & 2-889 of DOC
+// ============================================================================
+
+export type GiftRevocationMethod = 'اتفاقي' | 'قضائي';
+export type GiftRevocationDonorCapacity = 'أب' | 'أم' | 'عاجز_عن_الإنفاق';
+export type GiftRevocationDoneeRelation = 'ابن' | 'بنت' | 'زوج_أو_زوجة' | 'غير_ذلك';
+export type GiftRevocationOriginalDeedType = 'رسم_عدلي' | 'عقد_موثق' | 'محرر_رسمي_آخر' | 'عقد_عرفي_قديم' | 'حكم_قضائي' | 'غير_ذلك';
+export type GiftRevocationPropertyStatus = 'محفظ' | 'في_طور_التحفيظ' | 'غير_محفظ';
+export type GiftRevocationDisposalStatus = 'لا' | 'نعم_كله' | 'نعم_جزء_منه';
+export type GiftRevocationPerishingStatus = 'لا' | 'هلك_جزئيا' | 'هلك_كليا';
+export type GiftRevocationPoaType = 'لا' | 'نعم_اختيارية' | 'نعم_قضائية' | 'وكالة_بالخارج';
+
+export interface GiftRevocationDeed {
+  revocationMethod: GiftRevocationMethod;
+  donor: {
+    fullName: string;
+    fatherName?: string;
+    motherName?: string;
+    birthDate?: string;
+    birthPlace?: string;
+    cin: string;
+    profession?: string;
+    address?: string;
+    maritalStatus?: string;
+    nationality?: string;
+    capacity: 'كامل_الأهلية' | 'نائب_وكيل' | 'حالة_أخرى';
+    capacityType: GiftRevocationDonorCapacity;
+    incapacityProofDetails?: string;
+  };
+  donee: {
+    fullName: string;
+    fatherName?: string;
+    motherName?: string;
+    birthDate?: string;
+    birthPlace?: string;
+    cin: string;
+    profession?: string;
+    address?: string;
+    maritalStatus?: string;
+    nationality?: string;
+    capacity: 'راشد' | 'ناقص_الأهلية' | 'فاقد_الأهلية' | 'ممثل_بنائب_شرعي' | 'وكيل';
+    relationshipToDonor: GiftRevocationDoneeRelation;
+    parentageDocumentRef?: string;
+    representativeName?: string;
+    representativeCin?: string;
+    representativeCapacity?: string;
+    representativeAppointmentOrder?: string;
+  };
+  originalGiftDeed: {
+    originalDeedType: GiftRevocationOriginalDeedType;
+    registryBookNumber?: string;
+    registryLetter?: string;
+    registryPage?: string;
+    registryCount?: string;
+    registryDate?: string;
+    courtName?: string;
+    courtNotaryDept?: string;
+    notary1Name?: string;
+    notary2Name?: string;
+    originalDeedDate?: string;
+    originalDonorName?: string;
+    originalDoneeName?: string;
+    originalPropertyDescription?: string;
+    originalGiftedShare?: string;
+    originalGiftValue?: number;
+    originalStipulatedConditions?: string;
+    customaryCreationDate?: string;
+    isPriorToLaw39_08?: boolean;
+    customaryTemporalAuditVerdict?: string;
+  };
+  revocationClauses: {
+    hasRevocationClause: 'نعم' | 'لا' | 'غير_واضح';
+    revocationClauseText?: string;
+    hasWaiverOfRevocationClause: 'لا' | 'نعم' | 'غير_واضح';
+    waiverClauseText?: string;
+  };
+  propertyDetails: {
+    propertyStatus: GiftRevocationPropertyStatus;
+    landRegistryName?: string;
+    titleNumber?: string;
+    partNumber?: string;
+    totalArea?: string;
+    propertyLocation?: string;
+    currentOwnershipDescription?: string;
+    giftedShare?: string;
+    encumbrancesText?: string;
+    requisitionNumber?: string;
+    requisitionOffice?: string;
+    requisitionDate?: string;
+    requisitionShare?: string;
+    originalTitleRef?: string;
+    possessionType?: string;
+    deedDate?: string;
+    boundariesDescription?: string;
+    hasNewEncumbrances: boolean;
+    chargesComparisonDayOfGiftVsDayOfRevocation?: string;
+  };
+  impedimentsAudit: {
+    disposalStatus: GiftRevocationDisposalStatus;
+    disposedPartDescription?: string;
+    hasThirdPartyFinancialDealing: 'لا' | 'نعم_قرض' | 'نعم_رهن' | 'نعم_ضمان' | 'نعم_معاملة_أخرى';
+    thirdPartyDealingDetails?: string;
+    hasPropertyModifications: boolean;
+    modificationsList: string[];
+    hasSignificantValueIncrease: boolean;
+    perishingStatus: GiftRevocationPerishingStatus;
+    remainingPortionDescription?: string;
+    hasDreadIllness: boolean;
+    affectedParty?: 'الواهب' | 'الموهوب_له' | 'كلاهما';
+    recoveryDate?: string;
+    donorAliveStatus: 'حي' | 'متوفى';
+    doneeAliveStatus: 'حي' | 'متوفى';
+    hasDoneeMarriedAfterGift: boolean;
+    marriageDate?: string;
+    marriageContractRef?: string;
+    wasMarriageMotivatedByGift: boolean;
+    isGiftBetweenSpouses: boolean;
+    isMaritalBondStillExisting: boolean;
+    originalContractNature: 'هبة' | 'صدقة';
+  };
+  poaDetails: {
+    hasAgent: GiftRevocationPoaType;
+    agentName?: string;
+    agentCin?: string;
+    agentAddress?: string;
+    agentPhone?: string;
+    principalName?: string;
+    principalCin?: string;
+    localRegistryCourt?: string;
+    localRegistryDate?: string;
+    chronologicalNumber?: string;
+    analyticalNumber?: string;
+    compositeNumber?: string;
+    hasLocalRegistryCertificate?: boolean;
+    isVerifiedInNationalRegistry?: boolean;
+    nationalVerificationDate?: string;
+    nationalRegistrationNumber?: string;
+    nationalQueryResult?: 'مقيدة_وصحيحة' | 'غير_مقيدة' | 'ملغاة' | 'معدلة' | '';
+    judicialMandateCourt?: string;
+    judicialMandateFileNumber?: string;
+    judicialMandateYear?: string;
+    judicialMandateDate?: string;
+    judicialMandateOrderType?: string;
+    judicialMandateSummary?: string;
+    judicialAuthorizedPerson?: string;
+    scopeIncludesRevocation?: boolean;
+    scopeIncludesAgreement?: boolean;
+    scopeIncludesSigning?: boolean;
+    scopeIncludesDisposal?: boolean;
+  };
+  fiscalAndStamp: {
+    fiscalStatus: 'خاضع' | 'معفى' | 'معلوم_خاص' | 'تحديد_آلي';
+    officeName?: string;
+    registrationDate?: string;
+    registrationNumber?: string;
+    receiptNumber?: string;
+    dutyAmount?: number;
+    dutyType?: string;
+    pageCount?: number;
+    copyCount?: number;
+    stampDutyPaid?: number;
+    stampReceiptNumber?: string;
+    stampPaymentDate?: string;
+  };
+  landRegistryDossier: {
+    originalRegistrationDate?: string;
+    originalDepositNumber?: string;
+    revocationDepositDate?: string;
+    revocationDepositNumber?: string;
+    resultantStatus?: string;
+  };
+  judicialRulingDetails?: {
+    courtName?: string;
+    fileNumber?: string;
+    caseYear?: string;
+    rulingNumber?: string;
+    rulingDate?: string;
+    litigationDegree?: string;
+    isFinal: boolean;
+    finalAcquisitionDate?: string;
+    rulingVerdict?: string;
+    confirmsGiftRescission: boolean;
+  };
+  fruitsAndExpenses: {
+    fruitsCutoffDate?: string;
+    necessaryExpensesAmount?: number;
+    usefulExpensesAmount?: number;
+    ornamentalExpensesAction?: 'إزالتها_دون_ضرر' | 'دفع_قيمتها_مستحقة_القلع' | 'لا_توجد';
+    revocationExpensesBearer: 'الواهب_قانونا_المادة_289';
+  };
+  deedText?: string;
+}
+
 export type MarriageClassificationType =
   | 'adult_marriage'          // 👤 زواج الراشد
   | 'minor_marriage'          // 👦 زواج القاصر
@@ -5063,6 +5258,7 @@ export interface FeesAgentState {
   preReceptionVerification?: PreReceptionVerificationData;
   marriageClassification?: SmartMarriageClassificationData;
   divorceClassification?: SmartDivorceClassificationData;
+  giftRevocationDeed?: GiftRevocationDeed;
   [key: string]: any;
 }
 

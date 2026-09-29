@@ -30,6 +30,7 @@ import { PossessionWizard } from './documents/property/PossessionWizard';
 import { PartitionWizard } from './documents/property/PartitionWizard';
 import { MunakalaWizard } from './documents/property/MunakalaWizard';
 import { GiftWizard } from './documents/property/GiftWizard';
+import { GiftRevocationWizard } from './documents/property/GiftRevocationWizard';
 import { SadaqaWizard } from './documents/property/SadaqaWizard';
 import { MortgageWizard } from './documents/other/MortgageWizard';
 import { PromiseToSellWizard } from './documents/property/PromiseToSellWizard';
@@ -89,6 +90,7 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'مقاسمة': PartitionWizard,
   'مناقلة': MunakalaWizard,
   'هبة': GiftWizard,
+  'اعتصار_هبة': GiftRevocationWizard,
   'صدقة': SadaqaWizard,
   'رهن': MortgageWizard,
   'وعد_بالبيع': PromiseToSellWizard,

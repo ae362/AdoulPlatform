@@ -58,7 +58,8 @@ export type DocumentType =
   | 'كفالة'
   | 'موجب_خلل_عقلي'
   | 'موجب_التقديم_والصلاحية'
-  | 'موجب_اثبات_غيبة';
+  | 'موجب_اثبات_غيبة'
+  | 'اعتصار_هبة';
 
 // ============================================================================
 // 2. DOCUMENT CLASSIFICATION GROUPS
@@ -444,6 +445,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: 'بيانات الشخص الغائب',
     buyerShareTitle: 'بيانات طالب الإشهاد',
   },
+  'اعتصار_هبة': {
+    sellerGroup: 'الواهبون (المعتصرون)',
+    sellerSingle: 'الواهب (المعتصر)',
+    buyerGroup: 'الموهوب لهم (المعتصر ضدهم)',
+    buyerSingle: 'الموهوب له (المعتصر ضده)',
+    sellerAdd: 'إضافة واهب',
+    buyerAdd: 'إضافة موهوب له',
+    sellerShareTitle: 'بيانات الواهب',
+    buyerShareTitle: 'بيانات الموهوب له',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -525,6 +536,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رسم مقاسمة', value: 'مقاسمة' },
       { label: 'رسم مناقلة', value: 'مناقلة' },
       { label: 'رسم هبة', value: 'هبة' },
+      { label: 'اعتصار هبة', value: 'اعتصار_هبة' },
       { label: 'رسم صدقة', value: 'صدقة' },
       { label: 'رسم رهن', value: 'رهن' },
       { label: 'وعد بالبيع', value: 'وعد_بالبيع' },
