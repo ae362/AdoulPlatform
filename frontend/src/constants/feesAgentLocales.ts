@@ -56,7 +56,8 @@ export type DocumentType =
   | 'توثيق_حكم_ثبوت_الزوجية'
   | 'عزل_وكيل'
   | 'كفالة'
-  | 'موجب_خلل_عقلي';
+  | 'موجب_خلل_عقلي'
+  | 'موجب_التقديم_والصلاحية';
 
 // ============================================================================
 // 2. DOCUMENT CLASSIFICATION GROUPS
@@ -422,6 +423,16 @@ export const DOCUMENT_PARTY_LABELS: Record<string, PartyLabels> = {
     sellerShareTitle: '',
     buyerShareTitle: '',
   },
+  'موجب_التقديم_والصلاحية': {
+    sellerGroup: 'المشهود في حقه (المعني بالأمر)',
+    sellerSingle: 'المشهود في حقه',
+    buyerGroup: 'الشخص المقترح للتقديم',
+    buyerSingle: 'المقترح للتقديم',
+    sellerAdd: '',
+    buyerAdd: 'إضافة شخص مقترح',
+    sellerShareTitle: 'بيانات المعني بالأمر',
+    buyerShareTitle: 'بيانات المقترح للتقديم',
+  },
 };
 
 export const getPartyLabels = (type: DocumentType | string): PartyLabels => {
@@ -550,6 +561,7 @@ export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
       { label: 'رسم اقرار بدين (الاعتراف)', value: 'رسم_اقرار_بدين' },
       { label: 'رسم كفالة وتكفل', value: 'كفالة' },
       { label: 'موجب خلل عقلي', value: 'موجب_خلل_عقلي' },
+      { label: 'موجب التقديم والصلاحية', value: 'موجب_التقديم_والصلاحية' },
       { label: 'رسم آخر', value: 'أخرى' },
     ],
     alert: 'يُراعى التحقق من الأهلية وحدود الوكالة دون التوسع في التأويل.',

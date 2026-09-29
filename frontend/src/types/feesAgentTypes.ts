@@ -2834,6 +2834,127 @@ export interface MentalDisabilityDeed {
   deedText?: string;
 }
 
+// ============================================================================
+// GUARDIANSHIP & SUITABILITY INQUEST DEED (موجب التقديم والصلاحية)
+// ============================================================================
+
+export type GuardianshipNeedReason =
+  | 'فقدان_العقل_الجنون'
+  | 'إعاقة_ذهنية'
+  | 'سفه'
+  | 'عته'
+  | 'حجر_قضائي_قائم'
+  | 'حالة_أخرى_تحد_من_حسن_تدبير_الأموال'
+  | 'سبب_ثابت_بحكم_قضائي';
+
+export type JudicialStatusType =
+  | 'لم_يصدر_حكم_بالحجر_بعد'
+  | 'صدر_حكم_بالحجر'
+  | 'الملف_معروض_على_المحكمة'
+  | 'توجد_نيابة_شرعية_قائمة'
+  | 'أخرى';
+
+export interface InterdictionRulingDetails {
+  hasRuling: boolean;
+  courtName?: string;
+  fileNumber?: string;
+  rulingNumber?: string;
+  rulingDate?: string;
+  operativeVerdict?: string;
+  rulingReason?: string;
+  effectiveDate?: string;
+  isFinalOrAppealed?: 'نهائي' | 'قابل_للطعن' | 'مشمول_بالنفاذ_المعجل' | '';
+}
+
+export interface ProposedCandidate {
+  id: string;
+  fullName: string;
+  relationship: 'الأب' | 'الأم' | 'الابن' | 'البنت' | 'الأخ' | 'الأخت' | 'الزوج' | 'الزوجة' | 'أحد_الأقارب' | 'شخص_آخر';
+  relationshipCustom?: string;
+  cin: string;
+  birthDate?: string;
+  profession?: string;
+  address?: string;
+  maritalStatus?: string;
+  suitabilityBases: string[];
+  customSuitabilityNotes?: string;
+  isCurrentlyManaging: boolean;
+  currentManagementTypes: string[];
+  conflictOfInterestStatus: 'لا_يعلم_اللفيف_بذلك' | 'نعم' | 'توجد_مصلحة_معلومة_ومصرح_بها';
+  conflictOfInterestNotes?: string;
+}
+
+export interface WitnessKnowledgeScope {
+  witnessIndex: number;
+  knowsSubjectState: boolean;
+  knowsNeedForGuardianship: boolean;
+  knowsFinancialState: boolean;
+  knowsProposedCandidate: boolean;
+  knowsCandidateSuitability: boolean;
+  knowsActualCareByCandidate: boolean;
+  durationOfKnowledgeYears?: number;
+  cohabitationTypes: string[];
+}
+
+export interface GuardianshipSuitabilityDeed {
+  subject: {
+    fullName: string;
+    fatherName: string;
+    motherName: string;
+    birthDate: string;
+    birthPlace: string;
+    cin: string;
+    profession: string;
+    address: string;
+    maritalStatus: 'عازب' | 'متزوج' | 'مطلق' | 'أرمل' | '';
+    isKnownDirectlyByLafif: boolean;
+  };
+  needReason: GuardianshipNeedReason;
+  customNeedReasonText?: string;
+  judicialStatus: JudicialStatusType;
+  interdictionRuling?: InterdictionRulingDetails;
+  observedNeedFacts: string[];
+  customNeedFactsNotes?: string;
+  lafifScienceBasis: {
+    durationYears: number;
+    cohabitationTypes: string[];
+    scopeOfInsight: 'جل_أحواله' | 'الأحوال_المتعلقة_بأهليته_وأمواله' | 'معاينة_وقائع_محددة' | '';
+  };
+  candidatesCountMode: 'شخص_واحد' | 'شخصان' | 'عدة_أشخاص';
+  candidates: ProposedCandidate[];
+  assetsNeedCare: {
+    needsCare: boolean;
+    categories: string[];
+    realEstateInfo?: {
+      propertyType?: string;
+      location?: string;
+      titleNumber?: string;
+      acquisitionMethod?: string;
+      isInherited?: boolean;
+      hasRights?: boolean;
+      needsManagementOrRent?: boolean;
+    };
+    assetsNotes?: string;
+  };
+  documentsChecklist: {
+    subjectCinAttached: boolean;
+    candidateCinAttached: boolean;
+    kinshipProofAttached: boolean;
+    interdictionRulingAttached: boolean;
+    medicalCertificateAttached: boolean;
+    assetsProofAttached: boolean;
+    bankOrPensionDocAttached: boolean;
+    otherDocsAttached?: string;
+  };
+  witnessKnowledgeScopes?: WitnessKnowledgeScope[];
+  futureLinkages?: {
+    familyCourtName?: string;
+    guardianshipFileNumber?: string;
+    judgeNotes?: string;
+  };
+  deedText?: string;
+}
+
 export type MarriageClassificationType =
   | 'adult_marriage'          // 👤 زواج الراشد
   | 'minor_marriage'          // 👦 زواج القاصر
@@ -4286,6 +4407,9 @@ export interface FeesAgentState {
 
   // MentalDisabilityDeed State (موجب خلل عقلي)
   mentalDisabilityDeed?: MentalDisabilityDeed;
+
+  // GuardianshipSuitabilityDeed State (موجب التقديم والصلاحية)
+  guardianshipSuitabilityDeed?: GuardianshipSuitabilityDeed;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;

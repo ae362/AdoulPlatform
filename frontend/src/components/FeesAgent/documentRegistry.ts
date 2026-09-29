@@ -57,6 +57,7 @@ import { OtherDocumentWizard } from './documents/other/OtherDocumentWizard';
 import { AgentDismissalWorkflow } from './documents/other/AgentDismissalWorkflow';
 import { KafalaWizard } from './documents/other/KafalaWizard';
 import { MentalDisabilityInquestWizard } from './documents/other/MentalDisabilityInquestWizard';
+import { GuardianshipSuitabilityWizard } from './documents/other/GuardianshipSuitabilityWizard';
 
 export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
@@ -113,6 +114,7 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<DocumentType, React.ComponentType<
   'عزل_وكيل': AgentDismissalWorkflow,
   'كفالة': KafalaWizard,
   'موجب_خلل_عقلي': MentalDisabilityInquestWizard,
+  'موجب_التقديم_والصلاحية': GuardianshipSuitabilityWizard,
   'أخرى': OtherDocumentWizard,
 };
 
