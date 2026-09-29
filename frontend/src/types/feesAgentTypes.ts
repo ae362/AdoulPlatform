@@ -4657,6 +4657,150 @@ export interface AgentDismissalDeed {
   }>;
 }
 
+// ============================================================================
+// Upgraded Gift Deed (رسم الهبة المطور) Types
+// ============================================================================
+export type GiftSubjectType =
+  | 'هبة_الملكية_كاملة'
+  | 'هبة_الرقبة_مع_احتفاظ_الواهب_بالانتفاع'
+  | 'هبة_حق_الانتفاع_فقط'
+  | 'هبة_حق_الاستعمال'
+  | 'هبة_العمرى'
+  | 'هبة_حق_عيني_آخر'
+  | 'هبة_الرقبة_مع_احتفاظ_الواهب_بالسكنى';
+
+export interface GiftRightsMatrix {
+  donor: {
+    raqaba: boolean;
+    istimal: boolean;
+    istighlal: boolean;
+    intifa: boolean;
+    tasarruf: boolean;
+    sokna?: boolean;
+  };
+  donee: {
+    raqaba: boolean;
+    istimal: boolean;
+    istighlal: boolean;
+    intifa: boolean;
+    tasarruf: boolean;
+    sokna?: boolean;
+  };
+}
+
+export interface GiftPropertyItem {
+  id: string;
+  propertyType: 'محفظ' | 'في_طور_التحفيظ' | 'غير_محفظ';
+  propertyName?: string;
+  titleNumber?: string;
+  requisitionNumber?: string;
+  requisitionDate?: string;
+  landConservationOffice?: string;
+  location?: string;
+  area?: string;
+  propertyNature?: string;
+  currentOwner?: string;
+  encumbrances?: string[];
+  mortgages?: string;
+  seizures?: string;
+  objections?: Array<{ number: string; opponent: string; status: string; referredToCourt: boolean }>;
+  rootOfTitleType?: string;
+  rootOfTitleDetails?: string;
+  possessionSource?: string;
+  possessionDate?: string;
+  possessionPlace?: string;
+  boundaries?: { north: string; south: string; east: string; west: string };
+  contents?: string;
+  coOwners?: string;
+  coOwnershipType: 'كامل_الملك' | 'النصف' | 'الربع' | 'الثلث' | 'حصة_أخرى' | 'حصة_شائعة_غير_كسرية';
+  customShareFraction?: string;
+  isPhysicalPartition: boolean;
+  physicalPartitionDeedType?: 'قسمة_رضائية' | 'قسمة_قضائية' | 'اتفاق_قابل_للاحتجاج' | 'لا_توجد_قسمة';
+  physicalPartitionDetails?: string;
+  giftedRightForProperty?: string;
+}
+
+export interface GiftOwnershipSource {
+  id: string;
+  sourceType: 'رسم_عدلي' | 'عقد_موثق' | 'عقد_محام_ثابت_التاريخ' | 'حكم_قضائي' | 'إراثة_وسند_الموروث' | 'قسمة' | 'وصية' | 'صدقة' | 'هبة_سابقة' | 'سند_أجنبي' | 'سند_قديم_عرفي';
+  percentage: number;
+  fractionText: string;
+  date: string;
+  registryBookNumber?: string;
+  registryLetter?: string;
+  registryPage?: string;
+  registryCount?: string;
+  registryDate?: string;
+  courtName?: string;
+  notaryNames?: string;
+  judgmentCourt?: string;
+  judgmentFileNumber?: string;
+  judgmentNumber?: string;
+  judgmentDate?: string;
+  isFinalJudgment?: boolean;
+  nonAppealCertificate?: boolean;
+  judgmentRuling?: string;
+  isPriorToLaw3908?: boolean;
+  customaryDeedAnalysis?: string;
+  notes?: string;
+}
+
+export interface GiftPossessionDetails {
+  requiresEviction: boolean;
+  evictionExemptReason?: string;
+  evidenceMethods: string[];
+  customEvidenceDescription: string;
+  adoulInspectionStatement: string;
+  witnessStatements?: string;
+  occupancyStatus: 'شغل_الواهب_بحق_الانتفاع' | 'شغل_الموهوب_له' | 'عقار_شاغر_تم_تسليمه' | 'مكترى_للغير_مع_حوالة_الحق' | 'أخرى';
+}
+
+export interface GiftPoaDetails {
+  hasPoa: boolean;
+  poaType: 'مباشرة' | 'وكالة_خاصة' | 'وكالة_قضائية' | 'وكالة_أجنبية' | 'وكالة_تصرف_عقاري';
+  principalName: string;
+  agentName: string;
+  date: string;
+  drafter: string;
+  number: string;
+  scopeIncludesGift: boolean;
+  scopeIncludesRaqaba: boolean;
+  scopeIncludesUsufruct: boolean;
+  scopeIncludesSigning: boolean;
+  scopeIncludesPossessionAck: boolean;
+  scopeIncludesRegistration: boolean;
+  localRegistryCourt: string;
+  localRegistryDate: string;
+  localRegistryOrderNumber: string;
+  localRegistryAnalyticalNumber: string;
+  localRegistryCompositeNumber: string;
+  localRegistryCertificateRef: string;
+  nationalVerificationDone: boolean;
+  nationalVerificationDate: string;
+  nationalRegistryNumber: string;
+  nationalVerificationResult: 'مطابق_وصالح' | 'غير_مسجل' | 'ملغى' | 'معدل' | '';
+  judgeOrderNumber?: string;
+  judgeOrderDate?: string;
+  judgeOrderCourt?: string;
+}
+
+export interface GiftFinanceDetails {
+  transactionYear: number;
+  taxRegistryOffice: string;
+  registrationReceiptNumber: string;
+  registrationDate: string;
+  registrationAmount: number;
+  taxTariffReference: string;
+  taxExemptionMentioned: boolean;
+  taxExemptionArticle: string;
+  stampDutyAmount: number;
+  numberOfPages: number;
+  stampPaymentReference: string;
+  conservationDepositNumber: string;
+  conservationDepositDate: string;
+  conservationFeesAmount: number;
+}
+
 export interface FeesAgentState {
   marriageDetails?: MarriageDetails;
   step: number;
@@ -5032,6 +5176,69 @@ export interface FeesAgentState {
     warnNoRevocationBetweenSpouses?: boolean;
     warnDeathIllnessSubjectToWillRules?: boolean;
     warnCannotGiftOthersProperty?: boolean;
+
+    // --- New Additive Layers for Upgraded Gift Deed (رسم الهبة المطور) ---
+    giftSubjectType?: GiftSubjectType;
+    rightsMatrix?: GiftRightsMatrix;
+    retainedRightType?: 'حق_الانتفاع' | 'حق_الاستعمال' | 'حق_السكنى' | 'حق_العمرى' | 'أخرى' | '';
+    usufructDuration?: 'مدى_حياة_الواهب' | 'مدى_حياة_الموهوب_له' | 'أجل_محدد' | '';
+    usufructExpiryDate?: string;
+    usufructScope?: 'كامل_العقار' | 'حصة_مشاعة' | '';
+    otherRealRightName?: string;
+    donorDoneeDisambiguation?: string;
+
+    donorIdentity?: PersonIdentityFields & {
+      name?: string;
+      fullName?: string;
+      profession?: string;
+      nationality?: string;
+      address?: string;
+      maritalStatus?: string;
+      fatherName?: string;
+      motherName?: string;
+      birthDate?: string;
+      birthPlace?: string;
+    };
+    donorCapacityType?: 'كامل_الأهلية' | 'ناقص_الأهلية' | 'فاقد_الأهلية';
+    donorDebtEncumbrance?: boolean;
+    donorHasMortgage?: boolean;
+    donorHasSeizure?: boolean;
+    donorRightsOfThirdParties?: boolean;
+    donorTrueOwnershipAtTimeOfGift?: boolean;
+
+    doneeIdentity?: PersonIdentityFields & {
+      name?: string;
+      fullName?: string;
+      profession?: string;
+      nationality?: string;
+      address?: string;
+      maritalStatus?: string;
+      fatherName?: string;
+      motherName?: string;
+      birthDate?: string;
+      birthPlace?: string;
+    };
+    doneeCapacityType?: 'راشد_كامل_الأهلية' | 'ناقص_الأهلية' | 'فاقد_الأهلية' | 'قاصر' | 'شخص_معنوي';
+    doneeLegalRep?: {
+      repType: 'أب' | 'أم' | 'وصي' | 'مقدم' | 'نائب_قضائي_آخر' | '';
+      repName: string;
+      repCin: string;
+      courtName: string;
+      fileNumber: string;
+      judgmentNumber: string;
+      judgmentDate: string;
+      rulingText: string;
+    };
+
+    propertiesList?: GiftPropertyItem[];
+    ownershipSources?: GiftOwnershipSource[];
+    totalOwnershipPercentage?: number;
+    giftPercentage?: number;
+    isOwnershipExceeded?: boolean;
+
+    possessionCharacteristics?: GiftPossessionDetails;
+    poaDetails?: GiftPoaDetails;
+    financialDetails?: GiftFinanceDetails;
   };
   
   // Marital Assets Agreement (اتفاق تدبير اموال زوجية)
