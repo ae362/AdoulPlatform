@@ -30,6 +30,11 @@ export interface Party {
     issueDate?: string;
     expiryDate?: string;
     address?: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    fatherName?: string;
+    motherName?: string;
+    confidence?: number;
   };
   // New fields for Deceased (Inheritance)
   isRecentDeath?: 'نعم' | 'لا' | '';

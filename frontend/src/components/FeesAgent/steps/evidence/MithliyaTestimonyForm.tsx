@@ -142,30 +142,45 @@ export const MithliyaTestimonyForm: React.FC<MithliyaTestimonyFormProps> = ({
         fileName: file.name,
       });
 
-      if (res?.extractedFields?.idNumber) {
-        const cin = res.extractedFields.idNumber.toUpperCase();
-        const extractedName = res.extractedFields.name;
-        const extractedDate = res.extractedFields.idIssueDate;
+      const fields = res?.extractedFields || {};
+      const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+      const extractedDob = fields.dateOfBirth;
+      const extractedAddress = fields.address ? String(fields.address).trim() : undefined;
 
-        const currentWitness: Partial<Witness> = witnesses[index] || {};
-        const patch: Partial<Witness> = {
-          idNumber: cin,
-        };
+      const currentWitness: Partial<Witness> = witnesses[index] || {};
+      const hasExtractedData = Boolean(cin || extractedName || extractedDob);
 
+      if (hasExtractedData) {
+        const patch: Partial<Witness> = {};
+        if (cin) patch.idNumber = cin;
         if (extractedName && (!currentWitness.name || currentWitness.name.trim() === '')) {
           patch.name = extractedName;
+        } else if (extractedName && !cin) {
+          patch.name = extractedName;
         }
-
-        if (extractedDate && !currentWitness.dateOfBirth) {
-          patch.dateOfBirth = extractedDate;
+        if (extractedDob && !currentWitness.dateOfBirth) {
+          patch.dateOfBirth = extractedDob;
         }
+        if (extractedAddress && (!currentWitness.address || currentWitness.address.trim() === '')) {
+          patch.address = extractedAddress;
+        }
+        patch.ocrExtracted = {
+          name: extractedName,
+          idNumber: cin,
+          issueDate: fields.idIssueDate,
+          expiryDate: fields.idExpiryDate,
+          address: extractedAddress,
+          dateOfBirth: extractedDob,
+          confidence: res?.confidence || 90,
+        };
 
         handleWitnessChange(index, patch);
 
         setWitnessNotice((prev) => ({
           ...prev,
           [index]: {
-            message: `تم استخراج رقم البطاقة: ${cin}${extractedName ? ` | الاسم: ${extractedName}` : ''}`,
+            message: `✓ تم استخراج بيانات الشاهد بنجاح: ${extractedName ? `الاسم: ${extractedName}` : ''}${cin ? ` | رقم CIN: ${cin}` : ''}`.trim(),
             success: true,
           },
         }));
@@ -173,7 +188,7 @@ export const MithliyaTestimonyForm: React.FC<MithliyaTestimonyFormProps> = ({
         setWitnessNotice((prev) => ({
           ...prev,
           [index]: {
-            message: 'لم نتمكن من قراءة رقم البطاقة بدقة، يمكنك كتابته يدوياً',
+            message: 'لم نتمكن من قراءة البيانات بدقة من صورة البطاقة، يمكنك كتابتها يدوياً أو تجربة صورة أوضح',
             success: false,
           },
         }));

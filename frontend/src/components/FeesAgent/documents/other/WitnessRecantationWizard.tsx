@@ -26,8 +26,12 @@ import {
   Eye,
   Layers,
   HelpCircle,
-  XCircle
+  XCircle,
+  Camera,
+  Loader2,
 } from 'lucide-react';
+import { trpc } from '../../../../trpc';
+import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
 import type { DocumentWizardProps } from '../../types';
 import type { Party } from '../../../../types/feesAgentTypes';
 import {
@@ -217,6 +221,133 @@ export const WitnessRecantationWizard: React.FC<DocumentWizardProps> = ({ state,
     setLafifWitnesses((prev) =>
       prev.map((w, idx) => (idx === index ? { ...w, [field]: value } : w))
     );
+  };
+
+  const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+  const [scanningApplicant, setScanningApplicant] = useState<boolean>(false);
+  const [applicantNotice, setApplicantNotice] = useState<{ message: string; success: boolean } | null>(null);
+
+  const [scanningLafifWitness, setScanningLafifWitness] = useState<Record<number, boolean>>({});
+  const [lafifNotice, setLafifNotice] = useState<Record<number, { message: string; success: boolean }>>({});
+
+  const scanApplicantIdCard = async (file: File) => {
+    setScanningApplicant(true);
+    setApplicantNotice(null);
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      const fields = res?.extractedFields || {};
+      const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+      const extractedFather = fields.fatherName ? String(fields.fatherName).trim() : undefined;
+      const extractedMother = fields.motherName ? String(fields.motherName).trim() : undefined;
+      const extractedDob = fields.dateOfBirth;
+      const extractedPob = fields.placeOfBirth ? String(fields.placeOfBirth).trim() : undefined;
+      const extractedAddress = fields.address ? String(fields.address).trim() : undefined;
+
+      if (cin || extractedName) {
+        if (extractedName) setApplicantFullName(extractedName);
+        if (cin) setApplicantNationalId(cin);
+        if (extractedFather) setApplicantFatherName(extractedFather);
+        if (extractedMother) setApplicantMotherName(extractedMother);
+        if (extractedDob) setApplicantBirthDate(extractedDob);
+        if (extractedPob) setApplicantBirthPlace(extractedPob);
+        if (extractedAddress) setApplicantAddress(extractedAddress);
+
+        setApplicantNotice({
+          message: `✓ تم استخراج بطاقة الشاهد بنجاح: ${extractedName ? `الاسم: ${extractedName}` : ''}${cin ? ` | CIN: ${cin}` : ''}`.trim(),
+          success: true,
+        });
+      } else {
+        setApplicantNotice({
+          message: 'لم نتمكن من قراءة البيانات بدقة، يمكنك كتابتها يدوياً أو تجربة صورة أوضح',
+          success: false,
+        });
+      }
+    } catch {
+      setApplicantNotice({
+        message: 'حدث خطأ أثناء فحص صورة البطاقة',
+        success: false,
+      });
+    } finally {
+      setScanningApplicant(false);
+    }
+  };
+
+  const scanLafifRecantationWitness = async (index: number, file: File) => {
+    setScanningLafifWitness(prev => ({ ...prev, [index]: true }));
+    setLafifNotice(prev => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      const fields = res?.extractedFields || {};
+      const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+
+      if (cin || extractedName) {
+        if (extractedName) updateWitnessField(index, 'fullName', extractedName);
+        if (cin) updateWitnessField(index, 'nationalId', cin);
+
+        setLafifNotice(prev => ({
+          ...prev,
+          [index]: {
+            message: `✓ تم استخراج بطاقة الشاهد: ${extractedName ? `الاسم: ${extractedName}` : ''}${cin ? ` | CIN: ${cin}` : ''}`.trim(),
+            success: true,
+          },
+        }));
+      } else {
+        setLafifNotice(prev => ({
+          ...prev,
+          [index]: {
+            message: 'لم نتمكن من قراءة البيانات بدقة من صورة البطاقة',
+            success: false,
+          },
+        }));
+      }
+    } catch {
+      setLafifNotice(prev => ({
+        ...prev,
+        [index]: {
+          message: 'حدث خطأ أثناء فحص صورة البطاقة',
+          success: false,
+        },
+      }));
+    } finally {
+      setScanningLafifWitness(prev => ({ ...prev, [index]: false }));
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -1407,15 +1538,55 @@ ${defaultNotary2}
 
           {/* 2.2 Recanting Witness Personal Identity */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-emerald-700" />
                 <h2 className="text-lg font-bold text-slate-900">2. بطاقة هوية الشاهد / الشخص الراجع</h2>
               </div>
-              <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                مسترجعة من الشهادة الأصلية وتُصحح عند الاقتضاء
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all shadow-sm">
+                  {scanningApplicant ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  <span>مسح البطاقة الوطنية (CIN)</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    disabled={scanningApplicant}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) scanApplicantIdCard(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  مسترجعة من الشهادة الأصلية وتُصحح عند الاقتضاء
+                </span>
+              </div>
             </div>
+
+            {applicantNotice && (
+              <div
+                className={`p-3 rounded-xl text-xs font-semibold flex items-center justify-between ${
+                  applicantNotice.success
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}
+              >
+                <span>{applicantNotice.message}</span>
+                <button
+                  type="button"
+                  onClick={() => setApplicantNotice(null)}
+                  className="text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
@@ -1578,18 +1749,51 @@ ${defaultNotary2}
                         <span>الشاهد رقم {w.witnessNumber}</span>
                       </span>
 
-                      <button
-                        type="button"
-                        onClick={() => toggleWitnessStatus(idx)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                          isRecanting
-                            ? 'bg-rose-600 text-white shadow-sm'
-                            : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                        }`}
-                      >
-                        {isRecanting ? 'يرجع عن شهادته' : 'باقٍ على شهادته'}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <label
+                          className="cursor-pointer p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold transition-all"
+                          title="مسح بطاقة تعريف الشاهد"
+                        >
+                          {scanningLafifWitness[idx] ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            disabled={scanningLafifWitness[idx]}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) scanLafifRecantationWitness(idx, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => toggleWitnessStatus(idx)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                            isRecanting
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          }`}
+                        >
+                          {isRecanting ? 'يرجع عن شهادته' : 'باقٍ على شهادته'}
+                        </button>
+                      </div>
                     </div>
+
+                    {lafifNotice[idx] && (
+                      <div className={`p-2 rounded-lg text-[10px] mb-2 ${
+                        lafifNotice[idx].success
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200'
+                      }`}>
+                        {lafifNotice[idx].message}
+                      </div>
+                    )}
 
                     <div className="space-y-1.5 text-xs">
                       <input

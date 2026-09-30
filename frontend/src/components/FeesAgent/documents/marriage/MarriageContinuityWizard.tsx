@@ -232,12 +232,20 @@ import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
           fileBase64: enhancedBase64,
           fileName: file.name,
         });
+        const fields = res?.extractedFields || {};
+        const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+        const name = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+        const address = fields.address ? String(fields.address).trim() : undefined;
+
         const patch: Partial<NonNullable<MarriageContinuityDeed['witnesses']>[number]> = {};
-        if (res?.extractedFields?.idNumber) {
-          patch.cin = res.extractedFields.idNumber.toUpperCase();
+        if (cin) {
+          patch.cin = cin;
         }
-        if (res?.extractedFields?.name) {
-          patch.name = res.extractedFields.name;
+        if (name) {
+          patch.name = name;
+        }
+        if (address) {
+          patch.address = address;
         }
         if (Object.keys(patch).length > 0) {
           updateContinuityWitness(index, patch);

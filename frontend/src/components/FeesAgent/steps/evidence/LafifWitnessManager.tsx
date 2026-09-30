@@ -79,30 +79,45 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
         fileName: file.name,
       });
 
-      if (res?.extractedFields?.idNumber) {
-        const cin = res.extractedFields.idNumber.toUpperCase();
-        const extractedName = res.extractedFields.name;
-        const extractedDate = res.extractedFields.idIssueDate;
+      const fields = res?.extractedFields || {};
+      const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+      const extractedDob = fields.dateOfBirth;
+      const extractedAddress = fields.address ? String(fields.address).trim() : undefined;
 
-        const currentWitness: Partial<Witness> = witnesses[index] || {};
-        const patch: Partial<Witness> = {
-          idNumber: cin,
-        };
+      const currentWitness: Partial<Witness> = witnesses[index] || {};
+      const hasExtractedData = Boolean(cin || extractedName || extractedDob);
 
+      if (hasExtractedData) {
+        const patch: Partial<Witness> = {};
+        if (cin) patch.idNumber = cin;
         if (extractedName && (!currentWitness.name || currentWitness.name.trim() === '')) {
           patch.name = extractedName;
+        } else if (extractedName && !cin) {
+          patch.name = extractedName;
         }
-
-        if (extractedDate && !currentWitness.dateOfBirth) {
-          patch.dateOfBirth = extractedDate;
+        if (extractedDob && !currentWitness.dateOfBirth) {
+          patch.dateOfBirth = extractedDob;
         }
+        if (extractedAddress && (!currentWitness.address || currentWitness.address.trim() === '')) {
+          patch.address = extractedAddress;
+        }
+        patch.ocrExtracted = {
+          name: extractedName,
+          idNumber: cin,
+          issueDate: fields.idIssueDate,
+          expiryDate: fields.idExpiryDate,
+          address: extractedAddress,
+          dateOfBirth: extractedDob,
+          confidence: res?.confidence || 90,
+        };
 
         handleWitnessChange(index, patch);
 
         setWitnessNotice((prev) => ({
           ...prev,
           [index]: {
-            message: `تم استخراج رقم البطاقة: ${cin}${extractedName ? ` | الاسم: ${extractedName}` : ''}`,
+            message: `✓ تم استخراج بطاقة الشاهد بنجاح: ${extractedName ? `الاسم: ${extractedName}` : ''}${cin ? ` | رقم CIN: ${cin}` : ''}`.trim(),
             success: true,
           },
         }));
@@ -110,7 +125,7 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
         setWitnessNotice((prev) => ({
           ...prev,
           [index]: {
-            message: 'لم نتمكن من قراءة رقم البطاقة بدقة، يمكنك كتابته يدوياً',
+            message: 'لم نتمكن من قراءة البيانات بدقة من صورة البطاقة، يمكنك كتابتها يدوياً أو تجربة صورة أوضح',
             success: false,
           },
         }));
@@ -470,6 +485,29 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
                         )}
                       </td>
                       <td className="p-3 text-center">
+                        <label
+                          className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 text-[11px] text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 font-bold transition ml-1"
+                          title="مسح بطاقة التعريف الوطنية (CIN)"
+                        >
+                          {scanningWitness[idx] ? (
+                            <Loader2 className="w-3 h-3 text-blue-600 animate-spin" />
+                          ) : (
+                            <Camera className="w-3 h-3 text-blue-600" />
+                          )}
+                          <span>CIN</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            disabled={scanningWitness[idx]}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                scanWitnessCard(idx, file);
+                              }
+                            }}
+                          />
+                        </label>
                         <button
                           type="button"
                           onClick={() => {
@@ -570,7 +608,33 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
+                    {/* Header quick CIN scan button */}
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-xs"
+                      title="مسح وتعبئة تلقائية من بطاقة التعريف الوطنية للشاهد"
+                    >
+                      {scanningWitness[index] ? (
+                        <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                      ) : (
+                        <Camera className="w-3.5 h-3.5 text-blue-600" />
+                      )}
+                      <span>{scanningWitness[index] ? 'جاري الفحص...' : 'مسح CIN'}</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        disabled={scanningWitness[index]}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            scanWitnessCard(index, file);
+                          }
+                        }}
+                      />
+                    </label>
+
                     {/* Status Badge */}
                     {evalResult.isFullyApproved ? (
                       <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1">
@@ -606,6 +670,30 @@ export const LafifWitnessManager: React.FC<LafifWitnessManagerProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Card-level notice banner */}
+                {witnessNotice[index] && (
+                  <div
+                    className={`mx-4 my-2 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between animate-in fade-in ${
+                      witnessNotice[index].success
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : 'bg-amber-50 border-amber-200 text-amber-900'
+                    }`}
+                  >
+                    <span>{witnessNotice[index].message}</span>
+                    <button
+                      type="button"
+                      onClick={() => setWitnessNotice((prev) => {
+                        const next = { ...prev };
+                        delete next[index];
+                        return next;
+                      })}
+                      className="text-slate-400 hover:text-slate-700 font-bold px-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
 
                 {/* Expanded Card Body */}
                 {isExpanded && (

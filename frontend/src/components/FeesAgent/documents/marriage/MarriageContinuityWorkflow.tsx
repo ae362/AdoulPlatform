@@ -17,8 +17,12 @@ import {
   Copy,
   Printer,
   Sparkles,
-  Check
+  Check,
+  Camera,
+  Loader2,
 } from 'lucide-react';
+import { trpc } from '../../../../trpc';
+import { enhanceCardImageForOCR } from '../../../../utils/cinImageEnhancer';
 import type {
   FeesAgentState,
   Party,
@@ -449,6 +453,86 @@ export const MarriageContinuityWorkflow: React.FC<MarriageContinuityWorkflowProp
     const updated = lafifWitnesses.filter((_, i) => i !== index);
     setLafifWitnesses(updated);
     setState(prev => ({ ...prev, witnesses: updated }));
+  };
+
+  const extractIdCardMutation = trpc.feesAgent.ocr.extractIDCard.useMutation();
+  const [scanningLafifWitness, setScanningLafifWitness] = useState<Record<number, boolean>>({});
+  const [lafifNotice, setLafifNotice] = useState<Record<number, { message: string; success: boolean }>>({});
+
+  const scanLafifWitness = async (index: number, file: File) => {
+    setScanningLafifWitness(prev => ({ ...prev, [index]: true }));
+    setLafifNotice(prev => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+
+    try {
+      let b64 = '';
+      try {
+        b64 = await enhanceCardImageForOCR(file);
+      } catch {
+        b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',').pop() || '');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const res: any = await extractIdCardMutation.mutateAsync({
+        fileBase64: b64,
+        fileName: file.name,
+      });
+
+      const fields = res?.extractedFields || {};
+      const cin = fields.idNumber ? String(fields.idNumber).toUpperCase().trim() : undefined;
+      const extractedName = fields.name ? String(fields.name).trim() : (fields.nameLatin ? String(fields.nameLatin).trim() : undefined);
+      const extractedDob = fields.dateOfBirth;
+
+      if (cin || extractedName) {
+        const updated = [...lafifWitnesses];
+        updated[index] = {
+          ...updated[index],
+          ...(cin ? { idNumber: cin } : {}),
+          ...(extractedName ? { name: extractedName } : {}),
+          ...(extractedDob ? { dateOfBirth: extractedDob } : {}),
+          ocrExtracted: {
+            name: extractedName,
+            idNumber: cin,
+            dateOfBirth: extractedDob,
+            confidence: res?.confidence || 90,
+          },
+        };
+        setLafifWitnesses(updated);
+        setState(prev => ({ ...prev, witnesses: updated }));
+
+        setLafifNotice(prev => ({
+          ...prev,
+          [index]: {
+            message: `✓ تم استخراج بطاقة الشاهد بنجاح: ${extractedName ? `الاسم: ${extractedName}` : ''}${cin ? ` | CIN: ${cin}` : ''}`.trim(),
+            success: true,
+          },
+        }));
+      } else {
+        setLafifNotice(prev => ({
+          ...prev,
+          [index]: {
+            message: 'لم نتمكن من قراءة البيانات بدقة من صورة البطاقة، يمكنك كتابتها يدوياً أو تجربة صورة أوضح',
+            success: false,
+          },
+        }));
+      }
+    } catch {
+      setLafifNotice(prev => ({
+        ...prev,
+        [index]: {
+          message: 'حدث خطأ أثناء فحص صورة البطاقة',
+          success: false,
+        },
+      }));
+    } finally {
+      setScanningLafifWitness(prev => ({ ...prev, [index]: false }));
+    }
   };
 
   // --------------------------------------------------------------------------
@@ -2133,22 +2217,67 @@ ${lafifWitnesses.map((w, idx) => `${idx + 1}. ${w.name} (ب.ت.و: ${w.idNumber}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
                 {lafifWitnesses.map((w, idx) => (
                   <div key={w.id || idx} className="p-3.5 rounded-2xl border border-slate-200 bg-white text-xs space-y-2 shadow-2xs hover:border-slate-300 transition">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 flex-wrap gap-2">
                       <span className="font-black text-slate-900 flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-bold">
                           {idx + 1}
                         </span>
                         <span>الشاهد {idx + 1}</span>
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveWitness(idx)}
-                        className="text-slate-400 hover:text-rose-600 font-bold text-sm px-1.5 transition cursor-pointer"
-                        title="حذف هذا الشاهد"
-                      >
-                        ✕
-                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-xs">
+                          {scanningLafifWitness[idx] ? (
+                            <Loader2 className="w-3 h-3 text-emerald-600 animate-spin" />
+                          ) : (
+                            <Camera className="w-3 h-3 text-emerald-600" />
+                          )}
+                          <span>{scanningLafifWitness[idx] ? 'فحص...' : 'مسح CIN'}</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            disabled={scanningLafifWitness[idx]}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                scanLafifWitness(idx, file);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWitness(idx)}
+                          className="text-slate-400 hover:text-rose-600 font-bold text-sm px-1.5 transition cursor-pointer"
+                          title="حذف هذا الشاهد"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
+
+                    {lafifNotice[idx] && (
+                      <div className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-between ${
+                        lafifNotice[idx].success
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                          : 'bg-amber-50 border-amber-200 text-amber-900'
+                      }`}>
+                        <span>{lafifNotice[idx].message}</span>
+                        <button
+                          type="button"
+                          onClick={() => setLafifNotice(prev => {
+                            const next = { ...prev };
+                            delete next[idx];
+                            return next;
+                          })}
+                          className="text-slate-400 hover:text-slate-700 font-bold px-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
