@@ -144,6 +144,11 @@ const SavedDocumentsGallery = lazy(() =>
 const SavedDocumentViewer = lazy(() =>
   import('./modules/SavedDocumentViewer').then((m) => ({ default: m.SavedDocumentViewer })),
 );
+const ClientFollowUpGalleryModule = lazy(() =>
+  import('./modules/ClientFollowUpGallery').then((m: any) => ({
+    default: m.ClientFollowUpGallery || m.default,
+  })),
+);
 const NotarySigningPortal = lazy(() =>
   import('./pages/NotarySigningPortal/NotarySigningPortal').then((m) => ({ default: m.NotarySigningPortal })),
 );
@@ -190,6 +195,7 @@ type ModuleKey =
   | 'registrationStamp'
   | 'messages'
   | 'notaryPortal'
+  | 'clientFollowUpGallery'
   | 'personalAnalytics'
   | 'remoteNotarialHearing'
   | 'ledger'
@@ -224,6 +230,7 @@ const NationalRequestsManagement = lazy(() => import('./modules/NationalRequests
 
 const NAV_ITEMS: { key: ModuleKey | 'permissions' | 'administrative' | 'visitors'; label: string; icon: string; children?: { key: ModuleKey; label: string; icon: string }[] }[] = [
   { key: 'notaryPortal', label: 'لوحة التحكم الرئيسية', icon: '🏛️' },
+  { key: 'clientFollowUpGallery', label: 'رواق طالبي الإشهاد والمتابعة', icon: '🏛️' },
   {
     key: 'administrative',
     label: 'الطلبات الادارية و المهنية',
@@ -417,6 +424,8 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
       setActive('savedDocuments');
     } else if (path === '/fees') {
       setActive('fees');
+    } else if (path === '/client-follow-up' || path === '/clients-followup') {
+      setActive('clientFollowUpGallery');
     }
   }, [location.pathname]);
 
@@ -499,6 +508,8 @@ export function Layout({ initialModule = 'dashboard' }: { initialModule?: Module
         return <WorkCertificatesModule />;
       case 'notaryPortal':
         return <NotaryDashboard />;
+      case 'clientFollowUpGallery':
+        return <ClientFollowUpGalleryModule />;
       case 'notaryNotifications':
         return <NotaryNotificationsPage />;
       case 'personalAnalytics':
@@ -1271,6 +1282,22 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['notary', 'judge']}>
                     <SovereignSignature />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/client-follow-up" 
+                element={
+                  <ProtectedRoute allowedRoles={['notary']}>
+                    <Layout initialModule="clientFollowUpGallery" />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/clients-followup" 
+                element={
+                  <ProtectedRoute allowedRoles={['notary']}>
+                    <Layout initialModule="clientFollowUpGallery" />
                   </ProtectedRoute>
                 } 
               />

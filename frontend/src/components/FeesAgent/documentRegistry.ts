@@ -35,8 +35,12 @@ import { SadaqaWizard } from './documents/property/SadaqaWizard';
 import { MortgageWizard } from './documents/other/MortgageWizard';
 import { PromiseToSellWizard } from './documents/property/PromiseToSellWizard';
 import { PromiseToLeaseWizard } from './documents/property/PromiseToLeaseWizard';
+import { LeaseWizard } from './documents/property/LeaseWizard';
 import { DeliveryWithCompensationWizard } from './documents/property/DeliveryWithCompensationWizard';
 import { AcknowledgmentWizard } from './documents/property/AcknowledgmentWizard';
+
+// Commercial
+import { BusinessSaleWizard } from './documents/commercial/BusinessSaleWizard';
 
 // Inheritance
 import { InheritanceWizard } from './documents/inheritance/InheritanceWizard';
@@ -60,6 +64,8 @@ import { KafalaWizard } from './documents/other/KafalaWizard';
 import { MentalDisabilityInquestWizard } from './documents/other/MentalDisabilityInquestWizard';
 import { GuardianshipSuitabilityWizard } from './documents/other/GuardianshipSuitabilityWizard';
 import { AbsenceInquestWizard } from './documents/other/AbsenceInquestWizard';
+import { CorrectionAddendumWizard } from './documents/other/CorrectionAddendumWizard';
+import { WitnessRecantationWizard } from './documents/other/WitnessRecantationWizard';
 
 export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
@@ -95,8 +101,20 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<Docume
   'رهن': MortgageWizard,
   'وعد_بالبيع': PromiseToSellWizard,
   'وعد_بالكراء': PromiseToLeaseWizard,
+  'كراء': LeaseWizard,
+  'عقد_كراء': LeaseWizard,
+  'رسم_كراء': LeaseWizard,
+  'عقد كراء': LeaseWizard,
+  'رسم كراء': LeaseWizard,
   'رسم_تسليم_بعوض': DeliveryWithCompensationWizard,
   'رسم_اقرار_واعتراف': AcknowledgmentWizard,
+
+  // Commercial
+  'بيع_اصل_تجاري': BusinessSaleWizard,
+  'بيع_الأصل_التجاري': BusinessSaleWizard,
+  'تفويت_اصل_تجاري': BusinessSaleWizard,
+  'بيع اصل تجاري': BusinessSaleWizard,
+  'بيع الأصل التجاري': BusinessSaleWizard,
 
   // Inheritance
   'اراثة': InheritanceWizard,
@@ -125,6 +143,19 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<Docume
   'موجب إثبات غيبة': AbsenceInquestWizard,
   'موجب اثبات غيبة': AbsenceInquestWizard,
   'اعتصار هبة': GiftRevocationWizard,
+  'ملحق_تصحيحي': CorrectionAddendumWizard,
+  'رسم_ملحق_تصحيحي': CorrectionAddendumWizard,
+  'ملحق تصحيحي': CorrectionAddendumWizard,
+  'رسم ملحق تصحيحي': CorrectionAddendumWizard,
+  'إسمحة': CorrectionAddendumWizard,
+  'رسم_الإسمحة': CorrectionAddendumWizard,
+  'رجوع_عن_شهادة': WitnessRecantationWizard,
+  'رسم_الرجوع_عن_الشهادة': WitnessRecantationWizard,
+  'رجوع في شهادة': WitnessRecantationWizard,
+  'رسم الرجوع عن الشهادة': WitnessRecantationWizard,
+  'رجوع_في_شهادة': WitnessRecantationWizard,
+  'رجوع_شاهد': WitnessRecantationWizard,
+  'رجوع_عدل': WitnessRecantationWizard,
   'أخرى': OtherDocumentWizard,
 };
 

@@ -339,7 +339,7 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
       repType: 'أب',
       repName: '',
       repCin: '',
-      courtName: 'المحكمة الابتدائية بالرباط',
+      courtName: '',
       fileNumber: '',
       judgmentNumber: '',
       judgmentDate: '',
@@ -467,10 +467,10 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
             propertyName: state.property?.titleNumber ? `الملك المسمى "${state.property?.titleNumber}"` : 'العقار الأول',
             titleNumber: state.property?.titleNumber || giftState.landRegistryNumber || '',
             requisitionNumber: giftState.preRegistrationApplicationNumber || '',
-            landConservationOffice: state.property?.landRegistry || 'المحافظة العقارية بالرباط',
+            landConservationOffice: state.property?.landRegistry || '',
             location: state.property?.address || '',
             area: state.property?.area || '',
-            propertyNature: state.property?.description || 'دار سكنية',
+            propertyNature: state.property?.description || '',
             currentOwner: state.sellers?.[0]?.name || '',
             encumbrances: giftState.encumbrances || [],
             coOwnershipType: 'كامل_الملك',
@@ -491,10 +491,10 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
         propertyName: `العقار ${prev.length + 1}`,
         titleNumber: '',
         requisitionNumber: '',
-        landConservationOffice: 'المحافظة العقارية',
+        landConservationOffice: '',
         location: '',
         area: '',
-        propertyNature: 'شقة سكنية',
+        propertyNature: '',
         currentOwner: donor.fullName,
         encumbrances: [],
         coOwnershipType: 'كامل_الملك',
@@ -527,15 +527,15 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
             id: 'src-1',
             sourceType: 'رسم_عدلي',
             percentage: 100,
-            fractionText: 'كامل الملك 100%',
-            date: '2018-04-12',
-            registryBookNumber: '124',
-            registryLetter: 'ب',
-            registryPage: '88',
-            registryCount: '215',
-            registryDate: '2018-04-15',
-            courtName: 'المحكمة الابتدائية بالرباط',
-            notaryNames: 'العدلان فلان وفلان',
+            fractionText: '',
+            date: '',
+            registryBookNumber: '',
+            registryLetter: '',
+            registryPage: '',
+            registryCount: '',
+            registryDate: '',
+            courtName: '',
+            notaryNames: '',
           },
         ]
   );
@@ -547,9 +547,9 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
       {
         id: newId,
         sourceType: 'عقد_موثق',
-        percentage: 50,
-        fractionText: 'النصف 1/2',
-        date: '2020-01-01',
+        percentage: 0,
+        fractionText: '',
+        date: '',
       },
     ]);
   };
@@ -606,7 +606,7 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
       scopeIncludesSigning: true,
       scopeIncludesPossessionAck: true,
       scopeIncludesRegistration: true,
-      localRegistryCourt: 'المحكمة الابتدائية بالرباط',
+      localRegistryCourt: '',
       localRegistryDate: '',
       localRegistryOrderNumber: '',
       localRegistryAnalyticalNumber: '',
@@ -688,19 +688,19 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
   const [finance, setFinance] = useState<GiftFinanceDetails>(
     giftState.financialDetails || {
       transactionYear: new Date().getFullYear(),
-      taxRegistryOffice: 'مصلحة التسجيل والتنبر بالرباط',
-      registrationReceiptNumber: 'REG-2026/8892',
+      taxRegistryOffice: '',
+      registrationReceiptNumber: '',
       registrationDate: todayGregorian,
-      registrationAmount: donee.relationshipToDonor === 'ولد/ابنة' || donee.relationshipToDonor === 'زوج/زوجة' ? 1500 : 4000,
+      registrationAmount: 0,
       taxTariffReference: 'المدونة العامة للضرائب (المادة 133 وما يليها)',
       taxExemptionMentioned: false,
       taxExemptionArticle: '',
-      stampDutyAmount: 40,
-      numberOfPages: 2,
-      stampPaymentReference: 'QUITTANCE-TIMBRE-40DH',
-      conservationDepositNumber: 'DEP-2026/1429',
-      conservationDepositDate: todayGregorian,
-      conservationFeesAmount: 1000,
+      stampDutyAmount: 0,
+      numberOfPages: 1,
+      stampPaymentReference: '',
+      conservationDepositNumber: '',
+      conservationDepositDate: '',
+      conservationFeesAmount: 0,
     }
   );
 
@@ -840,15 +840,15 @@ export const GiftWizard: React.FC<DocumentWizardProps> = ({
   // --------------------------------------------------------------------------
   const generateDraftDocument = useMemo(() => {
     const isRetained = isUsufructRetained;
-    const propNames = propertiesList.map((p, idx) => `[${idx + 1}] ${p.propertyName} (${p.propertyType}) ذي الرسم/المطلب (${p.titleNumber || p.requisitionNumber || 'غير محفظ'}) الكائن بـ ${p.location || 'نواحي الرباط'}`).join('، و');
+    const propNames = propertiesList.map((p, idx) => `[${idx + 1}] ${p.propertyName} (${p.propertyType}) ذي الرسم/المطلب (${p.titleNumber || p.requisitionNumber || 'غير محفظ'}) الكائن بـ ${p.location || '...........................'}`).join('، و');
 
     return `بسم الله الرحمن الرحيم
 الحمد لله وحده، والصلاة والسلام على رسول الله وآله وصحبه
 
 المملكة المغربية
 وزارة العدل
-دائرة محكمة الاستئناف بالرباط
-المحكمة الابتدائية بالرباط
+دائرة محكمة الاستئناف ${state.meta?.court ? state.meta.court.replace('المحكمة الابتدائية', '') : 'المختصة'}
+${state.meta?.court || 'المحكمة الابتدائية المختصة'}
 قسم قضاء الأسرة والتوثيق
 مكتب العدلين: الأستاذين المعينين بدائرة هذه المحكمة
 
@@ -1034,9 +1034,7 @@ ${
         } as any,
       ],
     }));
-    if (_onNext) {
-      _onNext();
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // If user explicitly toggled to classic view
@@ -3083,15 +3081,15 @@ ${
                 <div className="space-y-2">
                   <div className="flex justify-between py-1 border-b border-gray-100">
                     <span className="text-gray-500">كناش الأملاك:</span>
-                    <span className="font-bold">رقم 284</span>
+                    <span className="font-bold">{ownershipSources[0]?.registryBookNumber ? `كناش رقم ${ownershipSources[0].registryBookNumber}` : '—'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-gray-100">
                     <span className="text-gray-500">الحرف والصفحة:</span>
-                    <span className="font-bold">حرف ب - ص 114</span>
+                    <span className="font-bold">{ownershipSources[0]?.registryPage ? `حرف ${ownershipSources[0].registryLetter || '...'} - ص ${ownershipSources[0].registryPage}` : '—'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-gray-100">
                     <span className="text-gray-500">العدد:</span>
-                    <span className="font-bold">عدد 388</span>
+                    <span className="font-bold">{ownershipSources[0]?.registryCount ? `عدد ${ownershipSources[0].registryCount}` : (state.meta?.fileNumber || '—')}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-gray-100">
                     <span className="text-gray-500">تاريخ الخطاب:</span>
@@ -3105,7 +3103,7 @@ ${
                 <div className="w-28 h-28 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center text-gray-400 font-mono text-[10px]">
                   [ رمز الاستجابة السريعة ]
                 </div>
-                <span className="text-[10px] text-gray-400 mt-1">معرف الوثيقة: ADOUL-GIFT-2026-9812</span>
+                <span className="text-[10px] text-gray-400 mt-1">معرف الوثيقة: {state.meta?.fileNumber ? `ADOUL-GIFT-${state.meta.fileNumber}` : '—'}</span>
               </div>
 
               <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-3 text-xs flex flex-col justify-between">

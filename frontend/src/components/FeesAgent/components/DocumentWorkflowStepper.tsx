@@ -1,9 +1,9 @@
 import {
   ShieldCheck, Users, Building2, FileCheck, Scale, Clock,
-  FileText, Lock, Heart
+  FileText, Lock, Heart, AlertTriangle
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'absence_inquest' | 'gift_revocation' | 'other';
+export type DocumentCategoryType = 'sale' | 'lease' | 'business_sale' | 'correction_addendum' | 'witness_recantation' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'absence_inquest' | 'gift_revocation' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -43,6 +43,11 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
     return 'promise_to_lease';
   }
 
+  // 2.65. Dedicated Lease / Rental (رسم الكراء - قانون 67.12 / 49.16 / ف 627+ ق.ل.ع)
+  if (dt === 'كراء' || dt === 'عقد_كراء' || dt === 'رسم_كراء' || dt === 'عقد كراء' || dt === 'رسم كراء' || (dt.includes('كراء') && !dt.includes('وعد') && !dt.includes('طويل') && !dt.includes('تملك'))) {
+    return 'lease';
+  }
+
   // 2.7. Dedicated Kafala & Sponsorship (رسم الكفالة والتكفل العائلي - قانون 15.01 / التكفل العائلي)
   if (dt === 'كفالة' || dt.includes('كفالة') || dt.includes('تكفل')) {
     return 'kafala';
@@ -66,6 +71,21 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.11. Dedicated Gift Revocation (اعتصار هبة - المواد 283 إلى 289 ق.ح.ع)
   if (dt === 'اعتصار_هبة' || dt.includes('اعتصار_هبة') || dt.includes('اعتصار هبة') || dt.includes('اعتصار')) {
     return 'gift_revocation';
+  }
+
+  // 2.12. Dedicated Correction Addendum (الملحق التصحيحي للرسم العدلي / رسم الإسمحة - المادة 33 ق 16.03)
+  if (dt === 'ملحق_تصحيحي' || dt === 'رسم_ملحق_تصحيحي' || dt.includes('تصحيحي') || dt.includes('إسمحة') || dt.includes('اسمحة')) {
+    return 'correction_addendum';
+  }
+
+  // 2.13. Dedicated Witness Recantation (رسم الرجوع عن الشهادة - الفقه المالكي والتوثيق العدلي)
+  if (dt === 'رجوع_عن_شهادة' || dt === 'رسم_الرجوع_عن_الشهادة' || dt.includes('رجوع') || dt.includes('الرجوع')) {
+    return 'witness_recantation';
+  }
+
+  // 2.14. Dedicated Commercial Business Sale (بيع الأصل التجاري - المواد 79 إلى 98 من مدونة التجارة)
+  if (dt === 'بيع_اصل_تجاري' || dt === 'بيع_الأصل_التجاري' || dt === 'تفويت_اصل_تجاري' || dt.includes('اصل_تجاري') || dt.includes('الأصل_التجاري') || dt.includes('أصل تجاري') || dt.includes('الأصل التجاري')) {
+    return 'business_sale';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -165,6 +185,110 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
           ]
         };
 
+      case 'lease':
+        return {
+          title: 'خريطة المسار الإجرائي لعقد الكراء (منظومة تحرير وتدبير العقد الكرائي وفق القانون 67.12 و 49.16 وق.ل.ع)',
+          gridClass: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-11',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 1;
+            if (step === 2) return 2;
+            if (step === 3) return 3;
+            if (step === 4) return 5;
+            if (step === 5 || step === 6) return 7;
+            if (step >= 7) return 11;
+            return 1;
+          },
+          stages: [
+            { index: 1, targetStep: 1, num: '①', title: 'الأطراف', desc: 'المكري والمكتري والصفات', icon: Users },
+            { index: 2, targetStep: 1, num: '②', title: 'العين', desc: 'المحل ومشتملاته والتحفيظ', icon: Building2 },
+            { index: 3, targetStep: 1, num: '③', title: 'الاستعمال', desc: 'النشاط والأصل التجاري', icon: Scale },
+            { index: 4, targetStep: 1, num: '④', title: 'السند', desc: 'الملكية والنظام القانوني', icon: FileCheck },
+            { index: 5, targetStep: 1, num: '⑤', title: 'الوجيبة', desc: 'السومة والضمانة والتحملات', icon: FileText },
+            { index: 6, targetStep: 1, num: '⑥', title: 'المدة', desc: 'الأجل والتجديد والفسخ', icon: Clock },
+            { index: 7, targetStep: 1, num: '⑦', title: 'الشروط', desc: 'الالتزامات وحظر التولية', icon: ShieldCheck },
+            { index: 8, targetStep: 1, num: '⑧', title: 'التسليم', desc: 'المعاينة ومحاضر العدادات', icon: FileCheck },
+            { index: 9, targetStep: 1, num: '⑨', title: 'الوكالة', desc: 'النيابة وفصل 889-1', icon: Lock },
+            { index: 10, targetStep: 1, num: '⑩', title: 'الإنذارات', desc: 'الخط الزمني وموجبات الإفراغ', icon: Clock },
+            { index: 11, targetStep: 7, num: '⑪', title: 'التحرير', desc: 'الصياغة والاعتماد القضائي', icon: FileText },
+          ]
+        };
+
+      case 'correction_addendum':
+        return {
+          title: 'خريطة المسار الإجرائي للملحق التصحيحي للرسم العدلي (رسم الإسمحة واستدراك الإغفال - المادة 33 قانون 16.03)',
+          gridClass: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4) return 5;
+            if (step === 5 || step === 6) return 6;
+            if (step >= 7) return 7;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'الرسم الأصلي', desc: 'تحديد ومطابقة مراجع الرسم', icon: Building2 },
+            { index: 2, targetStep: 1, num: '②', title: 'طالب التصحيح', desc: 'الصفة والصلة ومستند الإنابة', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'طبيعة الخلل', desc: 'تحديد مواضع الأخطاء والإغفال', icon: Scale },
+            { index: 4, targetStep: 3, num: '④', title: 'مصدر التحقق', desc: 'الوثائق المؤيدة والمطابقة', icon: FileCheck },
+            { index: 5, targetStep: 4, num: '⑤', title: 'شبكة الارتباط', desc: 'فحص الاتساق والأثر القانوني', icon: ShieldCheck },
+            { index: 6, targetStep: 5, num: '⑥', title: 'المقارنة والفحص', desc: '15 فحصاً آلياً مانعاً للتناقض', icon: Clock },
+            { index: 7, targetStep: 7, num: '⑦', title: 'التحرير والاعتماد', desc: 'الصياغة وتوجيه الرسم للقاضي', icon: FileText },
+          ]
+        };
+
+      case 'witness_recantation':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم الرجوع عن الشهادة (توثيق رجوع العدل أو الشاهد عن شهادته السابقة)',
+          gridClass: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4) return 5;
+            if (step === 5 || step === 6) return 6;
+            if (step >= 7) return 7;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'الشهادة الأصلية', desc: 'استرجاع ومطابقة مراجع الشهادة', icon: Building2 },
+            { index: 2, targetStep: 1, num: '②', title: 'صاحب الرجوع', desc: 'هوية الراجع وخريطة اللفيف', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'نطاق الرجوع', desc: 'تحديد الواقعة والعبارة محل التراجع', icon: Scale },
+            { index: 4, targetStep: 3, num: '④', title: 'سبب وطبيعة الرجوع', desc: 'الوهم أو الخطأ وبيان الحقيقة', icon: AlertTriangle },
+            { index: 5, targetStep: 4, num: '⑤', title: 'أثر الاستعمال', desc: 'فحص مآل الشهادة والمستندات', icon: FileCheck },
+            { index: 6, targetStep: 5, num: '⑥', title: 'الفحص والتدقيق', desc: 'فحص التناقض ومؤشر الخطر', icon: ShieldCheck },
+            { index: 7, targetStep: 7, num: '⑦', title: 'الصياغة والاعتماد', desc: 'تحرير رسم الرجوع والتأشير بالهامش', icon: FileText },
+          ]
+        };
+
+      case 'business_sale':
+        return {
+          title: 'خريطة المسار الإجرائي لبيع الأصل التجاري (المواد 79 إلى 98 من مدونة التجارة والقانون 49.16)',
+          gridClass: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4) return 5;
+            if (step === 5 || step === 6) return 6;
+            if (step >= 7) return 7;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'الأصل والسجل', desc: 'بطاقة الأصل والسجل التجاري والمطابقة', icon: Building2 },
+            { index: 2, targetStep: 1, num: '②', title: 'الأطراف والتمثيل', desc: 'البائع والمشتري والشخص المعنوي', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'عناصر الأصل ونطاقه', desc: 'الزبناء، السمعة، البضائع والمعدات', icon: Scale },
+            { index: 4, targetStep: 3, num: '④', title: 'الكراء والالتزامات', desc: 'حق الكراء وإشعار المكري والأجراء', icon: AlertTriangle },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الرهون والدائنون', desc: 'الرهون والامتيازات ومصدر الملكية', icon: ShieldCheck },
+            { index: 6, targetStep: 5, num: '⑥', title: 'الثمن والوديعة', desc: 'توزيع الثمن والجهة المؤهلة للإيداع', icon: FileCheck },
+            { index: 7, targetStep: 7, num: '⑦', title: 'التحرير والآثار', desc: 'تحرير العقد والنشر وأجل التعرضات', icon: FileText },
+          ]
+        };
+
       case 'promise_to_sell':
         return {
           title: 'خريطة المسار الإجرائي لرسم الوعد بالبيع العقاري (المادة 4 من مدونة الحقوق العينية - القانون 41.24)',
@@ -231,7 +355,7 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 3, targetStep: 2, num: '③', title: 'موضوع التصرف', desc: 'بيانات العقار والحدود والأنصبة', icon: Building2 },
             { index: 4, targetStep: 3, num: '④', title: 'الشواهد والوثائق', desc: 'الرسوم السابقة والشواهد', icon: FileCheck },
             { index: 5, targetStep: 5, num: '⑤', title: 'البينة والشهود', desc: 'شهود اللفيف والتلقي الثنائي', icon: Clock },
-            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والتدقيق', desc: 'الصياغة النموذجية والمراجعة', icon: FileText },
+            { index: 6, targetStep: 7, num: '⑥', title: 'المراجعة والقاضي', desc: 'التدقيق النهائي والإرسال للقاضي', icon: FileText },
             { index: 7, targetStep: 8, num: '⑦', title: 'التسجيل والتضمين', desc: 'إيداع الضرائب والتأشير', icon: Lock },
           ]
         };

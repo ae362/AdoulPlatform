@@ -455,9 +455,7 @@ ${medicalClause}
       step: 7, // الانتقال للمراجعة القضائية النهائية والصياغة
     }));
 
-    if (onNext) {
-      onNext();
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleProceedToStep7 = handleFinalizeAndProceed;

@@ -656,9 +656,7 @@ ${rulingClause}
       buyers: candidateParties,
       witnesses: prev.witnesses || [],
     }));
-    if (_onNext) {
-      _onNext();
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (

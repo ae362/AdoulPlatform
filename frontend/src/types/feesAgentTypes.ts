@@ -1,4 +1,8 @@
 import type { DocumentType } from '../constants/feesAgentLocales';
+import type { LeaseDeedState } from '../components/FeesAgent/documents/property/leaseTypes';
+import type { CorrectionAddendumState } from '../components/FeesAgent/documents/other/correctionAddendumTypes';
+import type { WitnessRecantationState } from '../components/FeesAgent/documents/other/witnessRecantationTypes';
+import type { BusinessSaleState } from '../components/FeesAgent/documents/commercial/businessSaleTypes';
 
 export type PaymentMethod = 'نقد' | 'شيك' | 'تحويل' | 'قسط' | 'اعترافا';
 export type PropertyType = 'محفظ' | 'غير_محفظ' | 'منقول' | 'مزيج';
@@ -4889,6 +4893,9 @@ export interface FeesAgentState {
   // PromiseToLease State (رسم وعد بالكراء)
   promiseToLease?: PromiseToLeaseDeed;
 
+  // LeaseDeed State (رسم الكراء ومنظومة العلاقة الكرائية)
+  leaseDeed?: LeaseDeedState;
+
   // KafalaDeed State (رسم الكفالة والتكفل العائلي)
   kafalaDeed?: KafalaDeed;
 
@@ -4900,6 +4907,15 @@ export interface FeesAgentState {
 
   // AbsenceInquestDeed State (موجب إثبات غيبة)
   absenceInquestDeed?: AbsenceInquestDeed;
+
+  // CorrectionAddendum State (الملحق التصحيحي للرسم العدلي / رسم الإسمحة)
+  correctionAddendum?: CorrectionAddendumState;
+
+  // WitnessRecantation State (رسم الرجوع عن الشهادة)
+  witnessRecantation?: WitnessRecantationState;
+
+  // BusinessSale State (بيع الأصل التجاري - المواد 79 إلى 98 من مدونة التجارة)
+  businessSale?: BusinessSaleState;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;
@@ -5529,5 +5545,12 @@ export interface FeesAgentProps {
   initialState?: FeesAgentState | null;
   initialJudgeSubmissionId?: string | null;
   startMode?: 'intake' | 'drafting';
+}
+
+export interface DocumentWizardProps {
+  state: FeesAgentState;
+  setState: React.Dispatch<React.SetStateAction<FeesAgentState>>;
+  onNext?: () => void;
+  onBack?: () => void;
 }
 

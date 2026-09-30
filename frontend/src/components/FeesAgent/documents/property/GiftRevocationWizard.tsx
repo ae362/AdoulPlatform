@@ -112,20 +112,20 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
   const [originalGiftDeed, setOriginalGiftDeed] = useState({
     originalDeedType: (state.giftRevocationDeed?.originalGiftDeed?.originalDeedType || 'رسم_عدلي') as GiftRevocationOriginalDeedType,
     registryBookNumber: state.giftRevocationDeed?.originalGiftDeed?.registryBookNumber || '',
-    registryLetter: state.giftRevocationDeed?.originalGiftDeed?.registryLetter || 'أ',
+    registryLetter: state.giftRevocationDeed?.originalGiftDeed?.registryLetter || '',
     registryPage: state.giftRevocationDeed?.originalGiftDeed?.registryPage || '',
     registryCount: state.giftRevocationDeed?.originalGiftDeed?.registryCount || '',
     registryDate: state.giftRevocationDeed?.originalGiftDeed?.registryDate || '',
-    courtName: state.giftRevocationDeed?.originalGiftDeed?.courtName || 'المحكمة الابتدائية بالرباط',
-    courtNotaryDept: state.giftRevocationDeed?.originalGiftDeed?.courtNotaryDept || 'قسم التوثيق وشؤون الأسرة',
+    courtName: state.giftRevocationDeed?.originalGiftDeed?.courtName || '',
+    courtNotaryDept: state.giftRevocationDeed?.originalGiftDeed?.courtNotaryDept || '',
     notary1Name: state.giftRevocationDeed?.originalGiftDeed?.notary1Name || '',
     notary2Name: state.giftRevocationDeed?.originalGiftDeed?.notary2Name || '',
     originalDeedDate: state.giftRevocationDeed?.originalGiftDeed?.originalDeedDate || '',
     originalDonorName: state.giftRevocationDeed?.originalGiftDeed?.originalDonorName || '',
     originalDoneeName: state.giftRevocationDeed?.originalGiftDeed?.originalDoneeName || '',
-    originalPropertyDescription: state.giftRevocationDeed?.originalGiftDeed?.originalPropertyDescription || 'شقة سكنية كائنة بالعنوان المذكور',
-    originalGiftedShare: state.giftRevocationDeed?.originalGiftDeed?.originalGiftedShare || 'كامل الملك (1/1)',
-    originalGiftValue: state.giftRevocationDeed?.originalGiftDeed?.originalGiftValue || 500000,
+    originalPropertyDescription: state.giftRevocationDeed?.originalGiftDeed?.originalPropertyDescription || '',
+    originalGiftedShare: state.giftRevocationDeed?.originalGiftDeed?.originalGiftedShare || '',
+    originalGiftValue: state.giftRevocationDeed?.originalGiftDeed?.originalGiftValue || 0,
     originalStipulatedConditions: state.giftRevocationDeed?.originalGiftDeed?.originalStipulatedConditions || '',
     customaryCreationDate: state.giftRevocationDeed?.originalGiftDeed?.customaryCreationDate || '',
   });
@@ -149,8 +149,8 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
   // ⑧ شرط الاعتصار وشرط عدم الاعتصار
   // --------------------------------------------------------------------------
   const [revocationClauses, setRevocationClauses] = useState({
-    hasRevocationClause: (state.giftRevocationDeed?.revocationClauses?.hasRevocationClause || 'نعم') as 'نعم' | 'لا' | 'غير_واضح',
-    revocationClauseText: state.giftRevocationDeed?.revocationClauses?.revocationClauseText || 'وقد اشترط الواهب لنفسه صراحة حق اعتصار هذه الهبة متى شاء وقبل الموهوب له ذلك.',
+    hasRevocationClause: (state.giftRevocationDeed?.revocationClauses?.hasRevocationClause || 'لا') as 'نعم' | 'لا' | 'غير_واضح',
+    revocationClauseText: state.giftRevocationDeed?.revocationClauses?.revocationClauseText || '',
     hasWaiverOfRevocationClause: (state.giftRevocationDeed?.revocationClauses?.hasWaiverOfRevocationClause || 'لا') as 'لا' | 'نعم' | 'غير_واضح',
     waiverClauseText: state.giftRevocationDeed?.revocationClauses?.waiverClauseText || '',
   });
@@ -160,24 +160,24 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
   // --------------------------------------------------------------------------
   const [propertyDetails, setPropertyDetails] = useState({
     propertyStatus: (state.giftRevocationDeed?.propertyDetails?.propertyStatus || 'محفظ') as GiftRevocationPropertyStatus,
-    landRegistryName: state.giftRevocationDeed?.propertyDetails?.landRegistryName || 'المحافظة العقارية بالرباط حسان',
+    landRegistryName: state.giftRevocationDeed?.propertyDetails?.landRegistryName || '',
     titleNumber: state.giftRevocationDeed?.propertyDetails?.titleNumber || '',
-    partNumber: state.giftRevocationDeed?.propertyDetails?.partNumber || '01',
+    partNumber: state.giftRevocationDeed?.propertyDetails?.partNumber || '',
     totalArea: state.giftRevocationDeed?.propertyDetails?.totalArea || '',
     propertyLocation: state.giftRevocationDeed?.propertyDetails?.propertyLocation || '',
-    currentOwnershipDescription: state.giftRevocationDeed?.propertyDetails?.currentOwnershipDescription || 'مقيد باسم الموهوب له بناء على رسم الهبة',
-    giftedShare: state.giftRevocationDeed?.propertyDetails?.giftedShare || 'كامل الملك',
-    encumbrancesText: state.giftRevocationDeed?.propertyDetails?.encumbrancesText || 'خالٍ من أي تحمل عقاري لاحق',
+    currentOwnershipDescription: state.giftRevocationDeed?.propertyDetails?.currentOwnershipDescription || '',
+    giftedShare: state.giftRevocationDeed?.propertyDetails?.giftedShare || '',
+    encumbrancesText: state.giftRevocationDeed?.propertyDetails?.encumbrancesText || '',
     requisitionNumber: state.giftRevocationDeed?.propertyDetails?.requisitionNumber || '',
     requisitionOffice: state.giftRevocationDeed?.propertyDetails?.requisitionOffice || '',
     requisitionDate: state.giftRevocationDeed?.propertyDetails?.requisitionDate || '',
     requisitionShare: state.giftRevocationDeed?.propertyDetails?.requisitionShare || '',
     originalTitleRef: state.giftRevocationDeed?.propertyDetails?.originalTitleRef || '',
-    possessionType: state.giftRevocationDeed?.propertyDetails?.possessionType || 'حيازة مستمرة',
+    possessionType: state.giftRevocationDeed?.propertyDetails?.possessionType || '',
     deedDate: state.giftRevocationDeed?.propertyDetails?.deedDate || '',
     boundariesDescription: state.giftRevocationDeed?.propertyDetails?.boundariesDescription || '',
     hasNewEncumbrances: state.giftRevocationDeed?.propertyDetails?.hasNewEncumbrances || false,
-    chargesComparisonDayOfGiftVsDayOfRevocation: state.giftRevocationDeed?.propertyDetails?.chargesComparisonDayOfGiftVsDayOfRevocation || 'تطابق كامل ولا توجد تقييدات لاحقة تعوق الاعتصار',
+    chargesComparisonDayOfGiftVsDayOfRevocation: state.giftRevocationDeed?.propertyDetails?.chargesComparisonDayOfGiftVsDayOfRevocation || '',
   });
 
   // --------------------------------------------------------------------------
@@ -218,16 +218,16 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
     agentPhone: state.giftRevocationDeed?.poaDetails?.agentPhone || '',
     principalName: state.giftRevocationDeed?.poaDetails?.principalName || '',
     principalCin: state.giftRevocationDeed?.poaDetails?.principalCin || '',
-    localRegistryCourt: state.giftRevocationDeed?.poaDetails?.localRegistryCourt || 'المحكمة الابتدائية بالرباط',
+    localRegistryCourt: state.giftRevocationDeed?.poaDetails?.localRegistryCourt || '',
     localRegistryDate: state.giftRevocationDeed?.poaDetails?.localRegistryDate || '',
     chronologicalNumber: state.giftRevocationDeed?.poaDetails?.chronologicalNumber || '',
     analyticalNumber: state.giftRevocationDeed?.poaDetails?.analyticalNumber || '',
     compositeNumber: state.giftRevocationDeed?.poaDetails?.compositeNumber || '',
-    hasLocalRegistryCertificate: state.giftRevocationDeed?.poaDetails?.hasLocalRegistryCertificate ?? true,
-    isVerifiedInNationalRegistry: state.giftRevocationDeed?.poaDetails?.isVerifiedInNationalRegistry ?? true,
+    hasLocalRegistryCertificate: state.giftRevocationDeed?.poaDetails?.hasLocalRegistryCertificate ?? false,
+    isVerifiedInNationalRegistry: state.giftRevocationDeed?.poaDetails?.isVerifiedInNationalRegistry ?? false,
     nationalVerificationDate: state.giftRevocationDeed?.poaDetails?.nationalVerificationDate || '',
     nationalRegistrationNumber: state.giftRevocationDeed?.poaDetails?.nationalRegistrationNumber || '',
-    nationalQueryResult: (state.giftRevocationDeed?.poaDetails?.nationalQueryResult || 'مقيدة_وصحيحة') as 'مقيدة_وصحيحة' | 'غير_مقيدة' | 'ملغاة' | 'معدلة' | '',
+    nationalQueryResult: (state.giftRevocationDeed?.poaDetails?.nationalQueryResult || '') as 'مقيدة_وصحيحة' | 'غير_مقيدة' | 'ملغاة' | 'معدلة' | '',
     judicialMandateCourt: state.giftRevocationDeed?.poaDetails?.judicialMandateCourt || '',
     judicialMandateFileNumber: state.giftRevocationDeed?.poaDetails?.judicialMandateFileNumber || '',
     judicialMandateYear: state.giftRevocationDeed?.poaDetails?.judicialMandateYear || '',
@@ -274,7 +274,7 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
   // ㉘-㉙ المسار القضائي / الاتفاقي
   // --------------------------------------------------------------------------
   const [judicialRuling, setJudicialRuling] = useState({
-    courtName: state.giftRevocationDeed?.judicialRulingDetails?.courtName || 'المحكمة الابتدائية بالرباط',
+    courtName: state.giftRevocationDeed?.judicialRulingDetails?.courtName || '',
     fileNumber: state.giftRevocationDeed?.judicialRulingDetails?.fileNumber || '',
     caseYear: state.giftRevocationDeed?.judicialRulingDetails?.caseYear || new Date().getFullYear().toString(),
     rulingNumber: state.giftRevocationDeed?.judicialRulingDetails?.rulingNumber || '',
@@ -282,7 +282,7 @@ export const GiftRevocationWizard: React.FC<DocumentWizardProps> = ({
     litigationDegree: state.giftRevocationDeed?.judicialRulingDetails?.litigationDegree || 'ابتدائي انتهائي / استئنافي',
     isFinal: state.giftRevocationDeed?.judicialRulingDetails?.isFinal ?? true,
     finalAcquisitionDate: state.giftRevocationDeed?.judicialRulingDetails?.finalAcquisitionDate || '',
-    rulingVerdict: state.giftRevocationDeed?.judicialRulingDetails?.rulingVerdict || 'قضت المحكمة علنياً ونهائياً بفسخ عقد الهبة المبرم بين الطرفين وإرجاع العقار الموهوب لذمة الواهب.',
+    rulingVerdict: state.giftRevocationDeed?.judicialRulingDetails?.rulingVerdict || '',
     confirmsGiftRescission: state.giftRevocationDeed?.judicialRulingDetails?.confirmsGiftRescission ?? true,
   });
 
@@ -613,9 +613,7 @@ ${fruitsClause}
         location: propertyDetails.propertyLocation,
       },
     }));
-    if (_onNext) {
-      _onNext();
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // --------------------------------------------------------------------------
