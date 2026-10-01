@@ -133,11 +133,26 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   }), [availableJudgesData, listJudgesQuery.isFetching, listJudgesQuery.error]);
 
   const judgePartyNames = useMemo(() => {
+    if (state.declarationsAndUndertakings?.declarer?.name) {
+      const decl = state.declarationsAndUndertakings.declarer.name;
+      const ben = state.declarationsAndUndertakings.beneficiary?.name;
+      return ben ? `${decl} (المصرح/الملتزم) / ${ben} (المستفيد)` : decl;
+    }
+    if (state.umraRevocation?.donor?.name) {
+      const donor = state.umraRevocation.donor.name;
+      const donee = state.umraRevocation.donee?.name;
+      return donee ? `${donor} (المعطي) / ${donee} (المعمَّر له)` : donor;
+    }
+    if (state.possessionRecovery?.applicant?.name) {
+      const applicant = state.possessionRecovery.applicant.name;
+      const disputant = state.possessionRecovery.disputant?.name;
+      return disputant ? `${applicant} (ضد: ${disputant})` : applicant;
+    }
     const sellers = (state.sellers || []).map((s) => s.name).filter(Boolean);
     const buyers = (state.buyers || []).map((b) => b.name).filter(Boolean);
     const all = [...sellers, ...buyers];
     return all.join('، ');
-  }, [state.sellers, state.buyers]);
+  }, [state.sellers, state.buyers, state.possessionRecovery, state.umraRevocation, state.declarationsAndUndertakings]);
 
   const judgeDispatchDate = useMemo(() => new Date().toISOString().split('T')[0], []);
   const judgeDispatchTime = useMemo(
@@ -221,6 +236,45 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
 
   // Logic for Step 7 (Lifted to Parent)
   const buildJudgeSummary = () => {
+    if (state.declarationsAndUndertakings) {
+      const du = state.declarationsAndUndertakings;
+      const parts = [
+        `إشهاد وتصريح: ${du.suggestedType?.replace(/_/g, ' ') || 'إشهاد'} (${du.subjectMatterCategory?.replace(/_/g, ' ') || 'عام'})`,
+        state.meta?.fileNumber ? `رقم الملف: ${state.meta.fileNumber}` : '',
+        du.declarer?.name ? `المصرح: ${du.declarer.name}` : '',
+        du.beneficiary?.name ? `المستفيد: ${du.beneficiary.name}` : '',
+        du.financial?.isFinancial && du.financial.amount ? `المبلغ: ${du.financial.amount} درهم` : '',
+        du.custodyTravelConsent?.childName ? `المحضون: ${du.custodyTravelConsent.childName}` : '',
+        du.clarityIndex ? `مؤشر الوضوح: ${du.clarityIndex}` : '',
+      ].filter(Boolean);
+      return parts.join(' · ');
+    }
+    if (state.umraRevocation) {
+      const ur = state.umraRevocation;
+      const parts = [
+        'رسم اعتصار العمرى (المواد 105-108 م.ح.ع)',
+        state.meta?.fileNumber ? `رقم الملف: ${state.meta.fileNumber}` : '',
+        ur.donor?.name ? `المعطي: ${ur.donor.name}` : '',
+        ur.donee?.name ? `المعمَّر له: ${ur.donee.name}` : '',
+        ur.property?.location?.commune ? `العقار: ${ur.property.location.commune} (${ur.property.registrationType})` : '',
+        ur.originalDeed?.deedNumber ? `سند العمرى الأصلي: ${ur.originalDeed.deedNumber}` : '',
+        ur.retractionIntent?.scope ? `نطاق الرجوع: ${ur.retractionIntent.scope.replace(/_/g, ' ')}` : '',
+      ].filter(Boolean);
+      return parts.join(' · ');
+    }
+    if (state.possessionRecovery) {
+      const pr = state.possessionRecovery;
+      const parts = [
+        'موجب استرجاع حيازة (عقار غير محفظ)',
+        state.meta?.fileNumber ? `رقم الملف: ${state.meta.fileNumber}` : '',
+        pr.applicant?.name ? `طالب الإشهاد: ${pr.applicant.name}` : '',
+        pr.property?.location?.commune ? `الموقع: ${pr.property.location.commune} (${pr.property.location.placeName || ''})` : '',
+        pr.recoveryFact?.recoveryDate ? `تاريخ الاسترجاع: ${pr.recoveryFact.recoveryDate}` : '',
+        pr.witnesses?.length ? `شهود المعاينة: ${pr.witnesses.length}` : '',
+        pr.judicialRuling?.rulingNumber ? `حكم عدد: ${pr.judicialRuling.rulingNumber}` : '',
+      ].filter(Boolean);
+      return parts.join(' · ');
+    }
     const sellers = state.sellers.map((s) => s.name).filter(Boolean).join('، ');
     const buyers = state.buyers.map((b) => b.name).filter(Boolean).join('، ');
     const property = state.properties?.[0]?.propertyName || state.properties?.[0]?.titleRef || '';
@@ -239,6 +293,9 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
   const buildJudgePayload = () => ({
     fileNumber: state.meta.fileNumber,
     documentType: state.documentType,
+    possessionRecovery: state.possessionRecovery || undefined,
+    umraRevocation: state.umraRevocation || undefined,
+    declarationsAndUndertakings: state.declarationsAndUndertakings || undefined,
     sellers: state.sellers.map((s) => ({
       name: s.name,
       idNumber: s.idNumber,
@@ -1409,6 +1466,313 @@ export const Step7_FinalReview: React.FC<Step7Props> = ({ state, setState, onNex
                   <p>تم استيراد جميع البيانات المدخلة (الأطراف، العقار، التواريخ، الصفات)، ويمكن مراجعتها أو تعديلها قبل الصياغة.</p>
                 </div>
               </div>
+
+              {/* 🏠 بطاقة تدقيق موجب استرجاع الحيازة (عقار غير محفظ) */}
+              {state.possessionRecovery && (
+                <div className="mt-5 p-5 bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl border-2 border-blue-200 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🏠</span>
+                      <h4 className="font-black text-slate-900 text-base">ملخص موجب استرجاع الحيازة المُعد للإحالة على قاضي التوثيق</h4>
+                    </div>
+                    <span className="text-xs px-3 py-1 bg-blue-100 text-blue-900 border border-blue-300 rounded-full font-bold">
+                      المادتان 244 و246 ق.م.م · عقار غير محفظ
+                    </span>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👤 طالب الإشهاد:</span>
+                      <strong className="text-slate-900">{state.possessionRecovery.applicant.name || '---'}</strong>
+                      <div className="text-[11px] text-slate-500 mt-0.5">ب.ت.و: {state.possessionRecovery.applicant.cin || '---'}</div>
+                      <div className="text-[11px] text-purple-700 font-bold mt-1">الصفة: {state.possessionRecovery.attendanceMode === 'أصالة' ? 'أصالة عن نفسه' : 'بواسطة وكيل'}</div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">🏠 العقار غير المحفظ:</span>
+                      <strong className="text-slate-900">{state.possessionRecovery.property.location.propertyName || state.possessionRecovery.property.location.placeName || '---'}</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">{state.possessionRecovery.property.location.commune} - {state.possessionRecovery.property.location.douarOrQuarter}</div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-1">المساحة: {state.possessionRecovery.property.area.totalArea} {state.possessionRecovery.property.area.unit}</div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">🔄 واقعة الاسترجاع:</span>
+                      <strong className="text-emerald-700 block">{state.possessionRecovery.recoveryFact.mode.replace(/_/g, ' ')}</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">تاريخ الاسترجاع: {state.possessionRecovery.recoveryFact.recoveryDate || '---'}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">تاريخ الفقدان: {state.possessionRecovery.lossOfPossession.date || '---'}</div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👥 شهود المعاينة المباشرة:</span>
+                      <strong className="text-blue-900 block">{state.possessionRecovery.witnesses.length} شهود مسجلون</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">
+                        {state.possessionRecovery.witnesses.every(w => w.isDirectObservation) ? '✓ معاينة بصرية مباشرة تامة' : 'تحتوي شهادات سماعية'}
+                      </div>
+                      {state.possessionRecovery.lafifLink?.isLinked && (
+                        <div className="text-[11px] text-amber-700 font-bold mt-1">مرتبط بلفيف عدلي ({state.possessionRecovery.lafifLink.witnessCount || 12} شاهداً)</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {state.possessionRecovery.judicialRuling?.rulingNumber && (
+                    <div className="bg-white p-3 rounded-lg border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                      <span className="font-bold">⚖️ مستند لحكم قضائي: حكم عدد {state.possessionRecovery.judicialRuling.rulingNumber} عن {state.possessionRecovery.judicialRuling.courtName}</span>
+                      {state.possessionRecovery.judicialRuling.enforcementRecordNumber && (
+                        <span className="font-medium text-slate-600">محضر تنفيذ عدد: {state.possessionRecovery.judicialRuling.enforcementRecordNumber}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center gap-2">
+                    <span className="text-amber-600 font-bold">⚠️ تنبيه عدلي:</span>
+                    <span>الرسم يوثق واقعة وضع اليد الفعلي والاسترجاع ولا يعد إثباتاً للملكية العينية أو حكماً قضائياً، وهو مهيأ للإحالة القضائية.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 🔄 بطاقة تدقيق رسم اعتصار العمرى */}
+              {state.umraRevocation && (
+                <div className="mt-5 p-5 bg-gradient-to-br from-indigo-50/60 to-purple-50/40 rounded-xl border-2 border-indigo-200 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🔄</span>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-base">ملخص رسم اعتصار العمرى المُعد للمخاطبة القضائية</h4>
+                        <div className="text-[11px] text-indigo-700 font-medium">
+                          {state.umraRevocation.operationType === 'اعتصار_العمرى' ? 'اعتصار حق العمرى واسترجاع المنفعة للمعطي' : state.umraRevocation.operationType.replace(/_/g, ' ')}
+                          {' · '}
+                          {state.umraRevocation.originalDeed?.creationEra === 'سابقة_على_المدونة'
+                            ? 'أنشئت قبل مدونة الحقوق العينية (الفقه المالكي / قرار محكمة النقض 513/2014)'
+                            : 'أنشئت في ظل القانون 39.08 (المواد 105 إلى 108)'}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs px-3 py-1 bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-full font-bold">
+                      المواد 105-108 ق 39.08 · قرار النقض 513
+                    </span>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👤 المعطي (المعتصِر):</span>
+                      <strong className="text-slate-900">{state.umraRevocation.donor?.name || '---'}</strong>
+                      <div className="text-[11px] text-slate-500 mt-0.5">ب.ت.و: {state.umraRevocation.donor?.cin || '---'}</div>
+                      <div className="text-[11px] text-indigo-700 font-bold mt-1">الصفة: {state.umraRevocation.donor?.capacity?.replace(/_/g, ' ') || 'صاحب الحق'}</div>
+                      {state.umraRevocation.poa?.hasPoa && (
+                        <div className="text-[10px] text-purple-700 mt-0.5">بوكالة خاصة: {state.umraRevocation.poa?.poaNumber || 'معتمدة'}</div>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👥 المعمَّر له:</span>
+                      <strong className="text-slate-900">{state.umraRevocation.donee?.name || '---'}</strong>
+                      <div className="text-[11px] text-slate-500 mt-0.5">ب.ت.و: {state.umraRevocation.donee?.cin || '---'}</div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-1">
+                        الحياة: {state.umraRevocation.donee?.aliveStatus === 'على_قيد_الحياة' ? '✓ على قيد الحياة' : '⚠️ غير معلوم / متوفى'}
+                      </div>
+                      <div className="text-[10px] text-slate-600 mt-0.5">الموقف: {state.umraRevocation.doneeStance?.replace(/_/g, ' ') || '---'}</div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">📜 سند العمرى الأصلي:</span>
+                      <strong className="text-slate-900 block">{state.umraRevocation.originalDeed?.sourceType?.replace(/_/g, ' ') || 'رسم عدلي'}</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">عدد/مرجع: {state.umraRevocation.originalDeed?.deedNumber || '---'}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">محكمة: {state.umraRevocation.originalDeed?.court || '---'}</div>
+                      <div className="text-[10px] text-indigo-600 mt-1">تاريخ الإنشاء: {state.umraRevocation.originalDeed?.creationDate || '---'}</div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">🏠 العقار محل العمرى:</span>
+                      <strong className="text-slate-900 block">
+                        {state.umraRevocation.property?.registrationType === 'محفظ'
+                          ? `محفظ: ${state.umraRevocation.property?.titleNumber || '---'}`
+                          : (state.umraRevocation.property?.location?.propertyName || 'عقار غير محفظ')}
+                      </strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">{state.umraRevocation.property?.location?.province} - {state.umraRevocation.property?.location?.commune}</div>
+                      <div className="text-[11px] text-purple-700 font-bold mt-1">
+                        نطاق الاعتصار: {state.umraRevocation.retractionIntent?.scope === 'كامل_العقار' ? 'كامل العقار المعتمر' : `حصة: ${state.umraRevocation.retractionIntent?.shareFraction || state.umraRevocation.retractionIntent?.partialDescription || 'مشاعة'}`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(state.umraRevocation.conditions || []).length > 0 && (
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs">
+                      <span className="font-bold text-slate-700 block mb-1">⚖️ شروط العمرى الأصلية المقيدة والمدققة:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {state.umraRevocation.conditions.map((cond, idx) => (
+                          <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded border text-[11px]">
+                            {cond.conditionText} ({cond.category})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {state.umraRevocation.dispute?.hasDispute && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900 flex items-center justify-between">
+                      <span className="font-bold">⚠️ يوجد نزاع قضائي: {state.umraRevocation.dispute?.courtName ? `محكمة ${state.umraRevocation.dispute.courtName}` : 'نزاع قائم'} (ملف عدد: {state.umraRevocation.dispute?.caseNumber || '---'})</span>
+                      <span className="text-[11px] text-red-700 font-semibold">{state.umraRevocation.dispute?.disputeType?.replace(/_/g, ' ') || 'قيد النظر'}</span>
+                    </div>
+                  )}
+
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-center gap-2">
+                    <span className="text-emerald-700 font-bold">✓ الجاهزية القضائية:</span>
+                    <span>تم التحقق من صفة المعطي، بقاء المعمر له حياً، عدم تفويت الرقبة، وتحديد صيغة الرجوع مع إشعار المحافظة العقارية إذا كان العقار محفظاً.</span>
+                  </div>
+                </div>
+              )}
+
+              {/* ✍️ بطاقة تدقيق الإشهادات والتصريحات والإقرارات والالتزامات */}
+              {state.declarationsAndUndertakings && (
+                <div className="mt-5 p-5 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-slate-50/60 rounded-xl border-2 border-emerald-300 shadow-sm space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">✍️</span>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-base">ملخص الإشهاد / التصريح / الالتزام المُعد للمخاطبة القضائية</h4>
+                        <div className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1.5 flex-wrap">
+                          <span>التكييف القانوني المقترح: {state.declarationsAndUndertakings.suggestedType?.replace(/_/g, ' ') || 'إشهاد'}</span>
+                          <span>·</span>
+                          <span>المجال: {state.declarationsAndUndertakings.subjectMatterCategory?.replace(/_/g, ' ') || 'عام'}</span>
+                          <span>·</span>
+                          <span>الأثر القانوني: {state.declarationsAndUndertakings.legalEffect?.replace(/_/g, ' ') || 'تصريح بواقعة'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {state.declarationsAndUndertakings.clarityIndex === 'واضح' && (
+                        <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full font-bold flex items-center gap-1">
+                          🟢 مؤشر الوضوح: صريح ومكتمل
+                        </span>
+                      )}
+                      {state.declarationsAndUndertakings.clarityIndex === 'يحتاج_استكمال' && (
+                        <span className="text-xs px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full font-bold flex items-center gap-1">
+                          🟡 مؤشر الوضوح: يحتاج تدقيق إضافي
+                        </span>
+                      )}
+                      {state.declarationsAndUndertakings.clarityIndex === 'يتضمن_تعارض' && (
+                        <span className="text-xs px-3 py-1 bg-red-100 text-red-900 border border-red-300 rounded-full font-bold flex items-center gap-1">
+                          🔴 مؤشر الوضوح: يتضمن تعارضاً
+                        </span>
+                      )}
+                      <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 rounded-full font-mono">
+                        ق.ل.ع · خطة العدالة
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👤 المصرح / المقر / الملتزم:</span>
+                      <strong className="text-slate-900 text-sm block">{state.declarationsAndUndertakings.declarer?.name || '---'}</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">ب.ت.و: {state.declarationsAndUndertakings.declarer?.cin || '---'}</div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-1">الصفة: {state.declarationsAndUndertakings.declarer?.capacity?.replace(/_/g, ' ') || 'شاهد على نفسه'}</div>
+                      {state.declarationsAndUndertakings.poa?.hasPoa && (
+                        <div className="text-[10px] text-purple-700 mt-1 bg-purple-50 p-1 rounded border border-purple-200">
+                          بوكالة خاصة: {state.declarationsAndUndertakings.poa?.poaNumber || 'معتمدة'} ({state.declarationsAndUndertakings.poa?.scope || 'خاصة'})
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">👥 المستفيد / المشهود لفائدته:</span>
+                      <strong className="text-slate-900 text-sm block">{state.declarationsAndUndertakings.beneficiary?.name || '---'}</strong>
+                      <div className="text-[11px] text-slate-600 mt-0.5">
+                        {state.declarationsAndUndertakings.beneficiary?.entityType === 'شخص_ذاتي'
+                          ? `ب.ت.و: ${state.declarationsAndUndertakings.beneficiary?.cin || '---'}`
+                          : `المعرف الموحد ICE: ${state.declarationsAndUndertakings.beneficiary?.entityDetails?.ice || '---'}`}
+                      </div>
+                      <div className="text-[11px] text-indigo-700 font-semibold mt-1">
+                        النوع: {state.declarationsAndUndertakings.beneficiary?.entityType?.replace(/_/g, ' ') || 'شخص ذاتي'}
+                      </div>
+                      {state.declarationsAndUndertakings.beneficiary?.individualDetails?.isMinor && (
+                        <div className="text-[10px] text-amber-700 mt-1 bg-amber-50 p-1 rounded border border-amber-200">
+                          قاصر تحت نيابة: {state.declarationsAndUndertakings.beneficiary?.individualDetails?.guardianName || 'النائب الشرعي'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">💰 المقتضى المالي والأداء:</span>
+                      {state.declarationsAndUndertakings.financial?.isFinancial ? (
+                        <>
+                          <strong className="text-slate-900 text-sm block">
+                            {Number(state.declarationsAndUndertakings.financial?.amount || 0).toLocaleString('ar-MA')} درهم
+                          </strong>
+                          <div className="text-[11px] text-slate-600 mt-0.5 font-amiri">
+                            {state.declarationsAndUndertakings.financial?.amountInWords || ''}
+                          </div>
+                          <div className="text-[11px] text-purple-700 font-semibold mt-1">
+                            المنشأ: {state.declarationsAndUndertakings.financial?.moneySource?.replace(/_/g, ' ') || 'غير محدد'} ({state.declarationsAndUndertakings.financial?.maturity?.replace(/_/g, ' ') || 'حال'})
+                          </div>
+                          {state.declarationsAndUndertakings.financial?.installments && state.declarationsAndUndertakings.financial.installments.length > 0 && (
+                            <div className="text-[10px] text-teal-700 mt-1">
+                              مقسم على {state.declarationsAndUndertakings.financial.installments.length} أقساط مجدولة
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-500 italic block mt-2">التزام / إشهاد غير مالي محض</span>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 font-bold block mb-1">📌 تفاصيل المسار المتخصص:</span>
+                      {state.declarationsAndUndertakings.custodyTravelConsent?.childName ? (
+                        <div className="space-y-1">
+                          <strong className="text-slate-900 block">إذن سفر بالمحضون</strong>
+                          <div className="text-[11px] text-slate-600">المحضون: {state.declarationsAndUndertakings.custodyTravelConsent.childName}</div>
+                          <div className="text-[11px] text-slate-600">الوجهة: {state.declarationsAndUndertakings.custodyTravelConsent.destinationCountry || 'غير محدد'}</div>
+                          <div className="text-[10px] text-emerald-700 font-semibold">
+                            {state.declarationsAndUndertakings.custodyTravelConsent.travelBanChecked ? '✓ تم التحقق من انعدام مانع قضائي (م 179)' : '⚠️ يحتاج فحص المنع القضائي'}
+                          </div>
+                        </div>
+                      ) : state.declarationsAndUndertakings.schoolingSupport?.studentName ? (
+                        <div className="space-y-1">
+                          <strong className="text-slate-900 block">تكفل بمصاريف تمدرس</strong>
+                          <div className="text-[11px] text-slate-600">المتمدرس: {state.declarationsAndUndertakings.schoolingSupport.studentName}</div>
+                          <div className="text-[11px] text-slate-600">المؤسسة: {state.declarationsAndUndertakings.schoolingSupport.institutionName || '---'}</div>
+                          <div className="text-[10px] text-teal-700">الالتزام شخصي ولا يعد كفالة دين لأغيار</div>
+                        </div>
+                      ) : state.declarationsAndUndertakings.factAcknowledgment?.factSubject ? (
+                        <div className="space-y-1">
+                          <strong className="text-slate-900 block">اعتراف / إثبات واقعة</strong>
+                          <div className="text-[11px] text-slate-600">الواقعة: {state.declarationsAndUndertakings.factAcknowledgment.factSubject}</div>
+                          <div className="text-[11px] text-slate-500">التاريخ: {state.declarationsAndUndertakings.factAcknowledgment.factDate || 'غير محدد'}</div>
+                        </div>
+                      ) : state.declarationsAndUndertakings.receiptAcknowledgment?.itemDescription ? (
+                        <div className="space-y-1">
+                          <strong className="text-slate-900 block">إبراء / إشهاد بالتوصل</strong>
+                          <div className="text-[11px] text-slate-600">المتسلم: {state.declarationsAndUndertakings.receiptAcknowledgment.itemDescription}</div>
+                          <div className="text-[10px] text-emerald-700">مخالصة نهائية وإبراء ذمة</div>
+                        </div>
+                      ) : (
+                        <div className="text-slate-500 italic mt-2">
+                          إشهاد عام مصاغ وفق إرادة المصرح وتدقيق العدلين
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {state.declarationsAndUndertakings.contradictionAlerts && state.declarationsAndUndertakings.contradictionAlerts.length > 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>⚠️ تنبيهات التعارض والتنافي:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                        {state.declarationsAndUndertakings.contradictionAlerts.map((alert, idx) => (
+                          <li key={idx}>{alert}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-lg text-xs text-emerald-950 flex items-center gap-2">
+                    <span className="text-emerald-700 font-bold">✓ الجاهزية القضائية والإحالة:</span>
+                    <span>تم فتح ملف خاص للشهادة وحفظ المستندات طبقاً للقانون 16.03، والتأكد من صراحة الالتزام، ومشروعية السبب، وخلوه من شبهة التحايل على المساطر الشكلية العقارية.</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

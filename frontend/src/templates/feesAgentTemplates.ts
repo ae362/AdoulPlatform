@@ -1135,6 +1135,40 @@ export function generateRasmHtml(state: FeesAgentState): string {
     return `<div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: justify; line-height: 2.2; padding: 25px; font-size: 17px; color: #0f172a;">${draftText.replace(/\n/g, '<br/>')}</div>`;
   }
 
+  // Possession recovery deed (موجب استرجاع حيازة - شهادة عدلية / لفيف)
+  if (
+    documentType === 'موجب_استرجاع_حيازة' ||
+    documentType === 'موجب استرجاع حيازة' ||
+    documentType === 'استرجاع_حيازة' ||
+    documentType === 'استرجاع حيازة' ||
+    state.possessionRecovery
+  ) {
+    const text = state.possessionRecovery?.draftText || state.draft || generateDocumentDraft(state);
+    return `<div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: justify; line-height: 2.2; padding: 25px; font-size: 17px; color: #0f172a; white-space: pre-wrap;">${text}</div>`;
+  }
+
+  // Umra revocation deed (اعتصار العمرى - المواد 105 إلى 108 م.ح.ع)
+  if (
+    documentType === 'اعتصار_عمرى' ||
+    documentType === 'اعتصار_العمرى' ||
+    documentType === 'اعتصار عمرى' ||
+    state.umraRevocation
+  ) {
+    const text = state.umraRevocation?.draftText || state.draft || generateDocumentDraft(state);
+    return `<div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: justify; line-height: 2.2; padding: 25px; font-size: 17px; color: #0f172a; white-space: pre-wrap;">${text}</div>`;
+  }
+
+  // Declarations and undertakings deed (الإشهادات والتصريحات والإقرارات والالتزامات)
+  if (
+    documentType === 'اشهادات_والتزامات' ||
+    documentType === 'الاشهادات_والالتزامات' ||
+    documentType === 'اشهاد_والتزام' ||
+    state.declarationsAndUndertakings
+  ) {
+    const text = state.declarationsAndUndertakings?.draftText || state.draft || generateDocumentDraft(state);
+    return `<div style="font-family: 'Amiri', 'Traditional Arabic', serif; direction: rtl; text-align: justify; line-height: 2.2; padding: 25px; font-size: 17px; color: #0f172a; white-space: pre-wrap;">${text}</div>`;
+  }
+
   // Ownership deeds (ملكية / رسم استمرار / حيازة)
   if (documentType === 'ملكية' || documentType === 'حيازة' || documentType.includes('ملكية') || documentType.includes('حيازة')) {
     return generateMalakiyaRasmHtml(state);
@@ -2774,6 +2808,61 @@ export function generateDocumentDraft(state: FeesAgentState): string {
     }
     if ((state.absenceInquestDeed as any)?.deedText) {
       return (state.absenceInquestDeed as any).deedText;
+    }
+  }
+
+  // Possession Recovery Deed (موجب استرجاع حيازة - شهادة عدلية / لفيف)
+  if (
+    documentType === 'موجب_استرجاع_حيازة' ||
+    documentType === 'موجب استرجاع حيازة' ||
+    documentType === 'استرجاع_حيازة' ||
+    documentType === 'استرجاع حيازة' ||
+    state.possessionRecovery
+  ) {
+    if (state.possessionRecovery?.draftText && state.possessionRecovery.draftText.trim().length > 20) {
+      return state.possessionRecovery.draftText;
+    }
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+  }
+
+  // Umra Revocation Deed (اعتصار العمرى - المواد 105 إلى 108 م.ح.ع)
+  if (
+    documentType === 'اعتصار_عمرى' ||
+    documentType === 'اعتصار_العمرى' ||
+    documentType === 'اعتصار عمرى' ||
+    state.umraRevocation
+  ) {
+    if (state.umraRevocation?.draftText && state.umraRevocation.draftText.trim().length > 20) {
+      return state.umraRevocation.draftText;
+    }
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
+    }
+  }
+
+  // Declarations and Undertakings Deed (الإشهادات والتصريحات والإقرارات والالتزامات)
+  if (
+    documentType === 'اشهادات_والتزامات' ||
+    documentType === 'الاشهادات_والالتزامات' ||
+    documentType === 'اشهاد_والتزام' ||
+    state.declarationsAndUndertakings
+  ) {
+    if (state.declarationsAndUndertakings?.draftText && state.declarationsAndUndertakings.draftText.trim().length > 20) {
+      return state.declarationsAndUndertakings.draftText;
+    }
+    if (state.draft && state.draft.trim().length > 20) {
+      return state.draft;
+    }
+    if ((state as any).draftText && (state as any).draftText.trim().length > 20) {
+      return (state as any).draftText;
     }
   }
 

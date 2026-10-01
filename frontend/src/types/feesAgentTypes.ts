@@ -3,6 +3,11 @@ import type { LeaseDeedState } from '../components/FeesAgent/documents/property/
 import type { CorrectionAddendumState } from '../components/FeesAgent/documents/other/correctionAddendumTypes';
 import type { WitnessRecantationState } from '../components/FeesAgent/documents/other/witnessRecantationTypes';
 import type { BusinessSaleState } from '../components/FeesAgent/documents/commercial/businessSaleTypes';
+import type { PossessionRecoveryState } from '../components/FeesAgent/documents/property/possessionRecoveryTypes';
+import type { UmraRevocationState } from '../components/FeesAgent/documents/property/umraRevocationTypes';
+import type { DeclarationsAndUndertakingsState } from '../components/FeesAgent/documents/other/declarationsAndUndertakingsTypes';
+
+export type { PossessionRecoveryState, UmraRevocationState, DeclarationsAndUndertakingsState };
 
 export type PaymentMethod = 'نقد' | 'شيك' | 'تحويل' | 'قسط' | 'اعترافا';
 export type PropertyType = 'محفظ' | 'غير_محفظ' | 'منقول' | 'مزيج';
@@ -4921,6 +4926,15 @@ export interface FeesAgentState {
 
   // BusinessSale State (بيع الأصل التجاري - المواد 79 إلى 98 من مدونة التجارة)
   businessSale?: BusinessSaleState;
+
+  // PossessionRecovery State (موجب استرجاع حيازة - المواد 244-246 ق.م.م وقانون 39.08)
+  possessionRecovery?: PossessionRecoveryState;
+
+  // UmraRevocation State (اعتصار العمرى - المواد 105-108 م.ح.ع)
+  umraRevocation?: UmraRevocationState;
+
+  // DeclarationsAndUndertakings State (الإشهادات والتصريحات والإقرارات والالتزامات)
+  declarationsAndUndertakings?: DeclarationsAndUndertakingsState;
 
   // ProofOfEstate State (رسم ثبوت مخلف)
   proofOfEstate?: ProofOfEstate;

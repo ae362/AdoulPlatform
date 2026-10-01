@@ -3,7 +3,7 @@ import {
   FileText, Lock, Heart, AlertTriangle
 } from 'lucide-react';
 
-export type DocumentCategoryType = 'sale' | 'lease' | 'business_sale' | 'correction_addendum' | 'witness_recantation' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'absence_inquest' | 'gift_revocation' | 'other';
+export type DocumentCategoryType = 'sale' | 'lease' | 'business_sale' | 'possession_recovery' | 'umra_revocation' | 'declaration_undertaking' | 'correction_addendum' | 'witness_recantation' | 'property_general' | 'marriage' | 'divorce' | 'inheritance' | 'agent_dismissal' | 'tawkil' | 'promise_to_sell' | 'promise_to_lease' | 'kafala' | 'mental_disability' | 'guardianship_suitability' | 'absence_inquest' | 'gift_revocation' | 'other';
 
 export interface DocumentWorkflowStepperProps {
   documentType: string;
@@ -86,6 +86,29 @@ export function detectDocumentCategory(docType: string): DocumentCategoryType {
   // 2.14. Dedicated Commercial Business Sale (بيع الأصل التجاري - المواد 79 إلى 98 من مدونة التجارة)
   if (dt === 'بيع_اصل_تجاري' || dt === 'بيع_الأصل_التجاري' || dt === 'تفويت_اصل_تجاري' || dt.includes('اصل_تجاري') || dt.includes('الأصل_التجاري') || dt.includes('أصل تجاري') || dt.includes('الأصل التجاري')) {
     return 'business_sale';
+  }
+
+  // 2.15. Dedicated Possession Recovery (موجب استرجاع حيازة - المواد 244 إلى 246 ق.م.م وقانون 39.08)
+  if (dt === 'موجب_استرجاع_حيازة' || dt === 'استرجاع_حيازة' || dt.includes('استرجاع_حيازة') || dt.includes('استرجاع حيازة')) {
+    return 'possession_recovery';
+  }
+
+  // 2.16. Dedicated Umra Revocation (اعتصار العمرى - المواد 105 إلى 108 م.ح.ع)
+  if (dt === 'اعتصار_عمرى' || dt === 'اعتصار_العمرى' || dt === 'اعتصار عمرى' || dt.includes('اعتصار_عمرى') || dt.includes('اعتصار العمرى') || dt.includes('اعتصار عمرى')) {
+    return 'umra_revocation';
+  }
+
+  // 2.17. Dedicated Declarations, Undertakings, Acknowledgments & Affidavits (الإشهادات والتصريحات والإقرارات والالتزامات)
+  if (
+    dt === 'اشهادات_والتزامات' ||
+    dt === 'الاشهادات_والالتزامات' ||
+    dt === 'اشهاد_والتزام' ||
+    dt.includes('اشهادات') ||
+    dt.includes('تصريحات') ||
+    dt.includes('إقرارات') ||
+    dt.includes('التزامات')
+  ) {
+    return 'declaration_undertaking';
   }
 
   // 3. Specific Real Estate Sales & Disposal
@@ -286,6 +309,31 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 5, targetStep: 4, num: '⑤', title: 'الرهون والدائنون', desc: 'الرهون والامتيازات ومصدر الملكية', icon: ShieldCheck },
             { index: 6, targetStep: 5, num: '⑥', title: 'الثمن والوديعة', desc: 'توزيع الثمن والجهة المؤهلة للإيداع', icon: FileCheck },
             { index: 7, targetStep: 7, num: '⑦', title: 'التحرير والآثار', desc: 'تحرير العقد والنشر وأجل التعرضات', icon: FileText },
+          ]
+        };
+
+      case 'possession_recovery':
+        return {
+          title: 'خريطة المسار الإجرائي لموجب استرجاع الحيازة (المواد 244-246 ق.م.م وقانون 39.08)',
+          gridClass: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3) return 4;
+            if (step === 4) return 5;
+            if (step === 5 || step === 6) return 6;
+            if (step >= 7) return 7;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'العملية والصفة', desc: 'طبيعة الاسترجاع وطالب الإشهاد والوكالة', icon: Users },
+            { index: 2, targetStep: 1, num: '②', title: 'العقار غير المحفظ', desc: 'الموقع والمساحة والحدود الأربعة', icon: Building2 },
+            { index: 3, targetStep: 2, num: '③', title: 'وقائع الحيازة', desc: 'الفقدان والعنف والاسترجاع الفعلي', icon: Scale },
+            { index: 4, targetStep: 3, num: '④', title: 'شهود المعاينة', desc: 'معاينة الاسترجاع وبينة اللفيف', icon: Users },
+            { index: 5, targetStep: 4, num: '⑤', title: 'الأسانيد والقضاء', desc: 'سند الحيازة والخط الزمني والحكم', icon: ShieldCheck },
+            { index: 6, targetStep: 5, num: '⑥', title: 'الفحص والمطابقة', desc: 'التدقيق ومنع الخلط مع الملكية', icon: FileCheck },
+            { index: 7, targetStep: 7, num: '⑦', title: 'التحرير والاعتماد', desc: 'صياغة الموجب العدلي وبطاقة الأرشيف', icon: FileText },
           ]
         };
 
@@ -585,6 +633,52 @@ export const DocumentWorkflowStepper: React.FC<DocumentWorkflowStepperProps> = (
             { index: 4, targetStep: 3, num: '④', title: 'فحص الموانع القطعية', desc: 'موانع المادة 285 والمادة 291', icon: Scale },
             { index: 5, targetStep: 4, num: '⑤', title: 'الوكالة والمحافظة', desc: 'السجلات العقارية والجبائية', icon: FileCheck },
             { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والاعتماد', desc: 'الصياغة والتحقق وسلسلة الملك', icon: FileText },
+          ]
+        };
+
+      case 'umra_revocation':
+        return {
+          title: 'خريطة المسار الإجرائي لرسم اعتصار العمرى (المواد 105-108 م.ح.ع)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3 || step === 4) return 4;
+            if (step === 5 || step === 6) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'شروط التلقي', desc: 'التحقق القبلي والأهلية', icon: ShieldCheck },
+            { index: 2, targetStep: 1, num: '②', title: 'سند العمرى الأصلي', desc: 'تاريخ الإنشاء وصيغة العقد', icon: FileText },
+            { index: 3, targetStep: 2, num: '③', title: 'المعطي والمعمَّر له', desc: 'الصفة والحياة والوكالة', icon: Users },
+            { index: 4, targetStep: 3, num: '④', title: 'العقار المعتمر والمالية', desc: 'الأوصاف والحصة والمنفعة', icon: Building2 },
+            { index: 5, targetStep: 5, num: '⑤', title: 'شروط وسند الرجوع', desc: 'اختبار الاعتصار وقاعدة الشروط', icon: Scale },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والإحالة للقاضي', desc: 'صياغة الرسم والخطاب القضائي', icon: FileCheck },
+          ]
+        };
+
+      case 'declaration_undertaking':
+        return {
+          title: 'خريطة المسار الإجرائي للإشهادات والتصريحات والالتزامات (6 محطات نوعية)',
+          gridClass: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
+          getStageIndex: (step: number) => {
+            if (step <= 0.25) return 1;
+            if (step === 1) return 2;
+            if (step === 2) return 3;
+            if (step === 3 || step === 4) return 4;
+            if (step === 5 || step === 6) return 5;
+            if (step >= 7) return 6;
+            return 2;
+          },
+          stages: [
+            { index: 1, targetStep: 0.25, num: '①', title: 'التوصيف والتكييف', desc: 'تحليل النص وتحديد المسار', icon: FileText },
+            { index: 2, targetStep: 1, num: '②', title: 'المصرح والمستفيد', desc: 'الأهلية والصفة والتمثيل', icon: Users },
+            { index: 3, targetStep: 2, num: '③', title: 'محل الإشهاد والمالية', desc: 'المبالغ والمواعيد والشروط', icon: Scale },
+            { index: 4, targetStep: 3, num: '④', title: 'المقتضيات الخاصة', desc: 'السفر، التمدرس، الكفالة، الإبراء', icon: ShieldCheck },
+            { index: 5, targetStep: 5, num: '⑤', title: 'التناقضات والوضوح', desc: 'فحص التنافي والتحقق القانوني', icon: AlertTriangle },
+            { index: 6, targetStep: 7, num: '⑥', title: 'التحرير والإحالة للقاضي', desc: 'الصياغة والخطاب والحفظ', icon: FileCheck },
           ]
         };
 

@@ -24,30 +24,24 @@ export async function enhanceCardImageForOCR(file: File): Promise<string> {
 
         let width = img.naturalWidth || img.width;
         let height = img.naturalHeight || img.height;
-        const isPortrait = height > width * 1.15;
-
-        // Auto-orient: Moroccan CIN is inherently landscape (approx 1.58:1 ratio).
-        // If photo was shot in portrait mode by smartphone, rotate 90 degrees clockwise.
-        let targetWidth = isPortrait ? height : width;
-        let targetHeight = isPortrait ? width : height;
 
         // Upscale low-res/small images to ensure OCR character height is adequate (ideally 40-60px per char)
-        const minDimension = Math.min(targetWidth, targetHeight);
+        const minDimension = Math.min(width, height);
         let scale = 1;
         if (minDimension < 1200) {
           scale = Math.min(3.0, 1500 / minDimension);
-          targetWidth = Math.round(targetWidth * scale);
-          targetHeight = Math.round(targetHeight * scale);
-        } else if (Math.max(targetWidth, targetHeight) > 3000) {
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        } else if (Math.max(width, height) > 3000) {
           // Cap extremely high-res phone photos to 2400px for speed
-          scale = 2400 / Math.max(targetWidth, targetHeight);
-          targetWidth = Math.round(targetWidth * scale);
-          targetHeight = Math.round(targetHeight * scale);
+          scale = 2400 / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         if (!ctx) {
@@ -60,56 +54,25 @@ export async function enhanceCardImageForOCR(file: File): Promise<string> {
         // Draw with high quality smoothing
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-
-        if (isPortrait) {
-          // Rotate 90 deg clockwise around center
-          ctx.translate(targetWidth / 2, targetHeight / 2);
-          ctx.rotate((90 * Math.PI) / 180);
-          ctx.drawImage(img, -targetHeight / 2, -targetWidth / 2, targetHeight, targetWidth);
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-        } else {
-          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        }
-
-        width = targetWidth;
-        height = targetHeight;
+        ctx.drawImage(img, 0, 0, width, height);
 
         const imgData = ctx.getImageData(0, 0, width, height);
         const data = imgData.data;
         const totalPixels = data.length / 4;
 
-        // Step 1: Calculate 256-bucket luminance histogram for robust percentile stretching (3% to 97%)
-        // This prevents specular glare from plastic card laminate or black background corners from destroying contrast.
-        const hist = new Uint32Array(256);
-        const step = Math.max(1, Math.floor(totalPixels / 20000));
-        let sampled = 0;
+        // Step 1: Calculate luminance histogram and percentiles
+        let minLum = 255;
+        let maxLum = 0;
+        const step = Math.max(1, Math.floor(totalPixels / 10000));
 
         for (let i = 0; i < data.length; i += 4 * step) {
-          const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-          hist[lum]++;
-          sampled++;
-        }
-
-        const lowerCutoff = sampled * 0.03;
-        const upperCutoff = sampled * 0.97;
-
-        let accum = 0;
-        let minLum = 0;
-        let maxLum = 255;
-
-        for (let b = 0; b < 256; b++) {
-          accum += hist[b];
-          if (minLum === 0 && accum >= lowerCutoff) {
-            minLum = b;
-          }
-          if (accum >= upperCutoff) {
-            maxLum = b;
-            break;
-          }
+          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          if (lum < minLum) minLum = lum;
+          if (lum > maxLum) maxLum = lum;
         }
 
         // Step 2: Linear contrast stretching & luminance conversion
-        const range = Math.max(maxLum - minLum, 35);
+        const range = Math.max(maxLum - minLum, 25);
         const mono = new Uint8Array(width * height);
 
         for (let i = 0, p = 0; i < data.length; i += 4, p++) {

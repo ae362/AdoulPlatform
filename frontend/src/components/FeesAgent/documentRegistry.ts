@@ -23,10 +23,12 @@ import { SurfaceRightsWizard } from './documents/property/SurfaceRightsWizard';
 import { OrnamentalRightWizard } from './documents/property/OrnamentalRightWizard';
 import { BuildingProofWizard } from './documents/property/BuildingProofWizard';
 import { OmraWizard } from './documents/property/OmraWizard';
+import { UmraRevocationWizard } from './documents/property/UmraRevocationWizard';
 import { OffPlanInitialSaleWizard } from './documents/property/OffPlanInitialSaleWizard';
 import { OffPlanFinalSaleWizard } from './documents/property/OffPlanFinalSaleWizard';
 import { MalakiyaWizard } from './documents/property/MalakiyaWizard';
 import { PossessionWizard } from './documents/property/PossessionWizard';
+import { PossessionRecoveryWizard } from './documents/property/PossessionRecoveryWizard';
 import { PartitionWizard } from './documents/property/PartitionWizard';
 import { MunakalaWizard } from './documents/property/MunakalaWizard';
 import { GiftWizard } from './documents/property/GiftWizard';
@@ -66,6 +68,7 @@ import { GuardianshipSuitabilityWizard } from './documents/other/GuardianshipSui
 import { AbsenceInquestWizard } from './documents/other/AbsenceInquestWizard';
 import { CorrectionAddendumWizard } from './documents/other/CorrectionAddendumWizard';
 import { WitnessRecantationWizard } from './documents/other/WitnessRecantationWizard';
+import { DeclarationsAndUndertakingsWizard } from './documents/other/DeclarationsAndUndertakingsWizard';
 
 export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<DocumentWizardProps>> = {
   // Marriage
@@ -89,10 +92,17 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<Docume
   'ثبوت_زينة_عقار': OrnamentalRightWizard,
   'ثبوت_بناء': BuildingProofWizard,
   'عقد_العمري': OmraWizard,
+  'اعتصار_عمرى': UmraRevocationWizard,
+  'اعتصار_العمرى': UmraRevocationWizard,
+  'اعتصار العمرى': UmraRevocationWizard,
   'بيع_وشراء_طور_انجاز_ابتدائي': OffPlanInitialSaleWizard,
   'بيع_وشراء_طور_انجاز_نهائي': OffPlanFinalSaleWizard,
   'ملكية': MalakiyaWizard,
   'حيازة': PossessionWizard,
+  'موجب_استرجاع_حيازة': PossessionRecoveryWizard,
+  'موجب استرجاع حيازة': PossessionRecoveryWizard,
+  'استرجاع_حيازة': PossessionRecoveryWizard,
+  'استرجاع حيازة': PossessionRecoveryWizard,
   'مقاسمة': PartitionWizard,
   'مناقلة': MunakalaWizard,
   'هبة': GiftWizard,
@@ -156,6 +166,13 @@ export const DOCUMENT_WIZARD_REGISTRY: Record<string, React.ComponentType<Docume
   'رجوع_في_شهادة': WitnessRecantationWizard,
   'رجوع_شاهد': WitnessRecantationWizard,
   'رجوع_عدل': WitnessRecantationWizard,
+  'اشهادات_والتزامات': DeclarationsAndUndertakingsWizard,
+  'الاشهادات_والالتزامات': DeclarationsAndUndertakingsWizard,
+  'اشهاد_والتزام': DeclarationsAndUndertakingsWizard,
+  'إشهادات_والتزامات': DeclarationsAndUndertakingsWizard,
+  'إشهاد_والتزام': DeclarationsAndUndertakingsWizard,
+  'إشهاد وتصريح': DeclarationsAndUndertakingsWizard,
+  'تصريح_والتزام': DeclarationsAndUndertakingsWizard,
   'أخرى': OtherDocumentWizard,
 };
 

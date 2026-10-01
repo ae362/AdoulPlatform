@@ -123,16 +123,14 @@ export class OCRService {
    */
   private repairNumericPart(str: string): string {
     return str
-      .replace(/[OoDQqCc]/g, '0')
+      .replace(/[OoD]/g, '0')
       .replace(/[Il|!]/g, '1')
       .replace(/[Zz]/g, '2')
-      .replace(/[Ee]/g, '3')
-      .replace(/[Aa]/g, '4')
       .replace(/[Ss]/g, '5')
       .replace(/[G]/g, '6')
-      .replace(/[Ttr]/g, '7')
       .replace(/[Bb]/g, '8')
-      .replace(/[q]/g, '9');
+      .replace(/[Aa]/g, '4')
+      .replace(/[Ttr]/g, '7');
   }
 
   /**
@@ -146,9 +144,6 @@ export class OCRService {
       .replace(/5/g, 'S')
       .replace(/6/g, 'G')
       .replace(/2/g, 'Z')
-      .replace(/4/g, 'A')
-      .replace(/3/g, 'E')
-      .replace(/7/g, 'T')
       .replace(/e/g, 'C')
       .replace(/c/g, 'C')
       .replace(/o/g, 'C');
