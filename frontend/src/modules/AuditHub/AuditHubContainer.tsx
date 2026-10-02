@@ -6,84 +6,51 @@ import {
   Download, 
   Share2,
   UserCheck, 
-  Book, 
-  Clipboard, 
-  FileCheck, 
-  MapPin, 
-  Activity, 
-  AlertTriangle, 
-  Clock, 
   FileText, 
-  MoreVertical, 
-  XCircle, 
-  Printer,
-  Plus,
-  Minus,
-  Maximize2,
-  ZoomIn,
-  ZoomOut,
-  Search,
   X,
   ChevronRight,
-  ChevronLeft,
-  Pencil,
-  Save,
   Upload,
   FileDown,
-  Edit3,
   AlertCircle,
-  PlusCircle,
-  Building,
   CreditCard as CreditCardIcon,
-  Medal as AwardIcon,
   FileSignature,
   RotateCcw,
-  History,
-  Lock,
   CheckCircle2,
-  PenTool,
   Scale,
   FileSearch,
   ShieldCheck,
   Users,
   Building2,
   Trash2,
-  Settings,
-  HeartPulse,
-  ScrollText,
-  LayoutGrid,
+  AlertTriangle,
   FolderArchive,
   Loader2,
   Columns,
   Eye,
-  SlidersHorizontal
+  SlidersHorizontal,
+  XCircle,
+  Plus,
+  Printer
 } from 'lucide-react';
+
 import { trpc } from '../../trpc';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from '../../components/common/ToastNotification';
 import type { FeesAgentState } from '../FeesAgent';
 import { getPartyLabels } from '../../constants/feesAgentLocales';
 import { generateDocxBlobFromTemplate } from '../../utils/docxTemplate';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
-import { saveAs } from 'file-saver';
-import { renderAsync } from 'docx-preview';
 import { PDFDocument } from 'pdf-lib';
-import { RasmDocxPreview } from '../../components/SmartDrafting/RasmDocxPreview';
-import { WordPreview, type WordPreviewHandle } from '../../components/WordPreview';
+import { WordPreview } from '../../components/WordPreview';
 import { OnlyOfficeEditor } from '../../components/OnlyOfficeEditor';
-// @ts-ignore
-import PizZip from 'pizzip';
-import JSZip from 'jszip';
-import { injectPlainTextIntoDocxZip } from '../../utils/docxTemplate';
 
-import { PAGE_WIDTH, PAGE_HEIGHT, PAGE_GAP, getPages, stripHtmlToPlainText } from './utils/textParsers';
+import { PAGE_WIDTH, stripHtmlToPlainText } from './utils/textParsers';
 import { HighResViewer } from './components/HighResViewer';
 import { SignatureConfirmationModal } from './modals/SignatureConfirmationModal';
 import { PreSaveReviewModal } from './modals/PreSaveReviewModal';
 import { SaveCategoryModal } from './modals/SaveCategoryModal';
 import { DecisionModal } from './modals/DecisionModal';
 import { ImageViewerModal } from './modals/ImageViewerModal';
+
 
 export const MOROCCAN_CITIES = [
   'الرباط', 'شفشاون', 'طنجة', 'تطوان', 'الدار البيضاء', 'فاس', 'مكناس', 'مراكش',
@@ -145,21 +112,26 @@ export const AuditHubContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState('data');
   const [workspaceLayoutMode, setWorkspaceLayoutMode] = useState<'split' | 'doc' | 'form'>('split');
   const [activeFormSection, setActiveFormSection] = useState<'all' | 'deed' | 'parties' | 'properties' | 'financial' | 'notaries'>('all');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const [_isDrawerOpen, _setIsDrawerOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { sessionToken, user, notaryProfile } = useAuth();
   const trpcUtils = trpc.useContext();
-  const params = new URLSearchParams(location.search);
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rasmId = params.get('id') || params.get('rasmId');
-  const shouldForceRefetch = params.get('refetch') === 'true' || Boolean(params.get('cb'));
+  const _shouldForceRefetch = params.get('refetch') === 'true' || Boolean(params.get('cb'));
 
   // Get notary partners for auto-filling the secondary notary / العدل العاطف
   const notaryPartnersQuery = (trpc as any).auth.getNotaryPartners.useQuery(
     { sessionToken: sessionToken || '' },
     { enabled: !!sessionToken, staleTime: 60000 }
   );
-  const notaryPartners: any[] = notaryPartnersQuery.data || [];
+  // Memoize to ensure a stable array reference — raw query data creates a new array
+  // every render, causing notaryPartners to "change every render" and cascade hook warnings.
+  const notaryPartners: any[] = useMemo(
+    () => notaryPartnersQuery.data || [],
+    [notaryPartnersQuery.data]
+  );
 
   // Determine active partner based on availability toggle in Notary Partners
   const activePartner = useMemo(() => {
@@ -173,8 +145,9 @@ export const AuditHubContainer: React.FC = () => {
 
   const [state, setState] = useState<FeesAgentState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark as requested
+  const [isDarkMode, _setIsDarkMode] = useState(true); // Default to dark as requested
   const [selectedAttachmentTabDoc, setSelectedAttachmentTabDoc] = useState<any>(null);
+
   
   // Modals & Panels
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -255,31 +228,32 @@ export const AuditHubContainer: React.FC = () => {
     }));
   };
 
-  const [vaultModal, setVaultModal] = useState<{ isOpen: boolean; title: string; type: 'ids' | 'certificates' | 'none' }>({ isOpen: false, title: '', type: 'none' });
+  const [_vaultModal, _setVaultModal] = useState<{ isOpen: boolean; title: string; type: 'ids' | 'certificates' | 'none' }>({ isOpen: false, title: '', type: 'none' });
   const [selectedVaultDoc, setSelectedVaultDoc] = useState<any>(null);
   const [forcedViewerDocState, setForcedViewerDoc] = useState<any>(null);
 
-  const primaryFileInputRef = useRef<HTMLInputElement>(null);
+  const _primaryFileInputRef = useRef<HTMLInputElement>(null);
   const [primaryTextEditorOpen, setPrimaryTextEditorOpen] = useState(false);
   const [primaryBusy, setPrimaryBusy] = useState(false);
   const primaryDocBlobUrlRef = useRef<string | null>(null);
   const editedPlainTextGetterRef = useRef<null | (() => string)>(null);
   const preEditPlainTextRef = useRef<string>('');
-  const preEditDocIdRef = useRef<string | null>(null);
+  const _preEditDocIdRef = useRef<string | null>(null);
   const [viewerDocRenderNonce, setViewerDocRenderNonce] = useState(0);
   const onlyOfficeBaselineRef = useRef<{ versionId: string | null; updatedAt: string | null }>({
     versionId: null,
     updatedAt: null,
   });
 
-  const revokePrimaryDocBlobUrl = () => {
+  // Stable ref-only function — useCallback with [] ensures a single identity across renders
+  const revokePrimaryDocBlobUrl = useCallback(() => {
     if (primaryDocBlobUrlRef.current) {
       try {
         URL.revokeObjectURL(primaryDocBlobUrlRef.current);
       } catch {}
       primaryDocBlobUrlRef.current = null;
     }
-  };
+  }, []);
 
   const base64ToBlobUrl = (base64: string, mime: string) => {
     const binary = atob(base64);
@@ -291,8 +265,8 @@ export const AuditHubContainer: React.FC = () => {
 
   // PDF text editor (white-out + overlay text)
   const [pdfFormEditorOpen, setPdfFormEditorOpen] = useState(false);
-  const [pdfFormBusy, setPdfFormBusy] = useState(false);
-  const [pdfFormError, setPdfFormError] = useState<string | null>(null);
+  const [_pdfFormBusy, setPdfFormBusy] = useState(false);
+  const [_pdfFormError, setPdfFormError] = useState<string | null>(null);
 
   type PdfRedactionRect = { x: number; y: number; w: number; h: number };
   type PdfOverlayText = { x: number; y: number; text: string; size: number };
@@ -362,7 +336,7 @@ export const AuditHubContainer: React.FC = () => {
     pdfOriginalDocRef.current = null;
   }, []);
 
-  const openPdfFormEditor = useCallback(async () => {
+  const _openPdfFormEditor = useCallback(async () => {
     if (!selectedVaultDoc || !isSelectedPdf) return;
     setPdfFormError(null);
     setPdfFormBusy(true);
@@ -454,7 +428,7 @@ export const AuditHubContainer: React.FC = () => {
     });
   }, []);
 
-  const pdfHasAnyTextEdits = useMemo(() => {
+  const _pdfHasAnyTextEdits = useMemo(() => {
     return Object.values(pdfTextEditsByPage).some(
       (e) => (e?.rects?.length || 0) > 0 || (e?.texts?.length || 0) > 0
     );
@@ -535,14 +509,14 @@ export const AuditHubContainer: React.FC = () => {
 
   const partyLabels = useMemo(
     () => getPartyLabels((state as any)?.documentType || finalRecord.certificateType || ''),
-    [(state as any)?.documentType, finalRecord.certificateType]
+    [state?.documentType, finalRecord.certificateType]
   );
 
   const [onlyOfficeOpen, setOnlyOfficeOpen] = useState(false);
   const [onlyOfficeDsUrl, setOnlyOfficeDsUrl] = useState<string | null>(null);
   const [onlyOfficeConfig, setOnlyOfficeConfig] = useState<Record<string, unknown> | null>(null);
 
-  const updateRecord = (field: string, value: string) => {
+  const _updateRecord = (field: string, value: string) => {
     setFinalRecord(prev => ({ ...prev, [field]: value }));
   };
 
@@ -610,7 +584,7 @@ export const AuditHubContainer: React.FC = () => {
   //   true  → PDF is ready (or deed is not judge-approved)
   //   undefined → legacy record (treat as ready to avoid false gates)
   const _pdfCompilationReadyRaw = (rasmQuery.data as any)?.pdfCompilationReady ?? payload?.pdfCompilationReady;
-  const isAwaitingPdf: boolean =
+  const _isAwaitingPdf: boolean =
     _pdfCompilationReadyRaw === false &&
     !!rasmId &&
     !rasmQuery.isLoading;
@@ -1000,6 +974,7 @@ export const AuditHubContainer: React.FC = () => {
     return null;
   }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, isWordLikeDoc, judgeAttachmentDocs, rasmQuery.data]);
 
+  const rasmAttachments = (rasmQuery.data as any)?.attachments;
   const attachmentTabDocs = useMemo(() => {
     const normalizeSavedAttachment = (att: any) => {
       if (!att) return null;
@@ -1023,7 +998,7 @@ export const AuditHubContainer: React.FC = () => {
       };
     };
 
-    const rawSaved = Array.isArray((rasmQuery.data as any)?.attachments) ? (rasmQuery.data as any).attachments : [];
+    const rawSaved = Array.isArray(rasmAttachments) ? rasmAttachments : [];
     const savedDocs = rawSaved
       .map(normalizeSavedAttachment)
       .filter(Boolean)
@@ -1053,7 +1028,7 @@ export const AuditHubContainer: React.FC = () => {
       seen.add(key);
       return true;
     });
-  }, [judgeAttachmentDocs, judgePrimaryDoc, (rasmQuery.data as any)?.attachments]);
+  }, [judgeAttachmentDocs, judgePrimaryDoc, rasmAttachments]);
 
   useEffect(() => {
     if (activeTab !== 'attachments') return;
@@ -1142,7 +1117,7 @@ export const AuditHubContainer: React.FC = () => {
     });
 
     return list;
-  }, [state, propertyUnits, rasmQuery.data, (finalRecord as any).judgeName, isUnitsAvailable, isFinancialAvailable, finalRecord.taxOrder]);
+  }, [state, propertyUnits, rasmQuery.data, finalRecord.judgeName, isUnitsAvailable, isFinancialAvailable, finalRecord.taxOrder]);
 
   const stats = useMemo(() => {
     const unitsSectionComplete =
@@ -1209,7 +1184,7 @@ export const AuditHubContainer: React.FC = () => {
       filledCount: judgeFieldCompleted ? totalTrackedFields : filledCount,
       totalTrackedFields,
     };
-  }, [finalRecord, isUnitsAvailable, isFinancialAvailable, propertyUnits, rasmQuery.data]);
+  }, [finalRecord, initialFinalRecord.taxOrder, isUnitsAvailable, isFinancialAvailable, propertyUnits, rasmQuery.data]);
 
   const validateAuditHubForSigning = useCallback(() => {
     const errors: string[] = [];
@@ -1303,7 +1278,8 @@ export const AuditHubContainer: React.FC = () => {
   const createSavedRasmMutation = (trpc as any).feesAgent.documents.createSavedRasm.useMutation();
   const deleteSavedRasmMutation = (trpc as any).feesAgent.documents.deleteSavedRasm.useMutation();
   const revertLatestSavedRasmEditMutation = (trpc as any).feesAgent.documents.revertLatestSavedRasmEdit.useMutation();
-  const generateDocxMutation = trpc.smartDrafting.generateDocxFromText.useMutation();
+  // Hook must be called unconditionally (Rules of Hooks); result is reserved for future use
+  const _generateDocxMutation = trpc.smartDrafting.generateDocxFromText.useMutation();
 
   const savePatchDraftMutation = (trpc as any).feesAgent.documents.savePatchDraft.useMutation();
   const finalizeForSigningMutation = (trpc as any).feesAgent.documents.finalizeForSigning.useMutation();
@@ -1325,85 +1301,29 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
   }>(null);
   const [onlyOfficeMode, setOnlyOfficeMode] = useState<'overlay' | 'embedded'>('overlay');
   const [onlyOfficePaneStatus, setOnlyOfficePaneStatus] = useState<OnlyOfficePaneStatus>('idle');
-  const [onlyOfficeError, setOnlyOfficeError] = useState<string | null>(null);
+  const [_onlyOfficeError, setOnlyOfficeError] = useState<string | null>(null);
   const [onlyOfficeLoadStartedAt, setOnlyOfficeLoadStartedAt] = useState<number | null>(null);
   const [onlyOfficeRenderNonce, setOnlyOfficeRenderNonce] = useState(0);
+
   const [signingTransition, setSigningTransition] = useState<{ active: boolean; progress: number; message: string }>({
     active: false,
     progress: 0,
     message: '',
   });
-  const [signingTransitionStartedAt, setSigningTransitionStartedAt] = useState<number | null>(null);
   const [signingTransitionTick, setSigningTransitionTick] = useState(0);
 
   useEffect(() => {
     if (!signingTransition.active) {
-      setSigningTransitionStartedAt(null);
       setSigningTransitionTick(0);
       return;
     }
 
-    setSigningTransitionStartedAt((prev) => prev ?? Date.now());
     const interval = window.setInterval(() => {
       setSigningTransitionTick((prev) => prev + 1);
     }, 1500);
 
     return () => window.clearInterval(interval);
   }, [signingTransition.active]);
-
-  const signingTransitionUi = useMemo(() => {
-    const elapsedMs = signingTransitionStartedAt ? Math.max(0, Date.now() - signingTransitionStartedAt) : 0;
-    const elapsedSec = elapsedMs / 1000;
-    const phase =
-      signingTransition.progress >= 100
-        ? 'handoff'
-        : elapsedSec < 2
-          ? 'start'
-          : 'saving';
-
-    const rotatingMessages = [
-      'جاري حفظ الرسم المضمن...',
-      'يتم تأمين البيانات...',
-      'المرجو الانتظار، العملية جارية...',
-    ];
-    const rotatingIndex = signingTransitionTick % rotatingMessages.length;
-
-    const stageTitle =
-      phase === 'handoff'
-        ? 'جاري تحويل الرسم إلى توقيع العدلين...'
-        : phase === 'start'
-          ? 'جاري تحريك الرسم نحو مرحلة الحفظ...'
-          : rotatingMessages[rotatingIndex];
-
-    const detailText =
-      phase === 'handoff'
-        ? 'تم تأكيد الحفظ، ويجري فتح مساحة التوقيع الآن.'
-        : signingTransition.message || 'جاري تنفيذ المرحلة الحالية...';
-
-    const docPosition =
-      phase === 'handoff'
-        ? 78
-        : phase === 'start'
-          ? 20
-          : 42;
-
-    const glowAtSave = phase !== 'handoff';
-    const penGlow = phase === 'handoff';
-    const lineFill = phase === 'handoff' ? 100 : phase === 'start' ? 36 : 62;
-
-    return {
-      elapsedMs,
-      elapsedSec,
-      phase,
-      stageTitle,
-      detailText,
-      docPosition,
-      glowAtSave,
-      penGlow,
-      lineFill,
-      isLongWait: elapsedSec >= 5,
-    };
-  }, [signingTransition.active, signingTransition.message, signingTransition.progress, signingTransitionStartedAt, signingTransitionTick]);
   const onlyOfficeAutoLoadKeyRef = useRef<string | null>(null);
   const onlyOfficeRequestSeqRef = useRef(0);
   const onlyOfficeEmbeddedRetryRef = useRef(0);
@@ -1542,7 +1462,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     }
 
     return null;
-  }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, judgeAttachmentDocs, judgePrimaryDoc, rasmQuery.data]);
+  }, [effectiveJudgePayload, effectiveJudgeSubmission, isPdfLikeDoc, judgeAttachmentDocs, judgePrimaryDoc, params, rasmQuery.data]);
 
   const isAwaitingPdfResolved =
     Boolean(
@@ -1620,14 +1540,14 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     !!onlyOfficeDsUrl &&
     !!onlyOfficeConfig &&
     onlyOfficePaneStatus !== 'error';
-  const shouldShowEmbeddedOnlyOfficeLoader =
+  const _shouldShowEmbeddedOnlyOfficeLoader =
     shouldRenderOnlyOfficePrimaryPane &&
     !shouldMountEmbeddedOnlyOffice &&
     onlyOfficePaneStatus !== 'error';
 
   const docxTemplateBase64Ref = useRef<string | null>(null);
 
-  const loadDocxTemplateBase64 = useCallback(async () => {
+  const _loadDocxTemplateBase64 = useCallback(async () => {
     if (docxTemplateBase64Ref.current) return docxTemplateBase64Ref.current;
     const templateResponse = await fetch('/templates/headers/DECOR ADOUL 33.docx');
     if (!templateResponse.ok) throw new Error('Failed to fetch template');
@@ -1713,10 +1633,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         setPrimaryBusy(false);
       }
     },
-    [addPrimaryAttachmentMutation, rasmId, rasmQuery, sessionToken]
+    [addPrimaryAttachmentMutation, rasmId, revokePrimaryDocBlobUrl, sessionToken]
   );
 
-  const saveEditedPdfAsNewAttachment = useCallback(async () => {
+  const _saveEditedPdfAsNewAttachment = useCallback(async () => {
     if (!pdfOriginalBytesRef.current) {
       alert('تعذر تحميل ملف PDF الأصلي.');
       return;
@@ -1806,7 +1726,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     }
   }, [closePdfFormEditor, pdfTextEditsByPage, uploadPrimaryFile]);
 
-  const uploadPrimaryBase64 = useCallback(
+  const _uploadPrimaryBase64 = useCallback(
     async (opts: { base64: string; name: string; size?: number; previewTextContent?: string }) => {
       if (!rasmId || !sessionToken) return;
       setPrimaryBusy(true);
@@ -1856,7 +1776,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         setPrimaryBusy(false);
       }
     },
-    [addPrimaryAttachmentMutation, rasmId, sessionToken]
+    [addPrimaryAttachmentMutation, rasmId, revokePrimaryDocBlobUrl, sessionToken]
   );
 
   const savePrimaryFromInlineText = useCallback(
@@ -1954,7 +1874,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       // Prefer PDF for preview to avoid docx-preview layout deformation.
       const returnedUrl = (res as any)?.previewPdfUrl || (res as any)?.previewDocxUrl || null;
       const returnedVersionId = (res as any)?.versionId || null;
-      const returnedUpdatedAt = (res as any)?.createdAt || null;
+      const _returnedUpdatedAt = (res as any)?.createdAt || null;
 
       // eslint-disable-next-line no-console
       console.log('[SAVE_EDIT] result', {
@@ -1984,10 +1904,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         await trpcUtils.feesAgent.documents.listSavedRasms.invalidate({ sessionToken: sessionToken || '' } as any);
       } catch {}
     },
-    [judgeSubmissionId, latestAuditVersionId, rasmId, rasmQuery.data, savePatchDraftMutation, selectedVaultDoc, sessionToken, trpcUtils]
+    [latestAuditVersionId, rasmId, rasmQuery.data, savePatchDraftMutation, selectedVaultDoc, sessionToken, trpcUtils]
   );
 
-  const handleFinalize = () => {
+  const _handleFinalize = () => {
     if (!state || !rasmId) return;
     setDecisionType('approve');
     setIsDecisionModalOpen(true);
@@ -2068,7 +1988,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
       registrationConfirmed: !!savedChecklist.registrationConfirmed,
       finalClosure: !!savedChecklist.finalClosure,
     });
-  }, [(rasmQuery.data as any)?.payload]);
+  }, [rasmQuery.data]);
 
   const confirmFinalize = async (): Promise<boolean> => {
     if (!state || !rasmId) return false;
@@ -2219,7 +2139,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
 
         finalPdfUrl = finRes?.finalPdfUrl || null;
       }
-    } catch (e) {
+    } catch {
       // This one is important: signing must use server artifact.
       alert('تعذر توليد النسخة النهائية للتوقيع (PDF) على الخادم. يرجى المحاولة لاحقاً أو التحقق من إعدادات التحويل.');
       return false;
@@ -2635,6 +2555,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     } catch (error) {
       console.error('Error in document selection logic:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDocVersion, activeEditedArtifact, rasmQuery.data, judgeAttachmentDoc, judgeAttachmentDocs, judgePrimaryDoc, judgeWordAttachmentDoc]);
 
   // Force re-selection if the judge-side primary preview appears later.
@@ -2701,6 +2622,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activePdfUrl,
     isPdfLikeDoc,
@@ -2721,7 +2643,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     if (judgeAttachmentDoc && selectedVaultDoc?.id === 'draft-doc') {
        setSelectedVaultDoc(judgeAttachmentDoc);
     }
-  }, [judgeAttachmentDoc]);
+  }, [judgeAttachmentDoc, selectedVaultDoc?.id]);
 
   useEffect(() => {
     if (rasmQuery.error) {
@@ -2799,14 +2721,14 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         el.scrollLeft = 0;
       }
     });
-  }, [selectedVaultDoc?.id, computeFitZoom]);
+  }, [selectedVaultDoc, computeFitZoom]);
 
-  const updateDraftContent = (newContent: string) => {
+  const updateDraftContent = useCallback((newContent: string) => {
     setState((prev: any) => ({ ...prev, draft: newContent }));
     if (selectedVaultDoc?.id === 'draft-doc') {
       setSelectedVaultDoc((prev: any) => ({ ...prev, content: newContent }));
     }
-  };
+  }, [selectedVaultDoc?.id]);
 
   const loadOnlyOfficeConfig = useCallback(
     async ({
@@ -2910,7 +2832,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     }, 0);
   }, [isEmbeddedOnlyOfficeActive, loadOnlyOfficeConfig, onlyOfficeMode]);
 
-  const handleSaveEditsAndExit = useCallback(async () => {
+  const _handleSaveEditsAndExit = useCallback(async () => {
     if (!rasmId || !sessionToken) return;
     setIsSavingEdits(true);
     try {
@@ -3033,6 +2955,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     onlyOfficeConfig,
     rasmId,
     rasmQuery,
+    revokePrimaryDocBlobUrl,
     savePatchDraftMutation,
     selectedVaultDoc,
     sessionToken,
@@ -3041,7 +2964,8 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     updateSavedRasmMutation,
   ]);
 
-  const handleStartOnlyOfficeEdit = useCallback(async () => {
+
+  const _handleStartOnlyOfficeEdit = useCallback(async () => {
     setActiveViewMode('onlyoffice');
     await loadOnlyOfficeConfig({ mode: 'embedded', force: true });
   }, [loadOnlyOfficeConfig]);
@@ -3159,6 +3083,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     onlyOfficeConfig,
     rasmId,
     rasmQuery,
+    revokePrimaryDocBlobUrl,
     savePatchDraftMutation,
     selectedVaultDoc,
     sessionToken,
@@ -3166,6 +3091,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     trpcUtils,
     updateSavedRasmMutation,
   ]);
+
 
   const resolveActiveDocxTarget = useCallback(() => {
     // Helper to sanitize filename to clean .docx extension
@@ -3405,7 +3331,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     }
   }, [rasmId, rasmQuery, revokePrimaryDocBlobUrl, sessionToken, trpcUtils.feesAgent.documents, updateSavedRasmMutation]);
 
-  const handleToggleEditMode = useCallback(async () => {
+  const _handleToggleEditMode = useCallback(async () => {
     if (!isAuditHubEditMode) {
       if (currentDraftText) {
         updateDraftContent(currentDraftText);
@@ -3414,7 +3340,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     } else {
       setIsAuditHubEditMode(false);
     }
-  }, [currentDraftText, isAuditHubEditMode]);
+  }, [currentDraftText, isAuditHubEditMode, updateDraftContent]);
 
   const refreshAfterOnlyOfficeSave = useCallback((opts?: {
     requirePdf?: boolean;
@@ -3493,7 +3419,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     return lastData;
   })(), [rasmQuery, reloadEmbeddedOnlyOfficeToLatestVersion]);
 
-  const syncLatestSavedDraftState = useCallback(async (opts?: {
+  const _syncLatestSavedDraftState = useCallback(async (opts?: {
     requirePdf?: boolean;
     requestedAfterMs?: number;
     baselineOverride?: { versionId: string | null; updatedAt: string | null };
@@ -3545,7 +3471,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
         ? crypto.randomUUID()
         : `forcesave-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     let awaitedForceSaveRequestId: string | null = null;
-    const baselineAtClick = {
+    const _baselineAtClick = {
       versionId: ((rasmQuery.data as any)?.latestDraftVersionId as string | null) || null,
       updatedAt:
         ((rasmQuery.data as any)?.latestDraftUpdatedAt as string | null) ||
@@ -3716,7 +3642,6 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     rasmQuery.data,
     sessionToken,
     selectedVaultDoc,
-    syncLatestSavedDraftState,
     state,
     trpcUtils,
     updateSavedRasmMutation,
@@ -3724,7 +3649,10 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     isUnitsAvailable,
     isFinancialAvailable,
     buildFinalReviewChecklist,
+    finalRecord,
+    validateAuditHubForSigning,
   ]);
+
 
   useEffect(() => {
     const autoKey =
@@ -4035,7 +3963,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
           if (finalId && currentDocContent && !isEmbeddedOnlyOfficeActive) {
             await savePrimaryFromInlineText(currentDocContent, { savedRasmId: finalId });
           }
-        } catch (e) {
+        } catch {
         }
       }
 
@@ -4102,7 +4030,7 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
     </div>
   );
 
-  const getDocTypeColor = (type: string) => {
+  const _getDocTypeColor = (type: string) => {
     if (type.includes('زواج') || type.includes('طلاق')) return 'bg-emerald-600';
     if (type.includes('بيع') || type.includes('شراء')) return 'bg-blue-700';
     return 'bg-slate-700';
@@ -4799,21 +4727,9 @@ type OnlyOfficePaneStatus = 'idle' | 'loading-config' | 'loading-editor' | 'read
                           </div>
                         </div>
                       </div>
-                    ) : forcedViewerDoc || activePdfUrl ? (
+                    ) : forcedViewerDoc || canonicalApprovedPdfDoc ? (
                       <HighResViewer 
-                        doc={
-                          forcedViewerDoc || {
-                            id: `canonical-approved-pdf-${String((rasmQuery.data as any)?.id || rasmId || 'active')}`,
-                            category: 'audit_final_pdf',
-                            fileName: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
-                            name: (rasmQuery.data as any)?.previewName || 'المحرر القضائي المعتمد.pdf',
-                            fileUrl: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
-                            url: activePdfUrl ? `${activePdfUrl}${activePdfUrl.includes('?') ? '&' : '?'}cb=${Date.now()}` : '',
-                            mimeType: 'application/pdf',
-                            type: 'application/pdf',
-                            isJudgePrimary: true,
-                          }
-                        }
+                        doc={forcedViewerDoc || canonicalApprovedPdfDoc}
                         docSourceMeta={{
                           selectedDocSource: activeDocVersion,
                           baseDocUrl: baseDocUrlForDebug,

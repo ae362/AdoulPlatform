@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   FileText,
   ShieldCheck,
-  Search,
   ZoomIn,
   ZoomOut,
   ChevronLeft,
   ChevronRight,
-  Fingerprint,
   Monitor,
-  Cpu,
   RefreshCcw,
   CheckCircle,
   CheckCircle2,
@@ -20,7 +17,6 @@ import {
   Clock,
   Trash2,
   Lock,
-  ArrowRight,
   Pen,
   Download,
   Printer,
@@ -38,6 +34,39 @@ import { pickBestSavedDocsAttachment } from '../../utils/savedDocsPicker';
 
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
+function generateSecureId(prefix = 'id'): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
+  }
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function generateWacomBioToken(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return 'SHA256_WACOM_' + crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+  }
+  return 'SHA256_WACOM_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+function resetGlobalWacomSTU(): void {
+  try {
+    if (typeof window !== 'undefined' && (window as any).WacomGSS) {
+      delete (window as any).WacomGSS.STU;
+    }
+  } catch {}
+}
+
+function initGlobalWacomSTU(host: string, port = 9000): any {
+  try {
+    const wgss = (window as any).WacomGSS;
+    if (wgss?.STUConstructor) {
+      wgss.STU = new wgss.STUConstructor(port, host);
+      return wgss.STU;
+    }
+  } catch {}
+  return null;
+}
+
 export const NotarySignatureWorkarea: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, sessionToken } = useAuth();
@@ -45,11 +74,11 @@ export const NotarySignatureWorkarea: React.FC = () => {
   const location = useLocation();
   const trpcUtils = trpc.useUtils();
   const navigationFinalPdfUrl = (location.state as any)?.finalPdfUrl as string | null | undefined;
-  const initialPreferredUrl = String(navigationFinalPdfUrl || '').trim() || null;
+  const initialPreferredUrl = useMemo(() => String(navigationFinalPdfUrl || '').trim() || null, [navigationFinalPdfUrl]);
   const [zoom, setZoom] = useState(1);
   const [page, setPage] = useState(1);
   const [isWacomConnected, setIsWacomConnected] = useState(false);
-  const [signatureStatus, setSignatureStatus] = useState<'none' | 'partial' | 'complete'>('none');
+  const [_signatureStatus, setSignatureStatus] = useState<'none' | 'partial' | 'complete'>('none');
   const [activeAdoul, setActiveAdoul] = useState<1 | 2>(1);
   const [preHash, setPreHash] = useState('8f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a');
   const [selectedAttachmentId, setSelectedAttachmentId] = useState<string | null>(null);
@@ -74,7 +103,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
   // Wacom STU-540 State
   const [stuStatus, setStuStatus] = useState<'SEARCHING' | 'CONNECTING' | 'CONNECTED' | 'CAPTURING' | 'SAVED' | 'ERROR'>('SEARCHING');
   const [hardwareError, setHardwareError] = useState<string | null>(null);
-  const [tabletInstance, setTabletInstance] = useState<any>(null);
+  const [_tabletInstance, setTabletInstance] = useState<any>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [adoul1Signature, setAdoul1Signature] = useState<string | null>(null);
   const [adoul2Signature, setAdoul2Signature] = useState<string | null>(null);
@@ -83,8 +112,50 @@ export const NotarySignatureWorkarea: React.FC = () => {
   const [isSendingPreviewToTablet, setIsSendingPreviewToTablet] = useState(false);
   const [tabletSigningViewMode, setTabletSigningViewMode] = useState<'full' | 'signing-zone'>('full');
   const [tabletPreviewZoom, setTabletPreviewZoom] = useState(1.32);
-  const [tabletPreviewScrollOffset, setTabletPreviewScrollOffset] = useState(0.5);
+  const [_tabletPreviewScrollOffset, setTabletPreviewScrollOffset] = useState(0.5);
   const [showNotary2CompletionModal, setShowNotary2CompletionModal] = useState(false);
+
+  // Cross-Tab Arbiter Ref (for side-by-side tabs)
+  const tabInstanceIdRef = useRef<string>('');
+  const crossTabChannelRef = useRef<BroadcastChannel | null>(null);
+  const isPenDownRef = useRef(false);
+  const refreshTabletDisplayRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const connectToSTUDeviceRef = useRef<(retryCount?: number) => Promise<void>>(() => Promise.resolve());
+
+  // Wacom Hardware & Buffer Refs (hoisted to top so early functions have access)
+  const tabletRef = useRef<any>(null);
+  const capabilityRef = useRef<any>(null);
+  const reportHandlerRef = useRef<any>(null);
+  const inkThresholdRef = useRef<any>(null);
+  const penDataRef = useRef<any[]>([]);
+  const tabletPreviewZoomRef = useRef(1.32);
+  const tabletPreviewScrollOffsetRef = useRef(0.5);
+  const tabletSigningViewModeRef = useRef<'full' | 'signing-zone'>('full');
+  const pageRef = useRef(1);
+  const pdfPageCountRef = useRef(1);
+  const activeAdoulRef = useRef<1 | 2>(1);
+  const isCapturingRef = useRef(false);
+  const tabletButtonRegionsRef = useRef<Array<{ id: string; x: number; y: number; width: number; height: number }>>([]);
+  const tabletPreviewTransformRef = useRef<{
+    mode: 'full' | 'signing-zone';
+    page: number;
+    screenWidth: number;
+    screenHeight: number;
+    renderWidth: number;
+    renderHeight: number;
+    pdfWidth: number;
+    pdfHeight: number;
+    cropX: number;
+    cropY: number;
+    cropWidth: number;
+    cropHeight: number;
+    drawX: number;
+    drawY: number;
+    drawWidth: number;
+    drawHeight: number;
+  } | null>(null);
+  const usbInterfaceRef = useRef<any>(null);
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Saved Rasm Data Fetch
   const { data: rasmData, isLoading } = trpc.feesAgent.documents.getSavedRasm.useQuery(
@@ -222,7 +293,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     return btoa(binary);
   };
 
-  const burnSignatureToPdfBytes = async (
+  const burnSignatureToPdfBytes = useCallback(async (
     sigPngDataUrl: string,
     adoulOrder: 1 | 2,
     customPlacement?: { xPts: number; yPts: number; pageIndex?: number; sigWidthPts?: number; sigHeightPts?: number }
@@ -307,7 +378,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       console.warn('[burnSignatureToPdfBytes] Error embedding signature into PDF:', err);
       return null;
     }
-  };
+  }, [currentPdfUrl, editedPdfBytes, originalPdfUrl, page]);
 
   // Custom Placement State
   const [placedSignatures, setPlacedSignatures] = useState<Array<{ id: string, x: number, y: number, img: string, adoul: 1 | 2, page: number }>>([]);
@@ -327,41 +398,6 @@ export const NotarySignatureWorkarea: React.FC = () => {
     resolution: '800x480 (High DPI)',
     pressureLevels: '1024'
   });
-
-  // Wacom Refs
-  const tabletRef = useRef<any>(null);
-  const capabilityRef = useRef<any>(null);
-  const reportHandlerRef = useRef<any>(null);
-  const inkThresholdRef = useRef<any>(null);
-  const penDataRef = useRef<any[]>([]);
-  const tabletPreviewZoomRef = useRef(1.32);
-  const tabletPreviewScrollOffsetRef = useRef(0.5);
-  const tabletSigningViewModeRef = useRef<'full' | 'signing-zone'>('full');
-  const pageRef = useRef(1);
-  const pdfPageCountRef = useRef(1);
-  const activeAdoulRef = useRef<1 | 2>(1);
-  const isCapturingRef = useRef(false);
-  const tabletButtonRegionsRef = useRef<Array<{ id: string; x: number; y: number; width: number; height: number }>>([]);
-  const tabletPreviewTransformRef = useRef<{
-    mode: 'full' | 'signing-zone';
-    page: number;
-    screenWidth: number;
-    screenHeight: number;
-    renderWidth: number;
-    renderHeight: number;
-    pdfWidth: number;
-    pdfHeight: number;
-    cropX: number;
-    cropY: number;
-    cropWidth: number;
-    cropHeight: number;
-    drawX: number;
-    drawY: number;
-    drawWidth: number;
-    drawHeight: number;
-  } | null>(null);
-  const usbInterfaceRef = useRef<any>(null);
-  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     pageRef.current = page;
@@ -393,7 +429,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     { sessionToken: sessionToken || '', id: id || '', mode: 'pdf' },
     { enabled: !!sessionToken && !!id && !hasSeededNavigationPdf, staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true }
   );
-  const signingDocQuery = { ...rawSigningDocQuery, data: rawSigningDocQuery.data as any };
+  const signingDocQuery = rawSigningDocQuery as typeof rawSigningDocQuery & { data: any };
   const finalizeForSigningMutation = trpc.feesAgent.documents.finalizeForSigning.useMutation();
 
   const appendCacheBuster = (rawUrl: string, key: string, value: string) => {
@@ -468,29 +504,24 @@ export const NotarySignatureWorkarea: React.FC = () => {
     };
 
     void syncMissingSignatures();
-  }, [p1Record?.signature_data, p2Record?.signature_data, currentPdfUrl, originalPdfUrl, dualSession?.final_package_url, dualSession?.document_hash, isUserNotary1, isUserNotary2, preHash]);
-
-  const buildFallbackSigningUrls = () => {
-    const candidates: string[] = [];
-    const push = (raw: string | null | undefined) => {
-      const value = String(raw || '').trim();
-      if (!value) return;
-      if (candidates.includes(value)) return;
-      candidates.push(value);
-    };
-
-    push(initialPreferredUrl);
-    push(signingDocQuery.data?.effectiveUrl);
-    push(payloadMainFile.url);
-
-    const signableCategories = ['audit_final_pdf', 'audit_draft_pdf', 'document', 'primary_attachment'];
-    for (const category of signableCategories) {
-      const att = (rasm?.attachments || []).find((item: any) => String(item?.category || '') === category);
-      push(att?.fileUrl);
-    }
-
-    return candidates;
-  };
+  }, [
+    burnSignatureToPdfBytes,
+    currentPdfUrl,
+    dualSession?.document_hash,
+    dualSession?.final_package_url,
+    dualSession?.id,
+    id,
+    isUserNotary1,
+    isUserNotary2,
+    originalPdfUrl,
+    p1Record?.signature_data,
+    p2Record?.signature_data,
+    preHash,
+    recordFirstNotarySigMutation,
+    recordSecondNotarySigMutation,
+    sessionToken,
+    trpcUtils,
+  ]);
 
   const mainPdfAttachment = React.useMemo(() => {
     const attachments = Array.isArray(rasm?.attachments) ? rasm.attachments : [];
@@ -540,6 +571,28 @@ export const NotarySignatureWorkarea: React.FC = () => {
       mimeType: directMime || null,
     };
   }, [rasm]);
+
+  const buildFallbackSigningUrls = useCallback(() => {
+    const candidates: string[] = [];
+    const push = (raw: string | null | undefined) => {
+      const value = String(raw || '').trim();
+      if (!value) return;
+      if (candidates.includes(value)) return;
+      candidates.push(value);
+    };
+
+    push(initialPreferredUrl);
+    push(signingDocQuery.data?.effectiveUrl);
+    push(payloadMainFile.url);
+
+    const signableCategories = ['audit_final_pdf', 'audit_draft_pdf', 'document', 'primary_attachment'];
+    for (const category of signableCategories) {
+      const att = (rasm?.attachments || []).find((item: any) => String(item?.category || '') === category);
+      push(att?.fileUrl);
+    }
+
+    return candidates;
+  }, [initialPreferredUrl, payloadMainFile.url, rasm?.attachments, signingDocQuery.data?.effectiveUrl]);
 
   const mainDocxCandidate = React.useMemo(() => {
     const latestDraftDocxUrl = String((rasm as any)?.latestDraftDocxUrl || '').trim() || null;
@@ -751,8 +804,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           const firstPage = pdfDoc.getPages()[0];
           const { width, height } = firstPage.getSize();
           setPdfSize({ width, height });
-        } catch (e) {
-        }
+        } catch {}
       };
       loadSize();
     }
@@ -796,7 +848,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         },
       }
     );
-  }, [finalizeForSigningMutation, hasSeededNavigationPdf, id, mainDocxCandidate, mainPdfAttachment, sessionToken, signingDocQuery.data, trpcUtils]);
+  }, [finalizeForSigningMutation, hasSeededNavigationPdf, id, mainDocxCandidate, mainPdfAttachment, sessionToken, signingDocQuery, trpcUtils]);
 
   useEffect(() => {
     if (hasSeededNavigationPdf) return;
@@ -854,7 +906,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     };
 
     run();
-  }, [hasSeededNavigationPdf, id, rasm?.attachments, signingDocQuery.data, currentPdfUrl, originalPdfUrl]);
+  }, [buildFallbackSigningUrls, currentPdfUrl, editedPdfBytes, hasSeededNavigationPdf, id, originalPdfUrl, rasm?.attachments, signingDocQuery.data]);
 
   // Load selected attachment
   useEffect(() => {
@@ -883,8 +935,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             const firstPage = pdfDoc.getPages()[0];
             const { width, height } = firstPage.getSize();
             setPdfSize({ width, height });
-          } catch (e) {
-          }
+          } catch {}
         };
         loadSize();
       }
@@ -933,8 +984,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           if (reportHandler?.stopReporting) {
             await reportHandler.stopReporting();
           }
-        } catch (e) {
-        } finally {
+        } catch {} finally {
           reportHandlerRef.current = null;
         }
 
@@ -943,22 +993,19 @@ export const NotarySignatureWorkarea: React.FC = () => {
           if (isStuReady) {
             await clearTabletScreen(tablet);
           }
-        } catch (e) {
-        }
+        } catch {}
 
         try {
           if (isStuReady && tablet && p?.InkingMode) {
             await tablet.setInkingMode(p.InkingMode.InkingMode_Off);
           }
-        } catch (e) {
-        }
+        } catch {}
 
         try {
           if (isStuReady && tablet?.disconnect) {
             await tablet.disconnect();
           }
-        } catch (e) {
-        } finally {
+        } catch {} finally {
           tabletRef.current = null;
         }
 
@@ -968,8 +1015,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
           if (isStuReady && usbInterface?.disconnect) {
             await usbInterface.disconnect();
           }
-        } catch (e) {
-        } finally {
+        } catch {} finally {
           usbInterfaceRef.current = null;
         }
 
@@ -978,13 +1024,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
           if (wgss?.STU && typeof wgss.STU.close === 'function') {
             wgss.STU.close();
           }
-        } catch (e) {
-        } finally {
-          try {
-            if (wgss) wgss.STU = null;
-          } catch {
-            // ignore
-          }
+        } catch {} finally {
+          resetGlobalWacomSTU();
         }
 
         // Give the service/OS a moment to release the exclusive USB handle.
@@ -1043,11 +1084,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         // ignore
       }
 
-      try {
-        if (wgss) wgss.STU = null;
-      } catch {
-        // ignore
-      }
+      resetGlobalWacomSTU();
     } finally {
       tabletRef.current = null;
       usbInterfaceRef.current = null;
@@ -1055,7 +1092,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
-  const disconnectTablet = async () => {
+  const _disconnectTablet = async () => {
     const tablet = tabletRef.current;
     const reportHandler = reportHandlerRef.current;
     const wgss = (window as any).WacomGSS;
@@ -1065,8 +1102,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       if (reportHandler && reportHandler.stopReporting) {
         await reportHandler.stopReporting();
       }
-    } catch (e) {
-    } finally {
+    } catch {} finally {
       reportHandlerRef.current = null;
     }
 
@@ -1074,15 +1110,13 @@ export const NotarySignatureWorkarea: React.FC = () => {
       if (tablet && p && p.InkingMode) {
         await tablet.setInkingMode(p.InkingMode.InkingMode_Off);
       }
-    } catch (e) {
-    }
+    } catch {}
 
     try {
       if (tablet && tablet.disconnect) {
         await tablet.disconnect();
       }
-    } catch (e) {
-    }
+    } catch {}
 
     tabletRef.current = null;
     setIsWacomConnected(false);
@@ -1159,9 +1193,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             wgss.STU.close(); 
           } catch {}
         }
-        try {
-          if (wgss) wgss.STU = null;
-        } catch {}
+        resetGlobalWacomSTU();
       }
     } catch {}
     
@@ -1176,6 +1208,20 @@ export const NotarySignatureWorkarea: React.FC = () => {
     if (connectingRef.current && retryCount === 0) return;
     connectingRef.current = true;
 
+    // 1. Cross-tab arbitration: Notify any peer tab (e.g. side-by-side notary tab)
+    // to yield its exclusive USB interface lock cleanly before connecting
+    if (crossTabChannelRef.current && tabInstanceIdRef.current) {
+      try {
+        crossTabChannelRef.current.postMessage({
+          type: 'REQUEST_TABLET_ACCESS',
+          senderId: tabInstanceIdRef.current,
+        });
+      } catch {}
+      if (retryCount === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+    }
+
     const wgss = (window as any).WacomGSS;
     try {
       setStuStatus('CONNECTING');
@@ -1186,7 +1232,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         return;
       }
 
-      // 1. Cleanly disconnect previous session without dropping the WebSocket service
+      // 2. Cleanly disconnect previous session without dropping the WebSocket service
       await closeSignatureSession();
       await disconnectLayer(true);
       
@@ -1196,9 +1242,9 @@ export const NotarySignatureWorkarea: React.FC = () => {
       if (!wgss.STU || !wgss.STU.isServiceReady?.()) {
         if (wgss.STU) {
           try { wgss.STU.close(); } catch {}
-          wgss.STU = null;
+          resetGlobalWacomSTU();
         }
-        wgss.STU = new wgss.STUConstructor(9000, host);
+        initGlobalWacomSTU(host, 9000);
 
         const isReady = await waitForService(wgss, 8, 300);
         if (!isReady) {
@@ -1230,23 +1276,32 @@ export const NotarySignatureWorkarea: React.FC = () => {
       await intf.Constructor();
       usbInterfaceRef.current = intf; // STORE THIS IMMEDIATELY
       
-      // Attempt connection: try exclusive first; if busy/locked by previous session, fallback to shared mode
+      // Attempt connection: try exclusive first; if busy/locked by previous session or peer tab,
+      // request peer tab yield and retry
       let connected = false;
       try {
         await intf.connect(candidate, true);
         connected = true;
         await new Promise((r) => setTimeout(r, 120));
       } catch (connErr: any) {
-        console.warn('Exclusive connection failed, trying shared fallback...', connErr);
-        await new Promise((r) => setTimeout(r, 250));
+        console.warn('Exclusive connection failed, requesting cross-tab yield & fallback...', connErr);
+        if (crossTabChannelRef.current && tabInstanceIdRef.current) {
+          try {
+            crossTabChannelRef.current.postMessage({
+              type: 'FORCE_YIELD_TABLET',
+              senderId: tabInstanceIdRef.current,
+            });
+          } catch {}
+        }
+        await new Promise((r) => setTimeout(r, 280));
         try {
           await intf.connect(candidate, false);
           connected = true;
           await new Promise((r) => setTimeout(r, 120));
         } catch (fallbackErr: any) {
-          if (retryCount < 2) {
+          if (retryCount < 3) {
             await disconnectLayer(true);
-            await new Promise((r) => setTimeout(r, 450));
+            await new Promise((r) => setTimeout(r, 400));
             return connectToSTUDevice(retryCount + 1);
           }
           throw fallbackErr;
@@ -1286,7 +1341,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       // Auto-push current document page to tablet immediately upon connection
       if (currentPdfUrl || originalPdfUrl) {
         window.setTimeout(() => {
-          void refreshTabletDisplay();
+          void refreshTabletDisplayRef.current();
         }, 150);
       }
 
@@ -1313,7 +1368,13 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    connectToSTUDeviceRef.current = connectToSTUDevice;
+  });
+
   const handleCaptureStart = async (adoul: 1 | 2) => {
+    setActiveAdoul(adoul);
+    activeAdoulRef.current = adoul;
     if (!tabletRef.current) {
       await connectToSTUDevice();
       if (!tabletRef.current) return;
@@ -1347,7 +1408,6 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
       let isDown = false;
       let lastPoint = { x: 0, y: 0 };
-      const distance = (a: any, b: any) => Math.hypot(a.x - b.x, a.y - b.y);
 
       // --- Drawing Logic for Real-time Preview ---
       const penData = (report: any) => {
@@ -1388,6 +1448,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
         }
 
         isDown = isDownNow;
+        isPenDownRef.current = isDownNow;
         penDataRef.current.push(report);
       };
 
@@ -1396,7 +1457,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       reportHandler.onReportPenDataTimeCountSequence = penData;
 
       await reportHandler.startReporting(tablet, true);
-    } catch (err) {
+    } catch {
       setStuStatus('ERROR');
     }
   };
@@ -1854,7 +1915,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
       setIsSendingPreviewToTablet(true);
       setHardwareError(null);
       if (!tabletRef.current || !isWacomConnected) {
-        await connectToSTUDevice(0);
+        await connectToSTUDeviceRef.current(0);
         if (!tabletRef.current) return;
       }
       const targetMode = forceMode || tabletSigningViewModeRef.current;
@@ -1873,7 +1934,11 @@ export const NotarySignatureWorkarea: React.FC = () => {
     }
   };
 
-  const handleShowDocumentOnTablet = async () => {
+  useEffect(() => {
+    refreshTabletDisplayRef.current = refreshTabletDisplay;
+  });
+
+  const _handleShowDocumentOnTablet = async () => {
     await refreshTabletDisplay();
   };
 
@@ -2078,7 +2143,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
     // PINPOINT ACCURACY: Trim whitespace so the signature itself is centered on the click
     const trimmed = trimCanvas(canvas);
     const realSig = trimmed.toDataURL('image/png');
-    const bio = "SHA256_WACOM_" + Math.random().toString(36).substring(7).toUpperCase();
+    const bio = generateWacomBioToken();
+    isPenDownRef.current = false;
     
     if (adoul === 1) {
       setAdoul1Signature(realSig);
@@ -2172,7 +2238,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
             const imageAspect = embeddedImage.height / Math.max(1, embeddedImage.width);
 
             const bboxWidthPts = Math.max(24, (sourceMaxX - sourceMinX) * renderToPdfScaleX);
-            const bboxHeightPts = Math.max(18, (sourceMaxY - sourceMinY) * renderToPdfScaleY);
+            const _bboxHeightPts = Math.max(18, (sourceMaxY - sourceMinY) * renderToPdfScaleY);
             const sigWidth = Math.max(42, bboxWidthPts * 1.08);
             const sigHeight = Math.max(18, sigWidth * imageAspect);
             const centerXPts = (sourceMinX + (sourceMaxX - sourceMinX) / 2) * renderToPdfScaleX;
@@ -2284,6 +2350,110 @@ export const NotarySignatureWorkarea: React.FC = () => {
   };
 
   useEffect(() => {
+    // 1. Ensure this tab has a unique instance ID for cross-tab arbitration
+    if (!tabInstanceIdRef.current) {
+      tabInstanceIdRef.current = generateSecureId('tab');
+    }
+
+    // 2. Cross-tab Arbiter BroadcastChannel
+    // Enables seamless side-by-side tabs for two notaries without page refresh
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('adoul_wacom_tablet_arbiter');
+        crossTabChannelRef.current = channel;
+
+        channel.onmessage = async (event: MessageEvent) => {
+          const data = event.data;
+          if (!data || data.senderId === tabInstanceIdRef.current) return;
+
+          if (data.type === 'REQUEST_TABLET_ACCESS' || data.type === 'FORCE_YIELD_TABLET') {
+            // If this tab holds the tablet and is NOT in active pen stroke, yield gracefully
+            if (tabletRef.current && !isPenDownRef.current) {
+              console.log('[WACOM_ARBITER] Yielding tablet lock to peer tab:', data.senderId);
+              try {
+                await disconnectLayer(true);
+                setStuStatus('DISCONNECTED' as any);
+              } catch {}
+              try {
+                channel?.postMessage({
+                  type: 'TABLET_RELEASED',
+                  senderId: tabInstanceIdRef.current,
+                  targetId: data.senderId,
+                });
+              } catch {}
+            }
+          } else if (data.type === 'TABLET_RELEASED' && data.targetId === tabInstanceIdRef.current) {
+            // Peer tab released device for us - immediately connect
+            if (!tabletRef.current && !connectingRef.current) {
+              void connectToSTUDeviceRef.current(0);
+            }
+          }
+        };
+      }
+    } catch (bcErr) {
+      console.warn('[WACOM_ARBITER] BroadcastChannel not supported in this environment:', bcErr);
+    }
+
+    // 3. Tab Focus Arbitration: When notary focuses this tab, auto-claim tablet
+    const handleFocus = () => {
+      if (!tabletRef.current && !connectingRef.current) {
+        if (crossTabChannelRef.current && tabInstanceIdRef.current) {
+          try {
+            crossTabChannelRef.current.postMessage({
+              type: 'REQUEST_TABLET_ACCESS',
+              senderId: tabInstanceIdRef.current,
+            });
+          } catch {}
+        }
+        window.setTimeout(() => {
+          if (!tabletRef.current && !connectingRef.current) {
+            void connectToSTUDeviceRef.current(0);
+          }
+        }, 150);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // 4. Hot-Plug Detection via WebUSB (Physical cable insertion after page load)
+    const handleUsbConnect = () => {
+      console.log('[WACOM_HOTPLUG] USB connect event detected. Auto-connecting STU tablet...');
+      window.setTimeout(() => {
+        if (!tabletRef.current && !connectingRef.current) {
+          void connectToSTUDeviceRef.current(0);
+        }
+      }, 400);
+    };
+
+    const handleUsbDisconnect = () => {
+      console.log('[WACOM_HOTPLUG] USB disconnect event detected.');
+      setIsWacomConnected(false);
+      setStuStatus('DISCONNECTED' as any);
+    };
+
+    if (typeof navigator !== 'undefined' && 'usb' in navigator && (navigator as any).usb?.addEventListener) {
+      try {
+        (navigator as any).usb.addEventListener('connect', handleUsbConnect);
+        (navigator as any).usb.addEventListener('disconnect', handleUsbDisconnect);
+      } catch {}
+    }
+
+    // 5. Intelligent Watchdog: Periodically polls for plugged-in tablet if disconnected
+    const watchdogInterval = window.setInterval(async () => {
+      if (!tabletRef.current && !connectingRef.current && !isCapturingRef.current && document.visibilityState === 'visible') {
+        const wgss = (window as any).WacomGSS;
+        if (wgss?.STU?.isServiceReady?.()) {
+          try {
+            const devs = await wgss.STU.getUsbDevices();
+            if (Array.isArray(devs) && devs.length > 0) {
+              console.log('[WACOM_WATCHDOG] STU device detected on USB port. Auto-connecting...');
+              void connectToSTUDeviceRef.current(0);
+            }
+          } catch {}
+        }
+      }
+    }, 2800);
+
     const handlePageHide = () => {
       releaseStuViaBeacon();
       forceReleaseSync();
@@ -2296,9 +2466,8 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Auto-reconnect if tablet connection was dropped while tab was in background
         if (!tabletRef.current && hasAttemptedAutoTabletConnect) {
-          void connectToSTUDevice(0);
+          void connectToSTUDeviceRef.current(0);
         }
       }
     };
@@ -2309,13 +2478,28 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
     const timer = window.setTimeout(() => {
       setHasAttemptedAutoTabletConnect(true);
-      void connectToSTUDevice();
+      void connectToSTUDeviceRef.current(0);
     }, 250);
+
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(watchdogInterval);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      if (typeof navigator !== 'undefined' && 'usb' in navigator && (navigator as any).usb?.removeEventListener) {
+        try {
+          (navigator as any).usb.removeEventListener('connect', handleUsbConnect);
+          (navigator as any).usb.removeEventListener('disconnect', handleUsbDisconnect);
+        } catch {}
+      }
+
+      if (channel) {
+        try { channel.close(); } catch {}
+        crossTabChannelRef.current = null;
+      }
 
       void closeSignatureSession();
     };
@@ -2394,13 +2578,13 @@ export const NotarySignatureWorkarea: React.FC = () => {
   useEffect(() => {
     if (isWacomConnected && tabletRef.current && !isCapturing && (currentPdfUrl || originalPdfUrl)) {
       const timer = window.setTimeout(() => {
-        void refreshTabletDisplay();
+        void refreshTabletDisplayRef.current();
       }, 250);
       return () => window.clearTimeout(timer);
     }
-  }, [isWacomConnected, page, currentPdfUrl, originalPdfUrl, editedPdfBytes]);
+  }, [currentPdfUrl, editedPdfBytes, isCapturing, isWacomConnected, originalPdfUrl, page]);
 
-  const undoLastSignature = async () => {
+  const _undoLastSignature = async () => {
     if (isPDF) {
       // Re-fetching original and re-applying one less is complex, 
       // easiest is clear for now or reset to original.
@@ -2552,7 +2736,7 @@ export const NotarySignatureWorkarea: React.FC = () => {
     setPendingPlacement(null);
   };
 
-  const payload = rasm?.payload || {};
+  const _payload = rasm?.payload || {};
   const currentStatus = rasm?.status || 'READY';
   const isCoSigned = !!adoul1Signature && !!adoul2Signature;
   const registrationNumber = String((rasm as any)?.registrationNumber || rasm?.applicationNumber || rasm?.fileNumber || id || '---');
@@ -2705,9 +2889,9 @@ export const NotarySignatureWorkarea: React.FC = () => {
 
   const isPDF = isPdfCandidate(url, fileName, fileMime);
   const isImage = /\.(png|jpe?g|webp|bmp|gif|svg)($|\?)/i.test(fileName) || /\.(png|jpe?g|webp|bmp|gif|svg)($|\?)/i.test(url);
-  const isWord = /\.(docx?|dotx?)($|\?)/i.test(fileName) || /\.(docx?|dotx?)($|\?)/i.test(url) || (!isPDF && !isImage && url);
+  const _isWord = /\.(docx?|dotx?)($|\?)/i.test(fileName) || /\.(docx?|dotx?)($|\?)/i.test(url) || (!isPDF && !isImage && url);
 
-  const stripHtmlToPlainText = (html: string) => {
+  const _stripHtmlToPlainText = (html: string) => {
     if (!html) return '';
     const tmp = document.createElement('div');
     tmp.innerHTML = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n');
